@@ -10,14 +10,15 @@ uv sync --locked          # .venv 생성, uv.lock 그대로 설치 (잠금과 py
 cp .env.example .env      # 실제 값은 .env에만. 현재(S00) 코드가 읽는 변수는 없음
 ```
 
-## 검증 (CI와 같은 순서)
+## 검증
 ```bash
-uv run ruff check .
-uv run ruff format --check .
-uv run mypy
-uv run pytest -q -rs      # -rs: 건너뛴 테스트 사유 표시. skip은 통과가 아니다
+uv run python scripts/check.py         # 커밋 전 전체 검증: ruff check · ruff format --check · mypy · pytest (CI와 동일)
+uv run python scripts/check.py --fix   # 린트·포맷 자동 수정 후 전체 검증
+uv run pytest tests/<경로> -q          # 작업 중 빠른 확인: 관련 테스트만
 ```
-Windows 콘솔에서 한글 출력이 깨지면 `PYTHONUTF8=1`을 설정한다(Git Bash: `export PYTHONUTF8=1`, PowerShell: `$env:PYTHONUTF8=1`).
+- `check.py`는 실패해도 나머지 단계를 모두 실행하고 끝에 단계별 ok/FAIL을 보여준다. 하나라도 실패하면 종료 코드 1.
+- pytest의 건너뜀(skip)은 통과가 아니다. 사유는 `-rs` 출력으로 확인한다.
+- Windows 한글 출력: `check.py`는 UTF-8 모드로 실행한다. pytest를 직접 실행할 때 깨지면 `PYTHONUTF8=1`을 설정한다(Git Bash: `export PYTHONUTF8=1`, PowerShell: `$env:PYTHONUTF8=1`).
 
 ## 앱 실행
 ```bash

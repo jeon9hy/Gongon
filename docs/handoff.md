@@ -1,29 +1,22 @@
 # 현재 작업 인계
 
-- 저장소: `%USERPROFILE%\OneDrive\바탕 화면\새 폴더` (OneDrive 동기화 폴더, D-001) · 원격: GitHub `jeon9hy/gongon`(비공개. 공개 전환은 보류 — 아래 막힌 조건)
-- 현재 작업 ID / 상태: S00 / review
-- 마지막 수정 도구: Claude Code
+- 저장소: `%USERPROFILE%\OneDrive\바탕 화면\새 폴더` (OneDrive 동기화 폴더, D-001) · 원격: GitHub `jeon9hy/gongon`(비공개)
+- 현재 작업 ID / 상태: S00 / review · 마지막 수정 도구: Claude Code
 - 브랜치: `feature/S00-repo-setup` (`main`은 아직 커밋 없음. S00 done 후 반영)
 - 기준 코드 커밋: `a0bc0f7` (WIP S00). 이후 커밋은 `git log a0bc0f7..` 로 확인
-- 완료한 부분: git 저장소·uv 환경·잠금(`uv.lock`), ruff/mypy/pytest 설정, CI 워크플로, 최소 앱(`app/main.py` `/healthz`), import 경계 테스트, 공통 지침(`AGENTS.md`, `CLAUDE.md`), `docs/` 6종. 요구사항 기준을 총정리 하나로 정리(D-009). 서비스 이름 공온·브랜드 규칙(`docs/brand.md`, D-010)
-- 남은 부분: Codex가 `AGENTS.md`를 읽는지 확인 (상세: `docs/plan.md` S00)
-- 변경 파일과 목적:
-  - `AGENTS.md` 공통 규칙·네 가지 설계 원칙 / `CLAUDE.md` `@AGENTS.md` 가져오기
-  - `pyproject.toml`(이름 `gongon`), `uv.lock`, `.python-version` 환경·의존성·도구 설정
-  - `.gitignore`, `.gitattributes`(LF 통일), `.env.example`(변수 이름만)
-  - `.github/workflows/ci.yml` 검증 명령 실행
-  - `app/__init__.py`, `app/main.py` 앱 생성
-  - `tests/app/test_main.py` 앱 기동 / `tests/test_import_boundaries.py` 폴더 경계 검사
-  - `docs/plan.md`, `docs/handoff.md`, `docs/decisions.md`, `docs/setup.md`, `docs/architecture.md`, `docs/brand.md`
+- 완료한 부분: 환경·잠금·CI, 최소 앱, 공통 지침, `docs/` 6종, 브랜드 규칙(D-010). 마지막 세션에서 개발 운영 보강(D-011~D-013):
+  - `scripts/check.py` 한 줄 검증(CI도 같은 스크립트), CI 액션 node24 버전으로 갱신
+  - 경계 테스트 5개 규칙(geo 순수성, core ↛ features, 기능 간 service·schemas만)
+  - `AGENTS.md`: 문서 지도·작업 속도 원칙·테스트 원칙·완료 점검 목록 추가
+  - `docs/architecture.md`: 코드 작성 규칙, 성능 측정 방법 / `docs/plan.md`: 작업별 총정리 참고 §, S02·S04 하위 작업, 막혔을 때 할 수 있는 작업
+  - `.claude/settings.json`: 읽기 전용 git·검증 명령 허용 목록(Claude Code 전용)
+- 남은 부분: Codex가 `AGENTS.md`를 읽는지 확인
 - 미커밋 변경: 없음(커밋 후 `git status`로 확인)
 - 검증(2026-10-04, 로컬 Windows):
-  - `uv sync --locked` 통과 · `ruff check` 통과 · `ruff format --check` 통과 · `mypy`(strict) 통과
-  - `pytest -q -rs` 6 통과, 2 건너뜀(engine 패키지 아직 없음 — 통과 아님)
-  - 경계 테스트에 임시 위반 파일을 넣어 실패하는 것 확인 후 파일 삭제
-  - `uvicorn app.main:app` 기동 후 `/healthz` → `{"status":"ok"}`
-  - Claude Code: `claude -p` 질의로 `AGENTS.md` 규칙 로드 확인
+  - `uv run python scripts/check.py` 전체 ok — pytest 12 통과, 5 건너뜀(engine·app.core·features 패키지 아직 없음 — 통과 아님)
+  - 새 경계 규칙 3개: 임시 위반 파일로 각각 실패 확인, 위반 시 `check.py` 종료 코드 1 확인, 임시 파일 삭제
+  - GitHub Actions: 이전 커밋 `78291f9`에서 통과(run 37171195262). 이번 push 결과는 `gh run list --branch feature/S00-repo-setup`
   - Codex: **미확인** — `~/.codex/config.toml`의 `model = "gpt-6.1-sol"`이 ChatGPT 계정에서 미지원(400)
-  - GitHub Actions: 통과 (run 37171195262, 커밋 `78291f9`). 이후 push 결과는 `gh run list --branch feature/S00-repo-setup`로 확인
-- 결정 사항: D-001~D-010 (`docs/decisions.md`)
-- 다음 행동: 개발자가 Codex 모델 설정을 고친 뒤 저장소에서 `codex exec --sandbox read-only "파일을 읽거나 명령을 실행하지 말고, 로드된 프로젝트 지침만으로 작업 브랜치 이름 형식과 engine/judgment의 금지 import를 답해"` 실행 → 확인되면 S00 done·`main` 반영, 이어서 `feature/S01-steel-rules`에서 S01 시작
-- 막힌 조건: Codex 모델 설정(개발자). 저장소 공개 전환(개발자 결정): 기존 커밋 3개의 작성자 메타데이터에 개인 이메일이 있음. 공개 전에 이력 재작성 또는 새 저장소로 옮기는 방법을 개발자가 정해야 함(이력 재작성은 자동 실행 권한에서 거부됨). S01의 원문 대조도 개발자 확인 필요. `공온지수`는 개발자 결정 전 구현 금지(D-010)
+- 결정 사항: D-001~D-013 (`docs/decisions.md`)
+- 다음 행동: 개발자가 Codex 모델 설정을 고친 뒤 `codex exec --sandbox read-only "파일을 읽거나 명령을 실행하지 말고, 로드된 프로젝트 지침만으로 작업 브랜치 이름 형식과 커밋 전 검증 명령을 답해"` 실행 → 확인되면 S00 done·`main` 반영 → `feature/S01-steel-rules`에서 S01 시작(원문 대조 대기 중에는 S02-1 병행 가능)
+- 막힌 조건: Codex 모델 설정(개발자). S01 원문 대조(개발자). 저장소 공개 전환(커밋 작성자 이메일 처리 방법 개발자 결정). `공온지수`는 결정 전 구현 금지(D-010)
