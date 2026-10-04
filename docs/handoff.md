@@ -4,7 +4,7 @@
 - 현재 작업 ID / 상태: S00 / review
 - 마지막 수정 도구: Claude Code
 - 브랜치: `feature/S00-repo-setup` (`main`은 아직 커밋 없음. S00 done 후 반영)
-- 기준 코드 커밋: S00 첫 커밋(`git log -1`로 확인)
+- 기준 코드 커밋: `a0bc0f7` (WIP S00). 이후 커밋은 `git log a0bc0f7..` 로 확인
 - 완료한 부분: git 저장소·uv 환경·잠금(`uv.lock`), ruff/mypy/pytest 설정, CI 워크플로, 최소 앱(`app/main.py` `/healthz`), import 경계 테스트, 공통 지침(`AGENTS.md`, `CLAUDE.md`), `docs/` 5종. 요구사항 기준을 총정리 하나로 정리하고 이전 기획서 2개 삭제(D-009)
 - 남은 부분: ① Codex가 `AGENTS.md`를 읽는지 확인 ② 원격 CI 실행 확인 (상세: `docs/plan.md` S00)
 - 변경 파일과 목적:
