@@ -11,7 +11,7 @@
 | 전체 검증 | `scripts/check.py` | 린트·포맷·타입·테스트(CI와 동일) | 있음 | S00 |
 | 기준 원문·버전 | `rules/` | `rules/steel.yaml`(공종별 파일) | 계획 | S01 |
 | 판정 데이터 계약 | `docs/schema.json` | JSON Schema | 계획 | S01 |
-| 위치·격자 변환 | `engine/geo/` | `latlon_to_kma_grid()` | 계획 | S02-1 |
+| 위치·격자 변환 | `engine/geo/` | `latlon_to_kma_grid()` | 있음 | S02-1 |
 | 예보 수집·정규화 | `engine/forecast/` | 수집 → 원자료 + 정규화 시계열 | 계획 | S02-2 |
 | 순수 판정 | `engine/judgment/` | `judge(weather_input, rule_set) -> JudgmentResult` | 계획 | S03 |
 | 공통 기반 | `app/core/` | `config.py`(설정), `db.py`(세션), 로깅 | 계획 | S04-1 |

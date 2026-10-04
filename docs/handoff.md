@@ -1,23 +1,17 @@
 # 현재 작업 인계
 
-- 저장소: `%USERPROFILE%\OneDrive\바탕 화면\새 폴더` (OneDrive 동기화 폴더, D-001) · 원격: GitHub `jeon9hy/gongon`(비공개)
-- 현재 작업 ID / 상태: S00 / review · 마지막 수정 도구: Claude Code
-- 브랜치: `feature/S00-repo-setup` (`main`은 아직 커밋 없음. S00 done 후 반영)
-- 기준 코드 커밋: `a0bc0f7` (WIP S00). 이후 커밋은 `git log a0bc0f7..` 로 확인
-- 완료한 부분: 환경·잠금·CI, 최소 앱, 공통 지침, `docs/` 6종, 브랜드 규칙(D-010). 마지막 세션에서 개발 운영 보강(D-011~D-013):
-  - `scripts/check.py` 한 줄 검증(CI도 같은 스크립트), CI 액션 node24 버전으로 갱신
-  - 경계 테스트 5개 규칙(geo 순수성, core ↛ features, 기능 간 service·schemas만)
-  - `AGENTS.md`: 문서 지도·작업 속도 원칙·테스트 원칙·완료 점검 목록 추가
-  - `docs/architecture.md`: 코드 작성 규칙, 성능 측정 방법 / `docs/plan.md`: 작업별 총정리 참고 §, S02·S04 하위 작업, 막혔을 때 할 수 있는 작업
-  - `.claude/settings.json`: 읽기 전용 git·검증 명령 허용 목록(Claude Code 전용)
-  - 비상용 학부 프로젝트로 범위 확정(D-014): 개발은 로컬 PostgreSQL, 시연 배포는 Supabase. 알림톡은 구조만, 실제 발송은 사업자 등록 후(D-015) — plan S04·S06·S07·외부 확인 항목, architecture, brand, `.env.example` 반영
-- 남은 부분: Codex가 `AGENTS.md`를 읽는지 확인
-- 미커밋 변경: 없음(커밋 후 `git status`로 확인)
-- 검증(2026-10-04, 로컬 Windows):
-  - `uv run python scripts/check.py` 전체 ok — pytest 12 통과, 5 건너뜀(engine·app.core·features 패키지 아직 없음 — 통과 아님)
-  - 새 경계 규칙 3개: 임시 위반 파일로 각각 실패 확인, 위반 시 `check.py` 종료 코드 1 확인, 임시 파일 삭제
-  - GitHub Actions: 이전 커밋 `78291f9`에서 통과(run 37171195262). 이번 push 결과는 `gh run list --branch feature/S00-repo-setup`
-  - Codex: **미확인** — `~/.codex/config.toml`의 `model = "gpt-6.1-sol"`이 ChatGPT 계정에서 미지원(400)
+- 현재 작업 ID / 상태: S02-1 / review · 마지막 수정 도구: Claude Code
+- 브랜치: `feature/S02-1-geo-grid` (S00 브랜치에서 분기. `main`은 아직 커밋 없음)
+- 완료한 부분
+  - S00: 환경·CI·공통 지침·문서·브랜드 규칙. 남은 것은 Codex가 `AGENTS.md`를 읽는지 확인(plan.md S00)
+  - 로컬 실행 도구: `scripts/start.bat`, 폴더의 `공온 실행.lnk`(커밋 안 함). 화면(S05) 전이라 `/`는 404, 확인은 `/healthz`
+  - S02-1: `engine/geo/grid.py` `latlon_to_kma_grid()` + `tests/engine/geo/test_grid.py`. `check.py` 전체 ok
+- 남은 부분
+  - S02-1: 공식 격자 파일의 다른 지점으로 테스트 보강(plan.md S02-1 체크 항목)
+  - S00: Codex 확인 → done → `main` 반영
+- 메모: 한글이 든 경로에서 `uv run pytest`·`uvicorn.exe`는 `uv trampoline failed` 오류. `uv run python -m pytest`, `python -m uvicorn` 사용(`check.py`는 영향 없음, setup.md)
+- 미커밋 변경: S02-1 구현·문서(커밋 전 `git status`로 확인)
+- 검증(2026-10-04, 로컬 Windows): `uv run python scripts/check.py` ruff·format·mypy·pytest 모두 ok (24 통과, 3 건너뜀: judgment·app.core·features 패키지 아직 없음 — 통과 아님)
 - 결정 사항: D-001~D-015 (`docs/decisions.md`)
-- 다음 행동: 개발자가 Codex 모델 설정을 고친 뒤 `codex exec --sandbox read-only "파일을 읽거나 명령을 실행하지 말고, 로드된 프로젝트 지침만으로 작업 브랜치 이름 형식과 커밋 전 검증 명령을 답해"` 실행 → 확인되면 S00 done·`main` 반영 → `feature/S01-steel-rules`에서 S01 시작(원문 대조 대기 중에는 S02-1 병행 가능)
-- 막힌 조건: Codex 모델 설정(개발자). S01 원문 대조(개발자). 저장소 공개 전환(커밋 작성자 이메일 처리 방법 개발자 결정). `공온지수`는 결정 전 구현 금지(D-010)
+- 다음 행동: S02-1 격자 파일 대조 → S01 초안(YAML·계약, 원문 대조는 개발자 확인 대기) 또는 S02-2(가짜 어댑터)
+- 막힌 조건: Codex 모델 설정(개발자). S01 원문 대조(개발자). `KMA_SERVICE_KEY`(S02-2 실호출). `공온지수`는 구현 금지(D-010)
