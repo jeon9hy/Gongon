@@ -5,6 +5,7 @@ description = "공온: 기상 영향 기반 현장 작업 운영 서비스 (규�
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "fastapi>=0.142.2",
+    "jinja2>=3.1.6",
     "uvicorn>=0.54.0",
 ]
 
@@ -33,6 +34,12 @@ extend-exclude = ["migrations"]
 [tool.ruff.lint]
 # DTZ: 시간대 없는 datetime 사용을 막는다(시각 계약 원칙).
 select = ["E", "W", "F", "I", "B", "UP", "SIM", "DTZ", "RUF"]
+# 시간 범위는 화면 시안대로 EN DASH(07:00–17:00)를 쓴다.
+ignore = ["RUF001"]
+
+[tool.ruff.lint.per-file-ignores]
+# 예시 데이터는 한 줄에 한 행이 보여야 읽기 쉽다.
+"app/features/*/sample.py" = ["E501"]
 
 [tool.mypy]
 python_version = "3.12"

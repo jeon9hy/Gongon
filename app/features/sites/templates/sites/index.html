@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}현장 설정{% endblock %}
+{% block content %}
+
+<section class="row">
+<div>
+<h1 class="title">현장 설정</h1>
+<p class="subtitle">위치·주요 공종·작업 시간을 한 번 등록하면 매일 17시에 내일 판정을 받습니다.</p>
+</div>
+<span class="chip chip--note">예시 데이터</span>
+</section>
+
+<div class="split">
+
+<aside class="site-list" aria-label="내 현장">
+{% for item in view.items %}
+<a class="site-item" href="{{ item.href }}"{% if item.selected %} aria-current="true"{% endif %}>
+<strong>{{ item.name }}</strong>
+<span>{{ item.summary }}</span>
+</a>
+{% endfor %}
+<button class="site-add" type="button" disabled>{{ icon("plus", 18, 2.2) }} 현장 추가</button>
+</aside>
+
+{% set site = view.site %}
+<form class="form" onsubmit="return false">
+
+<fieldset>
+<legend>위치</legend>
+<label class="field">현장 이름
+<input type="text" value="{{ site.name }}" placeholder="○○현장">
+</label>
+<div class="inline">
+<label class="field">주소
+<input type="text" value="{{ site.address }}" placeholder="서울특별시 ○○구 ○○로 00">
+</label>
+<button class="btn btn--ink" type="button" disabled style="min-height: 48px;">위치 확인</button>
+</div>
+<div class="callout">
+{{ icon("check", 16, 2.4) }}
+<span>위도 {{ "%.4f"|format(site.latitude_deg) }} · 경도 {{ "%.4f"|format(site.longitude_deg) }} → 기상청 격자 <strong>{{ view.grid_text }}</strong></span>
+<span class="muted">· 격자 대표값이라 현장과 차이가 있을 수 있습니다</span>
+</div>
+</fieldset>
+
+<fieldset>
+<legend>주요 공종</legend>
+<div class="chips">
+<label class="toggle-chip">
+<input type="checkbox"{% if site.steel_enabled %} checked{% endif %}>
+<span>{{ icon("check", 16, 2.4) }} 철골 작업</span>
+</label>
+</div>
+<p class="small muted">첫 출시에서는 철골 작업만 판정합니다.</p>
+</fieldset>
+
+<fieldset>
+<legend>작업 시간</legend>
+<div class="inline">
+<label class="field" style="flex: 1 1 180px;">시작
+<input type="text" inputmode="numeric" value="{{ site.work_start }}" placeholder="07:00">
+</label>
+<label class="field" style="flex: 1 1 180px;">종료
+<input type="text" inputmode="numeric" value="{{ site.work_end }}" placeholder="17:00">
+</label>
+</div>
+</fieldset>
+
+<fieldset>
+<legend>알림</legend>
+<div class="setting">
+<span>
+<strong>카카오톡으로 공온 알림 받기</strong>
+<span class="small muted">매일 17:00 · 카카오톡 발송은 사업자 등록 후 제공</span>
+</span>
+<label class="switch">
+<input type="checkbox" role="switch" aria-label="카카오톡 알림"{% if site.notify_enabled %} checked{% endif %}>
+<span></span>
+</label>
+</div>
+<label class="field">수신 휴대폰 번호
+<input type="tel" value="{{ site.phone }}" placeholder="010-0000-0000">
+</label>
+</fieldset>
+
+<div class="actions">
+<p>예시 화면입니다. 저장은 아직 연결되지 않았습니다.</p>
+<button class="btn btn--soft" type="button" disabled>취소</button>
+<button class="btn btn--accent" type="button" disabled>저장</button>
+</div>
+</form>
+</div>
+{% endblock %}

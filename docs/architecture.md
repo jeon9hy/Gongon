@@ -16,8 +16,8 @@
 | 순수 판정 | `engine/judgment/` | `judge(weather_input, rule_set) -> JudgmentResult` | 계획 | S03 |
 | 공통 기반 | `app/core/` | `config.py`(설정), `db.py`(세션), 로깅 | 계획 | S04-1 |
 | 회원·인증 | `app/features/auth/` | `router.py`, 현재 사용자 의존성 | 계획 | S04-2 |
-| 현장 등록·설정 | `app/features/sites/` | `router.py`, `service.py` | 계획 | S04-3·S05 |
-| 판정 저장·조회·상세 | `app/features/judgments/` | `service.py`(engine 호출 + 저장) | 계획 | S04-4·S05 |
+| 현장 등록·설정 | `app/features/sites/` | `router.py`, `service.py`(화면은 예시 데이터 `sample.py`) | 화면만 있음 | S05-0 → S04-3·S05 |
+| 판정 저장·조회·상세 | `app/features/judgments/` | `service.py`(화면은 예시 데이터 `sample.py`, 이후 engine 호출 + 저장) | 화면만 있음 | S05-0 → S04-4·S05 |
 | 알림 | `app/features/notifications/` | 메시지 생성·발송 어댑터(미리보기 어댑터만, 알림톡은 사업자 등록 후 D-015)·발송 이력 | 계획 | S06 |
 | 실행 작업 | `app/jobs/` | `daily_forecast_judgment_notify` | 계획 | S06 |
 | DB 변경 이력 | `migrations/` | Alembic 리비전 | 계획 | S04-1 |
@@ -66,7 +66,10 @@ engine/judgment, engine/geo ──> (표준 라이브러리, 전달받은 데이
 ## 4. 화면
 
 서버 렌더링(FastAPI + Jinja2)으로 기능별 `app/features/<기능>/templates/`에 둔다(D-004). JS 빌드 단계는 두지 않는다.
-문구·용어·색상 값은 `docs/brand.md`. 공통 스타일시트 위치는 S05에서 정해 이 문서에 기록한다.
+문구·용어·색상 값은 `docs/brand.md`.
+- 공통 기반: `app/core/templating.py`(Jinja2 설정, 기능이 `register_template_dir()`로 자기 templates를 등록), `app/core/templates/base.html`(레이아웃·메뉴), `_macros.html`(아이콘·판정 배지), `app/core/static/gongon.css`(brand.md 토큰을 CSS 변수로 옮김, `/static/`).
+- 기능 화면: `app/features/<기능>/templates/<기능>/*.html`. 서버 렌더링 링크로 동작하고(탭·필터는 쿼리 문자열) JS는 쓰지 않는다. 예외로 현장 필터 `<select>`만 `onchange` 제출을 쓴다(`<noscript>` 버튼 대체).
+- 예시 데이터 단계(S05-0): 각 기능의 `sample.py`가 데이터를, `service.py`가 화면 모델(`schemas.py`)을 만든다. 화면에 "예시 데이터" 표시를 둔다. DB 연결 시 `service.py`만 바꾸고 템플릿은 유지한다.
 
 ## 5. 테스트
 

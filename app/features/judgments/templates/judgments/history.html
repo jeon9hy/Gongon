@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% from "_macros.html" import verdict_badge %}
+{% block title %}판정 내역{% endblock %}
+{% block content %}
+
+<section class="row">
+<div>
+<h1 class="title">판정 내역</h1>
+<p class="subtitle">예보로 낸 판정 기록입니다. 실제 작업 진행·중단 기록과는 별개입니다.</p>
+</div>
+<span class="chip chip--note">예시 데이터</span>
+</section>
+
+<div class="filters">
+<nav class="filters__group" aria-label="판정 필터">
+{% for f in view.filters %}
+<a href="{{ f.href }}"{% if f.selected %} aria-current="true"{% endif %}>{{ f.label }} <span style="opacity: 0.75;">{{ f.count }}</span></a>
+{% endfor %}
+</nav>
+<form method="get" action="/judgments">
+<input type="hidden" name="verdict" value="{{ view.selected_verdict }}">
+<label>현장
+<select name="site" onchange="this.form.submit()">
+{% for s in view.site_options %}<option{% if s == view.selected_site %} selected{% endif %}>{{ s }}</option>{% endfor %}
+</select>
+</label>
+<noscript><button class="btn btn--soft" type="submit">적용</button></noscript>
+</form>
+</div>
+
+<div class="table-wrap table-wrap--plain">
+<table style="min-width: 860px;" class="nowrap">
+<thead>
+<tr>
+<th scope="col">대상 날짜</th><th scope="col">현장</th><th scope="col">공종 · 구간</th>
+<th scope="col">판정</th><th scope="col">예보 발표</th><th scope="col">기준 버전</th>
+<th scope="col"><span class="visually-hidden">상세</span></th>
+</tr>
+</thead>
+<tbody>
+{% for row in view.rows %}
+<tr>
+<td style="font-weight: 700;">{{ row.target_date }}</td>
+<td>{{ row.site_name }}</td>
+<td>{{ row.work }}</td>
+<td>{{ verdict_badge(row.verdict) }}{% if row.note %}<span class="row-note">{{ row.note }}</span>{% endif %}</td>
+<td style="color: var(--verdict-unknown-fg);">{{ row.issued }}</td>
+<td style="color: var(--verdict-unknown-fg);">{{ row.rule_version }}</td>
+<td style="text-align: right;">{% if row.judgment_id %}<a class="btn btn--soft" style="min-height: 40px; font-size: 13px;" href="/judgments/{{ row.judgment_id }}">상세</a>{% endif %}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% if not view.rows %}<p class="empty">이 조건의 판정 내역이 없습니다.</p>{% endif %}
+</div>
+
+<p class="small muted">{{ view.rows | length }}건 표시 · 상세 화면은 예시 하나만 연결되어 있습니다</p>
+{% endblock %}
