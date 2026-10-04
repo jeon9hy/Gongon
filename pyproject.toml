@@ -1,0 +1,42 @@
+[project]
+name = "site-weather-ops"
+version = "0.1.0"
+description = "기상 영향 기반 현장 작업 운영 서비스 (규칙 기반 공종별 판정 + 현장 알림)"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.142.2",
+    "uvicorn>=0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx2>=2.13.1",
+    "mypy>=2.4.0",
+    "pytest>=9.1.1",
+    "ruff>=0.16.10",
+]
+
+[tool.uv]
+# 배포용 패키지가 아니라 단일 앱 저장소다. engine/·app/은 저장소 루트에서 import한다.
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = ["--strict-markers", "--import-mode=importlib"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = ["migrations"]
+
+[tool.ruff.lint]
+# DTZ: 시간대 없는 datetime 사용을 막는다(시각 계약 원칙).
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "DTZ", "RUF"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+# 새 최상위 패키지(engine/ 등)가 생겨도 검사 대상에서 빠지지 않도록 루트 전체를 본다.
+files = ["."]
+exclude = ['^\.venv/', '^migrations/']

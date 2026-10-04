@@ -1,0 +1,25 @@
+# 비밀 값: 실제 키는 커밋하지 않는다. 변수 이름은 .env.example에 둔다.
+.env
+.env.*
+!.env.example
+
+# Python / 도구 캐시
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# 편집기·OS
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# 도구별 로컬 설정(공통 규칙은 AGENTS.md에만 둔다)
+.claude/settings.local.json
+CLAUDE.local.md

@@ -1,0 +1,21 @@
+name: ci
+
+on:
+  push:
+    branches: [main, "feature/**", "fix/**", "rules/**"]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      # docs/setup.md의 검증 명령과 같은 순서를 유지한다.
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy
+      - run: uv run pytest -q -rs

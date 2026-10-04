@@ -1,0 +1,29 @@
+# 현재 작업 인계
+
+- 저장소: `C:\Users\sim39\OneDrive\바탕 화면\새 폴더` (OneDrive 동기화 폴더, D-001)
+- 현재 작업 ID / 상태: S00 / review
+- 마지막 수정 도구: Claude Code
+- 브랜치: `feature/S00-repo-setup` (`main`은 아직 커밋 없음. S00 done 후 반영)
+- 기준 코드 커밋: S00 첫 커밋(`git log -1`로 확인)
+- 완료한 부분: git 저장소·uv 환경·잠금(`uv.lock`), ruff/mypy/pytest 설정, CI 워크플로, 최소 앱(`app/main.py` `/healthz`), import 경계 테스트, 공통 지침(`AGENTS.md`, `CLAUDE.md`), `docs/` 5종. 요구사항 기준을 총정리 하나로 정리하고 이전 기획서 2개 삭제(D-009)
+- 남은 부분: ① Codex가 `AGENTS.md`를 읽는지 확인 ② 원격 CI 실행 확인 (상세: `docs/plan.md` S00)
+- 변경 파일과 목적:
+  - `AGENTS.md` 공통 규칙·네 가지 설계 원칙 / `CLAUDE.md` `@AGENTS.md` 가져오기
+  - `pyproject.toml`, `uv.lock`, `.python-version` 환경·의존성·도구 설정
+  - `.gitignore`, `.gitattributes`(LF 통일), `.env.example`(변수 이름만)
+  - `.github/workflows/ci.yml` 검증 명령 실행
+  - `app/__init__.py`, `app/main.py` 앱 생성
+  - `tests/app/test_main.py` 앱 기동 / `tests/test_import_boundaries.py` 폴더 경계 검사
+  - `docs/plan.md`, `docs/handoff.md`, `docs/decisions.md`, `docs/setup.md`, `docs/architecture.md`
+- 미커밋 변경: 없음(커밋 후 `git status`로 확인)
+- 검증(2026-10-04, 로컬 Windows):
+  - `uv sync --locked` 통과 · `ruff check` 통과 · `ruff format --check` 통과 · `mypy`(strict) 통과
+  - `pytest -q -rs` 6 통과, 2 건너뜀(engine 패키지 아직 없음 — 통과 아님)
+  - 경계 테스트에 임시 위반 파일을 넣어 실패하는 것 확인 후 파일 삭제
+  - `uvicorn app.main:app` 기동 후 `/healthz` → `{"status":"ok"}`
+  - Claude Code: `claude -p` 질의로 `AGENTS.md` 규칙 로드 확인
+  - Codex: **미확인** — `~/.codex/config.toml`의 `model = "gpt-6.1-sol"`이 ChatGPT 계정에서 미지원(400)
+  - GitHub Actions: **미실행** — 원격 저장소 없음
+- 결정 사항: D-001~D-009 (`docs/decisions.md`)
+- 다음 행동: 개발자가 Codex 모델 설정을 고친 뒤 저장소에서 `codex exec --sandbox read-only "파일을 읽거나 명령을 실행하지 말고, 로드된 프로젝트 지침만으로 작업 브랜치 이름 형식과 engine/judgment의 금지 import를 답해"` 실행 → 정확하면 S00 체크. 원격 CI 확인 후 S00 done·`main` 반영, 이어서 `feature/S01-steel-rules`에서 S01 시작
+- 막힌 조건: Codex 모델 설정(개발자), GitHub 원격 생성(개발자). S01의 원문 대조도 개발자 확인 필요

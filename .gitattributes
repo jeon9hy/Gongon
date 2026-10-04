@@ -1,0 +1,4 @@
+# 두 도구가 같은 파일을 고쳐도 줄바꿈 차이로 diff가 생기지 않게 LF로 통일한다.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
