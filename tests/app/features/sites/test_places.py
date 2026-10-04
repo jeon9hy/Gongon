@@ -8,6 +8,7 @@ import json
 import urllib.error
 from email.message import Message
 from io import BytesIO
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -126,3 +127,18 @@ def test_no_results_suggests_other_name_or_manual_entry() -> None:
 
     assert data["places"] == []
     assert "직접 입력" in data["message"]
+
+
+def test_real_kakao_response_is_read() -> None:
+    # 2026-10-04 '서울시청'(size=2) 실제 응답 원문.
+    path = Path(__file__).parent / "data" / "kakao_keyword_seoul_city_hall_2026-10-04.json"
+    fake = FakeKakao(path.read_bytes())
+
+    data = client_with(fake).get("/sites/places", params={"q": "서울시청"}).json()
+
+    first = data["places"][0]
+    assert first["name"] == "서울특별시청"
+    assert first["address"] == "서울 중구 세종대로 110"
+    assert 37.56 < first["latitude_deg"] < 37.57
+    assert 126.97 < first["longitude_deg"] < 126.98
+    assert len(data["places"]) == 2

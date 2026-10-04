@@ -4,7 +4,10 @@
 GET https://dapi.kakao.com/v2/local/search/keyword.json
 (헤더 `Authorization: KakaoAK {REST API 키}`).
 응답 documents[]의 place_name·address_name·road_address_name, x(경도)·y(위도) 문자열을 쓴다.
-키는 서버에만 두고 브라우저에는 결과만 보낸다. 실제 응답 대조는 키 발급 후 한다.
+키는 서버에만 두고 브라우저에는 결과만 보낸다.
+2026-10-04 실제 응답으로 대조했다(x·y는 문자열). 카카오맵 사용 설정이 꺼져 있으면
+HTTP 403 {"errorType":"NotAuthorizedError",
+ "message":"App(앱 이름) disabled OPEN_MAP_AND_LOCAL service."}
 """
 
 import json
