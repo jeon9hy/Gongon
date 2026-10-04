@@ -20,6 +20,22 @@ def latest_for_site_date(session: Session, site_id: int, target_date: date) -> l
     )
 
 
+def latest_for_sites_date(
+    session: Session, site_ids: list[int], target_date: date
+) -> list[Judgment]:
+    """여러 현장의 대상 날짜 판정을 한 번에(현장마다 따로 조회하지 않음). 최신순."""
+    if not site_ids:
+        return []
+    return list(
+        session.scalars(
+            select(Judgment)
+            .where(Judgment.site_id.in_(site_ids), Judgment.target_date == target_date)
+            .order_by(Judgment.judged_at.desc(), Judgment.id.desc())
+            .limit(LATEST_LIMIT * len(site_ids))
+        )
+    )
+
+
 def find_same(
     session: Session,
     *,

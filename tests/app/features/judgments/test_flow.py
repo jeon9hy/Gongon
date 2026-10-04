@@ -15,7 +15,7 @@ from tests.fakes import FakeKma
 
 SITE: dict[str, Any] = {
     "name": "○○현장",
-    "address": "",
+    "address": "서울 중구 세종대로 110",
     "latitude": "37.5665",
     "longitude": "126.9780",
     "work_start": "07:00",
@@ -183,13 +183,59 @@ def test_history_filters_by_verdict_and_site(
 
 @pytest.mark.parametrize("params", [{"verdict": "안전"}, {"page": 0}, {"hour": 24}])
 def test_out_of_range_query_is_rejected(client: TestClient, params: dict[str, Any]) -> None:
-    path = "/" if "hour" in params else "/judgments"
+    path = "/dashboard" if "hour" in params else "/judgments"
     assert client.get(path, params=params).status_code == 422
 
 
-def test_dashboard_without_sites_asks_to_register(client: TestClient) -> None:
+def test_home_without_sites_shows_onboarding_steps(client: TestClient) -> None:
     page = client.get("/").text
 
-    assert "먼저 현장을 등록하세요" in page
+    assert "세 단계면 내일 판정을 받습니다" in page
     assert "공온지수" not in page
     assert "발송됨" not in page
+
+
+def test_home_is_separate_from_site_dashboard_in_menu(client: TestClient) -> None:
+    home = client.get("/").text
+    dashboard = client.get("/dashboard").text
+
+    assert 'class="rail__logo is-active"' in home
+    assert 'href="/dashboard" aria-label="현장 대시보드" aria-current="page"' not in home
+    assert 'href="/dashboard" aria-label="현장 대시보드" aria-current="page"' in dashboard
+
+
+def test_home_summarizes_each_site_and_links_to_its_dashboard(
+    client: TestClient, fake_kma: FakeKma
+) -> None:
+    fake_kma.set_hour("20261005", 15, PCP="2.0mm")
+    stop_site = add_site(client, work_types=["철골 작업"])
+    add_site(client, name="△△현장", latitude="35.1796", longitude="129.0756",
+             work_types=["철골 작업"])  # fmt: skip
+    run(client, stop_site)
+
+    page = client.get("/").text
+
+    assert f'href="/dashboard?site_id={stop_site}"' in page
+    assert "철골 작업 · 15:00–16:00 · 강우 최대 2.0 mm/h (15:00)" in page
+    assert "아직 판정하지 않았습니다" in page  # 두 번째 현장
+    assert page.count("site-card--stop") == 1
+
+
+def test_run_all_judges_every_site_and_fetches_shared_grid_once(
+    client: TestClient, session: Session, fake_kma: FakeKma
+) -> None:
+    add_site(client)
+    add_site(client, name="△△현장", latitude="37.5667")  # 같은 격자
+
+    response = client.post("/judgments/run-all", follow_redirects=False)
+
+    assert response.headers["location"] == "/?ran=all_done"
+    assert count(session, Judgment) == 2
+    assert len(fake_kma.calls) == 1
+    assert "전체 현장을 판정했습니다" in client.get(response.headers["location"]).text
+
+
+def test_run_all_without_sites_says_so(client: TestClient) -> None:
+    location = client.post("/judgments/run-all", follow_redirects=False).headers["location"]
+
+    assert location == "/?ran=no_sites"

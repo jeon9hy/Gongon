@@ -1,6 +1,7 @@
 """판정 실행·저장과 화면 모델 만들기. 판정 계산은 engine/judgment.judge만 한다."""
 
 import logging
+from collections.abc import Mapping
 from datetime import date, datetime, timedelta
 from typing import Any
 from urllib.parse import urlencode
@@ -15,6 +16,7 @@ from app.features.judgments.schemas import (
     Bar,
     Cell,
     Chart,
+    CountTile,
     CriterionCard,
     DashboardView,
     DetailView,
@@ -22,12 +24,15 @@ from app.features.judgments.schemas import (
     FilterLink,
     HistoryRow,
     HistoryView,
+    HomeView,
     HourRow,
     Notice,
     NoticeItem,
     PrimaryJudgment,
+    RecentJudgment,
     RunResult,
     SiteOption,
+    SiteSummary,
     Tab,
     Tile,
     VerdictFilter,
@@ -82,6 +87,8 @@ RUN_MESSAGES: dict[RunResult, str] = {
     "done": "판정했습니다.",
     "failed": "예보를 받지 못해 ‘판정 불가’로 기록했습니다. 데이터 상태에서 원인을 확인하세요.",
     "no_rules": "판정 기준이 있는 공종이 없습니다. 현장 설정에서 철골 작업을 고르세요.",
+    "all_done": "전체 현장을 판정했습니다.",
+    "no_sites": "등록된 현장이 없습니다. 먼저 현장을 등록하세요.",
 }
 
 
@@ -130,6 +137,21 @@ def run_for_site(
     logger.info("판정 site_id=%s target=%s base_at=%s", site.site_id, target_date, snapshot.base_at)
 
     return "failed" if snapshot.weather is None else "done"
+
+
+def run_all(session: Session, now: datetime, auth: KmaAuth, http_get: HttpGet) -> RunResult:
+    """모든 현장의 내일 판정. 같은 격자는 예보를 한 번만 받는다(forecasts 재사용)."""
+    results = [
+        run_for_site(session, s.site_id, now, auth, http_get)
+        for s in sites_service.list_sites(session)
+    ]
+    if not results:
+        return "no_sites"
+    if "failed" in results:
+        return "failed"
+    if all(r == "no_rules" for r in results):
+        return "no_rules"
+    return "all_done"
 
 
 def _judgment(
@@ -274,6 +296,93 @@ def build_dashboard(
     )
 
 
+def build_home(session: Session, now: datetime, ran: RunResult | None = None) -> HomeView:
+    """전체 현장의 내일 판정 개요. 현장 수와 관계없이 판정 조회는 한 번만 한다."""
+    target_date = target_date_for(now)
+    sites = sites_service.list_sites(session)
+    by_site: dict[int, dict[str, Judgment]] = {}
+    for j in repository.latest_for_sites_date(session, [s.site_id for s in sites], target_date):
+        by_site.setdefault(j.site_id, {}).setdefault(j.work_type, j)
+    rule_sets = rule_sets_by_label()
+    summaries = tuple(_site_summary(s, by_site.get(s.site_id, {}), rule_sets) for s in sites)
+
+    counts = {v.value: 0 for v in (Verdict.STOP_REVIEW, Verdict.CHECK, Verdict.UNAVAILABLE,
+                                   Verdict.GO)}  # fmt: skip
+    not_judged = 0
+    for summary in summaries:
+        if summary.verdict is None:
+            not_judged += 1
+        else:
+            counts[summary.verdict] += 1
+    tiles = (
+        *(CountTile(v, n, v) for v, n in counts.items()),
+        CountTile("판정 전", not_judged, None),
+    )
+
+    names = {s.site_id: s.name for s in sites}
+    recent = tuple(
+        RecentJudgment(
+            href=f"/judgments/{j.id}",
+            site_name=names.get(j.site_id, "삭제된 현장"),
+            work=f"{j.work_type} {_range_text(j.work_start_at, j.work_end_at)}",
+            verdict=j.verdict,
+            when=f"{j.target_date:%m/%d} 대상 · {_kst_text(j.judged_at)} 판정",
+        )
+        for j in repository.page(session, None, None, 0, 5)
+    )
+    run = forecasts_service.latest_run(session)
+    if run is None:
+        forecast_status = "아직 수집하지 않음"
+    elif run.succeeded:
+        forecast_status = f"성공 · {_kst_text(run.requested_at)}"
+    else:
+        forecast_status = f"실패 · {run.failure_reason}"
+    primary_rules = next(iter(rule_sets.values()), None)
+    return HomeView(
+        target_date=_date_text(target_date),
+        sites=summaries,
+        tiles=tiles,
+        recent=recent,
+        forecast_status=forecast_status,
+        forecast_issued=None if run is None or not run.succeeded else _kst_text(run.base_at),
+        rule_version=None if primary_rules is None else primary_rules.rule_version,
+        rule_verified=primary_rules is not None and primary_rules.source_verified,
+        message=None if ran is None else RUN_MESSAGES[ran],
+        message_is_error=ran in ("failed", "no_rules", "no_sites"),
+    )
+
+
+def _site_summary(
+    site: SiteRecord, latest: dict[str, Judgment], rule_sets: Mapping[str, RuleSet]
+) -> SiteSummary:
+    def summary(verdict: str | None, reason: str, judged_at: str | None) -> SiteSummary:
+        return SiteSummary(
+            site_id=site.site_id,
+            name=site.name,
+            work_hours=f"{site.work_start_local:%H:%M}–{site.work_end_local:%H:%M}",
+            work_types=" · ".join(site.work_types),
+            verdict=verdict,
+            reason=reason,
+            detail_href=dashboard_href(site.site_id),
+            judged_at=judged_at,
+        )
+
+    if not any(w in latest for w in site.work_types):
+        return summary(None, "아직 판정하지 않았습니다", None)
+    # 현장의 단계는 공종 카드 중 가장 높은 단계(기준 미확인 공종의 '확인 필요' 포함).
+    cards = [_card(w, latest.get(w), w in rule_sets) for w in site.work_types]
+    worst = max(
+        (c for c in cards if c.verdict is not None), key=lambda c: Verdict(str(c.verdict)).severity
+    )
+    judged_at = max(j.judged_at for j in latest.values())
+    return summary(worst.verdict, f"{worst.work_type} · {worst.reason}", _kst_text(judged_at))
+
+
+def dashboard_href(site_id: int, **params: str | int) -> str:
+    """현장별 대시보드 주소. 홈(/)과 별도 화면이다."""
+    return "/dashboard?" + urlencode({"site_id": site_id, **params})
+
+
 def _empty_dashboard(target_date: date) -> DashboardView:
     return DashboardView(
         sites=(), site_id=None, site_name="", target_date=_date_text(target_date), work_hours="",
@@ -404,7 +513,7 @@ def _deciding_element(hours: list[dict[str, Any]], elements: list[Element]) -> E
 
 
 def href_for(site_id: int, key: ElementKey, hour: int) -> str:
-    return "/?" + urlencode({"site_id": site_id, "element": key, "hour": hour})
+    return dashboard_href(site_id, element=key, hour=hour)
 
 
 def _entry(hour_json: dict[str, Any], element: Element) -> dict[str, Any] | None:

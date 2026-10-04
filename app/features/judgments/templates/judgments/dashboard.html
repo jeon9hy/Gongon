@@ -5,10 +5,11 @@
 
 <header class="row row--center">
 <div class="row row--center">
-<a class="logo-word" href="/" aria-label="공온 대시보드">공온<span class="logo-toggle" aria-hidden="true"></span></a>
+<a class="logo-word" href="/" aria-label="공온 홈">공온<span class="logo-toggle" aria-hidden="true"></span></a>
+<a class="btn btn--soft" href="/">{{ icon("arrow-left", 16, 2.2) }} 전체 현장</a>
 </div>
 {% if view.sites %}
-<form method="get" action="/" class="row row--center">
+<form method="get" action="/dashboard" class="row row--center">
 <label class="visually-hidden" for="site-select">현장</label>
 <select id="site-select" class="btn" name="site_id" onchange="this.form.submit()">
 {% for s in view.sites %}<option value="{{ s.site_id }}"{% if s.selected %} selected{% endif %}>{{ s.name }}</option>{% endfor %}

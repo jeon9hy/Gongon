@@ -68,6 +68,27 @@ def get_forecast(
     return _snapshot(run)
 
 
+@dataclass(frozen=True, slots=True)
+class RunStatus:
+    """가장 최근 수집 시도(홈의 데이터 상태 표시용)."""
+
+    base_at: datetime
+    requested_at: datetime
+    succeeded: bool
+    failure_reason: str | None
+
+
+def latest_run(session: Session) -> RunStatus | None:
+    run = session.scalars(
+        select(ForecastRun).order_by(ForecastRun.requested_at.desc(), ForecastRun.id.desc())
+    ).first()
+    if run is None:
+        return None
+    return RunStatus(
+        run.base_at, run.requested_at, run.status == STATUS_SUCCESS, run.failure_reason
+    )
+
+
 def _snapshot(run: ForecastRun) -> ForecastSnapshot:
     if run.status != STATUS_SUCCESS or run.raw_items is None:
         return ForecastSnapshot(run.id, run.base_at, None, run.failure_reason or "수집 실패")

@@ -24,6 +24,16 @@ NowDep = Annotated[datetime, Depends(now_kst)]
 
 
 @router.get("/", response_class=HTMLResponse)
+def home(
+    request: Request, session: SessionDep, now: NowDep, ran: RunResult | None = None
+) -> HTMLResponse:
+    view = service.build_home(session, now, ran)
+    return templates.TemplateResponse(
+        request, "judgments/home.html", {"nav_active": "home", "view": view}
+    )
+
+
+@router.get("/dashboard", response_class=HTMLResponse)
 def dashboard(
     request: Request,
     session: SessionDep,
@@ -53,7 +63,18 @@ def run(
     if result is None:
         raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
     # 새로고침해도 다시 실행되지 않도록 결과는 GET으로 보여준다.
-    return RedirectResponse(f"/?site_id={site_id}&ran={result}", status_code=303)
+    return RedirectResponse(service.dashboard_href(site_id, ran=result), status_code=303)
+
+
+@router.post("/judgments/run-all")
+def run_all(
+    session: SessionDep,
+    now: NowDep,
+    settings: Annotated[Settings, Depends(get_settings)],
+    http_get: Annotated[HttpGet, Depends(forecasts_service.get_http_get)],
+) -> RedirectResponse:
+    result = service.run_all(session, now, settings.kma_auth(), http_get)
+    return RedirectResponse(f"/?ran={result}", status_code=303)
 
 
 @router.get("/judgments", response_class=HTMLResponse)

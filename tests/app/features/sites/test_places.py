@@ -142,3 +142,18 @@ def test_real_kakao_response_is_read() -> None:
     assert 37.56 < first["latitude_deg"] < 37.57
     assert 126.97 < first["longitude_deg"] < 126.98
     assert len(data["places"]) == 2
+
+
+def test_autocomplete_script_is_in_page_body_not_title() -> None:
+    # 스크립트가 <title> 안에 들어가면 실행되지 않는다(2026-10-04 실제로 발생).
+    import app.features.sites.router  # noqa: F401  (sites 템플릿 폴더 등록)
+    from app.core.templating import templates
+    from app.features.sites.schemas import SiteForm, SitesView
+
+    view = SitesView(items=(), site_id=None, form=SiteForm(), grid_text=None,
+                     work_type_options=(), errors=(), saved=False)  # fmt: skip
+    html = templates.get_template("sites/index.html").render(nav_active="sites", view=view)
+
+    title = html[html.index("<title>") : html.index("</title>")]
+    assert "<script" not in title
+    assert html.index('id="site-address"') < html.index("<script>") < html.index("</main>")

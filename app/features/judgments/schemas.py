@@ -5,7 +5,7 @@ from typing import Literal
 
 VerdictFilter = Literal["전체", "진행", "확인 필요", "중지 검토", "판정 불가"]
 ElementKey = Literal["rain", "wind", "snow"]
-RunResult = Literal["done", "failed", "no_rules"]
+RunResult = Literal["done", "failed", "no_rules", "all_done", "no_sites"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,6 +111,50 @@ class DashboardView:
     judged_at: str | None
     grid: str
     notice: Notice | None
+    message: str | None
+    message_is_error: bool
+
+
+@dataclass(frozen=True, slots=True)
+class SiteSummary:
+    """홈의 현장 카드 한 장. 판정이 없으면 verdict는 None(판정 전)."""
+
+    site_id: int
+    name: str
+    work_hours: str
+    work_types: str
+    verdict: str | None
+    reason: str
+    detail_href: str
+    judged_at: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class CountTile:
+    label: str
+    count: int
+    badge: str | None  # 판정 4단계 이름이면 배지로 표시, None이면 '판정 전'
+
+
+@dataclass(frozen=True, slots=True)
+class RecentJudgment:
+    href: str
+    site_name: str
+    work: str
+    verdict: str
+    when: str
+
+
+@dataclass(frozen=True, slots=True)
+class HomeView:
+    target_date: str
+    sites: tuple[SiteSummary, ...]
+    tiles: tuple[CountTile, ...]
+    recent: tuple[RecentJudgment, ...]
+    forecast_status: str
+    forecast_issued: str | None
+    rule_version: str | None
+    rule_verified: bool
     message: str | None
     message_is_error: bool
 

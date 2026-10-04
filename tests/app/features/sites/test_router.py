@@ -37,7 +37,7 @@ def test_new_site_is_saved_with_kma_grid_and_listed(client: TestClient) -> None:
         ({"work_start": "25:00"}, "00:00 형식"),
         ({"work_types": []}, "공종을 하나 이상"),
         ({"work_types": ["토공"]}, "알 수 없는 공종"),
-        ({"name": "  "}, "현장 이름"),
+        ({"address": "  "}, "주소를 1~200자로 입력하세요"),
     ],
 )
 def test_invalid_site_is_not_saved_and_input_is_kept(
@@ -47,7 +47,7 @@ def test_invalid_site_is_not_saved_and_input_is_kept(
 
     assert response.status_code == 422
     assert message in response.text
-    assert 'value="서울특별시"' in response.text  # 입력값을 다시 보여준다
+    assert 'value="○○현장"' in response.text  # 입력값을 다시 보여준다
     assert "○○현장</strong>" not in client.get("/sites").text  # 목록에 저장되지 않음
 
 
@@ -66,3 +66,9 @@ def test_site_update_changes_work_hours(client: TestClient) -> None:
 def test_unknown_site_returns_404(client: TestClient) -> None:
     assert client.get("/sites", params={"site_id": 99}).status_code == 404
     assert client.post("/sites/99", data=VALID).status_code == 404
+
+
+def test_blank_site_name_uses_address_as_name(client: TestClient) -> None:
+    location = create(client, name="", address="서울 중구 세종대로 110").headers["location"]
+
+    assert "<strong>서울 중구 세종대로 110</strong>" in client.get(location).text

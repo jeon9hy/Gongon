@@ -103,12 +103,15 @@ def basis_status(label: str) -> BasisStatus:
 
 def validate(form: SiteForm) -> tuple[SiteInput | None, tuple[str, ...]]:
     errors: list[str] = []
-    name = form.name.strip()
-    if not name or len(name) > NAME_MAX:
-        errors.append(f"현장 이름을 1~{NAME_MAX}자로 입력하세요.")
     address = form.address.strip()
-    if len(address) > ADDRESS_MAX:
-        errors.append(f"주소는 {ADDRESS_MAX}자 이하로 입력하세요.")
+    if not address or len(address) > ADDRESS_MAX:
+        errors.append(
+            f"주소를 1~{ADDRESS_MAX}자로 입력하세요. 주소 칸에서 장소를 찾아 고를 수 있습니다."
+        )
+    # 현장 이름은 선택이다. 비우면 주소를 이름으로 쓴다(목록·알림에 표시할 이름이 필요).
+    name = form.name.strip() or address[:NAME_MAX]
+    if len(name) > NAME_MAX:
+        errors.append(f"현장 이름은 {NAME_MAX}자 이하로 입력하세요.")
 
     latitude = _float(form.latitude)
     longitude = _float(form.longitude)
