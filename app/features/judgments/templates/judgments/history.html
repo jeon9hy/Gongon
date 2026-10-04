@@ -8,7 +8,6 @@
 <h1 class="title">판정 내역</h1>
 <p class="subtitle">예보로 낸 판정 기록입니다. 실제 작업 진행·중단 기록과는 별개입니다.</p>
 </div>
-<span class="chip chip--note">예시 데이터</span>
 </section>
 
 <div class="filters">
@@ -20,8 +19,9 @@
 <form method="get" action="/judgments">
 <input type="hidden" name="verdict" value="{{ view.selected_verdict }}">
 <label>현장
-<select name="site" onchange="this.form.submit()">
-{% for s in view.site_options %}<option{% if s == view.selected_site %} selected{% endif %}>{{ s }}</option>{% endfor %}
+<select name="site_id" onchange="this.form.submit()">
+<option value=""{% if view.selected_site_id is none %} selected{% endif %}>전체</option>
+{% for s in view.site_options %}<option value="{{ s.site_id }}"{% if s.selected %} selected{% endif %}>{{ s.name }}</option>{% endfor %}
 </select>
 </label>
 <noscript><button class="btn btn--soft" type="submit">적용</button></noscript>
@@ -46,7 +46,7 @@
 <td>{{ verdict_badge(row.verdict) }}{% if row.note %}<span class="row-note">{{ row.note }}</span>{% endif %}</td>
 <td style="color: var(--verdict-unknown-fg);">{{ row.issued }}</td>
 <td style="color: var(--verdict-unknown-fg);">{{ row.rule_version }}</td>
-<td style="text-align: right;">{% if row.judgment_id %}<a class="btn btn--soft" style="min-height: 40px; font-size: 13px;" href="/judgments/{{ row.judgment_id }}">상세</a>{% endif %}</td>
+<td style="text-align: right;"><a class="btn btn--soft" style="min-height: 40px; font-size: 13px;" href="/judgments/{{ row.judgment_id }}">상세</a></td>
 </tr>
 {% endfor %}
 </tbody>
@@ -54,5 +54,11 @@
 {% if not view.rows %}<p class="empty">이 조건의 판정 내역이 없습니다.</p>{% endif %}
 </div>
 
-<p class="small muted">{{ view.rows | length }}건 표시 · 상세 화면은 예시 하나만 연결되어 있습니다</p>
+<div class="row row--center">
+<p class="small muted">{{ view.page }}쪽 · {{ view.rows | length }}건 표시</p>
+<div class="row row--center" style="gap: 8px;">
+{% if view.prev_href %}<a class="btn btn--soft" href="{{ view.prev_href }}">이전</a>{% endif %}
+{% if view.next_href %}<a class="btn btn--soft" href="{{ view.next_href }}">다음</a>{% endif %}
+</div>
+</div>
 {% endblock %}

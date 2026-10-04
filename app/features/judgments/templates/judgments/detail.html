@@ -4,15 +4,14 @@
 {% block content %}
 
 <div class="row row--center">
-<a class="btn" href="/">{{ icon("arrow-left", 16, 2.2) }} 대시보드</a>
-<span class="chip chip--note">예시 데이터</span>
+<a class="btn" href="/judgments">{{ icon("arrow-left", 16, 2.2) }} 판정 내역</a>
 </div>
 
 <article class="card" style="padding: 28px; gap: 20px;">
 <div class="row" style="align-items: flex-start;">
 <div>
 <p class="muted" style="font-size: 14px; font-weight: 600;">{{ view.site_name }} · {{ view.target_date }}</p>
-<h1 class="title title--sm" style="margin-top: 6px;">철골 작업 {{ view.work_range }}</h1>
+<h1 class="title title--sm" style="margin-top: 6px;">{{ view.work_type }} {{ view.work_range }}</h1>
 </div>
 {% if view.verdict == "중지 검토" %}
 <span class="badge badge--stop badge--lg">{{ icon("pause", 20, 2.4) }}{{ view.verdict }}</span>
@@ -23,8 +22,12 @@
 <div class="chips">
 {% for chip in view.chips %}<span class="chip chip--surface">{{ chip }}</span>{% endfor %}
 </div>
+{% if view.failure_reason %}
+<div class="alert alert--error" role="status">{{ view.failure_reason }}. 예보가 없어 판정하지 못했습니다. 대시보드에서 다시 판정할 수 있습니다.</div>
+{% endif %}
 </article>
 
+{% if view.criteria %}
 <section aria-labelledby="reasons-title" class="stack" style="gap: 14px;">
 <h2 class="h2 h2--lg" id="reasons-title">판정 근거</h2>
 <div class="cards-3">
@@ -32,7 +35,7 @@
 <article class="card card--tight{% if c.verdict == '중지 검토' %} card--stop{% endif %}">
 <div class="row row--center" style="gap: 8px;">
 <span class="row row--center" style="gap: 10px; font-size: 16px; font-weight: 700;">
-<span class="icon-circle{% if c.verdict == '중지 검토' %} icon-circle--stop{% endif %}">{{ icon(c.icon, 20) }}</span>{{ c.label }} · {{ c.code }}
+<span class="icon-circle{% if c.verdict == '중지 검토' %} icon-circle--stop{% endif %}">{{ icon(c.icon, 20) }}</span>{{ c.label }}
 </span>
 {{ verdict_badge(c.verdict) }}
 </div>
@@ -41,7 +44,7 @@
 <p class="big-number" style="margin-top: 4px;">{{ c.peak_value }} <small>{{ c.unit }}</small></p>
 </div>
 <p class="criterion">{{ c.rule_text }}</p>
-<p class="small" style="color: var(--verdict-unknown-fg);">{{ c.source }} <span class="todo">원문 대조 필요</span></p>
+<p class="small" style="color: var(--verdict-unknown-fg);">{{ c.source }}{% if not c.source_verified %} <span class="todo">원문 대조 필요</span>{% endif %}</p>
 </article>
 {% endfor %}
 </div>
@@ -56,17 +59,15 @@
 <table style="min-width: 680px;">
 <thead>
 <tr>
-<th scope="col">시각</th><th scope="col">강우 (mm/h)</th><th scope="col">풍속 (m/s)</th>
-<th scope="col">강설 (cm/h)</th><th scope="col">시간 판정</th><th scope="col">계산</th>
+<th scope="col">시각</th>{% for col in view.columns %}<th scope="col">{{ col }}</th>{% endfor %}
+<th scope="col">시간 판정</th><th scope="col">계산</th>
 </tr>
 </thead>
 <tbody>
 {% for r in view.rows %}
-<tr{% if r.peak %} class="is-peak"{% endif %}>
+<tr>
 <td style="font-weight: 700;">{{ r.time }}</td>
-<td{% if r.rain_over %} class="is-over"{% endif %}>{{ r.rain }}</td>
-<td>{{ r.wind }}</td>
-<td>{{ r.snow }}</td>
+{% for cell in r.cells %}<td{% if cell.over %} class="is-over"{% endif %}>{{ cell.text }}</td>{% endfor %}
 <td>{{ verdict_badge(r.verdict) }}</td>
 <td style="color: var(--verdict-unknown-fg);">{{ r.calculation }}</td>
 </tr>
@@ -75,6 +76,7 @@
 </table>
 </div>
 </section>
+{% endif %}
 
 <article class="card card--dark" style="flex-direction: row; flex-wrap: wrap; align-items: center; gap: 16px;">
 <span class="icon-circle" style="width: 44px; height: 44px;">{{ icon("info", 22) }}</span>

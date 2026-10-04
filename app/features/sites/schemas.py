@@ -1,28 +1,51 @@
 from dataclasses import dataclass
+from datetime import time
 from typing import Literal
 
-# 총정리 §1 표에 값이 있는 기준은 "원문 대조 필요", §3 4단계처럼 값이 없는 기준은 "기준 미확인"
-BasisStatus = Literal["원문 대조 필요", "기준 미확인"]
+# 기준표가 있으면 판정한다(원문 대조 전이면 그 표시를 함께). 없으면 판정하지 않는다(D-017).
+BasisStatus = Literal["판정 · 원문 대조 필요", "판정 · 원문 확인됨", "기준 미확인"]
 
 
 @dataclass(frozen=True, slots=True)
-class WorkType:
-    label: str
-    basis: BasisStatus
+class SiteRecord:
+    """다른 기능(판정)이 읽는 현장 정보."""
 
-
-@dataclass(frozen=True, slots=True)
-class SiteSetting:
     site_id: int
     name: str
     address: str
     latitude_deg: float
     longitude_deg: float
-    work_types: tuple[str, ...]  # WorkType.label
-    work_start: str  # 현장 현지 시각(KST) "HH:MM"
-    work_end: str
-    notify_enabled: bool
-    phone: str
+    grid_nx: int
+    grid_ny: int
+    work_start_local: time  # KST
+    work_end_local: time
+    work_types: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class SiteForm:
+    """화면 입력값 그대로(검증 실패 시 다시 보여주기 위해 문자열로 둔다)."""
+
+    name: str = ""
+    address: str = ""
+    latitude: str = ""
+    longitude: str = ""
+    work_start: str = "07:00"
+    work_end: str = "17:00"
+    work_types: tuple[str, ...] = ("철골 작업",)
+
+
+@dataclass(frozen=True, slots=True)
+class SiteInput:
+    name: str
+    address: str
+    latitude_deg: float
+    longitude_deg: float
+    grid_nx: int
+    grid_ny: int
+    work_start_local: time
+    work_end_local: time
+    work_types: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,7 +66,9 @@ class WorkTypeOption:
 @dataclass(frozen=True, slots=True)
 class SitesView:
     items: tuple[SiteListItem, ...]
-    site: SiteSetting
-    grid_text: str
+    site_id: int | None  # None이면 새 현장 등록
+    form: SiteForm
+    grid_text: str | None
     work_type_options: tuple[WorkTypeOption, ...]
-    unconfirmed_labels: tuple[str, ...]
+    errors: tuple[str, ...]
+    saved: bool

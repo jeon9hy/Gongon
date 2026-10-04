@@ -86,7 +86,7 @@ def _judge_condition(condition: Condition, value: ForecastValue | None) -> Condi
             condition_id=condition.id,
             element=condition.element,
             verdict=verdict,
-            value_text=None if value is None else value.raw,
+            value=value,
             reason=reason,
         )
 

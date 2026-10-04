@@ -6,23 +6,44 @@
 <header class="row row--center">
 <div class="row row--center">
 <span class="logo-word">공온<span class="logo-toggle" aria-hidden="true"></span></span>
-<span class="chip chip--note">예시 데이터</span>
 </div>
-<div class="row row--center">
-<span class="btn" aria-label="현장">{{ view.site_name }}</span>
-</div>
+{% if view.sites %}
+<form method="get" action="/" class="row row--center">
+<label class="visually-hidden" for="site-select">현장</label>
+<select id="site-select" class="btn" name="site_id" onchange="this.form.submit()">
+{% for s in view.sites %}<option value="{{ s.site_id }}"{% if s.selected %} selected{% endif %}>{{ s.name }}</option>{% endfor %}
+</select>
+<noscript><button class="btn btn--soft" type="submit">보기</button></noscript>
+</form>
+{% endif %}
 </header>
+
+{% if view.site_id is none %}
+<section class="card" style="padding: 28px; gap: 16px;">
+<h1 class="title">내일 공사 ON?</h1>
+<p>먼저 현장을 등록하세요. 위치·공종·작업 시간을 한 번 등록하면 기상청 예보로 내일 작업 판정을 받습니다.</p>
+<a class="btn btn--accent" style="align-self: flex-start;" href="/sites">{{ icon("plus", 16, 2.2) }} 현장 등록</a>
+</section>
+{% else %}
 
 <section class="row">
 <div>
 <h1 class="title">내일 공사 ON?</h1>
-<p class="subtitle">{{ view.target_date }} · {{ view.site_name }} · 작업 {{ view.work_hours }} · 공종 {{ view.work_verdicts | length }}개</p>
+<p class="subtitle">{{ view.target_date }} · {{ view.site_name }} · 작업 {{ view.work_hours }} · 공종 {{ view.cards | length }}개</p>
 </div>
 <div class="chips">
-<span class="chip">예보 발표 {{ view.forecast_issued }}</span>
-<span class="chip">기준 {{ view.rule_version }} · <span class="todo">원문 대조 필요</span></span>
+{% if view.forecast_issued %}<span class="chip">예보 발표 {{ view.forecast_issued }}</span>{% endif %}
+{% if view.rule_version %}<span class="chip">기준 {{ view.rule_version }}{% if not view.rule_verified %} · <span class="todo">원문 대조 필요</span>{% endif %}</span>{% endif %}
+<form method="post" action="/judgments/run">
+<input type="hidden" name="site_id" value="{{ view.site_id }}">
+<button class="btn btn--accent" type="submit">{% if view.primary %}다시 판정하기{% else %}지금 판정하기{% endif %}</button>
+</form>
 </div>
 </section>
+
+{% if view.message %}
+<div class="alert {% if view.message_is_error %}alert--error{% else %}alert--ok{% endif %}" role="status">{{ view.message }}</div>
+{% endif %}
 
 <div class="split">
 <div class="stack split__main">
@@ -33,54 +54,60 @@
 <p class="small muted" style="margin-top: 4px;">현장에 등록한 공종마다 가장 높은 단계를 보여줍니다</p>
 </div>
 <div class="windows">
-{% for w in view.work_verdicts %}
-<div class="window{% if w.verdict == '중지 검토' %} window--stop{% endif %}">
-<div class="window__head"><span>{{ w.work_type }} <span class="small muted">{{ w.time_range }}</span></span>{{ verdict_badge(w.verdict) }}</div>
-<span class="window__reason">{{ w.reason }}{% if w.detail_href %} · <a href="{{ w.detail_href }}" style="font-weight: 700;">상세 근거</a>{% endif %}</span>
+{% for c in view.cards %}
+<div class="window{% if c.verdict == '중지 검토' %} window--stop{% endif %}">
+<div class="window__head"><span>{{ c.work_type }} <span class="small muted">{{ c.time_range }}</span></span>{% if c.verdict %}{{ verdict_badge(c.verdict) }}{% else %}<span class="badge badge--unknown">판정 전</span>{% endif %}</div>
+<span class="window__reason">{{ c.reason }}{% if c.detail_href %} · <a href="{{ c.detail_href }}" style="font-weight: 700;">상세 근거</a>{% endif %}</span>
 </div>
 {% endfor %}
 </div>
 </article>
 
+{% set p = view.primary %}
+{% if p %}
 <div class="split">
 <article class="card" style="flex: 1 1 300px; min-width: 0;">
 <div class="row row--center">
 <div>
-<h2 class="h2">철골 작업 판정</h2>
+<h2 class="h2">{{ p.work_type }} 판정</h2>
 <p class="small muted" style="margin-top: 4px;">작업 구간별 결과</p>
 </div>
 <span class="icon-circle">{{ icon("rain", 20) }}</span>
 </div>
 <div class="windows">
-{% for w in view.windows %}
+{% for w in p.windows %}
 <div class="window{% if w.verdict == '중지 검토' %} window--stop{% endif %}">
 <div class="window__head"><span>{{ w.time_range }}</span>{{ verdict_badge(w.verdict) }}</div>
 {% if w.reason %}<span class="window__reason">{{ w.reason }}</span>{% endif %}
 </div>
 {% endfor %}
 </div>
-<a class="btn btn--accent" style="align-self: flex-start;" href="/judgments/1">상세 근거 보기 {{ icon("arrow-right", 16, 2.2) }}</a>
+<a class="btn btn--accent" style="align-self: flex-start;" href="/judgments/{{ p.judgment_id }}">상세 근거 보기 {{ icon("arrow-right", 16, 2.2) }}</a>
 </article>
 
+{% if not p.failure_reason %}
 <div class="tiles">
-{% for t in view.tiles %}
+{% for t in p.tiles %}
 <div class="tile">
 {{ verdict_badge(t.verdict) }}
 <div><span class="tile__count">{{ t.hours }}</span> <span class="small muted">시간</span></div>
 </div>
 {% endfor %}
 </div>
+{% endif %}
 </div>
 
+{% set chart = p.chart %}
+{% if chart %}
 <article class="card" style="gap: 18px;">
 <div class="row">
 <div>
-<h2 class="h2">시간대별 예보 · 철골 기준</h2>
-<p class="pad-top" style="font-size: 34px; font-weight: 800; letter-spacing: -0.02em;">{{ view.selected_value }}</p>
-<p class="small muted" style="margin-top: 4px;">{{ view.selected_caption }}</p>
+<h2 class="h2">{{ chart.title }}</h2>
+<p class="pad-top" style="font-size: 34px; font-weight: 800; letter-spacing: -0.02em;">{{ chart.selected_value }}</p>
+<p class="small muted" style="margin-top: 4px;">{{ chart.selected_caption }}</p>
 </div>
 <nav class="tabs" aria-label="예보 요소">
-{% for tab in view.tabs %}
+{% for tab in chart.tabs %}
 <a href="{{ tab.href }}"{% if tab.selected %} aria-current="true"{% endif %}>{{ tab.label }}</a>
 {% endfor %}
 </nav>
@@ -88,9 +115,9 @@
 
 <div>
 <div class="chart">
-<div class="chart__threshold" style="bottom: {{ view.threshold_bottom_px }}px;"><span>기준 {{ view.threshold_text }} 이상</span></div>
+<div class="chart__threshold" style="bottom: {{ chart.threshold_bottom_px }}px;"><span>기준 {{ chart.threshold_text }}</span></div>
 <div class="chart__bars">
-{% for bar in view.bars %}
+{% for bar in chart.bars %}
 <div class="chart__col">
 {% if bar.selected %}<span class="chart__tip" style="bottom: {{ bar.height_px + 12 }}px;">{{ bar.tip }}</span>{% endif %}
 <a class="chart__bar{% if bar.over %} is-over{% endif %}{% if bar.selected %} is-selected{% endif %}" style="height: {{ bar.height_px }}px;" href="{{ bar.href }}" aria-label="{{ bar.aria_label }}"{% if bar.selected %} aria-current="true"{% endif %}></a>
@@ -99,35 +126,46 @@
 </div>
 </div>
 <div class="chart__labels">
-{% for bar in view.bars %}<span{% if bar.selected %} class="is-selected"{% endif %}>{{ bar.hour_label }}</span>{% endfor %}
+{% for bar in chart.bars %}<span{% if bar.selected %} class="is-selected"{% endif %}>{{ bar.hour_label }}</span>{% endfor %}
 </div>
 </div>
 
 <div class="legend">
-<span><i style="background: var(--verdict-stop-bg);"></i>기준 이상 · 중지 검토</span>
-<span><i style="background: #E3E6EA;"></i>기준 미만</span>
+<span><i style="background: var(--verdict-stop-bg);"></i>기준 해당 · 중지 검토</span>
+<span><i style="background: #E3E6EA;"></i>기준 미만·기타</span>
 <span>막대를 누르면 그 시각의 예보값을 봅니다</span>
 </div>
 </article>
+{% endif %}
+{% else %}
+<article class="card">
+<h2 class="h2">아직 내일 판정이 없습니다</h2>
+<p class="small muted">‘지금 판정하기’를 누르면 최신 기상청 단기예보를 받아 판정합니다.</p>
+</article>
+{% endif %}
 </div>
 
 <aside class="stack split__side">
 
+{% if view.notice %}
 <article class="card card--tight">
 <div class="row row--center">
-<h2 class="h2">17:00 공온 알림</h2>
+<h2 class="h2">공온 알림</h2>
 <span class="badge badge--go" style="font-size: 12px; padding: 5px 10px;">미리보기</span>
 </div>
 <div class="message">
-<strong>{{ view.notice_title }}</strong><br>
-{% for item in view.notice_items %}
+<strong>{{ view.notice.title }}</strong><br>
+{% for item in view.notice.items %}
 {{ item.work }} <strong class="verdict-text verdict-text--{{ verdict_class[item.verdict] }}">{{ item.verdict }}</strong> ({{ item.reason }})<br>
+{% else %}
+판정한 공종 모두 <strong>진행</strong><br>
 {% endfor %}
-<span class="muted">{{ view.notice_disclaimer }}</span><br>
-<a href="/judgments/1" style="font-weight: 700;">상세 근거 보기 ›</a>
+<span class="muted">최종 판단은 현장 책임자가 합니다.</span><br>
+{% if view.notice.detail_href %}<a href="{{ view.notice.detail_href }}" style="font-weight: 700;">상세 근거 보기 ›</a>{% endif %}
 </div>
 <p class="small muted">카카오톡 발송은 사업자 등록 후 제공 · 지금은 웹에서 확인</p>
 </article>
+{% endif %}
 
 <article class="card card--dark">
 <span class="icon-circle">{{ icon("info", 20) }}</span>
@@ -141,9 +179,10 @@
 <dt>예보 수집</dt><dd>{{ view.collection_status }}</dd>
 <dt>자료 유형</dt><dd>예보 (관측 아님)</dd>
 <dt>기상청 격자</dt><dd>{{ view.grid }}</dd>
-<dt>판정 시각</dt><dd>{{ view.judged_at }}</dd>
+<dt>판정 시각</dt><dd>{{ view.judged_at or "—" }}</dd>
 </dl>
 </article>
 </aside>
 </div>
+{% endif %}
 {% endblock %}

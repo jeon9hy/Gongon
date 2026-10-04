@@ -7,26 +7,62 @@
 ## 준비
 ```bash
 uv sync --locked          # .venv 생성, uv.lock 그대로 설치 (잠금과 pyproject가 다르면 실패)
-cp .env.example .env      # 실제 값은 .env에만. 현재(S00) 코드가 읽는 변수는 없음
+cp .env.example .env      # 실제 값은 .env에만(커밋 금지)
 ```
+그다음 아래 "DB 준비"와 "기상청 인증키"를 한 번 해 둔다.
+
+## DB 준비 (PostgreSQL 17, 처음 한 번)
+1. 설치: https://www.postgresql.org/download/windows/ → "Download the installer"(EDB) → **17.x Windows x86-64**.
+   설치 중 슈퍼유저(`postgres`) 비밀번호를 정하고 포트는 `5432` 그대로 둔다. 마지막 Stack Builder는 건너뛴다.
+   - 대신 관리자 PowerShell에서 `winget install -e --id PostgreSQL.PostgreSQL.17`도 된다(설치 창에서 비밀번호 설정).
+   - 시연 배포의 Supabase와 주 버전을 맞추려고 17을 쓴다(D-014).
+2. DB 만들기: 시작 메뉴 → "SQL Shell (psql)" → 물음에 Enter(기본값)로 넘기고 비밀번호 입력 →
+   ```sql
+   CREATE DATABASE gongon;
+   CREATE DATABASE gongon_test;
+   ```
+3. `.env`에 연결 문자열을 넣는다(비밀번호에 `@ : / % #`가 있으면 URL 인코딩 필요, 예: `@` → `%40`).
+   ```
+   DATABASE_URL=postgresql://postgres:<비밀번호>@localhost:5432/gongon
+   TEST_DATABASE_URL=postgresql://postgres:<비밀번호>@localhost:5432/gongon_test
+   ```
+4. 테이블 만들기: `uv run python -m alembic upgrade head` (`scripts/start.bat`도 실행할 때마다 먼저 적용한다)
+
+## 기상청 인증키 (처음 한 번)
+키가 없어도 앱은 동작하지만 판정이 모두 `판정 불가 · KMA_SERVICE_KEY가 설정되지 않음`으로 기록된다.
+1. https://www.data.go.kr 회원가입·로그인
+2. 검색창에 **기상청_단기예보 ((구)_동네예보) 조회서비스** → 오픈 API 항목 → **활용신청**
+   (활용 목적: 예) "학부 프로젝트 - 공종별 기상 판정 시연"). 개발 계정은 보통 자동 승인된다.
+3. 마이페이지 → 데이터활용 → Open API → 활용신청 현황 → 이 서비스 → **일반 인증키 (Decoding)** 를 복사
+   - Encoding 키가 아니라 **Decoding** 키를 쓴다. 코드가 주소에 넣을 때 직접 인코딩한다.
+4. `.env`에 `KMA_SERVICE_KEY=<복사한 키>` → 앱 재시작
+5. 확인: 대시보드에서 "지금 판정하기". 승인 직후에는 키가 기상청 서버에 반영되기까지 시간이 걸려
+   `판정 불가 · 응답이 JSON이 아님: ...SERVICE_KEY_IS_NOT_REGISTERED_ERROR`가 나올 수 있다. 1~2시간 뒤 다시 누른다.
+- 하루 호출 한도는 활용신청 화면에 표시된다(개발 계정). 같은 발표 시각·격자는 한 번만 호출하고 재사용한다.
 
 ## 검증
 ```bash
 uv run python scripts/check.py         # 커밋 전 전체 검증: ruff check · ruff format --check · mypy · pytest (CI와 동일)
 uv run python scripts/check.py --fix   # 린트·포맷 자동 수정 후 전체 검증
-uv run pytest tests/<경로> -q          # 작업 중 빠른 확인: 관련 테스트만
+uv run python -m pytest tests/<경로> -q  # 작업 중 빠른 확인: 관련 테스트만
 ```
 - `check.py`는 실패해도 나머지 단계를 모두 실행하고 끝에 단계별 ok/FAIL을 보여준다. 하나라도 실패하면 종료 코드 1.
 - pytest의 건너뜀(skip)은 통과가 아니다. 사유는 `-rs` 출력으로 확인한다.
+- DB 테스트는 `TEST_DATABASE_URL`(환경 변수 또는 `.env`)이 있어야 실행된다. 없으면 24개가 건너뜀으로 표시된다.
+  테스트는 그 DB의 `public` 스키마를 지우고 마이그레이션을 다시 적용하므로, DB 이름에 `test`가 없으면 실행을 거부한다.
+  CI는 `postgres:17` 서비스로 항상 실행한다.
+- 외부 API는 호출하지 않는다(가짜 응답 `tests/fakes.py`).
 - Windows 한글 출력: `check.py`는 UTF-8 모드로 실행한다. pytest를 직접 실행할 때 깨지면 `PYTHONUTF8=1`을 설정한다(Git Bash: `export PYTHONUTF8=1`, PowerShell: `$env:PYTHONUTF8=1`).
 
 ## 앱 실행
 ```bash
+uv run python -m alembic upgrade head
 uv run python -m uvicorn app.main:app --reload
-# 확인: http://127.0.0.1:8000/healthz → {"status":"ok"}
+# http://127.0.0.1:8000 → 현장 설정에서 현장 등록 → 대시보드에서 "지금 판정하기"
 ```
-- 폴더의 `공온 실행.lnk`(또는 `scripts/start.bat`)가 같은 명령을 실행하고 브라우저를 연다. 화면(S05)이 생기기 전에는 `/`가 404다.
-- `uvicorn`을 직접 부르지 않고 `python -m`으로 실행한다. 한글이 든 경로에서 `uvicorn.exe`가 `uv trampoline failed to canonicalize script path`로 실패한다.
+- 폴더의 `공온 실행.lnk`(또는 `scripts/start.bat`)가 마이그레이션 적용 → 서버 실행 → 브라우저 열기를 한다.
+- DB가 꺼져 있거나 `DATABASE_URL`이 없으면 화면에 원인(503)을 보여준다.
+- `uvicorn`·`alembic`을 직접 부르지 않고 `python -m`으로 실행한다. 한글이 든 경로에서 `.exe`가 `uv trampoline failed to canonicalize script path`로 실패한다.
 - `.lnk`는 PC 절대 경로가 들어가 커밋하지 않는다(`.gitignore`). 필요하면 `start.bat`을 가리키는 바로가기를 직접 만든다.
 
 ## 의존성 변경
@@ -34,12 +70,19 @@ uv run python -m uvicorn app.main:app --reload
 - 결정이 필요한 의존성(DB·HTTP 클라이언트 등)은 `docs/decisions.md`를 먼저 확인한다.
 
 ## 환경 변수
-`.env.example` 참고. 변수 이름은 코드가 실제로 읽기 시작하는 작업에서 확정하고 여기 표에 추가한다.
+`.env.example` 참고. 코드에서는 `app/core/config.py`만 읽는다(환경 변수가 `.env`보다 우선).
 
 | 변수 | 사용 위치 | 작업 | 상태 |
 | --- | --- | --- | --- |
-| `KMA_SERVICE_KEY` | 예보 수집 | S02 | 키 미발급 |
-| `DATABASE_URL` | DB 연결 | S04 | DB 미생성 |
+| `DATABASE_URL` | 앱·마이그레이션 | S04 | 개발자 PC에 PostgreSQL 설치 후 설정 |
+| `KMA_SERVICE_KEY` | 예보 수집 | S02-2 | 키 미발급 — 위 "기상청 인증키" |
+| `TEST_DATABASE_URL` | DB 테스트(선택) | S04 | CI에서는 워크플로가 설정 |
 
 ## DB 적용 절차
-S04에서 Alembic 도입 후 작성한다(적용·되돌리기·실패 시 복구 명령).
+```bash
+uv run python -m alembic upgrade head       # 최신으로 적용
+uv run python -m alembic current            # 현재 리비전 확인
+uv run python -m alembic downgrade -1       # 한 단계 되돌리기(데이터가 지워질 수 있음 — 운영 DB에서는 백업 먼저)
+uv run python -m alembic check              # 모델과 마이그레이션 차이 확인(차이가 있으면 실패)
+```
+- 테이블 변경은 `migrations/versions/`에 새 리비전을 추가해서만 한다. 적용 실패 시 `alembic current`로 위치를 확인하고, 원인을 고친 뒤 다시 `upgrade head`.

@@ -3,6 +3,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from app.core.errors import install_error_handlers
 from app.core.templating import STATIC_DIR
 from app.features.judgments.router import router as judgments_router
 from app.features.sites.router import router as sites_router
@@ -10,6 +11,7 @@ from app.features.sites.router import router as sites_router
 
 def create_app() -> FastAPI:
     app = FastAPI(title="gongon")
+    install_error_handlers(app)
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     app.include_router(judgments_router)
     app.include_router(sites_router)

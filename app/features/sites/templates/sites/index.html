@@ -6,9 +6,8 @@
 <section class="row">
 <div>
 <h1 class="title">현장 설정</h1>
-<p class="subtitle">위치·주요 공종·작업 시간을 한 번 등록하면 매일 17시에 내일 판정을 받습니다.</p>
+<p class="subtitle">위치·주요 공종·작업 시간을 한 번 등록하면 대시보드에서 내일 판정을 받습니다.</p>
 </div>
-<span class="chip chip--note">예시 데이터</span>
 </section>
 
 <div class="split">
@@ -20,27 +19,45 @@
 <span>{{ item.summary }}</span>
 </a>
 {% endfor %}
-<button class="site-add" type="button" disabled>{{ icon("plus", 18, 2.2) }} 현장 추가</button>
+<a class="site-add" href="/sites"{% if view.site_id is none %} aria-current="true"{% endif %}>{{ icon("plus", 18, 2.2) }} 현장 추가</a>
 </aside>
 
-{% set site = view.site %}
-<form class="form" onsubmit="return false">
+{% set form = view.form %}
+<form class="form" method="post" action="{% if view.site_id is none %}/sites{% else %}/sites/{{ view.site_id }}{% endif %}">
+
+{% if view.errors %}
+<div class="alert alert--error" role="alert">
+<strong>저장하지 못했습니다</strong>
+<ul>{% for e in view.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+</div>
+{% elif view.saved %}
+<div class="alert alert--ok" role="status">{{ icon("check", 16, 2.4) }} 저장했습니다. 대시보드에서 판정할 수 있습니다.</div>
+{% endif %}
 
 <fieldset>
-<legend>위치</legend>
+<legend>{% if view.site_id is none %}새 현장{% else %}위치{% endif %}</legend>
 <label class="field">현장 이름
-<input type="text" value="{{ site.name }}" placeholder="○○현장">
+<input type="text" name="name" value="{{ form.name }}" placeholder="○○현장" required maxlength="60">
+</label>
+<label class="field">주소 (메모용, 선택)
+<input type="text" name="address" value="{{ form.address }}" placeholder="서울특별시 ○○구 ○○로 00" maxlength="200">
 </label>
 <div class="inline">
-<label class="field">주소
-<input type="text" value="{{ site.address }}" placeholder="서울특별시 ○○구 ○○로 00">
+<label class="field" style="flex: 1 1 180px;">위도
+<input type="text" name="latitude" inputmode="decimal" value="{{ form.latitude }}" placeholder="37.5665" required>
 </label>
-<button class="btn btn--ink" type="button" disabled style="min-height: 48px;">위치 확인</button>
+<label class="field" style="flex: 1 1 180px;">경도
+<input type="text" name="longitude" inputmode="decimal" value="{{ form.longitude }}" placeholder="126.9780" required>
+</label>
 </div>
 <div class="callout">
+{% if view.grid_text %}
 {{ icon("check", 16, 2.4) }}
-<span>위도 {{ "%.4f"|format(site.latitude_deg) }} · 경도 {{ "%.4f"|format(site.longitude_deg) }} → 기상청 격자 <strong>{{ view.grid_text }}</strong></span>
+<span>기상청 격자 <strong>{{ view.grid_text }}</strong></span>
 <span class="muted">· 격자 대표값이라 현장과 차이가 있을 수 있습니다</span>
+{% else %}
+<span class="muted">지도 서비스에서 현장 위치를 눌러 위도·경도를 확인해 입력하세요. 저장하면 기상청 격자로 바꿉니다.</span>
+{% endif %}
 </div>
 </fieldset>
 
@@ -49,47 +66,35 @@
 <div class="chips">
 {% for w in view.work_type_options %}
 <label class="toggle-chip">
-<input type="checkbox"{% if w.checked %} checked{% endif %}>
+<input type="checkbox" name="work_types" value="{{ w.label }}"{% if w.checked %} checked{% endif %}>
 <span>{{ icon("check", 16, 2.4) }} {{ w.label }}{% if w.basis == "기준 미확인" %} <small class="toggle-chip__note">기준 미확인</small>{% endif %}</span>
 </label>
 {% endfor %}
 </div>
-<p class="small muted">기준값은 모두 <span class="todo">원문 대조 필요</span> 상태입니다. {{ view.unconfirmed_labels | join(", ") }}은 판정 기준이 정해지기 전까지 ‘확인 필요’로만 표시합니다.</p>
+<p class="small muted">기준 미확인 공종은 판정하지 않고 대시보드에 ‘확인 필요’로만 표시합니다. 판정하는 공종의 기준값도 <span class="todo">원문 대조 필요</span> 상태입니다.</p>
 </fieldset>
 
 <fieldset>
 <legend>작업 시간</legend>
 <div class="inline">
 <label class="field" style="flex: 1 1 180px;">시작
-<input type="text" inputmode="numeric" value="{{ site.work_start }}" placeholder="07:00">
+<input type="time" name="work_start" value="{{ form.work_start }}" required>
 </label>
 <label class="field" style="flex: 1 1 180px;">종료
-<input type="text" inputmode="numeric" value="{{ site.work_end }}" placeholder="17:00">
+<input type="time" name="work_end" value="{{ form.work_end }}" required>
 </label>
 </div>
 </fieldset>
 
 <fieldset>
 <legend>알림</legend>
-<div class="setting">
-<span>
-<strong>카카오톡으로 공온 알림 받기</strong>
-<span class="small muted">매일 17:00 · 카카오톡 발송은 사업자 등록 후 제공</span>
-</span>
-<label class="switch">
-<input type="checkbox" role="switch" aria-label="카카오톡 알림"{% if site.notify_enabled %} checked{% endif %}>
-<span></span>
-</label>
-</div>
-<label class="field">수신 휴대폰 번호
-<input type="tel" value="{{ site.phone }}" placeholder="010-0000-0000">
-</label>
+<p class="small muted">카카오톡 발송은 사업자 등록 후 제공 · 지금은 웹 대시보드에서 확인</p>
 </fieldset>
 
 <div class="actions">
-<p>예시 화면입니다. 저장은 아직 연결되지 않았습니다.</p>
-<button class="btn btn--soft" type="button" disabled>취소</button>
-<button class="btn btn--accent" type="button" disabled>저장</button>
+<p></p>
+{% if view.site_id is not none %}<a class="btn btn--soft" href="/sites?site_id={{ view.site_id }}">되돌리기</a>{% endif %}
+<button class="btn btn--accent" type="submit">{% if view.site_id is none %}등록{% else %}저장{% endif %}</button>
 </div>
 </form>
 </div>

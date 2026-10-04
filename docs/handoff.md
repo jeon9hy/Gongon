@@ -1,19 +1,23 @@
 # 현재 작업 인계
 
-- 현재 작업 ID / 상태: S05-0 / review · 마지막 수정 도구: Claude Code
-- 브랜치: `feature/S02-1-geo-grid` (S00 브랜치에서 분기, S02-1 커밋 위에 S05-0이 쌓여 있음. `main`은 아직 커밋 없음)
-- 방향 변경(D-016): 화면을 예시 데이터로 먼저 만들고 기능은 나중에 연결. 계획서 순서(S01→S03→S04→S05)에서 화면만 앞당김
+- 현재 작업: 기본 흐름(D-019) — S01 doing, S02-2·S03·S04-1·3·4·S05 review · 마지막 수정 도구: Claude Code
+- 브랜치: `feature/S04-basic-app` (`feature/S02-1-geo-grid` 위에서 분기. `main`은 아직 커밋 없음)
 - 완료한 부분
-  - S00: 환경·CI·지침·문서 (남은 것: Codex가 `AGENTS.md`를 읽는지 확인)
-  - S02-1: `engine/geo` 격자 변환 (남은 것: 공식 격자 파일 추가 지점 대조, plan.md)
-  - S05-0: 화면 4개 `/`·`/judgments`·`/judgments/1`·`/sites`. 공통 기반 `app/core/{templating.py,templates,static}`, 기능 화면 `app/features/{judgments,sites}`. 예시 데이터는 각 `sample.py`
-  - S05-0 추가: 공종 7개(D-017). 현장 설정에서 여러 공종 선택, 대시보드 "공종별 판정" 카드, 알림 미리보기·내역에 여러 공종. 기준 미확인 공종은 `확인 필요`만
-  - 실행: 폴더의 `공온 실행.lnk`(커밋 안 함) 또는 `scripts/start.bat` → 브라우저가 `/`를 연다
-- 남은 부분
-  - S05-0: 개발자가 화면을 보고 수정 요청 → 반영 → done
-  - 이후 연결 순서: S01(기준·계약) → S03(엔진) → S02-2(예보) → S04(DB·API) → S05(예시 데이터를 실제 API로 교체)
-- 메모: 한글 경로에서 `uv run pytest`·`uvicorn.exe`는 `uv trampoline failed`. `uv run python -m pytest`, `python -m uvicorn` 사용. 화면의 숫자·기준 버전은 시안 예시이며 `원문 대조 필요`
-- 미커밋 변경: S05-0 전체(커밋 전 `git status`로 확인)
-- 검증(2026-10-04, 로컬 Windows): `uv run python scripts/check.py` ruff·format·mypy·pytest 모두 ok (43 통과, 1 건너뜀: engine.judgment 패키지 아직 없음 — 통과 아님). 헤드리스 Edge 캡처로 4개 화면 모두 확인(대시보드는 휴대폰 폭도 확인)
-- 결정 사항: D-001~D-017 (`docs/decisions.md`)
-- 막힌 조건: 크레인·콘크리트 등 다른 공종을 첫 출시 판정에 넣을지(개발자). Codex 모델 설정(개발자). S01 원문 대조(개발자). `KMA_SERVICE_KEY`(S02-2 실호출). `공온지수`는 구현 금지(D-010)
+  - 현장 등록·수정(위경도 → 기상청 격자) → 대시보드 "지금 판정하기" → 기상청 단기예보 수집(발표 시각·격자 재사용) → 철골 판정 → 저장 → 대시보드·상세·내역
+  - 기준표 `rules/steel.yaml`(원문 대조 전), 엔진 `engine/judgment`, 수집 `engine/forecast`, DB `migrations/0001_initial`
+  - 기준 미확인 공종(크레인·고소작업대 등)은 판정하지 않고 `확인 필요`로만 표시(D-017)
+  - 예시 데이터 `sample.py`는 삭제. 로그인·알림 발송은 보류(D-019)
+- 개발자가 할 일 (막힌 조건)
+  1. PostgreSQL 17 설치·DB 생성·`.env` 설정 → `docs/setup.md` "DB 준비"
+  2. 기상청 키 발급 → `docs/setup.md` "기상청 인증키". 키 없으면 판정이 `판정 불가`로 기록됨(정상 동작)
+  3. 제383조 원문 대조 → `rules/steel.yaml`의 `quote`·`source_verified`
+- 다음 작업 후보: 키 발급 후 실제 응답 대조(S02-2) · `docs/schema.json`(S01) · 쿼리 수 측정 도구(S04-1) · S06 매일 17시 실행·알림 미리보기 저장 · S04-2 로그인
+- 메모
+  - 한글 경로: `uv run python -m pytest|alembic|uvicorn`으로 실행(`.exe` trampoline 실패). `alembic.ini`는 ASCII만
+  - Git Bash `curl`은 한글 폼 값을 cp949로 보내 422가 난다. 화면 확인은 브라우저나 Python으로
+  - 헤드리스 Edge 캡처는 명령이 끝난 뒤 조금 늦게 파일이 생긴다
+- 미커밋 변경: 없음(커밋 전 `git status`로 확인)
+- 검증(2026-10-04, 로컬 Windows): `scripts/check.py` 전체 ok — 임시 PostgreSQL 16.2(pgserver, 설치 없이 실행, 프로젝트 의존성 아님)에 `TEST_DATABASE_URL`을 걸어 DB 테스트 포함 실행. DB 없이 실행하면 DB 테스트 24개는 건너뜀(통과 아님). Alembic upgrade·downgrade·check 확인. 헤드리스 Edge로 대시보드(수집 실패·가짜 예보 성공)·상세·현장 설정 확인
+- CI: `postgres:17` 서비스 추가(아직 GitHub에서 실행 확인 전 — push 후 확인)
+- 결정 사항: D-001~D-020 (`docs/decisions.md`)
+- 그 밖의 막힌 조건: Codex 모델 설정(S00). `공온지수` 구현 금지(D-010)

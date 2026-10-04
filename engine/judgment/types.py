@@ -96,7 +96,7 @@ class ConditionResult:
     condition_id: str
     element: Element
     verdict: Verdict
-    value_text: str | None  # 예보 원문 값. 누락이면 None
+    value: ForecastValue | None  # 누락이면 None
     reason: str  # 계산식 또는 판정 불가·확인 필요 사유
 
 

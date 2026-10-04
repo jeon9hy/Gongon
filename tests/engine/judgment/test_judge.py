@@ -93,7 +93,7 @@ def test_missing_element_is_unavailable_not_filled_as_normal() -> None:
                    DAY.replace(hour=9), DAY.replace(hour=10))  # fmt: skip
 
     assert result.verdict == Verdict.UNAVAILABLE
-    assert result.hours[0].conditions[0].value_text is None
+    assert result.hours[0].conditions[0].value is None
 
 
 def test_missing_hour_in_work_range_is_unavailable() -> None:

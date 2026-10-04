@@ -1,21 +1,29 @@
-"""판정 화면이 쓰는 표시용 모델. 판정 계산은 하지 않고 정해진 결과를 담는다(판정은 S03 엔진)."""
+"""판정 화면이 쓰는 표시용 모델. 판정 계산은 engine/judgment가 하고, 여기서는 보여줄 값만 담는다."""
 
 from dataclasses import dataclass
 from typing import Literal
 
-Element = Literal["rain", "wind", "snow"]
 VerdictFilter = Literal["전체", "진행", "확인 필요", "중지 검토", "판정 불가"]
+ElementKey = Literal["rain", "wind", "snow"]
+RunResult = Literal["done", "failed", "no_rules"]
 
 
 @dataclass(frozen=True, slots=True)
-class ElementSeries:
-    key: Element
-    label: str
-    unit: str
-    threshold: float
-    axis_max: float
-    hourly_values: tuple[float, ...]  # HOURS 순서
-    over_hours: frozenset[int]  # 기준 이상인 시각(정시, 0~23)
+class SiteOption:
+    site_id: int
+    name: str
+    selected: bool
+
+
+@dataclass(frozen=True, slots=True)
+class WorkCard:
+    """공종 하나의 내일 판정 요약. 기준이 없는 공종은 판정하지 않고 '확인 필요'로만 보인다."""
+
+    work_type: str
+    time_range: str
+    verdict: str | None  # None: 아직 판정하지 않음
+    reason: str
+    detail_href: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,24 +31,6 @@ class WorkWindow:
     time_range: str
     verdict: str
     reason: str | None
-
-
-@dataclass(frozen=True, slots=True)
-class WorkVerdict:
-    """공종 하나의 내일 판정 요약. 기준이 없는 공종은 '확인 필요'까지만 낸다."""
-
-    work_type: str
-    time_range: str
-    verdict: str
-    reason: str
-    detail_href: str | None
-
-
-@dataclass(frozen=True, slots=True)
-class NoticeItem:
-    work: str
-    verdict: str
-    reason: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,33 +58,66 @@ class Tab:
 
 
 @dataclass(frozen=True, slots=True)
-class DashboardView:
-    site_name: str
-    target_date: str
-    work_hours: str
-    forecast_issued: str
-    rule_version: str
-    work_verdicts: tuple[WorkVerdict, ...]
-    windows: tuple[WorkWindow, ...]
-    tiles: tuple[Tile, ...]
+class Chart:
+    title: str
     tabs: tuple[Tab, ...]
     bars: tuple[Bar, ...]
     selected_value: str
     selected_caption: str
     threshold_bottom_px: int
     threshold_text: str
-    collection_status: str
-    judged_at: str
-    grid: str
-    notice_title: str
-    notice_items: tuple[NoticeItem, ...]
-    notice_disclaimer: str
 
 
 @dataclass(frozen=True, slots=True)
-class Criterion:
+class NoticeItem:
+    work: str
+    verdict: str
+    reason: str
+
+
+@dataclass(frozen=True, slots=True)
+class Notice:
+    title: str
+    items: tuple[NoticeItem, ...]
+    detail_href: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class PrimaryJudgment:
+    """대시보드에서 시간대·그래프로 자세히 보여주는 판정(기준표가 있는 첫 공종)."""
+
+    judgment_id: int
+    work_type: str
+    verdict: str
+    windows: tuple[WorkWindow, ...]
+    tiles: tuple[Tile, ...]
+    chart: Chart | None
+    failure_reason: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class DashboardView:
+    sites: tuple[SiteOption, ...]
+    site_id: int | None  # None: 등록된 현장이 없음
+    site_name: str
+    target_date: str
+    work_hours: str
+    cards: tuple[WorkCard, ...]
+    primary: PrimaryJudgment | None
+    forecast_issued: str | None
+    rule_version: str | None
+    rule_verified: bool
+    collection_status: str
+    judged_at: str | None
+    grid: str
+    notice: Notice | None
+    message: str | None
+    message_is_error: bool
+
+
+@dataclass(frozen=True, slots=True)
+class CriterionCard:
     label: str
-    code: str
     icon: str
     verdict: str
     peak_value: str
@@ -102,34 +125,40 @@ class Criterion:
     peak_time: str | None
     rule_text: str
     source: str
+    source_verified: bool
+
+
+@dataclass(frozen=True, slots=True)
+class Cell:
+    text: str
+    over: bool
 
 
 @dataclass(frozen=True, slots=True)
 class HourRow:
     time: str
-    rain: str
-    wind: str
-    snow: str
-    rain_over: bool
+    cells: tuple[Cell, ...]
     verdict: str
     calculation: str
-    peak: bool
 
 
 @dataclass(frozen=True, slots=True)
 class DetailView:
     site_name: str
     target_date: str
+    work_type: str
     work_range: str
     verdict: str
     chips: tuple[str, ...]
-    criteria: tuple[Criterion, ...]
+    criteria: tuple[CriterionCard, ...]
+    columns: tuple[str, ...]
     rows: tuple[HourRow, ...]
+    failure_reason: str | None
 
 
 @dataclass(frozen=True, slots=True)
 class HistoryRow:
-    judgment_id: int | None  # 상세 화면이 있는 판정만 값이 있다
+    judgment_id: int
     target_date: str
     site_name: str
     work: str
@@ -151,6 +180,9 @@ class FilterLink:
 class HistoryView:
     rows: tuple[HistoryRow, ...]
     filters: tuple[FilterLink, ...]
-    site_options: tuple[str, ...]
-    selected_site: str
+    site_options: tuple[SiteOption, ...]
+    selected_site_id: int | None
     selected_verdict: str
+    page: int
+    prev_href: str | None
+    next_href: str | None

@@ -52,4 +52,6 @@ python_version = "3.12"
 strict = true
 # 새 최상위 패키지(engine/ 등)가 생겨도 검사 대상에서 빠지지 않도록 루트 전체를 본다.
 files = ["."]
+# tests/에 __init__.py가 없어도 tests.fakes처럼 저장소 루트 기준 모듈 이름을 쓴다.
+explicit_package_bases = true
 exclude = ['^\.venv/', '^migrations/']

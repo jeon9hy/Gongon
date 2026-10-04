@@ -9,18 +9,20 @@
 | --- | --- | --- | --- | --- |
 | 앱 생성·라우터 연결 | `app/main.py` | `create_app()` | 있음 | S00 |
 | 전체 검증 | `scripts/check.py` | 린트·포맷·타입·테스트(CI와 동일) | 있음 | S00 |
-| 기준 원문·버전 | `rules/` | `rules/steel.yaml`(공종별 파일) | 계획 | S01 |
+| 기준 원문·버전 | `rules/` | `rules/steel.yaml`(공종별 파일, 원문 대조 전 초안) | 있음 | S01 |
 | 판정 데이터 계약 | `docs/schema.json` | JSON Schema | 계획 | S01 |
 | 위치·격자 변환 | `engine/geo/` | `latlon_to_kma_grid()` | 있음 | S02-1 |
-| 예보 수집·정규화 | `engine/forecast/` | 수집 → 원자료 + 정규화 시계열 | 계획 | S02-2 |
-| 순수 판정 | `engine/judgment/` | `judge(weather_input, rule_set) -> JudgmentResult` | 계획 | S03 |
-| 공통 기반 | `app/core/` | `config.py`(설정), `db.py`(세션), 로깅 | 계획 | S04-1 |
-| 회원·인증 | `app/features/auth/` | `router.py`, 현재 사용자 의존성 | 계획 | S04-2 |
-| 현장 등록·설정 | `app/features/sites/` | `router.py`, `service.py`(화면은 예시 데이터 `sample.py`) | 화면만 있음 | S05-0 → S04-3·S05 |
-| 판정 저장·조회·상세 | `app/features/judgments/` | `service.py`(화면은 예시 데이터 `sample.py`, 이후 engine 호출 + 저장) | 화면만 있음 | S05-0 → S04-4·S05 |
+| 예보 수집·정규화 | `engine/forecast/` | `fetch_vilage_forecast()` → 원자료, `normalize()` → 판정 입력 | 있음 | S02-2 |
+| 순수 판정 | `engine/judgment/` | `judge(weather, rule_set, work_start_at, work_end_at) -> JudgmentResult`, `load_rule_set()` | 있음 | S03 |
+| 한국 표준시 | `engine/kst.py` | `KST`(고정 +09:00, D-018) | 있음 | S01 |
+| 공통 기반 | `app/core/` | `config.py`(설정), `db.py`(세션), `rules.py`(기준표·공종 목록), `clock.py`(현재 시각), `errors.py`(DB 오류 화면) | 있음 | S04-1 |
+| 회원·인증 | `app/features/auth/` | `router.py`, 현재 사용자 의존성 | 계획(D-019로 보류) | S04-2 |
+| 현장 등록·설정 | `app/features/sites/` | `router.py`(등록·수정 폼), `service.py`(`list_sites`·`get_site` 공개) | 있음 | S04-3·S05 |
+| 예보 수집 기록 | `app/features/forecasts/` | `service.get_forecast()`(발표 시각·격자 재사용, 실패 기록) | 있음 | S02-2·S04 |
+| 판정 저장·조회·상세 | `app/features/judgments/` | `service.run_for_site()`(engine 호출 + 저장), 대시보드·상세·내역 화면 | 있음 | S04-4·S05 |
 | 알림 | `app/features/notifications/` | 메시지 생성·발송 어댑터(미리보기 어댑터만, 알림톡은 사업자 등록 후 D-015)·발송 이력 | 계획 | S06 |
 | 실행 작업 | `app/jobs/` | `daily_forecast_judgment_notify` | 계획 | S06 |
-| DB 변경 이력 | `migrations/` | Alembic 리비전 | 계획 | S04-1 |
+| DB 변경 이력 | `migrations/` | Alembic 리비전(`0001_initial`) | 있음 | S04-1 |
 | 작업 일정·변경 | `app/features/schedules/` | — | 계획(첫 확장) | S08·S09 |
 | 팀·공유·확인 | `app/features/teams/` | — | 계획(첫 확장) | S09 |
 | 실제 작업 기록 | `app/features/work_records/` | — | 계획(첫 확장) | S10 |
@@ -69,13 +71,13 @@ engine/judgment, engine/geo ──> (표준 라이브러리, 전달받은 데이
 문구·용어·색상 값은 `docs/brand.md`.
 - 공통 기반: `app/core/templating.py`(Jinja2 설정, 기능이 `register_template_dir()`로 자기 templates를 등록), `app/core/templates/base.html`(레이아웃·메뉴), `_macros.html`(아이콘·판정 배지), `app/core/static/gongon.css`(brand.md 토큰을 CSS 변수로 옮김, `/static/`).
 - 기능 화면: `app/features/<기능>/templates/<기능>/*.html`. 서버 렌더링 링크로 동작하고(탭·필터는 쿼리 문자열) JS는 쓰지 않는다. 예외로 현장 필터 `<select>`만 `onchange` 제출을 쓴다(`<noscript>` 버튼 대체).
-- 예시 데이터 단계(S05-0): 각 기능의 `sample.py`가 데이터를, `service.py`가 화면 모델(`schemas.py`)을 만든다. 화면에 "예시 데이터" 표시를 둔다. DB 연결 시 `service.py`만 바꾸고 템플릿은 유지한다.
+- `service.py`가 DB·엔진 결과로 화면 모델(`schemas.py`)을 만들고 템플릿은 표시만 한다. 쓰기(폼 제출)는 POST 후 303으로 GET 화면에 돌아간다(새로고침 중복 실행 방지). 예시 데이터 단계(S05-0)의 `sample.py`는 D-019에서 지웠다.
 
 ## 5. 테스트
 
 - 경로는 구현을 따른다: `engine/judgment/x.py` → `tests/engine/judgment/test_x.py`, `app/features/notifications/service.py` → `tests/app/features/notifications/test_service.py`.
 - 실제 네트워크·외부 계정 없이 실행한다. 외부 API는 어댑터를 가짜로 바꿔 검증한다.
-- DB 테스트는 PostgreSQL에서 실행한다(준비 방법은 S04-1에서 결정, D-005). 여러 테스트가 쓰는 준비 코드는 `tests/conftest.py`에 둔다.
+- DB 테스트는 PostgreSQL에서 실행한다(`TEST_DATABASE_URL`, D-020). `tests/conftest.py`가 마이그레이션 적용·테스트마다 테이블 비우기·현재 시각 고정·외부 API 가짜(`tests/fakes.py`)를 맡는다.
 
 ## 6. 데이터 무결성·최적화 설계 (구현 작업에서 적용)
 

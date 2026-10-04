@@ -147,7 +147,7 @@ td.is-over { font-weight: 800; color: var(--stop-text); }
 .filters__group a[aria-current="true"] { background: var(--ink); color: var(--accent); }
 .filters label, .field { display: flex; flex-direction: column; gap: 8px; font-size: 14px; font-weight: 600; }
 .filters label { flex-direction: row; align-items: center; font-size: 13px; color: var(--verdict-unknown-fg); }
-select, input[type="text"], input[type="tel"] { min-height: 44px; border: 0; background: var(--surface); padding: 0 14px; font-size: 14px; font-weight: 600; }
+select, input[type="text"], input[type="tel"], input[type="time"] { min-height: 44px; border: 0; background: var(--surface); padding: 0 14px; font-size: 14px; font-weight: 600; }
 select { border-radius: 999px; }
 .empty { padding: 28px 16px; text-align: center; font-size: 14px; color: var(--muted); }
 .row-note { display: block; margin-top: 6px; font-size: 12px; color: var(--muted); }
@@ -159,6 +159,12 @@ select { border-radius: 999px; }
 .site-item strong { font-size: 16px; }
 .site-item span { font-size: 13px; color: var(--muted); }
 .site-add { min-height: 56px; border: 2px dashed #C9CDD3; border-radius: 22px; background: transparent; font-size: 14px; font-weight: 700; color: var(--verdict-unknown-fg); display: flex; align-items: center; justify-content: center; gap: 8px; }
+.site-add { text-decoration: none; }
+.site-add[aria-current="true"] { border-color: var(--ink); color: var(--ink); }
+.alert { border-radius: 16px; padding: 12px 16px; font-size: 14px; display: flex; flex-direction: column; gap: 6px; }
+.alert ul { margin: 0; padding-left: 18px; }
+.alert--ok { background: var(--verdict-go-bg); color: var(--verdict-go-fg); flex-direction: row; align-items: center; gap: 8px; }
+.alert--error { background: var(--verdict-check-bg); color: var(--verdict-check-fg); }
 .form { flex: 999 1 520px; min-width: 0; background: var(--card); border-radius: 28px; padding: 28px; display: flex; flex-direction: column; gap: 28px; }
 fieldset { border: 0; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 legend { padding: 0; margin-bottom: 14px; font-size: 18px; font-weight: 700; }
