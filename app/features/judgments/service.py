@@ -513,7 +513,8 @@ def _deciding_element(hours: list[dict[str, Any]], elements: list[Element]) -> E
 
 
 def href_for(site_id: int, key: ElementKey, hour: int) -> str:
-    return dashboard_href(site_id, element=key, hour=hour)
+    # #chart: 스크립트 없이 새로 불러와도 그래프 위치로 이동한다(스크립트가 있으면 카드만 교체).
+    return dashboard_href(site_id, element=key, hour=hour) + "#chart"
 
 
 def _entry(hour_json: dict[str, Any], element: Element) -> dict[str, Any] | None:

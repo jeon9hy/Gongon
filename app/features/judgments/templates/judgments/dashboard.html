@@ -100,7 +100,7 @@
 
 {% set chart = p.chart %}
 {% if chart %}
-<article class="card" style="gap: 18px;">
+<article class="card" id="chart" style="gap: 18px; scroll-margin-top: 20px;">
 <div class="row">
 <div>
 <h2 class="h2">{{ chart.title }}</h2>
@@ -186,4 +186,27 @@
 </aside>
 </div>
 {% endif %}
+<script>
+// 그래프의 탭·막대는 페이지를 다시 그리지 않고 그래프 카드만 바꾼다(스크롤 위치 유지).
+// 실패하면 일반 이동으로 돌아간다. 응답은 같은 서버가 렌더링한 이 페이지다.
+document.addEventListener("click", async (e) => {
+  const link = e.target.closest("#chart a[href^='/dashboard']");
+  if (!link || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  e.preventDefault();
+  try {
+    const response = await fetch(link.href);
+    if (!response.ok) throw new Error(String(response.status));
+    const doc = new DOMParser().parseFromString(await response.text(), "text/html");
+    const fresh = doc.getElementById("chart");
+    const current = document.getElementById("chart");
+    if (!fresh || !current) throw new Error("chart not found");
+    current.replaceWith(fresh);
+    history.replaceState(null, "", link.href);
+    const same = [...fresh.querySelectorAll("a")].find((a) => a.href === link.href);
+    if (same) same.focus({ preventScroll: true });
+  } catch {
+    location.href = link.href;
+  }
+});
+</script>
 {% endblock %}
