@@ -65,6 +65,7 @@ def build_dashboard(element: Element, selected_hour: int) -> DashboardView:
         work_hours=sample.WORK_HOURS,
         forecast_issued=sample.FORECAST_ISSUED,
         rule_version=sample.RULE_VERSION,
+        work_verdicts=sample.WORK_VERDICTS,
         windows=sample.WINDOWS,
         tiles=sample.TILES,
         tabs=tabs,
@@ -78,7 +79,9 @@ def build_dashboard(element: Element, selected_hour: int) -> DashboardView:
         collection_status="성공 · 10/4 14:12",
         judged_at="10/4 14:13",
         grid=_sample_grid_text(),
-        notice_lines=sample.NOTICE_LINES,
+        notice_title=sample.NOTICE_TITLE,
+        notice_items=sample.NOTICE_ITEMS,
+        notice_disclaimer=sample.NOTICE_DISCLAIMER,
     )
 
 

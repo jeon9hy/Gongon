@@ -120,6 +120,8 @@ button.rail__btn { border: 0; cursor: not-allowed; opacity: 0.55; }
 .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: var(--verdict-unknown-fg); }
 .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 4px; margin-right: 6px; vertical-align: -1px; }
 .message { background: var(--surface); border-radius: 20px 20px 20px 6px; padding: 16px; font-size: 14px; line-height: 1.6; }
+.verdict-text--stop { color: var(--stop-text); }
+.verdict-text--check { color: var(--verdict-check-fg); }
 .facts { display: grid; grid-template-columns: auto 1fr; gap: 10px 16px; font-size: 14px; }
 .facts dd { font-weight: 600; text-align: right; }
 .facts dt { color: var(--muted); }
@@ -170,6 +172,7 @@ input::placeholder { color: #6B727C; }
 .toggle-chip input, .switch input { position: absolute; opacity: 0; width: 100%; height: 100%; inset: 0; margin: 0; cursor: pointer; }
 .toggle-chip span { min-height: 44px; display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; padding: 0 18px; font-size: 14px; font-weight: 700; background: var(--surface); color: var(--verdict-unknown-fg); }
 .toggle-chip input:checked + span { background: var(--ink); color: var(--accent); }
+.toggle-chip__note { font-size: 11px; font-weight: 600; opacity: 0.8; }
 .toggle-chip input:focus-visible + span, .switch input:focus-visible + span { outline: 3px solid var(--ink); outline-offset: 2px; }
 .setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--surface); border-radius: 18px; padding: 14px 16px; }
 .setting strong { display: block; font-size: 15px; }

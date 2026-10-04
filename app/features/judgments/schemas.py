@@ -26,6 +26,24 @@ class WorkWindow:
 
 
 @dataclass(frozen=True, slots=True)
+class WorkVerdict:
+    """공종 하나의 내일 판정 요약. 기준이 없는 공종은 '확인 필요'까지만 낸다."""
+
+    work_type: str
+    time_range: str
+    verdict: str
+    reason: str
+    detail_href: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class NoticeItem:
+    work: str
+    verdict: str
+    reason: str
+
+
+@dataclass(frozen=True, slots=True)
 class Tile:
     verdict: str
     hours: int
@@ -56,6 +74,7 @@ class DashboardView:
     work_hours: str
     forecast_issued: str
     rule_version: str
+    work_verdicts: tuple[WorkVerdict, ...]
     windows: tuple[WorkWindow, ...]
     tiles: tuple[Tile, ...]
     tabs: tuple[Tab, ...]
@@ -67,7 +86,9 @@ class DashboardView:
     collection_status: str
     judged_at: str
     grid: str
-    notice_lines: tuple[str, ...]
+    notice_title: str
+    notice_items: tuple[NoticeItem, ...]
+    notice_disclaimer: str
 
 
 @dataclass(frozen=True, slots=True)

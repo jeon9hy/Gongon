@@ -1,6 +1,8 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from app.features.judgments.service import build_dashboard
+from app.features.sites.service import build_sites_view
 from app.main import create_app
 
 client = TestClient(create_app())
@@ -20,6 +22,18 @@ def test_dashboard_does_not_show_undefined_index_or_sent_wording() -> None:
 
     assert "공온지수" not in html  # 정의 전 표시 금지(D-010)
     assert "발송됨" not in html  # 실제 발송으로 읽히는 문구 금지(D-015)
+
+
+def test_work_types_without_criteria_never_get_go_or_stop() -> None:
+    # 근거 없는 조건은 '확인 필요'까지만 낸다. '진행'도 근거 없이 내면 안전하다고 읽힌다.
+    site_view = build_sites_view(1)
+    assert site_view is not None
+    unconfirmed = set(site_view.unconfirmed_labels)
+    verdicts = build_dashboard("rain", 15).work_verdicts
+
+    checked = [v for v in verdicts if v.work_type in unconfirmed]
+    assert checked  # 예시에 기준 미확인 공종이 하나 이상 있어야 이 검사가 의미 있다
+    assert all(v.verdict == "확인 필요" for v in checked)
 
 
 def test_dashboard_selected_hour_and_element_change_the_value() -> None:
@@ -76,6 +90,14 @@ def test_sites_page_shows_grid_from_engine_and_unwired_save() -> None:
 
     assert "(60, 127)" in html
     assert "저장은 아직 연결되지 않았습니다" in html
+
+
+def test_sites_page_checks_only_the_selected_sites_work_types() -> None:
+    view = build_sites_view(2)
+
+    assert view is not None
+    assert {o.label for o in view.work_type_options if o.checked} == {"철골 작업", "이동식 크레인"}
+    assert "기준 미확인" in client.get("/sites", params={"site_id": 2}).text
 
 
 def test_sites_unknown_site_returns_404() -> None:

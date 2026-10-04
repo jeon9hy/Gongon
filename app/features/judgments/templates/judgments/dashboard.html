@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, verdict_badge %}
+{% from "_macros.html" import icon, verdict_badge, verdict_class %}
 {% block title %}내일 공사 ON?{% endblock %}
 {% block content %}
 
@@ -16,7 +16,7 @@
 <section class="row">
 <div>
 <h1 class="title">내일 공사 ON?</h1>
-<p class="subtitle">{{ view.target_date }} · {{ view.site_name }} · 철골 작업 {{ view.work_hours }}</p>
+<p class="subtitle">{{ view.target_date }} · {{ view.site_name }} · 작업 {{ view.work_hours }} · 공종 {{ view.work_verdicts | length }}개</p>
 </div>
 <div class="chips">
 <span class="chip">예보 발표 {{ view.forecast_issued }}</span>
@@ -26,6 +26,21 @@
 
 <div class="split">
 <div class="stack split__main">
+
+<article class="card">
+<div>
+<h2 class="h2">공종별 판정</h2>
+<p class="small muted" style="margin-top: 4px;">현장에 등록한 공종마다 가장 높은 단계를 보여줍니다</p>
+</div>
+<div class="windows">
+{% for w in view.work_verdicts %}
+<div class="window{% if w.verdict == '중지 검토' %} window--stop{% endif %}">
+<div class="window__head"><span>{{ w.work_type }} <span class="small muted">{{ w.time_range }}</span></span>{{ verdict_badge(w.verdict) }}</div>
+<span class="window__reason">{{ w.reason }}{% if w.detail_href %} · <a href="{{ w.detail_href }}" style="font-weight: 700;">상세 근거</a>{% endif %}</span>
+</div>
+{% endfor %}
+</div>
+</article>
 
 <div class="split">
 <article class="card" style="flex: 1 1 300px; min-width: 0;">
@@ -104,9 +119,11 @@
 <span class="badge badge--go" style="font-size: 12px; padding: 5px 10px;">미리보기</span>
 </div>
 <div class="message">
-<strong>{{ view.notice_lines[0] }}</strong><br>
-{{ view.notice_lines[1] }} <strong style="color: var(--stop-text);">중지 검토</strong> {{ view.notice_lines[2] }}<br>
-<span class="muted">{{ view.notice_lines[3] }}</span><br>
+<strong>{{ view.notice_title }}</strong><br>
+{% for item in view.notice_items %}
+{{ item.work }} <strong class="verdict-text verdict-text--{{ verdict_class[item.verdict] }}">{{ item.verdict }}</strong> ({{ item.reason }})<br>
+{% endfor %}
+<span class="muted">{{ view.notice_disclaimer }}</span><br>
 <a href="/judgments/1" style="font-weight: 700;">상세 근거 보기 ›</a>
 </div>
 <p class="small muted">카카오톡 발송은 사업자 등록 후 제공 · 지금은 웹에서 확인</p>

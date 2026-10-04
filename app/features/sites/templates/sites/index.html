@@ -47,12 +47,14 @@
 <fieldset>
 <legend>주요 공종</legend>
 <div class="chips">
+{% for w in view.work_type_options %}
 <label class="toggle-chip">
-<input type="checkbox"{% if site.steel_enabled %} checked{% endif %}>
-<span>{{ icon("check", 16, 2.4) }} 철골 작업</span>
+<input type="checkbox"{% if w.checked %} checked{% endif %}>
+<span>{{ icon("check", 16, 2.4) }} {{ w.label }}{% if w.basis == "기준 미확인" %} <small class="toggle-chip__note">기준 미확인</small>{% endif %}</span>
 </label>
+{% endfor %}
 </div>
-<p class="small muted">첫 출시에서는 철골 작업만 판정합니다.</p>
+<p class="small muted">기준값은 모두 <span class="todo">원문 대조 필요</span> 상태입니다. {{ view.unconfirmed_labels | join(", ") }}은 판정 기준이 정해지기 전까지 ‘확인 필요’로만 표시합니다.</p>
 </fieldset>
 
 <fieldset>

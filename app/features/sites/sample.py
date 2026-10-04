@@ -1,8 +1,21 @@
 """화면 확인용 예시 현장. 실제 현장이 아니며 S04-3에서 DB 조회로 바꾼다."""
 
-from app.features.sites.schemas import SiteSetting
+from app.features.sites.schemas import SiteSetting, WorkType
+
+# 총정리 §1 공종별 기준 표와 §3 4단계 "공종 추가" 목록. 기준값은 S01 이후 기준표(YAML)에서 읽는다.
+WORK_TYPES = (
+    WorkType("철골 작업", "원문 대조 필요"),
+    WorkType("타워크레인 운전", "원문 대조 필요"),
+    WorkType("콘크리트 타설", "원문 대조 필요"),
+    WorkType("이동식 크레인", "기준 미확인"),
+    WorkType("고소작업대", "기준 미확인"),
+    WorkType("도장·방수", "기준 미확인"),
+    WorkType("아스팔트 포장", "기준 미확인"),
+)
 
 SITES = (
-    SiteSetting(1, "○○현장", "서울특별시 ○○구 ○○로 00", 37.5665, 126.9780, True, "07:00", "17:00", True, ""),
-    SiteSetting(2, "△△현장", "부산광역시 △△구 △△로 00", 35.1796, 129.0756, True, "08:00", "18:00", False, ""),
+    SiteSetting(1, "○○현장", "서울특별시 ○○구 ○○로 00", 37.5665, 126.9780,
+                ("철골 작업", "타워크레인 운전", "콘크리트 타설", "고소작업대"), "07:00", "17:00", True, ""),
+    SiteSetting(2, "△△현장", "부산광역시 △△구 △△로 00", 35.1796, 129.0756,
+                ("철골 작업", "이동식 크레인"), "08:00", "18:00", False, ""),
 )  # fmt: skip
