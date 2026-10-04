@@ -1,12 +1,12 @@
 # 현재 작업 인계
 
-- 저장소: `C:\Users\sim39\OneDrive\바탕 화면\새 폴더` (OneDrive 동기화 폴더, D-001) · 원격: GitHub `jeon9hy/gongon`(비공개)
+- 저장소: `%USERPROFILE%\OneDrive\바탕 화면\새 폴더` (OneDrive 동기화 폴더, D-001) · 원격: GitHub `jeon9hy/gongon`(비공개. 공개 전환은 보류 — 아래 막힌 조건)
 - 현재 작업 ID / 상태: S00 / review
 - 마지막 수정 도구: Claude Code
 - 브랜치: `feature/S00-repo-setup` (`main`은 아직 커밋 없음. S00 done 후 반영)
 - 기준 코드 커밋: `a0bc0f7` (WIP S00). 이후 커밋은 `git log a0bc0f7..` 로 확인
 - 완료한 부분: git 저장소·uv 환경·잠금(`uv.lock`), ruff/mypy/pytest 설정, CI 워크플로, 최소 앱(`app/main.py` `/healthz`), import 경계 테스트, 공통 지침(`AGENTS.md`, `CLAUDE.md`), `docs/` 6종. 요구사항 기준을 총정리 하나로 정리(D-009). 서비스 이름 공온·브랜드 규칙(`docs/brand.md`, D-010)
-- 남은 부분: ① Codex가 `AGENTS.md`를 읽는지 확인 ② GitHub Actions 실행 결과 확인 (상세: `docs/plan.md` S00)
+- 남은 부분: Codex가 `AGENTS.md`를 읽는지 확인 (상세: `docs/plan.md` S00)
 - 변경 파일과 목적:
   - `AGENTS.md` 공통 규칙·네 가지 설계 원칙 / `CLAUDE.md` `@AGENTS.md` 가져오기
   - `pyproject.toml`(이름 `gongon`), `uv.lock`, `.python-version` 환경·의존성·도구 설정
@@ -23,7 +23,7 @@
   - `uvicorn app.main:app` 기동 후 `/healthz` → `{"status":"ok"}`
   - Claude Code: `claude -p` 질의로 `AGENTS.md` 규칙 로드 확인
   - Codex: **미확인** — `~/.codex/config.toml`의 `model = "gpt-6.1-sol"`이 ChatGPT 계정에서 미지원(400)
-  - GitHub Actions: push 후 결과 확인 필요 (`gh run list --branch feature/S00-repo-setup`)
+  - GitHub Actions: 통과 (run 37171195262, 커밋 `78291f9`). 이후 push 결과는 `gh run list --branch feature/S00-repo-setup`로 확인
 - 결정 사항: D-001~D-010 (`docs/decisions.md`)
-- 다음 행동: GitHub Actions 결과 확인 → 개발자가 Codex 모델 설정을 고친 뒤 저장소에서 `codex exec --sandbox read-only "파일을 읽거나 명령을 실행하지 말고, 로드된 프로젝트 지침만으로 작업 브랜치 이름 형식과 engine/judgment의 금지 import를 답해"` 실행 → 둘 다 확인되면 S00 done·`main` 반영, 이어서 `feature/S01-steel-rules`에서 S01 시작
-- 막힌 조건: Codex 모델 설정(개발자). S01의 원문 대조도 개발자 확인 필요. `공온지수`는 개발자 결정 전 구현 금지(D-010)
+- 다음 행동: 개발자가 Codex 모델 설정을 고친 뒤 저장소에서 `codex exec --sandbox read-only "파일을 읽거나 명령을 실행하지 말고, 로드된 프로젝트 지침만으로 작업 브랜치 이름 형식과 engine/judgment의 금지 import를 답해"` 실행 → 확인되면 S00 done·`main` 반영, 이어서 `feature/S01-steel-rules`에서 S01 시작
+- 막힌 조건: Codex 모델 설정(개발자). 저장소 공개 전환(개발자 결정): 기존 커밋 3개의 작성자 메타데이터에 개인 이메일이 있음. 공개 전에 이력 재작성 또는 새 저장소로 옮기는 방법을 개발자가 정해야 함(이력 재작성은 자동 실행 권한에서 거부됨). S01의 원문 대조도 개발자 확인 필요. `공온지수`는 개발자 결정 전 구현 금지(D-010)

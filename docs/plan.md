@@ -11,7 +11,7 @@
 
 | ID | 선행 | 상태 | 브랜치 | 비고 |
 | --- | --- | --- | --- | --- |
-| S00 | 없음 | review | `feature/S00-repo-setup` | Codex 지침 로드 확인·원격 CI 실행 남음 |
+| S00 | 없음 | review | `feature/S00-repo-setup` | Codex 지침 로드 확인 남음 |
 | S01 | S00 | todo | — | 철골 기준 원문 대조는 개발자 확인 필요 |
 | S02 | S01 | todo | — | 실제 호출은 `KMA_SERVICE_KEY` 필요 |
 | S03 | S01, S02 | todo | — | |
@@ -34,8 +34,8 @@
   - [x] 기능 위치·경계 문서화: `docs/architecture.md`, 경계 테스트 `tests/test_import_boundaries.py`(임시 위반 파일로 실패하는 것 확인 후 삭제)
   - [x] Claude Code가 `CLAUDE.md → @AGENTS.md` 규칙을 읽음: `claude -p`로 지침 내용 질의, 브랜치 형식·judgment 금지 import를 정확히 답함
   - [ ] Codex가 `AGENTS.md`를 읽음: **미확인**. `codex exec` 실행이 사용자 설정 모델(`~/.codex/config.toml`의 `model = "gpt-6.1-sol"`)을 ChatGPT 계정이 지원하지 않아 400 오류로 종료. 해결: 개발자가 Codex 모델 설정을 계정에서 지원되는 모델로 바꾼 뒤 아래 확인 질의를 다시 실행
-  - [ ] CI 실제 실행: **미실행**. 원격 저장소 없음. 해결: GitHub 원격 생성·push 후 Actions 결과 확인
-- done 전환 조건: 위 두 항목 확인 → `main`에 반영.
+  - [x] CI 실제 실행: GitHub Actions 통과 (`jeon9hy/gongon`, run 37171195262, 2026-10-04)
+- done 전환 조건: Codex 항목 확인 → `main`에 반영.
 
 ### S01 철골 기준 원문 대조·기준표·판정 계약
 - 선행: S00
