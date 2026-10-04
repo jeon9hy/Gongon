@@ -54,7 +54,7 @@ def test_rain_at_threshold_in_afternoon_gives_stop_review_window(
     assert "판정했습니다" in page
     assert "14:00–16:00" in page
     assert "15:00 강우 예보" in page  # 그래프는 판정을 정한 요소·최댓값 시각으로 연다
-    # 그래프 탭·막대는 카드만 바꾸는 스크립트 대상(#chart)이고, 스크립트는 <title>이 아닌 본문에 있다.
+    # 그래프 탭·막대는 카드만 바꾸는 스크립트 대상(#chart). 스크립트는 <title> 밖 본문에 있다.
     assert 'id="chart"' in page and '#chart"' in page
     assert "<script" not in page[page.index("<title>") : page.index("</title>")]
     assert "강우 최대 2.0 mm/h (15:00)" in page
