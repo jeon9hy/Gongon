@@ -1,13 +1,14 @@
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session
 
+from app.core.config import Settings, get_settings
 from app.core.db import get_session
 from app.core.templating import register_template_dir, templates
-from app.features.sites import service
+from app.features.sites import places, service
 from app.features.sites.schemas import SiteForm, SitesView
 
 register_template_dir(Path(__file__).parent / "templates")
@@ -58,6 +59,28 @@ def sites(
     if view is None:
         raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
     return _render(request, view)
+
+
+@router.get("/sites/places")
+def search_places(
+    settings: Annotated[Settings, Depends(get_settings)],
+    http_get: Annotated[places.HttpGetWithHeaders, Depends(places.get_place_http_get)],
+    q: Annotated[str, Query(max_length=places.QUERY_MAX)] = "",
+) -> JSONResponse:
+    """현장 이름으로 장소 후보(주소·위경도)를 준다. 실패해도 직접 입력하도록 사유만 돌려준다."""
+    query = q.strip()
+    if len(query) < places.QUERY_MIN:
+        return JSONResponse({"places": [], "message": None})
+    try:
+        found = places.search_places(query, settings.kakao_rest_api_key, http_get)
+    except places.PlaceSearchError as error:
+        places.logger.warning("장소 검색 실패 q=%r: %s", query, error)
+        return JSONResponse({"places": [], "message": f"장소 검색 실패 · {error}"})
+    message = None if found else _NO_PLACE_MESSAGE
+    return JSONResponse({"places": [p.to_json() for p in found], "message": message})
+
+
+_NO_PLACE_MESSAGE = "검색 결과가 없습니다. 다른 이름으로 찾거나 위도·경도를 직접 입력하세요."
 
 
 @router.post("/sites")

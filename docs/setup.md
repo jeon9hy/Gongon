@@ -48,6 +48,14 @@ cp .env.example .env      # 실제 값은 .env에만(커밋 금지)
    `판정 불가 · 공공데이터포털 HTTP 403: ...SERVICE_KEY_IS_NOT_REGISTERED_ERROR`가 나올 수 있다. 1~2시간 뒤 다시 누른다.
 - 하루 호출 한도는 활용신청 화면에 표시된다(개발 계정). 같은 발표 시각·격자는 한 번만 호출하고 재사용한다.
 
+## 현장 위치 찾기 키 (선택, 카카오)
+없어도 앱은 동작한다(위도·경도 직접 입력). 있으면 현장 이름을 2글자 이상 칠 때 장소 후보가 뜨고, 고르면 주소·위도·경도가 채워진다(D-022).
+1. https://developers.kakao.com 카카오 계정으로 로그인 → **내 애플리케이션 → 애플리케이션 추가하기** (앱 이름 예: 공온)
+2. 만든 앱 → **앱 키**에서 **REST API 키** 복사
+3. 앱 설정에 **카카오맵(지도·로컬) 사용 설정**이 있으면 **켠다**. 꺼져 있으면 검색 시 `카카오 HTTP 403 ... disabled OPEN_MAP_AND_LOCAL service` 같은 사유가 화면에 나온다 `[확인 필요: 실제 메뉴 이름]`
+4. `.env`에 `KAKAO_REST_API_KEY=<복사한 키>` → **공온 실행을 다시 시작**(설정은 시작할 때 읽는다)
+- 키는 서버에만 있고 브라우저에는 검색 결과만 간다. 무료 사용량은 Kakao Developers 앱 화면에서 확인한다.
+
 ## 검증
 ```bash
 uv run python scripts/check.py         # 커밋 전 전체 검증: ruff check · ruff format --check · mypy · pytest (CI와 동일)
@@ -87,7 +95,8 @@ uv run python -m uvicorn app.main:app --reload
 | `DATABASE_URL` | 앱·마이그레이션 | S04 | 개발자 PC에 PostgreSQL 설치 후 설정 |
 | `KMA_SERVICE_KEY` | 예보 수집(공공데이터포털) | S02-2 | 설정됨, 실제 호출 확인(2026-10-04) |
 | `KMA_APIHUB_KEY` | 예보 수집(API허브, 있으면 우선) | S02-2 | 비워 둠 — API허브는 구역 조회만 승인돼 단기예보 호출 불가 |
-| `TEST_DATABASE_URL` | DB 테스트(선택) | S04 | CI에서는 워크플로가 설정 |
+| `TEST_DATABASE_URL` | DB 테스트(선택) | S04 | 개발자 PC 설정됨. CI에서는 워크플로가 설정 |
+| `KAKAO_REST_API_KEY` | 현장 위치 찾기(선택) | S05 | 미발급 — 위 "현장 위치 찾기 키" |
 
 ## DB 적용 절차
 ```bash

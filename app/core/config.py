@@ -16,6 +16,7 @@ class Settings:
     database_url: str
     kma_service_key: str  # 공공데이터포털 일반 인증키(Decoding)
     kma_apihub_key: str = ""  # 기상청 API허브 authKey. 있으면 이쪽을 쓴다
+    kakao_rest_api_key: str = ""  # 현장 위치 찾기(카카오 로컬 API). 없으면 위경도 직접 입력
 
     def kma_auth(self) -> KmaAuth:
         if self.kma_apihub_key:
@@ -55,4 +56,5 @@ def get_settings() -> Settings:
         database_url=sqlalchemy_url(value("DATABASE_URL")),
         kma_service_key=value("KMA_SERVICE_KEY"),
         kma_apihub_key=value("KMA_APIHUB_KEY"),
+        kakao_rest_api_key=value("KAKAO_REST_API_KEY"),
     )
