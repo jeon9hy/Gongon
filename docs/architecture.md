@@ -18,7 +18,7 @@
 | 회원·인증 | `app/features/auth/` | `router.py`, 현재 사용자 의존성 | 계획 | S04-2 |
 | 현장 등록·설정 | `app/features/sites/` | `router.py`, `service.py` | 계획 | S04-3·S05 |
 | 판정 저장·조회·상세 | `app/features/judgments/` | `service.py`(engine 호출 + 저장) | 계획 | S04-4·S05 |
-| 알림 | `app/features/notifications/` | 메시지 생성·발송 어댑터·발송 이력 | 계획 | S06 |
+| 알림 | `app/features/notifications/` | 메시지 생성·발송 어댑터(미리보기 어댑터만, 알림톡은 사업자 등록 후 D-015)·발송 이력 | 계획 | S06 |
 | 실행 작업 | `app/jobs/` | `daily_forecast_judgment_notify` | 계획 | S06 |
 | DB 변경 이력 | `migrations/` | Alembic 리비전 | 계획 | S04-1 |
 | 작업 일정·변경 | `app/features/schedules/` | — | 계획(첫 확장) | S08·S09 |

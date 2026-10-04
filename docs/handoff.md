@@ -10,6 +10,7 @@
   - `AGENTS.md`: 문서 지도·작업 속도 원칙·테스트 원칙·완료 점검 목록 추가
   - `docs/architecture.md`: 코드 작성 규칙, 성능 측정 방법 / `docs/plan.md`: 작업별 총정리 참고 §, S02·S04 하위 작업, 막혔을 때 할 수 있는 작업
   - `.claude/settings.json`: 읽기 전용 git·검증 명령 허용 목록(Claude Code 전용)
+  - 비상용 학부 프로젝트로 범위 확정(D-014): 개발은 로컬 PostgreSQL, 시연 배포는 Supabase. 알림톡은 구조만, 실제 발송은 사업자 등록 후(D-015) — plan S04·S06·S07·외부 확인 항목, architecture, brand, `.env.example` 반영
 - 남은 부분: Codex가 `AGENTS.md`를 읽는지 확인
 - 미커밋 변경: 없음(커밋 후 `git status`로 확인)
 - 검증(2026-10-04, 로컬 Windows):
@@ -17,6 +18,6 @@
   - 새 경계 규칙 3개: 임시 위반 파일로 각각 실패 확인, 위반 시 `check.py` 종료 코드 1 확인, 임시 파일 삭제
   - GitHub Actions: 이전 커밋 `78291f9`에서 통과(run 37171195262). 이번 push 결과는 `gh run list --branch feature/S00-repo-setup`
   - Codex: **미확인** — `~/.codex/config.toml`의 `model = "gpt-6.1-sol"`이 ChatGPT 계정에서 미지원(400)
-- 결정 사항: D-001~D-013 (`docs/decisions.md`)
+- 결정 사항: D-001~D-015 (`docs/decisions.md`)
 - 다음 행동: 개발자가 Codex 모델 설정을 고친 뒤 `codex exec --sandbox read-only "파일을 읽거나 명령을 실행하지 말고, 로드된 프로젝트 지침만으로 작업 브랜치 이름 형식과 커밋 전 검증 명령을 답해"` 실행 → 확인되면 S00 done·`main` 반영 → `feature/S01-steel-rules`에서 S01 시작(원문 대조 대기 중에는 S02-1 병행 가능)
 - 막힌 조건: Codex 모델 설정(개발자). S01 원문 대조(개발자). 저장소 공개 전환(커밋 작성자 이메일 처리 방법 개발자 결정). `공온지수`는 결정 전 구현 금지(D-010)
