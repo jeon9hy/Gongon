@@ -1,7 +1,7 @@
 [project]
-name = "site-weather-ops"
+name = "gongon"
 version = "0.1.0"
-description = "기상 영향 기반 현장 작업 운영 서비스 (규칙 기반 공종별 판정 + 현장 알림)"
+description = "공온: 기상 영향 기반 현장 작업 운영 서비스 (규칙 기반 공종별 판정 + 현장 알림)"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "fastapi>=0.142.2",

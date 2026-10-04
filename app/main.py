@@ -4,7 +4,7 @@ from fastapi import FastAPI
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="site-weather-ops")
+    app = FastAPI(title="gongon")
 
     # 프로세스 생존 확인용(liveness). DB·외부 API 상태는 확인하지 않는다.
     @app.get("/healthz", include_in_schema=False)
