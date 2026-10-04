@@ -1,0 +1,30 @@
+# 철골 작업 판정 기준. 출처: 서비스_개발_총정리.md §1 표, §4.3 형식.
+# 원문 대조 전이다(source_verified: false). 값·"이상/초과"·시행일은 개발자가 법령 원문으로 확인한 뒤
+# source_verified를 true로 바꾸고 quote에 원문을 넣는다. 그 전까지 화면에 "원문 대조 필요"를 표시한다.
+work_type: steel
+work_type_label: 철골 작업
+rule_version: "2025-07-17 시행"
+source: 산업안전보건기준에 관한 규칙 제383조
+source_verified: false
+conditions:
+  - id: steel_wind
+    element: wind_speed_mps
+    operator: ">="          # 총정리 표기 "이상"
+    threshold: 10.0
+    verdict: 중지 검토
+    forecast_comparable: true
+    quote: null
+  - id: steel_rain
+    element: precipitation_mm_per_h
+    operator: ">="
+    threshold: 1.0
+    verdict: 중지 검토
+    forecast_comparable: true
+    quote: null
+  - id: steel_snow
+    element: snowfall_cm_per_h
+    operator: ">="
+    threshold: 1.0
+    verdict: 중지 검토
+    forecast_comparable: true
+    quote: null
