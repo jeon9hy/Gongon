@@ -8,10 +8,10 @@
   - 기준 미확인 공종(크레인·고소작업대 등)은 판정하지 않고 `확인 필요`로만 표시(D-017)
   - 예시 데이터 `sample.py`는 삭제. 로그인·알림 발송은 보류(D-019)
 - 개발자가 할 일 (막힌 조건)
-  1. PostgreSQL 17 설치·DB 생성·`.env` 설정 → `docs/setup.md` "DB 준비"
-  2. 기상청 API허브에서 **예특보 > 단기예보 조회서비스** 활용신청 (키는 `.env`의 `KMA_APIHUB_KEY`에 넣어 둠, D-021). 신청 전에는 `판정 불가 · ...활용신청이 필요한 API`로 기록됨
+  1. **PostgreSQL 17 설치·DB 생성·`.env`의 `DATABASE_URL` 설정** → `docs/setup.md` "DB 준비". 이게 없어서 `start.bat`이 마이그레이션 단계에서 멈추고 웹앱이 안 열림(2026-10-04 확인)
+  2. (완료) 기상청 키: 공공데이터포털 `KMA_SERVICE_KEY`로 실제 호출 성공, `.env`에 설정됨(D-021)
   3. 제383조 원문 대조 → `rules/steel.yaml`의 `quote`·`source_verified`
-- 다음 작업 후보: 활용신청 후 실제 응답 대조(S02-2) · `docs/schema.json`(S01) · 쿼리 수 측정 도구(S04-1) · S06 매일 17시 실행·알림 미리보기 저장 · S04-2 로그인
+- 다음 작업 후보: `docs/schema.json`(S01) · 쿼리 수 측정 도구(S04-1) · S06 매일 17시 실행·알림 미리보기 저장 · S04-2 로그인
 - 메모
   - 한글 경로: `uv run python -m pytest|alembic|uvicorn`으로 실행(`.exe` trampoline 실패). `alembic.ini`는 ASCII만
   - Git Bash `curl`은 한글 폼 값을 cp949로 보내 422가 난다. 화면 확인은 브라우저나 Python으로

@@ -9,6 +9,7 @@ import json
 import urllib.error
 from datetime import datetime
 from email.message import Message
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -189,3 +190,25 @@ def test_http_error_keeps_kma_reason_from_body() -> None:
     reason = "기상청 API허브 HTTP 403: .*활용신청이 필요한 API"
     with pytest.raises(ForecastFetchError, match=reason):
         fetch_vilage_forecast(KmaAuth(API_HUB, "hub-key"), BASE_AT, 60, 127, forbidden)
+
+
+def test_real_response_values_are_all_understood() -> None:
+    # 2026-10-04 17시 발표, 격자 (60, 127) 실제 응답에서 값 형식이 서로 다른 항목만 골라 저장했다.
+    path = Path(__file__).parent / "data" / "kma_vilage_fcst_20261004_1700_60_127.json"
+    items = json.loads(path.read_text(encoding="utf-8"))
+
+    weather = normalize(BASE_AT, items)
+    values = {h.valid_at: h.values for h in weather.hours}
+
+    at = datetime(2026, 10, 4, 22, tzinfo=KST)
+    assert values[at][Element.PRECIPITATION_MM_PER_H] == ForecastValue(5.0, 5.0, True, "5.0mm")
+    at = datetime(2026, 10, 4, 21, tzinfo=KST)
+    assert values[at][Element.PRECIPITATION_MM_PER_H] == ForecastValue(0.0, 1.0, False, "1mm 미만")
+    at = datetime(2026, 10, 7, 1, tzinfo=KST)
+    assert values[at] == {
+        Element.PRECIPITATION_MM_PER_H: ForecastValue(0.0, 0.0, True, "0"),
+        Element.SNOWFALL_CM_PER_H: ForecastValue(0.0, 0.0, True, "0"),
+    }
+    # 판정에 쓰는 요소(PCP·SNO·WSD)는 하나도 버려지지 않는다(TMP는 쓰지 않음).
+    used = sum(1 for i in items if i["category"] in ("PCP", "SNO", "WSD"))
+    assert sum(len(v) for v in values.values()) == used

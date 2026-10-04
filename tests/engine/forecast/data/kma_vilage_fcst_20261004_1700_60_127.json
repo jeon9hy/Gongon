@@ -1,0 +1,92 @@
+[
+ {
+  "baseDate": "20261004",
+  "baseTime": "1700",
+  "category": "WSD",
+  "fcstDate": "20261004",
+  "fcstTime": "1800",
+  "fcstValue": "2.3",
+  "nx": 60,
+  "ny": 127
+ },
+ {
+  "baseDate": "20261004",
+  "baseTime": "1700",
+  "category": "PCP",
+  "fcstDate": "20261004",
+  "fcstTime": "1800",
+  "fcstValue": "강수없음",
+  "nx": 60,
+  "ny": 127
+ },
+ {
+  "baseDate": "20261004",
+  "baseTime": "1700",
+  "category": "SNO",
+  "fcstDate": "20261004",
+  "fcstTime": "1800",
+  "fcstValue": "적설없음",
+  "nx": 60,
+  "ny": 127
+ },
+ {
+  "baseDate": "20261004",
+  "baseTime": "1700",
+  "category": "PCP",
+  "fcstDate": "20261004",
+  "fcstTime": "2100",
+  "fcstValue": "1mm 미만",
+  "nx": 60,
+  "ny": 127
+ },
+ {
+  "baseDate": "20261004",
+  "baseTime": "1700",
+  "category": "PCP",
+  "fcstDate": "20261004",
+  "fcstTime": "2200",
+  "fcstValue": "5.0mm",
+  "nx": 60,
+  "ny": 127
+ },
+ {
+  "baseDate": "20261004",
+  "baseTime": "1700",
+  "category": "PCP",
+  "fcstDate": "20261004",
+  "fcstTime": "2300",
+  "fcstValue": "2.0mm",
+  "nx": 60,
+  "ny": 127
+ },
+ {
+  "baseDate": "20261004",
+  "baseTime": "1700",
+  "category": "PCP",
+  "fcstDate": "20261007",
+  "fcstTime": "0100",
+  "fcstValue": "0",
+  "nx": 60,
+  "ny": 127
+ },
+ {
+  "baseDate": "20261004",
+  "baseTime": "1700",
+  "category": "SNO",
+  "fcstDate": "20261007",
+  "fcstTime": "0100",
+  "fcstValue": "0",
+  "nx": 60,
+  "ny": 127
+ },
+ {
+  "baseDate": "20261004",
+  "baseTime": "1700",
+  "category": "TMP",
+  "fcstDate": "20261004",
+  "fcstTime": "1800",
+  "fcstValue": "21",
+  "nx": 60,
+  "ny": 127
+ }
+]

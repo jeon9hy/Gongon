@@ -111,3 +111,4 @@
 - 결정: 같은 단기예보 서비스를 API허브(`https://apihub.kma.go.kr/api/typ02/openApi/VilageFcstInfoService_2.0/getVilageFcst`, `authKey`)로도 호출한다. `KMA_APIHUB_KEY`가 있으면 우선, 없으면 공공데이터포털 `KMA_SERVICE_KEY`. 엔진은 `KmaAuth(endpoint, key)`를 인자로 받는다.
 - HTTP 오류는 본문(기상청이 준 사유)을 수집 실패 사유에 남긴다. 이전에는 "HTTP 403 Forbidden"만 남아 원인을 알 수 없었다.
 - `[확인 필요]` API허브 응답 본문 구조가 공공데이터포털과 같다고 가정했다(같은 openApi 서비스). 활용신청 후 실제 응답으로 대조한다(S02-2).
+- 후속(2026-10-04): API허브에서 승인된 것은 "단기예보자료 조회 `/url/fct_shrt_reg.php`"로, 실제로는 예보구역 목록만 준다(예보값 없음). 개발자가 공공데이터포털에서 단기예보 조회서비스를 신청해 `KMA_SERVICE_KEY`로 실제 호출에 성공했다. API허브 지원 코드는 그대로 둔다.
