@@ -68,7 +68,9 @@ uv run python -m alembic upgrade head
 uv run python -m uvicorn app.main:app --reload
 # http://127.0.0.1:8000 → 현장 설정에서 현장 등록 → 대시보드에서 "지금 판정하기"
 ```
-- 폴더의 `공온 실행.lnk`(또는 `scripts/start.bat`)가 마이그레이션 적용 → 서버 실행 → 브라우저 열기를 한다.
+- 폴더의 `공온 실행.lnk`(또는 `scripts/start.bat`)가 PostgreSQL 확인·시작 → 마이그레이션 적용 → 서버 실행 → 브라우저 열기를 한다.
+  - PostgreSQL 서비스가 꺼져 있으면 `scripts/ensure_postgres.bat`이 켠다. 서비스 시작에는 관리자 권한이 필요해 그때만 UAC 확인 창이 뜬다. 로컬 PostgreSQL 서비스가 없으면(원격 DB) 건너뛴다.
+  - 설치 기본값은 윈도우 시작 시 자동 실행이라 보통은 이미 켜져 있다(개발자 PC는 PostgreSQL 18, D-014는 17 — 이 프로젝트에 차이 없음).
 - DB가 꺼져 있거나 `DATABASE_URL`이 없으면 화면에 원인(503)을 보여준다.
 - `uvicorn`·`alembic`을 직접 부르지 않고 `python -m`으로 실행한다. 한글이 든 경로에서 `.exe`가 `uv trampoline failed to canonicalize script path`로 실패한다.
 - `.lnk`는 PC 절대 경로가 들어가 커밋하지 않는다(`.gitignore`). 필요하면 `start.bat`을 가리키는 바로가기를 직접 만든다.
