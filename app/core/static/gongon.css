@@ -30,16 +30,18 @@ button, input, select { font: inherit; color: inherit; }
 
 /* 레이아웃 */
 .page { min-height: 100vh; padding: 24px 16px; }
-.shell { max-width: 1240px; margin: 0 auto; padding: 20px; background: var(--surface); border-radius: 32px; display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+.shell { max-width: 1240px; margin: 0 auto; padding: 20px; background: var(--surface); border-radius: 32px; display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; min-height: calc(100vh - 48px); min-height: calc(100dvh - 48px); }
 .content { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+/* 레일은 페이지 전체 높이까지 늘린다(짧은 페이지는 .shell 최소 높이 = 화면 높이). 고정(sticky)하지 않는다. */
 .rail { flex: 0 0 auto; align-self: stretch; display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 24px; padding: 12px; background: var(--card); border-radius: 999px; }
 .rail__group { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-.rail__logo { width: 48px; height: 48px; border-radius: 16px; background: var(--accent); display: flex; align-items: center; justify-content: center; }
+.rail__logo { width: 48px; height: 48px; border-radius: 16px; background: var(--accent); color: var(--ink); display: flex; align-items: center; justify-content: center; transition: transform 0.15s, box-shadow 0.15s; }
+.rail__logo:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(21, 23, 26, 0.18); }
 .rail__divider { width: 24px; height: 2px; background: var(--line); border-radius: 2px; }
 .rail__btn { width: 48px; height: 48px; border-radius: 999px; background: var(--surface); color: var(--muted); display: flex; align-items: center; justify-content: center; }
 .rail__btn.is-active { background: var(--ink); color: var(--accent); }
 button.rail__btn { border: 0; cursor: not-allowed; opacity: 0.55; }
-@media (max-width: 760px) { .rail { align-self: auto; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 10px; } .rail__group { flex-direction: row; } .rail__divider { display: none; } }
+@media (max-width: 760px) { .shell { min-height: 0; } .rail { align-self: auto; flex: 1 1 100%; min-width: 0; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 10px; } .rail__group { flex-direction: row; } .rail__divider { display: none; } }
 
 .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; justify-content: space-between; }
 .row--center { align-items: center; }
@@ -76,7 +78,7 @@ button.rail__btn { border: 0; cursor: not-allowed; opacity: 0.55; }
 .btn--ink { background: var(--ink); color: #FFFFFF; }
 .btn--soft { background: var(--surface); }
 .btn:disabled { cursor: not-allowed; opacity: 0.55; }
-.logo-word { display: inline-flex; align-items: center; gap: 8px; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+.logo-word { display: inline-flex; align-items: center; gap: 8px; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: var(--ink); text-decoration: none; }
 .logo-toggle { width: 34px; height: 20px; padding: 3px; border-radius: 999px; background: var(--ink); display: inline-flex; align-items: center; justify-content: flex-end; }
 .logo-toggle::after { content: ""; width: 14px; height: 14px; border-radius: 999px; background: var(--accent); }
 
@@ -129,7 +131,8 @@ button.rail__btn { border: 0; cursor: not-allowed; opacity: 0.55; }
 /* 판정 상세 */
 .cards-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
 .criterion { font-size: 14px; background: var(--surface); border-radius: 14px; padding: 10px 12px; }
-.table-wrap { overflow-x: auto; border-radius: 18px; border: 1px solid var(--line); }
+/* position: relative — 표 안의 숨김 글자(.visually-hidden, absolute)가 스크롤 영역 밖 기준으로 놓여 페이지 폭을 넓히지 않게 한다 */
+.table-wrap { position: relative; overflow-x: auto; border-radius: 18px; border: 1px solid var(--line); }
 .table-wrap--plain { border: 0; background: var(--card); border-radius: 24px; padding: 8px; }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th { text-align: left; padding: 12px 16px; font-weight: 700; background: var(--surface); }
