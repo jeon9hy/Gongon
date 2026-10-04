@@ -13,6 +13,6 @@
   - 이후 연결 순서: S01(기준·계약) → S03(엔진) → S02-2(예보) → S04(DB·API) → S05(예시 데이터를 실제 API로 교체)
 - 메모: 한글 경로에서 `uv run pytest`·`uvicorn.exe`는 `uv trampoline failed`. `uv run python -m pytest`, `python -m uvicorn` 사용. 화면의 숫자·기준 버전은 시안 예시이며 `원문 대조 필요`
 - 미커밋 변경: S05-0 전체(커밋 전 `git status`로 확인)
-- 검증(2026-10-04, 로컬 Windows): `uv run python scripts/check.py` ruff·format·mypy·pytest 모두 ok (41 통과, 1 건너뜀: engine.judgment 패키지 아직 없음 — 통과 아님). 헤드리스 Edge 캡처로 4개 화면 모두 확인(휴대폰 폭은 미확인)
+- 검증(2026-10-04, 로컬 Windows): `uv run python scripts/check.py` ruff·format·mypy·pytest 모두 ok (41 통과, 1 건너뜀: engine.judgment 패키지 아직 없음 — 통과 아님). 헤드리스 Edge 캡처로 4개 화면 모두 확인(대시보드는 휴대폰 폭도 확인)
 - 결정 사항: D-001~D-016 (`docs/decisions.md`)
 - 막힌 조건: Codex 모델 설정(개발자). S01 원문 대조(개발자). `KMA_SERVICE_KEY`(S02-2 실호출). `공온지수`는 구현 금지(D-010)
