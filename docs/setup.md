@@ -22,9 +22,12 @@ uv run pytest tests/<경로> -q          # 작업 중 빠른 확인: 관련 테�
 
 ## 앱 실행
 ```bash
-uv run uvicorn app.main:app --reload
+uv run python -m uvicorn app.main:app --reload
 # 확인: http://127.0.0.1:8000/healthz → {"status":"ok"}
 ```
+- 폴더의 `공온 실행.lnk`(또는 `scripts/start.bat`)가 같은 명령을 실행하고 브라우저를 연다. 화면(S05)이 생기기 전에는 `/`가 404다.
+- `uvicorn`을 직접 부르지 않고 `python -m`으로 실행한다. 한글이 든 경로에서 `uvicorn.exe`가 `uv trampoline failed to canonicalize script path`로 실패한다.
+- `.lnk`는 PC 절대 경로가 들어가 커밋하지 않는다(`.gitignore`). 필요하면 `start.bat`을 가리키는 바로가기를 직접 만든다.
 
 ## 의존성 변경
 - 추가: `uv add <패키지>` / 개발용: `uv add --dev <패키지>` → `pyproject.toml`과 `uv.lock`을 함께 커밋.

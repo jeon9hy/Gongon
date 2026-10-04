@@ -23,3 +23,6 @@ desktop.ini
 # 도구별 로컬 설정(공통 규칙은 AGENTS.md에만 둔다)
 .claude/settings.local.json
 CLAUDE.local.md
+
+# 로컬 바로가기(PC 절대 경로 포함)
+*.lnk
