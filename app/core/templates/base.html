@@ -15,7 +15,7 @@
 
 <nav class="rail" aria-label="주 메뉴">
 <div class="rail__group">
-<span class="rail__logo">{{ icon("logo", 26) }}</span>
+<a class="rail__logo" href="/" aria-label="공온 대시보드로 이동">{{ icon("logo", 26) }}</a>
 <span class="rail__divider"></span>
 {% for key, href, label, name in [("dashboard", "/", "대시보드", "dashboard"), ("history", "/judgments", "판정 내역", "history"), ("sites", "/sites", "현장 설정", "site")] %}
 <a class="rail__btn{% if nav_active == key %} is-active{% endif %}" href="{{ href }}" aria-label="{{ label }}"{% if nav_active == key %} aria-current="page"{% endif %}>{{ icon(name) }}</a>
