@@ -17,13 +17,11 @@
 <div class="rail__group">
 <span class="rail__logo">{{ icon("logo", 26) }}</span>
 <span class="rail__divider"></span>
-{% for key, href, label, name in [("dashboard", "/", "대시보드", "dashboard"), ("history", "/judgments", "판정 내역", "history")] %}
+{% for key, href, label, name in [("dashboard", "/", "대시보드", "dashboard"), ("history", "/judgments", "판정 내역", "history"), ("sites", "/sites", "현장 설정", "site")] %}
 <a class="rail__btn{% if nav_active == key %} is-active{% endif %}" href="{{ href }}" aria-label="{{ label }}"{% if nav_active == key %} aria-current="page"{% endif %}>{{ icon(name) }}</a>
 {% endfor %}
 </div>
 <div class="rail__group">
-<a class="rail__btn{% if nav_active == 'sites' %} is-active{% endif %}" href="/sites" aria-label="현장 설정"{% if nav_active == 'sites' %} aria-current="page"{% endif %}>{{ icon("site") }}</a>
-<span class="rail__divider"></span>
 <button class="rail__btn" type="button" disabled aria-label="내 계정 (로그인 기능 준비 중)" title="로그인 기능 준비 중">{{ icon("user") }}</button>
 <button class="rail__btn" type="button" disabled aria-label="로그아웃 (로그인 기능 준비 중)" title="로그인 기능 준비 중">{{ icon("logout") }}</button>
 </div>
