@@ -1,11 +1,19 @@
 """기상청 단기예보 조회서비스(getVilageFcst) 수집·정규화.
 
 형식 출처: 공공데이터포털 "기상청_단기예보 ((구)_동네예보) 조회서비스" 오픈API 활용가이드.
+같은 서비스를 기상청 API허브(apihub.kma.go.kr, typ02/openApi)도 제공한다.
+주소와 키 이름(authKey)만 다르다.
 - 발표 시각 02·05·08·11·14·17·20·23시, 각 발표 10분 이후 제공
 - 응답 항목: baseDate, baseTime, category, fcstDate, fcstTime, fcstValue, nx, ny
 - PCP(1시간 강수량)·SNO(1시간 신적설)는 범주 문자열, WSD(풍속 m/s)는 숫자 문자열
 - ±900 이상 값은 결측
-실제 응답과의 대조는 키 발급 후 한다(docs/plan.md S02-2).
+실제 응답과의 대조는 활용신청 후 한다(docs/plan.md S02-2). 2026-10-04 확인한 실제 오류 응답:
+- 공공데이터포털, 등록 안 된 키: HTTP 403,
+  {"OpenAPI_ServiceResponse": {... "errMsg": "SERVICE_KEY_IS_NOT_REGISTERED_ERROR"}}
+- API허브, 유효한 키·미신청 API: HTTP 403,
+  {"result": {"status": 403, "message": "활용신청이 필요한 API 입니다. ..."}}
+- API허브, 유효하지 않은 키: HTTP 401,
+  {"result": {"status": 401, "message": "유효한 인증키가 아닙니다."}}
 """
 
 import json
@@ -24,7 +32,7 @@ from engine.kst import KST
 
 logger = logging.getLogger(__name__)
 
-VILAGE_FCST_URL = "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst"
+_ERROR_BODY_CHARS = 300
 BASE_HOURS = (2, 5, 8, 11, 14, 17, 20, 23)
 AVAILABLE_AFTER = timedelta(minutes=10)
 PAGE_ROWS = 1000
@@ -33,6 +41,31 @@ _MISSING_ABS = 900.0
 
 # (URL, 쿼리, 제한 시간 초) → 응답 본문. 테스트에서는 가짜 함수로 바꾼다.
 HttpGet = Callable[[str, dict[str, str], float], bytes]
+
+
+@dataclass(frozen=True, slots=True)
+class KmaEndpoint:
+    name: str
+    url: str
+    key_param: str
+
+
+DATA_GO_KR = KmaEndpoint(
+    "공공데이터포털",
+    "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst",
+    "serviceKey",
+)
+API_HUB = KmaEndpoint(
+    "기상청 API허브",
+    "https://apihub.kma.go.kr/api/typ02/openApi/VilageFcstInfoService_2.0/getVilageFcst",
+    "authKey",
+)
+
+
+@dataclass(frozen=True, slots=True)
+class KmaAuth:
+    endpoint: KmaEndpoint
+    key: str
 
 
 class ForecastFetchError(RuntimeError):
@@ -69,16 +102,18 @@ def urllib_get(url: str, params: dict[str, str], timeout_s: float) -> bytes:
 
 
 def fetch_vilage_forecast(
-    service_key: str, base_at: datetime, nx: int, ny: int, http_get: HttpGet = urllib_get
+    auth: KmaAuth, base_at: datetime, nx: int, ny: int, http_get: HttpGet = urllib_get
 ) -> FetchedForecast:
-    if not service_key:
-        raise ForecastFetchError("KMA_SERVICE_KEY가 설정되지 않음")
+    if not auth.key:
+        raise ForecastFetchError(
+            "기상청 인증키가 설정되지 않음 (KMA_APIHUB_KEY 또는 KMA_SERVICE_KEY)"
+        )
     base_local = base_at.astimezone(KST)
     items: list[dict[str, Any]] = []
     page = 1
     while True:
         params = {
-            "serviceKey": service_key,
+            auth.endpoint.key_param: auth.key,
             "pageNo": str(page),
             "numOfRows": str(PAGE_ROWS),
             "dataType": "JSON",
@@ -87,7 +122,7 @@ def fetch_vilage_forecast(
             "nx": str(nx),
             "ny": str(ny),
         }
-        body = _get(http_get, params)
+        body = _get(http_get, auth.endpoint, params)
         page_items, total_count = _parse_page(body)
         items.extend(page_items)
         if len(items) >= total_count or not page_items:
@@ -97,11 +132,14 @@ def fetch_vilage_forecast(
     return FetchedForecast(base_at=base_local, nx=nx, ny=ny, items=tuple(items))
 
 
-def _get(http_get: HttpGet, params: dict[str, str]) -> bytes:
+def _get(http_get: HttpGet, endpoint: KmaEndpoint, params: dict[str, str]) -> bytes:
     try:
-        return http_get(VILAGE_FCST_URL, params, TIMEOUT_S)
+        return http_get(endpoint.url, params, TIMEOUT_S)
     except urllib.error.HTTPError as error:
-        raise ForecastFetchError(f"HTTP {error.code} {error.reason}") from error
+        # 인증·신청 문제의 사유는 본문에 있다(모듈 설명의 실제 오류 응답). 본문을 남긴다.
+        raise ForecastFetchError(
+            f"{endpoint.name} HTTP {error.code}: {_snippet(error.read())}"
+        ) from error
     except (urllib.error.URLError, TimeoutError, OSError) as error:
         raise ForecastFetchError(f"연결 실패: {error}") from error
 
@@ -110,9 +148,8 @@ def _parse_page(body: bytes) -> tuple[list[dict[str, Any]], int]:
     try:
         data = json.loads(body)
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
-        # 인증키 오류 등은 JSON이 아니라 XML로 온다. 원인을 알 수 있게 앞부분을 남긴다.
-        snippet = body[:200].decode("utf-8", errors="replace")
-        raise ForecastFetchError(f"응답이 JSON이 아님: {snippet}") from error
+        # 게이트웨이 오류 등은 XML로 올 수 있다. 원인을 알 수 있게 앞부분을 남긴다.
+        raise ForecastFetchError(f"응답이 JSON이 아님: {_snippet(body)}") from error
     try:
         header = data["response"]["header"]
         if header["resultCode"] != "00":
@@ -125,6 +162,10 @@ def _parse_page(body: bytes) -> tuple[list[dict[str, Any]], int]:
     if not isinstance(raw_items, list):
         raise ForecastFetchError("응답 items.item이 목록이 아님")
     return raw_items, total_count
+
+
+def _snippet(body: bytes) -> str:
+    return " ".join(body.decode("utf-8", errors="replace").split())[:_ERROR_BODY_CHARS]
 
 
 def normalize(base_at: datetime, items: Iterable[dict[str, Any]]) -> WeatherInput:

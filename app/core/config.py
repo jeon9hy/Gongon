@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
+from engine.forecast import API_HUB, DATA_GO_KR, KmaAuth
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ENV_FILE = REPO_ROOT / ".env"
 
@@ -12,7 +14,13 @@ ENV_FILE = REPO_ROOT / ".env"
 @dataclass(frozen=True, slots=True)
 class Settings:
     database_url: str
-    kma_service_key: str
+    kma_service_key: str  # 공공데이터포털 일반 인증키(Decoding)
+    kma_apihub_key: str = ""  # 기상청 API허브 authKey. 있으면 이쪽을 쓴다
+
+    def kma_auth(self) -> KmaAuth:
+        if self.kma_apihub_key:
+            return KmaAuth(API_HUB, self.kma_apihub_key)
+        return KmaAuth(DATA_GO_KR, self.kma_service_key)
 
 
 def read_env_file(path: Path) -> dict[str, str]:
@@ -46,4 +54,5 @@ def get_settings() -> Settings:
     return Settings(
         database_url=sqlalchemy_url(value("DATABASE_URL")),
         kma_service_key=value("KMA_SERVICE_KEY"),
+        kma_apihub_key=value("KMA_APIHUB_KEY"),
     )

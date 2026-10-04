@@ -11,6 +11,7 @@ from app.features.forecasts.models import STATUS_FAILED, STATUS_SUCCESS, Forecas
 from engine.forecast import (
     ForecastFetchError,
     HttpGet,
+    KmaAuth,
     fetch_vilage_forecast,
     latest_base_at,
     normalize,
@@ -35,7 +36,7 @@ def get_http_get() -> HttpGet:
 
 
 def get_forecast(
-    session: Session, nx: int, ny: int, now: datetime, service_key: str, http_get: HttpGet
+    session: Session, nx: int, ny: int, now: datetime, auth: KmaAuth, http_get: HttpGet
 ) -> ForecastSnapshot:
     base_at = latest_base_at(now)
     cached = session.scalars(
@@ -50,7 +51,7 @@ def get_forecast(
         return _snapshot(cached)
 
     try:
-        fetched = fetch_vilage_forecast(service_key, base_at, nx, ny, http_get)
+        fetched = fetch_vilage_forecast(auth, base_at, nx, ny, http_get)
     except ForecastFetchError as error:
         logger.warning("예보 수집 실패 base_at=%s nx=%s ny=%s: %s", base_at, nx, ny, error)
         run = ForecastRun(

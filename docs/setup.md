@@ -29,7 +29,15 @@ cp .env.example .env      # 실제 값은 .env에만(커밋 금지)
 4. 테이블 만들기: `uv run python -m alembic upgrade head` (`scripts/start.bat`도 실행할 때마다 먼저 적용한다)
 
 ## 기상청 인증키 (처음 한 번)
-키가 없어도 앱은 동작하지만 판정이 모두 `판정 불가 · KMA_SERVICE_KEY가 설정되지 않음`으로 기록된다.
+키가 없어도 앱은 동작하지만 판정이 모두 `판정 불가 · 기상청 인증키가 설정되지 않음`으로 기록된다.
+같은 단기예보를 두 곳에서 받을 수 있다. 하나만 하면 된다(둘 다 있으면 API허브 우선, D-021).
+
+### A. 기상청 API허브 (현재 사용 중)
+1. https://apihub.kma.go.kr 로그인 → 왼쪽 메뉴 **예특보** → **단기예보 조회서비스**(`VilageFcstInfoService_2.0`, 단기예보조회 `getVilageFcst`) → **활용신청**
+2. 인증키(22자)를 `.env`의 `KMA_APIHUB_KEY=`에 넣고 앱 재시작
+3. 확인: 대시보드에서 "지금 판정하기". 신청 전이면 `판정 불가 · 기상청 API허브 HTTP 403: ... 활용신청이 필요한 API`로 기록된다
+
+### B. 공공데이터포털
 1. https://www.data.go.kr 회원가입·로그인
 2. 검색창에 **기상청_단기예보 ((구)_동네예보) 조회서비스** → 오픈 API 항목 → **활용신청**
    (활용 목적: 예) "학부 프로젝트 - 공종별 기상 판정 시연"). 개발 계정은 보통 자동 승인된다.
@@ -37,7 +45,7 @@ cp .env.example .env      # 실제 값은 .env에만(커밋 금지)
    - Encoding 키가 아니라 **Decoding** 키를 쓴다. 코드가 주소에 넣을 때 직접 인코딩한다.
 4. `.env`에 `KMA_SERVICE_KEY=<복사한 키>` → 앱 재시작
 5. 확인: 대시보드에서 "지금 판정하기". 승인 직후에는 키가 기상청 서버에 반영되기까지 시간이 걸려
-   `판정 불가 · 응답이 JSON이 아님: ...SERVICE_KEY_IS_NOT_REGISTERED_ERROR`가 나올 수 있다. 1~2시간 뒤 다시 누른다.
+   `판정 불가 · 공공데이터포털 HTTP 403: ...SERVICE_KEY_IS_NOT_REGISTERED_ERROR`가 나올 수 있다. 1~2시간 뒤 다시 누른다.
 - 하루 호출 한도는 활용신청 화면에 표시된다(개발 계정). 같은 발표 시각·격자는 한 번만 호출하고 재사용한다.
 
 ## 검증
@@ -75,7 +83,8 @@ uv run python -m uvicorn app.main:app --reload
 | 변수 | 사용 위치 | 작업 | 상태 |
 | --- | --- | --- | --- |
 | `DATABASE_URL` | 앱·마이그레이션 | S04 | 개발자 PC에 PostgreSQL 설치 후 설정 |
-| `KMA_SERVICE_KEY` | 예보 수집 | S02-2 | 키 미발급 — 위 "기상청 인증키" |
+| `KMA_APIHUB_KEY` | 예보 수집(API허브, 우선) | S02-2 | 키 있음. 단기예보 활용신청 대기 |
+| `KMA_SERVICE_KEY` | 예보 수집(공공데이터포털) | S02-2 | 미사용(API허브 키가 있으면 무시) |
 | `TEST_DATABASE_URL` | DB 테스트(선택) | S04 | CI에서는 워크플로가 설정 |
 
 ## DB 적용 절차

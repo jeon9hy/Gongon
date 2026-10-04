@@ -105,3 +105,9 @@
 - 의존성 추가: `sqlalchemy`, `alembic`, `psycopg[binary]`(D-005), `pyyaml`(기준표), `python-multipart`(HTML 폼), 개발용 `types-pyyaml`.
 - `alembic.ini`는 ASCII만 쓴다(한국어 Windows에서 Alembic이 cp949로 읽어 실패). 실행은 `python -m alembic`(한글 경로 trampoline 문제).
 - 테스트 DB: `TEST_DATABASE_URL`(이름에 `test` 필수 — 스키마를 지우고 마이그레이션을 다시 적용한다). CI는 `postgres:17` 서비스로 DB 테스트를 실행한다. 로컬 검증은 설치 없는 임시 PostgreSQL 16.2(pgserver, 프로젝트 의존성 아님)로 했다.
+
+## D-021 기상청 API허브 키도 지원 (2026-10-04)
+- 배경: 개발자가 받은 키는 공공데이터포털 키가 아니라 기상청 API허브 `authKey`였다. 실제 호출로 확인 — 가짜 키는 401 "유효한 인증키가 아닙니다", 받은 키는 403 "활용신청이 필요한 API"(키는 유효, 단기예보 미신청).
+- 결정: 같은 단기예보 서비스를 API허브(`https://apihub.kma.go.kr/api/typ02/openApi/VilageFcstInfoService_2.0/getVilageFcst`, `authKey`)로도 호출한다. `KMA_APIHUB_KEY`가 있으면 우선, 없으면 공공데이터포털 `KMA_SERVICE_KEY`. 엔진은 `KmaAuth(endpoint, key)`를 인자로 받는다.
+- HTTP 오류는 본문(기상청이 준 사유)을 수집 실패 사유에 남긴다. 이전에는 "HTTP 403 Forbidden"만 남아 원인을 알 수 없었다.
+- `[확인 필요]` API허브 응답 본문 구조가 공공데이터포털과 같다고 가정했다(같은 openApi 서비스). 활용신청 후 실제 응답으로 대조한다(S02-2).

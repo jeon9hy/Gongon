@@ -49,7 +49,7 @@ def run(
     http_get: Annotated[HttpGet, Depends(forecasts_service.get_http_get)],
     site_id: Annotated[int, Form()],
 ) -> RedirectResponse:
-    result = service.run_for_site(session, site_id, now, settings.kma_service_key, http_get)
+    result = service.run_for_site(session, site_id, now, settings.kma_auth(), http_get)
     if result is None:
         raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
     # 새로고침해도 다시 실행되지 않도록 결과는 GET으로 보여준다.

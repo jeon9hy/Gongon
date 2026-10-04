@@ -107,7 +107,7 @@ def test_missing_key_records_unavailable_with_reason_and_retries_later(
     page = client.get(run(client, site_id)).text
 
     assert "판정 불가" in page
-    assert "KMA_SERVICE_KEY가 설정되지 않음" in page
+    assert "기상청 인증키가 설정되지 않음" in page
     assert fake_kma.calls == []
 
     object.__setattr__(settings, "kma_service_key", "test-key")

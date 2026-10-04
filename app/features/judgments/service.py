@@ -36,7 +36,7 @@ from app.features.judgments.schemas import (
 )
 from app.features.sites import service as sites_service
 from app.features.sites.schemas import SiteRecord
-from engine.forecast import HttpGet
+from engine.forecast import HttpGet, KmaAuth
 from engine.judgment import (
     ELEMENT_LABEL,
     ELEMENT_UNIT,
@@ -86,7 +86,7 @@ RUN_MESSAGES: dict[RunResult, str] = {
 
 
 def run_for_site(
-    session: Session, site_id: int, now: datetime, service_key: str, http_get: HttpGet
+    session: Session, site_id: int, now: datetime, auth: KmaAuth, http_get: HttpGet
 ) -> RunResult | None:
     """현장의 내일 판정을 내고 저장한다. 없는 현장이면 None."""
     site = sites_service.get_site(session, site_id)
@@ -101,7 +101,7 @@ def run_for_site(
     start_at = datetime.combine(target_date, site.work_start_local, KST)
     end_at = datetime.combine(target_date, site.work_end_local, KST)
     snapshot = forecasts_service.get_forecast(
-        session, site.grid_nx, site.grid_ny, now, service_key, http_get
+        session, site.grid_nx, site.grid_ny, now, auth, http_get
     )
     for rule_set in targets:
         if snapshot.weather is None:

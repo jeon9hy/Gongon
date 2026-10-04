@@ -4,18 +4,29 @@
 값은 테스트용이다. 실제 응답과의 대조는 키 발급 후 한다(docs/plan.md S02-2).
 """
 
+import io
 import json
 import urllib.error
 from datetime import datetime
+from email.message import Message
 from typing import Any
 
 import pytest
 
-from engine.forecast import ForecastFetchError, fetch_vilage_forecast, latest_base_at, normalize
+from engine.forecast import (
+    API_HUB,
+    DATA_GO_KR,
+    ForecastFetchError,
+    KmaAuth,
+    fetch_vilage_forecast,
+    latest_base_at,
+    normalize,
+)
 from engine.judgment import Element, ForecastValue
 from engine.kst import KST
 
 BASE_AT = datetime(2026, 10, 4, 14, 0, tzinfo=KST)
+AUTH = KmaAuth(DATA_GO_KR, "key")
 
 
 def item(category: str, value: str, fcst_time: str = "0900") -> dict[str, Any]:
@@ -111,7 +122,7 @@ def test_fetch_reads_all_pages_with_query_for_base_time_and_grid() -> None:
         calls.append(params)
         return pages[len(calls) - 1]
 
-    fetched = fetch_vilage_forecast("key", BASE_AT, 60, 127, fake_get)
+    fetched = fetch_vilage_forecast(AUTH, BASE_AT, 60, 127, fake_get)
 
     assert len(fetched.items) == 2
     assert [c["pageNo"] for c in calls] == ["1", "2"]
@@ -124,20 +135,20 @@ def test_missing_key_fails_without_calling_api() -> None:
     def must_not_call(url: str, params: dict[str, str], timeout_s: float) -> bytes:
         raise AssertionError("호출하면 안 됨")
 
-    with pytest.raises(ForecastFetchError, match="KMA_SERVICE_KEY"):
-        fetch_vilage_forecast("", BASE_AT, 60, 127, must_not_call)
+    with pytest.raises(ForecastFetchError, match="인증키가 설정되지 않음"):
+        fetch_vilage_forecast(KmaAuth(DATA_GO_KR, ""), BASE_AT, 60, 127, must_not_call)
 
 
 def test_error_result_code_is_reported_with_message() -> None:
     with pytest.raises(ForecastFetchError, match="기상청 오류 03"):
-        fetch_vilage_forecast("key", BASE_AT, 60, 127, lambda *_: page([], 0, code="03"))
+        fetch_vilage_forecast(AUTH, BASE_AT, 60, 127, lambda *_: page([], 0, code="03"))
 
 
 def test_non_json_response_keeps_the_start_of_body_as_reason() -> None:
     xml = b"<OpenAPI_ServiceResponse><returnAuthMsg>SERVICE_KEY_IS_NOT_REGISTERED_ERROR"
 
     with pytest.raises(ForecastFetchError, match="SERVICE_KEY_IS_NOT_REGISTERED_ERROR"):
-        fetch_vilage_forecast("key", BASE_AT, 60, 127, lambda *_: xml)
+        fetch_vilage_forecast(AUTH, BASE_AT, 60, 127, lambda *_: xml)
 
 
 def test_network_failure_becomes_fetch_error() -> None:
@@ -145,4 +156,36 @@ def test_network_failure_becomes_fetch_error() -> None:
         raise urllib.error.URLError("timed out")
 
     with pytest.raises(ForecastFetchError, match="연결 실패"):
-        fetch_vilage_forecast("key", BASE_AT, 60, 127, fail)
+        fetch_vilage_forecast(AUTH, BASE_AT, 60, 127, fail)
+
+
+def test_api_hub_uses_its_own_url_and_auth_key_parameter() -> None:
+    seen: list[tuple[str, dict[str, str]]] = []
+
+    def fake_get(url: str, params: dict[str, str], timeout_s: float) -> bytes:
+        seen.append((url, params))
+        return page([item("WSD", "1")], total=1)
+
+    fetch_vilage_forecast(KmaAuth(API_HUB, "hub-key"), BASE_AT, 60, 127, fake_get)
+
+    url, params = seen[0]
+    assert url.startswith("https://apihub.kma.go.kr/")
+    assert params["authKey"] == "hub-key"
+    assert "serviceKey" not in params
+
+
+def test_http_error_keeps_kma_reason_from_body() -> None:
+    # 2026-10-04 API허브가 실제로 돌려준 본문(유효한 키, 단기예보 활용신청 전).
+    body = """{
+  "result" : {
+    "status" : 403,
+    "message" : "활용신청이 필요한 API 입니다. 활용신청 후 다시 시도해 주십시오."
+  }
+}""".encode()
+
+    def forbidden(url: str, params: dict[str, str], timeout_s: float) -> bytes:
+        raise urllib.error.HTTPError(url, 403, "Forbidden", Message(), io.BytesIO(body))
+
+    reason = "기상청 API허브 HTTP 403: .*활용신청이 필요한 API"
+    with pytest.raises(ForecastFetchError, match=reason):
+        fetch_vilage_forecast(KmaAuth(API_HUB, "hub-key"), BASE_AT, 60, 127, forbidden)
