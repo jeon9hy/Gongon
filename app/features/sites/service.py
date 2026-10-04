@@ -1,6 +1,6 @@
 """현장 등록·수정·조회. 다른 기능은 list_sites·get_site로 현장 정보를 읽는다."""
 
-from datetime import time
+from datetime import date, time, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -37,8 +37,9 @@ def build_sites_view(
     form: SiteForm | None = None,
     errors: tuple[str, ...] = (),
     saved: bool = False,
+    today: date | None = None,
 ) -> SitesView | None:
-    """site_id가 없으면 새 현장 등록 화면. 없는 현장이면 None."""
+    """site_id가 없으면 새 현장 등록 화면, 없는 현장이면 None. today는 새 현장 기본 작업 기간용."""
     records = list_sites(session)
     selected = None
     if site_id is not None:
@@ -46,13 +47,13 @@ def build_sites_view(
         if selected is None:
             return None
     if form is None:
-        form = SiteForm() if selected is None else _form_from(selected)
+        form = _new_form(today) if selected is None else _form_from(selected)
     items = tuple(
         SiteListItem(
             href=f"/sites?site_id={r.site_id}",
             name=r.name,
             summary=f"{_work_types_summary(r.work_types)} · {_hhmm(r.work_start_local)}–"
-            f"{_hhmm(r.work_end_local)}",
+            f"{_hhmm(r.work_end_local)}" + _period_suffix(r),
             selected=r.site_id == site_id,
         )
         for r in records
@@ -131,6 +132,13 @@ def validate(form: SiteForm) -> tuple[SiteInput | None, tuple[str, ...]]:
     elif start >= end:
         errors.append("작업 종료는 시작보다 늦어야 합니다(같은 날 안에서).")
 
+    start_date = _date(form.work_start_date)
+    end_date = _date(form.work_end_date)
+    if start_date is None or end_date is None:
+        errors.append("작업 기간(시작일·종료일)을 입력하세요.")
+    elif start_date > end_date:
+        errors.append("작업 기간의 종료일은 시작일과 같거나 늦어야 합니다.")
+
     unknown = [w for w in form.work_types if w not in WORK_TYPE_LABELS]
     if unknown:
         errors.append(f"알 수 없는 공종: {', '.join(unknown)}")
@@ -139,6 +147,7 @@ def validate(form: SiteForm) -> tuple[SiteInput | None, tuple[str, ...]]:
 
     if errors or grid is None or start is None or end is None:
         return None, tuple(errors)
+    assert start_date is not None and end_date is not None
     assert latitude is not None and longitude is not None
     return (
         SiteInput(
@@ -151,6 +160,8 @@ def validate(form: SiteForm) -> tuple[SiteInput | None, tuple[str, ...]]:
             work_start_local=start,
             work_end_local=end,
             work_types=tuple(w for w in WORK_TYPE_LABELS if w in form.work_types),
+            work_start_date=start_date,
+            work_end_date=end_date,
         ),
         (),
     )
@@ -169,6 +180,28 @@ def _time(raw: str) -> time | None:
         return time.fromisoformat(raw.strip())
     except ValueError:
         return None
+
+
+def _date(raw: str) -> date | None:
+    try:
+        return date.fromisoformat(raw.strip())
+    except ValueError:
+        return None
+
+
+def _new_form(today: date | None) -> SiteForm:
+    if today is None:
+        return SiteForm()
+    # 새 현장은 오늘부터 30일을 기본 작업 기간으로 채워 둔다(바꿀 수 있음).
+    return SiteForm(
+        work_start_date=today.isoformat(),
+        work_end_date=(today + timedelta(days=30)).isoformat(),
+    )
+
+
+def _period_suffix(record: SiteRecord) -> str:
+    period = record.period_text()
+    return "" if period is None else f" · {period}"
 
 
 def _hhmm(value: time) -> str:
@@ -193,6 +226,8 @@ def _record(site: Site) -> SiteRecord:
         work_start_local=site.work_start_local,
         work_end_local=site.work_end_local,
         work_types=tuple(site.work_types),
+        work_start_date=site.work_start_date,
+        work_end_date=site.work_end_date,
     )
 
 
@@ -205,4 +240,8 @@ def _form_from(record: SiteRecord) -> SiteForm:
         work_start=_hhmm(record.work_start_local),
         work_end=_hhmm(record.work_end_local),
         work_types=record.work_types,
+        work_start_date=""
+        if record.work_start_date is None
+        else record.work_start_date.isoformat(),
+        work_end_date="" if record.work_end_date is None else record.work_end_date.isoformat(),
     )

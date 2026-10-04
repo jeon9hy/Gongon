@@ -87,8 +87,13 @@ RUN_MESSAGES: dict[RunResult, str] = {
     "done": "판정했습니다.",
     "failed": "예보를 받지 못해 ‘판정 불가’로 기록했습니다. 데이터 상태에서 원인을 확인하세요.",
     "no_rules": "판정 기준이 있는 공종이 없습니다. 현장 설정에서 철골 작업을 고르세요.",
-    "all_done": "전체 현장을 판정했습니다.",
+    "all_done": (
+        "전체 현장을 판정했습니다. 작업 기간이 아니거나 판정 기준이 없는 현장은 건너뜁니다."
+    ),
     "no_sites": "등록된 현장이 없습니다. 먼저 현장을 등록하세요.",
+    "out_of_period": (
+        "내일은 작업 기간이 아니라 판정하지 않았습니다. 현장 설정에서 작업 기간을 확인하세요."
+    ),
 }
 
 
@@ -105,6 +110,8 @@ def run_for_site(
         return "no_rules"
 
     target_date = target_date_for(now)
+    if not site.works_on(target_date):
+        return "out_of_period"  # 작업하지 않는 날은 예보도 받지 않는다
     start_at = datetime.combine(target_date, site.work_start_local, KST)
     end_at = datetime.combine(target_date, site.work_end_local, KST)
     snapshot = forecasts_service.get_forecast(
@@ -149,9 +156,9 @@ def run_all(session: Session, now: datetime, auth: KmaAuth, http_get: HttpGet) -
         return "no_sites"
     if "failed" in results:
         return "failed"
-    if all(r == "no_rules" for r in results):
-        return "no_rules"
-    return "all_done"
+    if "done" in results:
+        return "all_done"
+    return "out_of_period" if "out_of_period" in results else "no_rules"
 
 
 def _judgment(
@@ -293,6 +300,12 @@ def build_dashboard(
         notice=_notice(site, target_date, cards, latest),
         message=message,
         message_is_error=ran not in (None, "done"),
+        off_period_note=None
+        if site.works_on(target_date)
+        else (
+            f"내일({_date_text(target_date)})은 작업 기간({site.period_text()})이 아니라 "
+            "판정하지 않습니다."
+        ),
     )
 
 
@@ -304,13 +317,17 @@ def build_home(session: Session, now: datetime, ran: RunResult | None = None) ->
     for j in repository.latest_for_sites_date(session, [s.site_id for s in sites], target_date):
         by_site.setdefault(j.site_id, {}).setdefault(j.work_type, j)
     rule_sets = rule_sets_by_label()
-    summaries = tuple(_site_summary(s, by_site.get(s.site_id, {}), rule_sets) for s in sites)
+    summaries = tuple(
+        _site_summary(s, by_site.get(s.site_id, {}), rule_sets, target_date) for s in sites
+    )
 
     counts = {v.value: 0 for v in (Verdict.STOP_REVIEW, Verdict.CHECK, Verdict.UNAVAILABLE,
                                    Verdict.GO)}  # fmt: skip
-    not_judged = 0
+    not_judged = off_period = 0
     for summary in summaries:
-        if summary.verdict is None:
+        if not summary.working:
+            off_period += 1
+        elif summary.verdict is None:
             not_judged += 1
         else:
             counts[summary.verdict] += 1
@@ -318,6 +335,8 @@ def build_home(session: Session, now: datetime, ran: RunResult | None = None) ->
         *(CountTile(v, n, v) for v, n in counts.items()),
         CountTile("판정 전", not_judged, None),
     )
+    if off_period:
+        tiles = (*tiles, CountTile("작업 없음", off_period, None))
 
     names = {s.site_id: s.name for s in sites}
     recent = tuple(
@@ -348,13 +367,18 @@ def build_home(session: Session, now: datetime, ran: RunResult | None = None) ->
         rule_version=None if primary_rules is None else primary_rules.rule_version,
         rule_verified=primary_rules is not None and primary_rules.source_verified,
         message=None if ran is None else RUN_MESSAGES[ran],
-        message_is_error=ran in ("failed", "no_rules", "no_sites"),
+        message_is_error=ran in ("failed", "no_rules", "no_sites", "out_of_period"),
     )
 
 
 def _site_summary(
-    site: SiteRecord, latest: dict[str, Judgment], rule_sets: Mapping[str, RuleSet]
+    site: SiteRecord,
+    latest: dict[str, Judgment],
+    rule_sets: Mapping[str, RuleSet],
+    target_date: date,
 ) -> SiteSummary:
+    working = site.works_on(target_date)
+
     def summary(verdict: str | None, reason: str, judged_at: str | None) -> SiteSummary:
         return SiteSummary(
             site_id=site.site_id,
@@ -365,8 +389,11 @@ def _site_summary(
             reason=reason,
             detail_href=dashboard_href(site.site_id),
             judged_at=judged_at,
+            working=working,
         )
 
+    if not working:
+        return summary(None, f"작업 기간이 아닙니다 · {site.period_text()}", None)
     if not any(w in latest for w in site.work_types):
         return summary(None, "아직 판정하지 않았습니다", None)
     # 현장의 단계는 공종 카드 중 가장 높은 단계(기준 미확인 공종의 '확인 필요' 포함).
@@ -388,7 +415,7 @@ def _empty_dashboard(target_date: date) -> DashboardView:
         sites=(), site_id=None, site_name="", target_date=_date_text(target_date), work_hours="",
         cards=(), primary=None, forecast_issued=None, rule_version=None, rule_verified=False,
         collection_status="현장 등록 전", judged_at=None, grid="—", notice=None, message=None,
-        message_is_error=False,
+        message_is_error=False, off_period_note=None,
     )  # fmt: skip
 
 

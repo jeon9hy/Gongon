@@ -20,6 +20,8 @@ SITE: dict[str, Any] = {
     "longitude": "126.9780",
     "work_start": "07:00",
     "work_end": "17:00",
+    "work_start_date": "2026-10-01",
+    "work_end_date": "2026-12-31",
     "work_types": ["철골 작업", "고소작업대"],
 }
 
@@ -242,3 +244,41 @@ def test_run_all_without_sites_says_so(client: TestClient) -> None:
     location = client.post("/judgments/run-all", follow_redirects=False).headers["location"]
 
     assert location == "/?ran=no_sites"
+
+
+def test_day_outside_work_period_is_not_judged_or_fetched(
+    client: TestClient, session: Session, fake_kma: FakeKma
+) -> None:
+    # 고정 시각 10/4 → 대상 10/5. 작업 기간이 10/6부터면 판정하지 않는다.
+    site_id = add_site(client, work_start_date="2026-10-06", work_end_date="2026-10-31")
+
+    location = run(client, site_id)
+
+    assert "ran=out_of_period" in location
+    assert fake_kma.calls == []
+    assert count(session, Judgment) == 0
+    page = client.get(location).text
+    assert "작업 기간(2026-10-06~2026-10-31)이 아니라 판정하지 않습니다" in page
+    assert 'action="/judgments/run"' not in page  # 판정 버튼을 숨긴다
+
+
+def test_last_day_of_work_period_is_still_judged(client: TestClient, session: Session) -> None:
+    site_id = add_site(client, work_start_date="2026-09-01", work_end_date="2026-10-05")
+
+    assert "ran=done" in run(client, site_id)
+    assert count(session, Judgment) == 1
+
+
+def test_run_all_skips_sites_outside_period_and_home_counts_them(
+    client: TestClient, session: Session
+) -> None:
+    add_site(client)
+    add_site(client, name="△△현장", work_start_date="2026-11-01", work_end_date="2026-11-30")
+
+    location = client.post("/judgments/run-all", follow_redirects=False).headers["location"]
+    home = client.get(location).text
+
+    assert location == "/?ran=all_done"
+    assert count(session, Judgment) == 1
+    assert "작업 기간이 아닙니다 · 2026-11-01~2026-11-30" in home
+    assert "작업 없음" in home

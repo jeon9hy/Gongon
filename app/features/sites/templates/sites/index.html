@@ -80,6 +80,19 @@
 </fieldset>
 
 <fieldset>
+<legend>작업 기간</legend>
+<div class="inline">
+<label class="field" style="flex: 1 1 180px;">시작일
+<input type="date" name="work_start_date" value="{{ form.work_start_date }}" required>
+</label>
+<label class="field" style="flex: 1 1 180px;">종료일
+<input type="date" name="work_end_date" value="{{ form.work_end_date }}" required>
+</label>
+</div>
+<p class="small muted">기간 안의 날만 판정합니다. 기간 밖인 날은 예보를 받지 않고 ‘작업 기간 아님’으로 표시합니다.</p>
+</fieldset>
+
+<fieldset>
 <legend>작업 시간</legend>
 <div class="inline">
 <label class="field" style="flex: 1 1 180px;">시작

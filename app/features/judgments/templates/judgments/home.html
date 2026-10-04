@@ -77,16 +77,18 @@
 <h3 class="site-card__name">{{ s.name }}</h3>
 <p class="small muted">작업 {{ s.work_hours }} · {{ s.work_types }}</p>
 </div>
-{% if s.verdict %}{{ verdict_badge(s.verdict) }}{% else %}<span class="badge badge--unknown">판정 전</span>{% endif %}
+{% if s.verdict %}{{ verdict_badge(s.verdict) }}{% elif not s.working %}<span class="badge badge--unknown">작업 없음</span>{% else %}<span class="badge badge--unknown">판정 전</span>{% endif %}
 </div>
 <p class="site-card__reason">{{ s.reason }}</p>
 <div class="row row--center">
 <span class="small muted">{% if s.judged_at %}판정 {{ s.judged_at }}{% else %}&nbsp;{% endif %}</span>
 <div class="row row--center" style="gap: 8px;">
+{% if s.working %}
 <form method="post" action="/judgments/run">
 <input type="hidden" name="site_id" value="{{ s.site_id }}">
 <button class="btn btn--soft btn--sm" type="submit">판정하기</button>
 </form>
+{% endif %}
 <a class="btn btn--ink btn--sm" href="{{ s.detail_href }}">자세히 {{ icon("arrow-right", 14, 2.2) }}</a>
 </div>
 </div>

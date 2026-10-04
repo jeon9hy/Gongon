@@ -152,7 +152,7 @@ td.is-over { font-weight: 800; color: var(--stop-text); }
 .filters__group a[aria-current="true"] { background: var(--ink); color: var(--accent); }
 .filters label, .field { display: flex; flex-direction: column; gap: 8px; font-size: 14px; font-weight: 600; }
 .filters label { flex-direction: row; align-items: center; font-size: 13px; color: var(--verdict-unknown-fg); }
-select, input[type="text"], input[type="tel"], input[type="time"] { min-height: 44px; border: 0; background: var(--surface); padding: 0 14px; font-size: 14px; font-weight: 600; }
+select, input[type="text"], input[type="tel"], input[type="time"], input[type="date"] { min-height: 44px; border: 0; background: var(--surface); padding: 0 14px; font-size: 14px; font-weight: 600; }
 select { border-radius: 999px; }
 .empty { padding: 28px 16px; text-align: center; font-size: 14px; color: var(--muted); }
 .row-note { display: block; margin-top: 6px; font-size: 12px; color: var(--muted); }

@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
@@ -5,6 +6,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session
 
+from app.core.clock import now_kst
 from app.core.config import Settings, get_settings
 from app.core.db import get_session
 from app.core.templating import register_template_dir, templates
@@ -29,6 +31,8 @@ class _SiteFormFields:
         longitude: Annotated[str, Form()] = "",
         work_start: Annotated[str, Form()] = "",
         work_end: Annotated[str, Form()] = "",
+        work_start_date: Annotated[str, Form()] = "",
+        work_end_date: Annotated[str, Form()] = "",
         work_types: Annotated[list[str] | None, Form()] = None,
     ) -> None:
         self.form = SiteForm(
@@ -38,6 +42,8 @@ class _SiteFormFields:
             longitude=longitude,
             work_start=work_start,
             work_end=work_end,
+            work_start_date=work_start_date,
+            work_end_date=work_end_date,
             work_types=tuple(work_types or ()),
         )
 
@@ -53,9 +59,13 @@ def _render(request: Request, view: SitesView, status_code: int = 200) -> HTMLRe
 
 @router.get("/sites", response_class=HTMLResponse)
 def sites(
-    request: Request, session: SessionDep, site_id: int | None = None, saved: bool = False
+    request: Request,
+    session: SessionDep,
+    now: Annotated[datetime, Depends(now_kst)],
+    site_id: int | None = None,
+    saved: bool = False,
 ) -> HTMLResponse:
-    view = service.build_sites_view(session, site_id, saved=saved)
+    view = service.build_sites_view(session, site_id, saved=saved, today=now.date())
     if view is None:
         raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
     return _render(request, view)

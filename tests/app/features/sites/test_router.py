@@ -10,6 +10,8 @@ VALID: dict[str, Any] = {
     "longitude": "126.9780",
     "work_start": "07:00",
     "work_end": "17:00",
+    "work_start_date": "2026-10-01",
+    "work_end_date": "2026-12-31",
     "work_types": ["철골 작업", "고소작업대"],
 }
 
@@ -38,6 +40,11 @@ def test_new_site_is_saved_with_kma_grid_and_listed(client: TestClient) -> None:
         ({"work_types": []}, "공종을 하나 이상"),
         ({"work_types": ["토공"]}, "알 수 없는 공종"),
         ({"address": "  "}, "주소를 1~200자로 입력하세요"),
+        ({"work_start_date": ""}, "작업 기간(시작일·종료일)을 입력하세요"),
+        (
+            {"work_start_date": "2026-12-31", "work_end_date": "2026-10-01"},
+            "종료일은 시작일과 같거나",
+        ),
     ],
 )
 def test_invalid_site_is_not_saved_and_input_is_kept(
@@ -72,3 +79,10 @@ def test_blank_site_name_uses_address_as_name(client: TestClient) -> None:
     location = create(client, name="", address="서울 중구 세종대로 110").headers["location"]
 
     assert "<strong>서울 중구 세종대로 110</strong>" in client.get(location).text
+
+
+def test_new_site_form_starts_with_a_30_day_period_from_today(client: TestClient) -> None:
+    page = client.get("/sites").text  # 고정 시각 2026-10-04
+
+    assert 'name="work_start_date" value="2026-10-04"' in page
+    assert 'name="work_end_date" value="2026-11-03"' in page

@@ -5,7 +5,7 @@ from typing import Literal
 
 VerdictFilter = Literal["전체", "진행", "확인 필요", "중지 검토", "판정 불가"]
 ElementKey = Literal["rain", "wind", "snow"]
-RunResult = Literal["done", "failed", "no_rules", "all_done", "no_sites"]
+RunResult = Literal["done", "failed", "no_rules", "all_done", "no_sites", "out_of_period"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,6 +113,7 @@ class DashboardView:
     notice: Notice | None
     message: str | None
     message_is_error: bool
+    off_period_note: str | None  # 대상 날짜가 작업 기간 밖이면 안내 문구
 
 
 @dataclass(frozen=True, slots=True)
@@ -127,6 +128,7 @@ class SiteSummary:
     reason: str
     detail_href: str
     judged_at: str | None
+    working: bool  # 대상 날짜가 작업 기간 안인가
 
 
 @dataclass(frozen=True, slots=True)

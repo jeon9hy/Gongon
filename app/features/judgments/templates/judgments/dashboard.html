@@ -35,13 +35,18 @@
 <div class="chips">
 {% if view.forecast_issued %}<span class="chip">예보 발표 {{ view.forecast_issued }}</span>{% endif %}
 {% if view.rule_version %}<span class="chip">기준 {{ view.rule_version }}{% if not view.rule_verified %} · <span class="todo">원문 대조 필요</span>{% endif %}</span>{% endif %}
+{% if not view.off_period_note %}
 <form method="post" action="/judgments/run">
 <input type="hidden" name="site_id" value="{{ view.site_id }}">
 <button class="btn btn--accent" type="submit">{% if view.primary %}다시 판정하기{% else %}지금 판정하기{% endif %}</button>
 </form>
+{% endif %}
 </div>
 </section>
 
+{% if view.off_period_note %}
+<div class="alert alert--error" role="status">{{ view.off_period_note }} <a href="/sites?site_id={{ view.site_id }}">작업 기간 바꾸기 ›</a></div>
+{% endif %}
 {% if view.message %}
 <div class="alert {% if view.message_is_error %}alert--error{% else %}alert--ok{% endif %}" role="status">{{ view.message }}</div>
 {% endif %}

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import time
+from datetime import date, time
 from typing import Literal
 
 # 기준표가 있으면 판정한다(원문 대조 전이면 그 표시를 함께). 없으면 판정하지 않는다(D-017).
@@ -20,6 +20,20 @@ class SiteRecord:
     work_start_local: time  # KST
     work_end_local: time
     work_types: tuple[str, ...]
+    work_start_date: date | None  # 작업 기간(양 끝 포함). None이면 제한 없음
+    work_end_date: date | None
+
+    def works_on(self, day: date) -> bool:
+        if self.work_start_date is not None and day < self.work_start_date:
+            return False
+        return self.work_end_date is None or day <= self.work_end_date
+
+    def period_text(self) -> str | None:
+        if self.work_start_date is None and self.work_end_date is None:
+            return None
+        start = "" if self.work_start_date is None else f"{self.work_start_date:%Y-%m-%d}"
+        end = "" if self.work_end_date is None else f"{self.work_end_date:%Y-%m-%d}"
+        return f"{start}~{end}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,6 +47,8 @@ class SiteForm:
     work_start: str = "07:00"
     work_end: str = "17:00"
     work_types: tuple[str, ...] = ("철골 작업",)
+    work_start_date: str = ""
+    work_end_date: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,6 +62,8 @@ class SiteInput:
     work_start_local: time
     work_end_local: time
     work_types: tuple[str, ...]
+    work_start_date: date
+    work_end_date: date
 
 
 @dataclass(frozen=True, slots=True)

@@ -38,4 +38,6 @@ def _columns(data: SiteInput) -> dict[str, object]:
         "work_start_local": data.work_start_local,
         "work_end_local": data.work_end_local,
         "work_types": list(data.work_types),
+        "work_start_date": data.work_start_date,
+        "work_end_date": data.work_end_date,
     }
