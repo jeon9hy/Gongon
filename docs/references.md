@@ -7,7 +7,7 @@
 | 작업 | 공식 입수 경로 | 필요한 부분·산출물 | 2026-10-07 확인 범위 |
 | --- | --- | --- | --- |
 | S01 기준 | [국가법령정보센터 산업안전보건기준에 관한 규칙](https://law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lspttninfSeq=153999) | 제383조, 적용 시행일·개정 이력, 요소별 단위·이상/초과·원문 대조표 | 공식 페이지 접근 확인. 현행 적용 버전·값의 최종 대조 미완료, source_verified=false 유지 |
-| S01-1 계약 | [JSON Schema Draft 2020-12](https://json-schema.org/draft/2020-12) | 타입·필수 필드·열거형·null·시각 형식 및 검증기 지원 범위 | 규격 페이지 확인. 검증기 선택·구현은 S01-1에서 수행 |
+| S01-1 계약 | [JSON Schema Draft 2020-12](https://json-schema.org/draft/2020-12), [python-jsonschema 검증 문서](https://python-jsonschema.readthedocs.io/en/stable/validate/) | 타입·필수 필드·열거형·null·시각 형식 및 검증기 지원 범위 | Draft202012Validator + FormatChecker 선택. 공식 문서의 format은 기본 미검사라는 제약 확인, 날짜·시각 오류 거부 테스트 추가 |
 | S02·S03 예보 | [기상청 단기예보 조회서비스](https://www.data.go.kr/data/15084084/openapi.do) | 참고문서의 활용가이드 ZIP 확보 후 getVilageFcst의 WSD·PCP·SNO 단위, 범주·결측·발표/제공 시각·예보 시각 의미 발췌 | 페이지에 `기상청41_단기예보 조회서비스_오픈API활용가이드_2609.zip` 표시 확인. ZIP 내용은 아직 미확보 |
 | S02-1 격자 | 위 단기예보 활용가이드의 격자 변환·첨부 격자표부터 확인 | 공식 원본 파일명·버전·시트/행 + 추가 지역 좌표/격자 테스트 | 기존 [15043492](https://www.data.go.kr/data/15043492/fileData.do)는 초단기예보 자료로 표시됨. 격자표 출처로 확정하지 않음 |
 | S05 주소 | [Kakao Local 개발 가이드](https://developers.kakao.com/docs/ko/local/dev-guide) | 키워드 검색의 좌표·주소·빈 결과·오류·인증 방식, 실제 결과 대조 | 공식 문서 페이지 확인. 기존 저장 응답을 우선 재사용, 사용자 키의 승인·실제 호출은 별도 확인 |

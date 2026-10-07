@@ -10,7 +10,7 @@
 | 앱 생성·라우터 연결 | `app/main.py` | `create_app()` | 있음 | S00 |
 | 전체 검증 | `scripts/check.py` | 린트·포맷·타입·테스트(CI와 동일) | 있음 | S00 |
 | 기준 원문·버전 | `rules/` | `rules/steel.yaml`(공종별 파일, 원문 대조 전 초안) | 있음 | S01 |
-| 판정 데이터 계약 | `docs/schema.json` | JSON Schema | 계획 | S01 |
+| 판정 데이터 계약 | `docs/schema.json`, `docs/contract.md` | 저장 판정 JSON v1.0, `service.serialize_judgment()` | 있음 | S01-1 |
 | 위치·격자 변환 | `engine/geo/` | `latlon_to_kma_grid()` | 있음 | S02-1 |
 | 예보 수집·정규화 | `engine/forecast/` | `fetch_vilage_forecast()` → 원자료, `normalize()` → 판정 입력 | 있음 | S02-2 |
 | 순수 판정 | `engine/judgment/` | `judge(weather, rule_set, work_start_at, work_end_at) -> JudgmentResult`, `load_rule_set()` | 있음 | S03 |

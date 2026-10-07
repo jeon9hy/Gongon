@@ -1,0 +1,344 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "공온 저장 판정 기록 v1.0",
+  "description": "예보 기반 판정 한 건. DB 기록의 JSON 표현이며 현장 관측·담당자 결정·실제 작업 기록이 아니다. docs/contract.md 참고.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "data_type",
+    "judgment_id",
+    "site_id",
+    "target_date",
+    "work_type",
+    "work_start_at",
+    "work_end_at",
+    "verdict",
+    "rule_version",
+    "rule_source",
+    "rule_source_verified",
+    "grid_nx",
+    "grid_ny",
+    "forecast_run_id",
+    "forecast_issued_at",
+    "failure_reason",
+    "element_units",
+    "hours",
+    "windows",
+    "judged_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "data_type": {
+      "const": "forecast"
+    },
+    "judgment_id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "site_id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "target_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "work_type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "work_start_at": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "work_end_at": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "verdict": {
+      "$ref": "#/$defs/verdict"
+    },
+    "rule_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rule_source": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rule_source_verified": {
+      "type": "boolean"
+    },
+    "grid_nx": {
+      "type": "integer"
+    },
+    "grid_ny": {
+      "type": "integer"
+    },
+    "forecast_run_id": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "forecast_issued_at": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/timestamp"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "failure_reason": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1
+    },
+    "element_units": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "wind_speed_mps",
+        "precipitation_mm_per_h",
+        "snowfall_cm_per_h"
+      ],
+      "properties": {
+        "wind_speed_mps": {
+          "const": "m/s"
+        },
+        "precipitation_mm_per_h": {
+          "const": "mm/h"
+        },
+        "snowfall_cm_per_h": {
+          "const": "cm/h"
+        }
+      }
+    },
+    "hours": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/hour"
+      }
+    },
+    "windows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/window"
+      }
+    },
+    "judged_at": {
+      "$ref": "#/$defs/timestamp"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "failure_reason": {
+            "type": "string"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "verdict": {
+            "const": "판정 불가"
+          },
+          "forecast_issued_at": {
+            "type": "null"
+          },
+          "hours": {
+            "maxItems": 0
+          },
+          "windows": {
+            "maxItems": 1,
+            "items": {
+              "properties": {
+                "verdict": {
+                  "const": "판정 불가"
+                }
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "forecast_issued_at": {
+            "$ref": "#/$defs/timestamp"
+          },
+          "hours": {
+            "minItems": 1
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "\\+09:00$",
+      "description": "KST RFC 3339 시각. +09:00 필수. format 검사를 활성화해야 한다."
+    },
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "진행",
+        "확인 필요",
+        "중지 검토",
+        "판정 불가"
+      ]
+    },
+    "condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "condition_id",
+        "element",
+        "verdict",
+        "raw",
+        "lower",
+        "upper",
+        "threshold",
+        "operator",
+        "reason"
+      ],
+      "properties": {
+        "condition_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "element": {
+          "enum": [
+            "wind_speed_mps",
+            "precipitation_mm_per_h",
+            "snowfall_cm_per_h"
+          ]
+        },
+        "verdict": {
+          "$ref": "#/$defs/verdict"
+        },
+        "raw": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "예보 원표현. 값 누락은 null."
+        },
+        "lower": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "upper": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "raw가 있으면 null은 상한 없는 범주. raw가 null이면 값 누락."
+        },
+        "threshold": {
+          "type": "number"
+        },
+        "operator": {
+          "enum": [
+            ">=",
+            ">"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "raw": {
+                "type": "null"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "lower": {
+                "type": "null"
+              },
+              "upper": {
+                "type": "null"
+              },
+              "verdict": {
+                "const": "판정 불가"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "raw": {
+                "type": "string",
+                "minLength": 1
+              },
+              "lower": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "hour": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "valid_at",
+        "verdict",
+        "conditions"
+      ],
+      "properties": {
+        "valid_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "verdict": {
+          "$ref": "#/$defs/verdict"
+        },
+        "conditions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/condition"
+          }
+        }
+      }
+    },
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "start_at",
+        "end_at",
+        "verdict"
+      ],
+      "properties": {
+        "start_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "end_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "verdict": {
+          "$ref": "#/$defs/verdict"
+        }
+      }
+    }
+  }
+}

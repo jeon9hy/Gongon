@@ -57,7 +57,7 @@ class Judgment(Base):
     forecast_run_id: Mapped[int | None] = mapped_column(ForeignKey("forecast_runs.id"))
     forecast_issued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     failure_reason: Mapped[str | None] = mapped_column(Text)
-    # 시간별 조건 비교 결과(예보값·기준값·계산 사유 포함). 형식은 service._hours_to_json.
+    # 기존 JSONB 형식은 docs/schema.json의 hours·windows 정의와 같다.
     hours: Mapped[list[dict[str, Any]]] = mapped_column(JSONB)
     windows: Mapped[list[dict[str, Any]]] = mapped_column(JSONB)  # 같은 판정이 이어진 작업 구간
     judged_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

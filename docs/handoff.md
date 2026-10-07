@@ -1,29 +1,27 @@
 # 현재 작업 인계
 
-- 현재 작업: S01 doing. 순차 개발 계획 정리 완료(2026-10-07), 다음 구현 단위 S01-1은 todo
-- 마지막 수정 도구: Codex
-- 브랜치: `feature/S04-basic-app`, 시작 HEAD `1b2040d`. 기존 브랜치 유지
-- 요청: 기능을 하나씩 완성하는 실행 계획과 레퍼런스 확보 방법. 이번 변경은 문서만
-- 변경: `docs/plan.md` 실행 순서·완료 기준·검증 방식, `docs/references.md` 공식 자료 확보 절차, D-024
-- 다음 구현: S01-1 `docs/schema.json`·계약 예시·실제 직렬화 결과 검증 테스트
-- S01-1 읽을 범위: 총정리 §4.2·4.3, judgment types, judgments schemas/service/models와 관련 테스트
-- 계약은 기존 저장 형식을 먼저 대조. 원문 미확인을 숨기지 않고 불필요한 형식 변경은 피함
-- 개발 순서: S01 → S02-1·S03 확인 → S04 잔여·S05 → S04-2 → S06 → S07 → 조건 충족 후 S08~S10
-- S04-2는 기본 흐름 정리 후 착수 예정(D-024). 다중 사용자 배포 전 권한 검증 필수
-- S06은 매일 실행·웹 알림 미리보기 저장. 실제 알림톡은 사업자 등록 후 별도 작업(D-015)
-- 기존 구현: 현장 등록/수정 → 예보 수집 → 철골 판정 → 저장 → 홈·현장 대시보드·상세·내역
-- 기준 미확인 공종은 확인 필요 표시만, 공온지수 금지. 예보·결정·실제 결과 구분 유지
-- 상태 정정: S02-2는 plan.md 기준 done. 이전 인계의 review 표기는 오래된 기록
-- 환경 정정: 2026-10-07 로컬 앱 실행·기존 DB 현장/판정 조회 성공. DB 미설치 차단은 해소됨
-- PostgreSQL 주 버전·현재 환경의 upgrade/downgrade 왕복은 이번 작업에서 확인하지 않음
-- Codex 지침 적용 확인. 과거 모델 설정 오류는 현재 세션의 차단 조건이 아님. S00 main 반영은 남음
-- 화면 관찰: 내일 대상 홈에 과거 예보 수집 성공이 함께 표시됨. S05에서 최신성/판정 없음 구분 개선
-- 공식 자료: data.go.kr 15084084의 2609 활용가이드 ZIP 표시 확인, 첨부 내용은 아직 미확보
-- 격자 출처 정정: 15043492는 초단기예보 자료. 공식 격자표를 다시 확보하고 추가 지역 대조 필요
-- 개발자 확인: 제383조 적용 시행일·값·연산자 최종 원문 대조. `source_verified=false` 유지
-- API 키는 기존 설정 유지. 카카오 실제 호출·검색 화면 검증은 이번에 하지 않음
-- 검증(2026-10-07): 앱 DB와 테스트 DB 대상 분리 확인 후 `uv run python scripts/check.py`
-- 결과: ruff check·format·mypy 통과, pytest 127 passed, skip 없음. 외부 API는 테스트에서 가짜 사용
-- 이번 검증은 법령 원문 확인·실제 알림 발송·배포 검증을 대신하지 않음
-- Git 저장 대상: plan.md, references.md, decisions.md, handoff.md. 코드·DB 계약 변경 없음
-- Windows 한글 경로: `uv run python -m pytest|alembic|uvicorn` 사용
+- 현재 작업: S01 doing, S01-1 done(2026-10-07). 마지막 수정 도구 Codex
+- 브랜치: `feature/S04-basic-app`. 기능별 완료·검증·보고 요청에 따라 순차 진행
+- 이번 완료: 저장 판정 JSON 계약 v1.0(D-025)
+- 결과물: docs/schema.json, contract.md, contract-examples.json, service.serialize_judgment()
+- 기존 DB 열·hours/windows JSONB·기준·화면은 유지. 스키마 버전·자료 유형·단위는 JSON 표현에 명시
+- 시각은 KST +09:00, 시간대 없는 열은 오류. 원문 미검증 상태를 그대로 보존
+- 예시 5종: 진행·중지 검토·누락·비교 불가·수집 실패(계약 설명용 합성 데이터)
+- 관련 테스트: test_contract.py 26개 통과. 실제 DB 저장→JSON 변환도 다섯 시나리오 대조
+- 전체 검증: scripts/check.py ruff check·format·mypy 통과, pytest 153 passed, skip 없음
+- 테스트는 외부 API 가짜 사용. 개발 의존성 jsonschema·rfc3339-validator·types-jsonschema 추가, 잠금 동반 변경
+- 계약 한계: 기존 hours는 upper_inclusive·forecast_comparable을 별도 보존하지 않음
+- 조회 계약이므로 숫자 구간만으로 재판정 금지. 원자료·당시 규칙 필요. 별도 재판정 계약은 마이그레이션 포함 설계
+- S01 남음: 제383조 적용 시행일·값·연산자 개발자 최종 대조 및 기준 확인일 메타데이터
+- 기준 source_verified=false 유지. 계약 통과는 법령 검증 완료가 아님
+- 다음 독립 작업: 기존 허용 범위 S02-1 공식 격자표 확보·추가 지역 대조
+- 공식 자료: data.go.kr 15084084의 2609 활용가이드 ZIP 목록 확인. 첨부 내용 미확보
+- 기존 격자 링크 15043492는 초단기예보 자료로 확인되어 출처 정정함
+- 실행 순서·검증 정책: docs/plan.md, 자료 확보 경로: docs/references.md
+- S04-2는 기본 흐름 정리 후, S06은 웹 알림 미리보기 우선(D-015·D-024)
+- 환경: 로컬 DB 연결·기존 자료 조회 확인. DB 미설치 및 과거 Codex 모델 오류는 차단 아님
+- S05 대기: 내일 대상 홈에 과거 수집 성공이 함께 표시됨. 최신성/판정 없음 구분 개선
+- GitHub 이름 변경 완료: jeon9hy/Gongon, origin=https://github.com/jeon9hy/Gongon.git
+- 로컬 폴더 Gongon 변경은 다른 프로세스의 사용으로 Windows가 거부. 실제 폴더명 gongon 유지
+- Windows 한글 경로: uv run python -m pytest|alembic|uvicorn 사용
+- 작업 폴더에서는 한 도구만 수정. 현재 브랜치와 기존 변경을 이어간다

@@ -2,6 +2,7 @@
 
 import logging
 from collections.abc import Mapping
+from copy import deepcopy
 from datetime import date, datetime, timedelta
 from typing import Any
 from urllib.parse import urlencode
@@ -641,6 +642,41 @@ def _notice_reason(judgment: Judgment, window: dict[str, Any]) -> str:
 
 
 # ---------- 상세 ----------
+
+
+def serialize_judgment(judgment: Judgment) -> dict[str, Any]:
+    """저장된 판정의 JSON 계약(docs/schema.json). 재계산하거나 원문 검증 상태를 보정하지 않는다."""
+
+    def timestamp(value: datetime) -> str:
+        if value.utcoffset() is None:
+            raise ValueError("판정 기록의 시각에 시간대가 없음")
+        return value.astimezone(KST).isoformat()
+
+    return {
+        "schema_version": "1.0",
+        "data_type": "forecast",
+        "judgment_id": judgment.id,
+        "site_id": judgment.site_id,
+        "target_date": judgment.target_date.isoformat(),
+        "work_type": judgment.work_type,
+        "work_start_at": timestamp(judgment.work_start_at),
+        "work_end_at": timestamp(judgment.work_end_at),
+        "verdict": judgment.verdict,
+        "rule_version": judgment.rule_version,
+        "rule_source": judgment.rule_source,
+        "rule_source_verified": judgment.rule_source_verified,
+        "grid_nx": judgment.grid_nx,
+        "grid_ny": judgment.grid_ny,
+        "forecast_run_id": judgment.forecast_run_id,
+        "forecast_issued_at": (
+            None if judgment.forecast_issued_at is None else timestamp(judgment.forecast_issued_at)
+        ),
+        "failure_reason": judgment.failure_reason,
+        "element_units": {element.value: unit for element, unit in ELEMENT_UNIT.items()},
+        "hours": deepcopy(judgment.hours),
+        "windows": deepcopy(judgment.windows),
+        "judged_at": timestamp(judgment.judged_at),
+    }
 
 
 def get_detail(session: Session, judgment_id: int) -> DetailView | None:

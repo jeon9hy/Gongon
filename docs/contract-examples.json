@@ -1,0 +1,327 @@
+{
+  "go": {
+    "schema_version": "1.0",
+    "data_type": "forecast",
+    "judgment_id": 1,
+    "site_id": 1,
+    "target_date": "2026-10-05",
+    "work_type": "철골 작업",
+    "work_start_at": "2026-10-05T09:00:00+09:00",
+    "work_end_at": "2026-10-05T10:00:00+09:00",
+    "verdict": "진행",
+    "rule_version": "2025-07-17 시행",
+    "rule_source": "산업안전보건기준에 관한 규칙 제383조",
+    "rule_source_verified": false,
+    "grid_nx": 60,
+    "grid_ny": 127,
+    "forecast_run_id": 1,
+    "forecast_issued_at": "2026-10-04T14:00:00+09:00",
+    "failure_reason": null,
+    "element_units": {
+      "wind_speed_mps": "m/s",
+      "precipitation_mm_per_h": "mm/h",
+      "snowfall_cm_per_h": "cm/h"
+    },
+    "hours": [
+      {
+        "valid_at": "2026-10-05T09:00:00+09:00",
+        "verdict": "진행",
+        "conditions": [
+          {
+            "condition_id": "steel_wind",
+            "element": "wind_speed_mps",
+            "verdict": "진행",
+            "raw": "2.0",
+            "lower": 2.0,
+            "upper": 2.0,
+            "threshold": 10.0,
+            "operator": ">=",
+            "reason": "풍속 2.0 → 기준 10 m/s 이상 미만"
+          },
+          {
+            "condition_id": "steel_rain",
+            "element": "precipitation_mm_per_h",
+            "verdict": "진행",
+            "raw": "1mm 미만",
+            "lower": 0.0,
+            "upper": 1.0,
+            "threshold": 1.0,
+            "operator": ">=",
+            "reason": "강우 1mm 미만 → 기준 1 mm/h 이상 미만"
+          },
+          {
+            "condition_id": "steel_snow",
+            "element": "snowfall_cm_per_h",
+            "verdict": "진행",
+            "raw": "적설없음",
+            "lower": 0.0,
+            "upper": 0.0,
+            "threshold": 1.0,
+            "operator": ">=",
+            "reason": "강설 적설없음 → 기준 1 cm/h 이상 미만"
+          }
+        ]
+      }
+    ],
+    "windows": [
+      {
+        "start_at": "2026-10-05T09:00:00+09:00",
+        "end_at": "2026-10-05T10:00:00+09:00",
+        "verdict": "진행"
+      }
+    ],
+    "judged_at": "2026-10-04T14:15:00+09:00"
+  },
+  "stop": {
+    "schema_version": "1.0",
+    "data_type": "forecast",
+    "judgment_id": 2,
+    "site_id": 1,
+    "target_date": "2026-10-05",
+    "work_type": "철골 작업",
+    "work_start_at": "2026-10-05T09:00:00+09:00",
+    "work_end_at": "2026-10-05T10:00:00+09:00",
+    "verdict": "중지 검토",
+    "rule_version": "2025-07-17 시행",
+    "rule_source": "산업안전보건기준에 관한 규칙 제383조",
+    "rule_source_verified": false,
+    "grid_nx": 60,
+    "grid_ny": 127,
+    "forecast_run_id": 2,
+    "forecast_issued_at": "2026-10-04T14:00:00+09:00",
+    "failure_reason": null,
+    "element_units": {
+      "wind_speed_mps": "m/s",
+      "precipitation_mm_per_h": "mm/h",
+      "snowfall_cm_per_h": "cm/h"
+    },
+    "hours": [
+      {
+        "valid_at": "2026-10-05T09:00:00+09:00",
+        "verdict": "중지 검토",
+        "conditions": [
+          {
+            "condition_id": "steel_wind",
+            "element": "wind_speed_mps",
+            "verdict": "진행",
+            "raw": "2.0",
+            "lower": 2.0,
+            "upper": 2.0,
+            "threshold": 10.0,
+            "operator": ">=",
+            "reason": "풍속 2.0 → 기준 10 m/s 이상 미만"
+          },
+          {
+            "condition_id": "steel_rain",
+            "element": "precipitation_mm_per_h",
+            "verdict": "중지 검토",
+            "raw": "1.0mm",
+            "lower": 1.0,
+            "upper": 1.0,
+            "threshold": 1.0,
+            "operator": ">=",
+            "reason": "강우 1.0mm → 기준 1 mm/h 이상에 해당"
+          },
+          {
+            "condition_id": "steel_snow",
+            "element": "snowfall_cm_per_h",
+            "verdict": "진행",
+            "raw": "적설없음",
+            "lower": 0.0,
+            "upper": 0.0,
+            "threshold": 1.0,
+            "operator": ">=",
+            "reason": "강설 적설없음 → 기준 1 cm/h 이상 미만"
+          }
+        ]
+      }
+    ],
+    "windows": [
+      {
+        "start_at": "2026-10-05T09:00:00+09:00",
+        "end_at": "2026-10-05T10:00:00+09:00",
+        "verdict": "중지 검토"
+      }
+    ],
+    "judged_at": "2026-10-04T14:15:00+09:00"
+  },
+  "missing": {
+    "schema_version": "1.0",
+    "data_type": "forecast",
+    "judgment_id": 3,
+    "site_id": 1,
+    "target_date": "2026-10-05",
+    "work_type": "철골 작업",
+    "work_start_at": "2026-10-05T09:00:00+09:00",
+    "work_end_at": "2026-10-05T10:00:00+09:00",
+    "verdict": "판정 불가",
+    "rule_version": "2025-07-17 시행",
+    "rule_source": "산업안전보건기준에 관한 규칙 제383조",
+    "rule_source_verified": false,
+    "grid_nx": 60,
+    "grid_ny": 127,
+    "forecast_run_id": 3,
+    "forecast_issued_at": "2026-10-04T14:00:00+09:00",
+    "failure_reason": null,
+    "element_units": {
+      "wind_speed_mps": "m/s",
+      "precipitation_mm_per_h": "mm/h",
+      "snowfall_cm_per_h": "cm/h"
+    },
+    "hours": [
+      {
+        "valid_at": "2026-10-05T09:00:00+09:00",
+        "verdict": "판정 불가",
+        "conditions": [
+          {
+            "condition_id": "steel_wind",
+            "element": "wind_speed_mps",
+            "verdict": "판정 불가",
+            "raw": null,
+            "lower": null,
+            "upper": null,
+            "threshold": 10.0,
+            "operator": ">=",
+            "reason": "풍속 예보값 없음"
+          },
+          {
+            "condition_id": "steel_rain",
+            "element": "precipitation_mm_per_h",
+            "verdict": "진행",
+            "raw": "1mm 미만",
+            "lower": 0.0,
+            "upper": 1.0,
+            "threshold": 1.0,
+            "operator": ">=",
+            "reason": "강우 1mm 미만 → 기준 1 mm/h 이상 미만"
+          },
+          {
+            "condition_id": "steel_snow",
+            "element": "snowfall_cm_per_h",
+            "verdict": "진행",
+            "raw": "적설없음",
+            "lower": 0.0,
+            "upper": 0.0,
+            "threshold": 1.0,
+            "operator": ">=",
+            "reason": "강설 적설없음 → 기준 1 cm/h 이상 미만"
+          }
+        ]
+      }
+    ],
+    "windows": [
+      {
+        "start_at": "2026-10-05T09:00:00+09:00",
+        "end_at": "2026-10-05T10:00:00+09:00",
+        "verdict": "판정 불가"
+      }
+    ],
+    "judged_at": "2026-10-04T14:15:00+09:00"
+  },
+  "not_comparable": {
+    "schema_version": "1.0",
+    "data_type": "forecast",
+    "judgment_id": 4,
+    "site_id": 1,
+    "target_date": "2026-10-05",
+    "work_type": "철골 작업",
+    "work_start_at": "2026-10-05T09:00:00+09:00",
+    "work_end_at": "2026-10-05T10:00:00+09:00",
+    "verdict": "확인 필요",
+    "rule_version": "contract-example-not-comparable",
+    "rule_source": "계약 설명용 가상 비교 불가 조건",
+    "rule_source_verified": false,
+    "grid_nx": 60,
+    "grid_ny": 127,
+    "forecast_run_id": 4,
+    "forecast_issued_at": "2026-10-04T14:00:00+09:00",
+    "failure_reason": null,
+    "element_units": {
+      "wind_speed_mps": "m/s",
+      "precipitation_mm_per_h": "mm/h",
+      "snowfall_cm_per_h": "cm/h"
+    },
+    "hours": [
+      {
+        "valid_at": "2026-10-05T09:00:00+09:00",
+        "verdict": "확인 필요",
+        "conditions": [
+          {
+            "condition_id": "steel_wind",
+            "element": "wind_speed_mps",
+            "verdict": "확인 필요",
+            "raw": "2.0",
+            "lower": 2.0,
+            "upper": 2.0,
+            "threshold": 10.0,
+            "operator": ">=",
+            "reason": "풍속 기준은 예보로 직접 비교할 수 없음 · 현장 확인"
+          },
+          {
+            "condition_id": "steel_rain",
+            "element": "precipitation_mm_per_h",
+            "verdict": "진행",
+            "raw": "1mm 미만",
+            "lower": 0.0,
+            "upper": 1.0,
+            "threshold": 1.0,
+            "operator": ">=",
+            "reason": "강우 1mm 미만 → 기준 1 mm/h 이상 미만"
+          },
+          {
+            "condition_id": "steel_snow",
+            "element": "snowfall_cm_per_h",
+            "verdict": "진행",
+            "raw": "적설없음",
+            "lower": 0.0,
+            "upper": 0.0,
+            "threshold": 1.0,
+            "operator": ">=",
+            "reason": "강설 적설없음 → 기준 1 cm/h 이상 미만"
+          }
+        ]
+      }
+    ],
+    "windows": [
+      {
+        "start_at": "2026-10-05T09:00:00+09:00",
+        "end_at": "2026-10-05T10:00:00+09:00",
+        "verdict": "확인 필요"
+      }
+    ],
+    "judged_at": "2026-10-04T14:15:00+09:00"
+  },
+  "collection_failed": {
+    "schema_version": "1.0",
+    "data_type": "forecast",
+    "judgment_id": 5,
+    "site_id": 1,
+    "target_date": "2026-10-05",
+    "work_type": "철골 작업",
+    "work_start_at": "2026-10-05T09:00:00+09:00",
+    "work_end_at": "2026-10-05T10:00:00+09:00",
+    "verdict": "판정 불가",
+    "rule_version": "2025-07-17 시행",
+    "rule_source": "산업안전보건기준에 관한 규칙 제383조",
+    "rule_source_verified": false,
+    "grid_nx": 60,
+    "grid_ny": 127,
+    "forecast_run_id": 5,
+    "forecast_issued_at": null,
+    "failure_reason": "예보 수집 실패: 계약 설명용 연결 실패",
+    "element_units": {
+      "wind_speed_mps": "m/s",
+      "precipitation_mm_per_h": "mm/h",
+      "snowfall_cm_per_h": "cm/h"
+    },
+    "hours": [],
+    "windows": [
+      {
+        "start_at": "2026-10-05T09:00:00+09:00",
+        "end_at": "2026-10-05T10:00:00+09:00",
+        "verdict": "판정 불가"
+      }
+    ],
+    "judged_at": "2026-10-04T14:15:00+09:00"
+  }
+}

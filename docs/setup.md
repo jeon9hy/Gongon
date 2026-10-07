@@ -85,6 +85,7 @@ uv run python -m uvicorn app.main:app --reload
 - `.lnk`는 PC 절대 경로가 들어가 커밋하지 않는다(`.gitignore`). 필요하면 `start.bat`을 가리키는 바로가기를 직접 만든다.
 
 ## 의존성 변경
+- S01-1 계약 검증은 개발 의존성 `jsonschema`, `rfc3339-validator`, `types-jsonschema`를 쓴다. `FormatChecker`로 날짜·시각 형식을 실제 검사한다. `uv run python -m pytest tests/app/features/judgments/test_contract.py -q`로 예시 및 DB 저장 결과를 확인한다. DB 없는 실행의 skip은 저장 흐름 검증 완료가 아니다.
 - 추가: `uv add <패키지>` / 개발용: `uv add --dev <패키지>` → `pyproject.toml`과 `uv.lock`을 함께 커밋.
 - 결정이 필요한 의존성(DB·HTTP 클라이언트 등)은 `docs/decisions.md`를 먼저 확인한다.
 
