@@ -48,7 +48,13 @@ def parse_rule_set(data: Any) -> RuleSet:
 def _require_verification(data: dict[str, Any], rule_set: RuleSet) -> None:
     # 원문 대조 완료 표시에는 발췌 파일·조문·대조일과 조건별 인용이 모두 있어야 한다.
     _text(data, "source_snapshot")
-    _text(data, "source_article")
+    articles = data.get("source_articles")
+    if (
+        not isinstance(articles, list)
+        or not articles
+        or not all(isinstance(a, str) and a for a in articles)
+    ):
+        raise RuleSetError("source_articles가 조문 목록이 아님")
     if type(rule_set.verified_on) is not date:  # datetime(날짜+시각)도 거부
         raise RuleSetError("verified_on이 날짜(YYYY-MM-DD)가 아님")
     unquoted = [c.id for c in rule_set.conditions if not c.quote]
@@ -66,9 +72,11 @@ def _condition(item: Any) -> Condition:
     threshold = item.get("threshold")
     if isinstance(threshold, bool) or not isinstance(threshold, int | float):
         raise RuleSetError(f"{condition_id}: threshold가 숫자가 아님")
-    quote = item.get("quote")
-    if quote is not None and not isinstance(quote, str):
-        raise RuleSetError(f"{condition_id}: quote가 문자열이 아님")
+    quote = _optional_text(item, "quote", condition_id)
+    action = _optional_text(item, "action", condition_id)
+    lower_bound = item.get("forecast_lower_bound", False)
+    if not isinstance(lower_bound, bool):
+        raise RuleSetError(f"{condition_id}: forecast_lower_bound가 true/false가 아님")
     try:
         element = Element(_text(item, "element"))
         verdict = Verdict(_text(item, "verdict"))
@@ -82,7 +90,16 @@ def _condition(item: Any) -> Condition:
         verdict=verdict,
         forecast_comparable=_bool(item, "forecast_comparable"),
         quote=quote,
+        forecast_lower_bound=lower_bound,
+        action=action,
     )
+
+
+def _optional_text(item: dict[str, Any], key: str, condition_id: str) -> str | None:
+    value = item.get(key)
+    if value is not None and not isinstance(value, str):
+        raise RuleSetError(f"{condition_id}: {key}가 문자열이 아님")
+    return value
 
 
 def _text(data: dict[str, Any], key: str) -> str:

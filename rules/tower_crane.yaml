@@ -1,0 +1,22 @@
+# 타워크레인 운전 판정 기준. 형식: 서비스_개발_총정리.md §4.3, 원문 대조: D-026.
+# 법령은 순간풍속, 단기예보 WSD는 평균풍속이다. 순간풍속은 평균풍속보다 작지 않으므로 예보가 기준을 넘으면
+# 순간풍속도 넘는다(중지 검토). 넘지 않으면 순간풍속은 알 수 없어 확인 필요(forecast_lower_bound, D-027).
+# 설치·수리·점검·해체 작업(순간풍속 10 m/s 초과)은 공종 목록에 없어 넣지 않았다.
+work_type: tower_crane
+work_type_label: 타워크레인 운전
+rule_version: "2025-09-01 시행"  # 고용노동부령 제450호
+source: 산업안전보건기준에 관한 규칙 제37조
+source_snapshot: sources/osh_standards_rule_mst273603.json
+source_articles: [제37조]
+source_verified: true
+verified_on: 2026-10-07
+conditions:
+  - id: crane_operation_gust
+    element: wind_speed_mps
+    operator: ">"
+    threshold: 15.0
+    verdict: 중지 검토
+    forecast_comparable: true
+    forecast_lower_bound: true
+    action: 타워크레인 운전작업 중지
+    quote: 순간풍속이 초당 15미터를 초과하는 경우에는 타워크레인의 운전작업을 중지하여야 한다.

@@ -7,6 +7,7 @@
 | 작업 | 공식 입수 경로 | 필요한 부분·산출물 | 2026-10-07 확인 범위 |
 | --- | --- | --- | --- |
 | S01 기준 | [국가법령정보센터 산업안전보건기준에 관한 규칙](https://law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lspttninfSeq=153999) | 제383조, 적용 시행일·개정 이력, 요소별 단위·이상/초과·원문 대조표 | 완료(2026-10-07, D-026): Open API `lawService.do` MST 273603 발췌, 제383조 인용 대조 통과. 제37·558·559·560조도 발췌함(S01-2·3용) |
+| S01-3 체감온도 | [기상청 기상자료개방포털 체감온도 자료설명](https://data.kma.go.kr/climate/windChill/selectWindChillChart.do?pgmNo=111) | 2022.6.2. 여름철 산출식, Stull 습구온도 | 완료(2026-10-07): 발췌·HTML SHA256은 `rules/sources/kma_sensible_temperature.json`. 날씨누리 조견표 PDF는 개발 서버라 미확보 |
 | S01-1 계약 | [JSON Schema Draft 2020-12](https://json-schema.org/draft/2020-12), [python-jsonschema 검증 문서](https://python-jsonschema.readthedocs.io/en/stable/validate/) | 타입·필수 필드·열거형·null·시각 형식 및 검증기 지원 범위 | Draft202012Validator + FormatChecker 선택. 공식 문서의 format은 기본 미검사라는 제약 확인, 날짜·시각 오류 거부 테스트 추가 |
 | S02·S03 예보 | [기상청 단기예보 조회서비스](https://www.data.go.kr/data/15084084/openapi.do) | getVilageFcst의 WSD·PCP·SNO 단위, 범주·결측·발표/제공 시각·예보 시각 의미 발췌 | 2609 활용가이드 ZIP 다운로드 완료. 격자표 대조 완료, DOCX의 예보 시간 의미 대조는 남음 |
 | S02-1 격자 | 위 단기예보 활용가이드에 포함된 `기상청41_단기예보 조회서비스_오픈API활용가이드_격자_위경도(2607).xlsx` | 공식 원본 파일명·버전·시트/행 + 추가 지역 좌표/격자 테스트 | `최종 업데이트 파일_20260701` 시트 2·876·3322·3349·3422행, F/G 격자와 N/O 좌표 대조. 서울·부산·제주·서귀포·강릉 일치 |

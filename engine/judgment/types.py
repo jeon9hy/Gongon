@@ -25,17 +25,27 @@ class Element(StrEnum):
     WIND_SPEED_MPS = "wind_speed_mps"
     PRECIPITATION_MM_PER_H = "precipitation_mm_per_h"
     SNOWFALL_CM_PER_H = "snowfall_cm_per_h"
+    TEMPERATURE_C = "temperature_c"
+    HUMIDITY_PCT = "humidity_pct"
+    # 기온·습도로 계산한 값(engine/forecast/sensible.py). 둘 중 하나라도 없으면 만들지 않는다.
+    SENSIBLE_TEMPERATURE_C = "sensible_temperature_c"
 
 
 ELEMENT_LABEL = {
     Element.WIND_SPEED_MPS: "풍속",
     Element.PRECIPITATION_MM_PER_H: "강우",
     Element.SNOWFALL_CM_PER_H: "강설",
+    Element.TEMPERATURE_C: "기온",
+    Element.HUMIDITY_PCT: "습도",
+    Element.SENSIBLE_TEMPERATURE_C: "체감온도",
 }
 ELEMENT_UNIT = {
     Element.WIND_SPEED_MPS: "m/s",
     Element.PRECIPITATION_MM_PER_H: "mm/h",
     Element.SNOWFALL_CM_PER_H: "cm/h",
+    Element.TEMPERATURE_C: "°C",
+    Element.HUMIDITY_PCT: "%",
+    Element.SENSIBLE_TEMPERATURE_C: "°C",
 }
 
 
@@ -79,6 +89,10 @@ class Condition:
     verdict: Verdict  # 기준을 넘었을 때의 판정
     forecast_comparable: bool
     quote: str | None
+    # 예보값이 기준 대상 양의 하한일 때(예: 평균풍속 ≤ 순간풍속).
+    # 예보값이 기준을 넘으면 대상도 넘지만, 넘지 않으면 대상이 넘는지 알 수 없다.
+    forecast_lower_bound: bool = False
+    action: str | None = None  # 기준에 해당할 때 법령이 요구하는 조치(사유에 덧붙인다)
 
 
 @dataclass(frozen=True, slots=True)

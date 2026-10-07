@@ -1,0 +1,30 @@
+# 폭염(모든 현장 공통) 판정 기준. 원문 대조: D-026. 체감온도 계산: engine/forecast/sensible.py(D-027).
+# 별표 13의2 제2호: 측정이 곤란하면 기상청장이 발표하는 체감온도로 정할 수 있다. 예보 기온·습도로 기상청 산출식을
+# 적용한 값이며 현장 측정(제1호)을 대신하지 않는다. 법령이 요구하는 것은 작업 중지가 아니라 조치·휴식이므로
+# 기준에 해당해도 '중지 검토'가 아니라 '확인 필요'다.
+# 화면 사유는 같은 요소에서 처음 해당한 조건을 보여 주므로 더 엄격한 33도를 먼저 둔다.
+work_type: heat
+work_type_label: 폭염(공통)
+rule_version: "2025-09-01 시행"  # 고용노동부령 제450호(폭염 조항 2025-07-17 신설)
+source: 산업안전보건기준에 관한 규칙 제559조·제560조
+source_snapshot: sources/osh_standards_rule_mst273603.json
+source_articles: [제559조, 제560조]
+source_verified: true
+verified_on: 2026-10-07
+conditions:
+  - id: heat_rest
+    element: sensible_temperature_c
+    operator: ">="
+    threshold: 33.0
+    verdict: 확인 필요
+    forecast_comparable: true
+    action: 폭염작업 시 매 2시간 이내 20분 이상 휴식(제560조③)
+    quote: 체감온도 33도 이상인 작업장소에서 폭염작업을 하는 경우에는 매 2시간 이내에 20분 이상의 휴식을 주어야 한다.
+  - id: heat_work
+    element: sensible_temperature_c
+    operator: ">="
+    threshold: 31.0
+    verdict: 확인 필요
+    forecast_comparable: true
+    action: 폭염작업 조치 확인(냉방·작업시간 조정·휴식, 제560조② · 체감온도 측정·기록, 제562조②)
+    quote: 측정한 온도(이하 "체감온도"라 한다)가 31도 이상이 되는 작업장소에서의 장시간 작업을 말한다.

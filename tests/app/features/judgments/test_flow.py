@@ -45,6 +45,10 @@ def count(session: Session, model: type[Any]) -> int:
     return int(session.scalar(select(func.count()).select_from(model)) or 0)
 
 
+# 모든 현장에 폭염(공통)도 함께 판정하므로 공종 판정만 볼 때 쓴다.
+STEEL = Judgment.work_type == "철골 작업"
+
+
 def test_rain_at_threshold_in_afternoon_gives_stop_review_window(
     client: TestClient, session: Session, fake_kma: FakeKma
 ) -> None:
@@ -62,7 +66,7 @@ def test_rain_at_threshold_in_afternoon_gives_stop_review_window(
     assert 'id="chart"' in page and '#chart"' in page
     assert "<script" not in page[page.index("<title>") : page.index("</title>")]
     assert "강우 최대 2.0 mm/h (15:00)" in page
-    judgment = session.scalars(select(Judgment)).one()
+    judgment = session.scalars(select(Judgment).where(STEEL)).one()
     assert judgment.verdict == "중지 검토"
     assert judgment.rule_source_verified is True
     assert fake_kma.calls[0]["base_time"] == "1400"
@@ -75,19 +79,68 @@ def test_work_type_without_rules_is_shown_as_check_and_never_judged(
     page = client.get(run(client, site_id)).text
 
     assert "판정 기준 확인 전" in page
-    assert session.scalars(select(Judgment.work_type)).all() == ["철골 작업"]
+    work_types = session.scalars(select(Judgment.work_type).order_by(Judgment.id)).all()
+    assert work_types == ["철골 작업", "폭염(공통)"]
 
 
-def test_site_with_only_unconfirmed_work_types_is_not_judged(
+def test_site_with_only_unconfirmed_work_types_gets_only_common_heat_judgment(
     client: TestClient, session: Session, fake_kma: FakeKma
 ) -> None:
     site_id = add_site(client, work_types=["고소작업대"])
 
     location = run(client, site_id)
 
-    assert "ran=no_rules" in location
-    assert count(session, Judgment) == 0
-    assert fake_kma.calls == []
+    assert "ran=done" in location
+    assert session.scalars(select(Judgment.work_type)).all() == ["폭염(공통)"]
+    assert len(fake_kma.calls) == 1
+    assert "체감온도 예보" in client.get(location).text  # 그래프는 폭염 판정으로 연다
+
+
+@pytest.mark.parametrize(
+    ("tmp", "reh", "verdict", "reason"),
+    [
+        ("20", "50", "진행", None),
+        ("32", "60", "확인 필요", "폭염작업 조치 확인"),
+        ("34", "60", "확인 필요", "매 2시간 이내 20분 이상 휴식"),
+    ],
+)
+def test_heat_is_judged_for_every_site_with_required_action(
+    client: TestClient,
+    session: Session,
+    fake_kma: FakeKma,
+    tmp: str,
+    reh: str,
+    verdict: str,
+    reason: str | None,
+) -> None:
+    for hour in range(12, 15):
+        fake_kma.set_hour("20261005", hour, TMP=tmp, REH=reh)
+
+    page = client.get(run(client, add_site(client))).text
+
+    heat = session.scalars(select(Judgment).where(Judgment.work_type == "폭염(공통)")).one()
+    assert heat.verdict == verdict
+    assert "폭염(공통)" in page
+    if reason is not None:
+        assert reason in page
+        assert "중지 검토" not in heat.verdict  # 법령은 중지가 아니라 조치·휴식을 요구한다
+    detail = client.get(f"/judgments/{heat.id}").text
+    assert "기준: 33 °C 이상 / 31 °C 이상" in detail
+    # 기준에 해당한 시각은 계산 근거(입력 기온·습도)를 보여준다.
+    assert (f"(기온 {tmp}℃·습도 {reh}%)" in detail) is (reason is not None)
+
+
+def test_tower_crane_is_stop_review_only_when_mean_wind_exceeds_gust_limit(
+    client: TestClient, session: Session, fake_kma: FakeKma
+) -> None:
+    fake_kma.set_hour("20261005", 10, WSD="15.1")
+    run(client, add_site(client, work_types=["타워크레인 운전"]))
+
+    crane = session.scalars(select(Judgment).where(Judgment.work_type == "타워크레인 운전")).one()
+
+    assert crane.verdict == "중지 검토"
+    # 평균풍속이 기준 아래인 시각은 순간풍속을 알 수 없어 '진행'이 아니다.
+    assert {w["verdict"] for w in crane.windows} == {"확인 필요", "중지 검토"}
 
 
 def test_same_issue_and_grid_is_fetched_once_and_not_judged_twice(
@@ -102,7 +155,7 @@ def test_same_issue_and_grid_is_fetched_once_and_not_judged_twice(
 
     assert len(fake_kma.calls) == 1
     assert count(session, ForecastRun) == 1
-    assert count(session, Judgment) == 2  # 현장마다 1건, 다시 실행해도 늘지 않음
+    assert count(session, Judgment) == 4  # 현장마다 철골·폭염 1건씩, 다시 실행해도 늘지 않음
 
 
 def test_missing_key_records_unavailable_with_reason_and_retries_later(
@@ -134,7 +187,7 @@ def test_network_failure_is_recorded_not_hidden(
 
     run(client, site_id)
 
-    judgment = session.scalars(select(Judgment)).one()
+    judgment = session.scalars(select(Judgment).where(STEEL)).one()
     assert judgment.verdict == "판정 불가"
     assert judgment.failure_reason is not None and "연결 실패" in judgment.failure_reason
 
@@ -147,7 +200,7 @@ def test_missing_forecast_value_is_unavailable_not_go(
 
     run(client, site_id)
 
-    assert session.scalars(select(Judgment.verdict)).one() == "판정 불가"
+    assert session.scalars(select(Judgment.verdict).where(STEEL)).one() == "판정 불가"
 
 
 @pytest.mark.parametrize(
@@ -167,7 +220,7 @@ def test_detail_shows_basis_issue_time_and_source_check(
     monkeypatch.setattr("app.features.judgments.service.rule_sets_by_label", lambda: changed)
     fake_kma.set_hour("20261005", 9, WSD="10.0")
     run(client, add_site(client))
-    judgment_id = session.scalars(select(Judgment.id)).one()
+    judgment_id = session.scalars(select(Judgment.id).where(STEEL)).one()
 
     page = client.get(f"/judgments/{judgment_id}").text
 
@@ -250,7 +303,7 @@ def test_run_all_judges_every_site_and_fetches_shared_grid_once(
     response = client.post("/judgments/run-all", follow_redirects=False)
 
     assert response.headers["location"] == "/?ran=all_done"
-    assert count(session, Judgment) == 2
+    assert count(session, Judgment) == 4
     assert len(fake_kma.calls) == 1
     assert "전체 현장을 판정했습니다" in client.get(response.headers["location"]).text
 
@@ -281,7 +334,7 @@ def test_last_day_of_work_period_is_still_judged(client: TestClient, session: Se
     site_id = add_site(client, work_start_date="2026-09-01", work_end_date="2026-10-05")
 
     assert "ran=done" in run(client, site_id)
-    assert count(session, Judgment) == 1
+    assert count(session, Judgment) == 2
 
 
 def test_run_all_skips_sites_outside_period_and_home_counts_them(
@@ -294,6 +347,6 @@ def test_run_all_skips_sites_outside_period_and_home_counts_them(
     home = client.get(location).text
 
     assert location == "/?ran=all_done"
-    assert count(session, Judgment) == 1
+    assert count(session, Judgment) == 2
     assert "작업 기간이 아닙니다 · 2026-11-01~2026-11-30" in home
     assert "작업 없음" in home

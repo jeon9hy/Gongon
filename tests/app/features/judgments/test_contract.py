@@ -137,7 +137,10 @@ def test_actual_saved_record_matches_contract(
             "app.features.judgments.service.rule_sets_by_label", lambda: {"철골 작업": changed}
         )
     run(client, add_site(client))
-    saved = session.scalars(select(Judgment)).one()
+    # 함께 저장되는 폭염(공통) 판정도 같은 계약을 따른다.
+    for other in session.scalars(select(Judgment)).all():
+        validator.validate(json.loads(json.dumps(serialize_judgment(other), allow_nan=False)))
+    saved = session.scalars(select(Judgment).where(Judgment.work_type == "철골 작업")).one()
     record = serialize_judgment(saved)
     validator.validate(json.loads(json.dumps(record, allow_nan=False)))
     assert record["verdict"] == expected

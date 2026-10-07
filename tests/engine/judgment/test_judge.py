@@ -63,6 +63,37 @@ def test_strictly_above_threshold_boundary(value: float, expected: Verdict) -> N
     assert judge_one(exact(value), condition(operator=">")) == expected
 
 
+# 타워크레인: 법령은 순간풍속 15 m/s 초과, 예보는 평균풍속(순간풍속의 하한).
+GUST = Condition("g", WIND, ">", 15.0, Verdict.STOP_REVIEW, True, None, forecast_lower_bound=True)
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [(3.0, Verdict.CHECK), (15.0, Verdict.CHECK), (15.1, Verdict.STOP_REVIEW)],
+)
+def test_lower_bound_forecast_never_says_go(value: float, expected: Verdict) -> None:
+    # 평균이 기준 아래여도 순간풍속은 넘을 수 있으므로 '진행'이라고 하지 않는다.
+    assert judge_one(exact(value), GUST) == expected
+
+
+def test_lower_bound_forecast_missing_is_unavailable() -> None:
+    result = judge(weather({9: {}}), rule_set(GUST), DAY.replace(hour=9), DAY.replace(hour=10))
+
+    assert result.verdict == Verdict.UNAVAILABLE
+
+
+def test_action_is_added_only_when_condition_applies() -> None:
+    cond = Condition("h", RAIN, ">=", 1.0, Verdict.CHECK, True, None, action="휴식 부여")
+
+    def reason(value: float) -> str:
+        result = judge(weather({9: {RAIN: exact(value)}}), rule_set(cond), DAY.replace(hour=9),
+                       DAY.replace(hour=10))  # fmt: skip
+        return result.hours[0].conditions[0].reason
+
+    assert reason(1.0).endswith("에 해당 · 휴식 부여")
+    assert "휴식 부여" not in reason(0.9)
+
+
 def test_category_entirely_below_threshold_is_go() -> None:
     # 기상청 "1mm 미만" = [0, 1.0). 기준 1.0 이상에 해당하는 값이 없다.
     assert judge_one(ForecastValue(0.0, 1.0, False, "1mm 미만"), condition()) == Verdict.GO

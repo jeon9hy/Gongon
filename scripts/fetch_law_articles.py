@@ -1,7 +1,7 @@
 """국가법령정보센터 Open API에서 법령 조문을 받아 기준표 대조용 발췌(JSON)로 저장한다.
 
 사용: uv run python -m scripts.fetch_law_articles --mst 273603 --articles 37 383 \\
-        --out rules/sources/osh_standards_rule_mst273603.json
+        --appendices 13-2 --out rules/sources/osh_standards_rule_mst273603.json
 - MST(법령일련번호)는 시행본마다 다르다. 현행 MST는 lawSearch.do로 확인한다(docs/references.md).
 - OC(신청한 이메일 ID)는 --oc 또는 환경변수 LAW_OC. 발췌에는 OC를 남기지 않는다.
 - 조문 텍스트는 공식 응답의 조문·항·호 내용을 줄 단위로 이어 붙인 것이며, 기준표의 quote는
@@ -32,7 +32,14 @@ def article_text(unit: ET.Element) -> str:
     return "\n".join(line for line in lines if line)
 
 
-def extract(xml_bytes: bytes, article_numbers: list[str]) -> dict[str, object]:
+def appendix_text(unit: ET.Element) -> str:
+    lines = (line.strip() for line in (unit.findtext("별표내용") or "").splitlines())
+    return "\n".join(line for line in lines if line)
+
+
+def extract(
+    xml_bytes: bytes, article_numbers: list[str], appendix_numbers: list[str]
+) -> dict[str, object]:
     root = ET.fromstring(xml_bytes)
     info = root.find("기본정보")
     if info is None:
@@ -46,9 +53,15 @@ def extract(xml_bytes: bytes, article_numbers: list[str]) -> dict[str, object]:
         key = f"제{number}조" + (f"의{branch}" if branch else "")
         if number + (f"-{branch}" if branch else "") in article_numbers:
             articles[key] = article_text(unit)
-    missing = len(article_numbers) - len(articles)
+    appendices: dict[str, str] = {}
+    for unit in root.iter("별표단위"):
+        table = int(unit.findtext("별표번호") or 0)  # "0013" → 13
+        sub = int(unit.findtext("별표가지번호") or 0)
+        if f"{table}" + (f"-{sub}" if sub else "") in appendix_numbers:
+            appendices[f"별표 {table}" + (f"의{sub}" if sub else "")] = appendix_text(unit)
+    missing = len(article_numbers) - len(articles) + len(appendix_numbers) - len(appendices)
     if missing:
-        raise SystemExit(f"요청한 조문 중 {missing}개를 찾지 못함: {article_numbers}")
+        raise SystemExit(f"요청한 조문·별표 중 {missing}개를 찾지 못함")
     return {
         "law_name": info.findtext("법령명_한글"),
         "law_id": info.findtext("법령ID"),
@@ -57,6 +70,7 @@ def extract(xml_bytes: bytes, article_numbers: list[str]) -> dict[str, object]:
         "effective_on": info.findtext("시행일자"),
         "partial_effective_dates": info.findtext("조문시행일자문자열"),
         "articles": articles,
+        "appendices": appendices,
     }
 
 
@@ -64,6 +78,7 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--mst", required=True, help="법령일련번호(시행본)")
     parser.add_argument("--articles", nargs="+", required=True, help="조문 번호. 가지조문은 566-2")
+    parser.add_argument("--appendices", nargs="*", default=[], help="별표 번호. 13의2는 13-2")
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--oc", default=os.environ.get("LAW_OC"))
     args = parser.parse_args(argv)
@@ -78,10 +93,10 @@ def main(argv: list[str]) -> int:
         "retrieved_at": datetime.now(KST).isoformat(timespec="seconds"),
         "response_sha256": hashlib.sha256(body).hexdigest(),
         "mst": args.mst,
-        **extract(body, args.articles),
+        **extract(body, args.articles, args.appendices),
     }
     args.out.write_text(json.dumps(snapshot, ensure_ascii=False, indent=2) + "\n", "utf-8")
-    print(f"{args.out}: 조문 {len(args.articles)}개")
+    print(f"{args.out}: 조문 {len(args.articles)}개, 별표 {len(args.appendices)}개")
     return 0
 
 

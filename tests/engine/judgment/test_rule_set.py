@@ -77,7 +77,7 @@ def verified() -> dict[str, Any]:
     data.update(
         source_verified=True,
         source_snapshot="sources/x.json",
-        source_article="제1조",
+        source_articles=["제1조"],
         verified_on=date(2026, 10, 7),
     )
     data["conditions"][0]["quote"] = "1. 인용"
@@ -95,7 +95,8 @@ def test_verified_rules_keep_verification_date() -> None:
         ("verified_on", "2026-10-07"),
         ("verified_on", datetime(2026, 10, 7, 9, tzinfo=KST)),
         ("source_snapshot", None),
-        ("source_article", ""),
+        ("source_articles", []),
+        ("source_articles", "제1조"),
     ],
 )
 def test_verified_rules_without_provenance_are_rejected(key: str, bad_value: object) -> None:

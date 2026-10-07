@@ -26,12 +26,14 @@ UNIT_PHRASES = {
     Element.WIND_SPEED_MPS: "초당 {n}미터",
     Element.PRECIPITATION_MM_PER_H: "시간당 {n}밀리미터",
     Element.SNOWFALL_CM_PER_H: "시간당 {n}센티미터",
+    Element.SENSIBLE_TEMPERATURE_C: "{n}도",
 }
 OPERATOR_WORDS = {">=": "이상", ">": "초과"}
 
 
-def test_steel_rules_are_verified() -> None:
-    assert RULES_DIR / "steel.yaml" in VERIFIED
+@pytest.mark.parametrize("name", ["steel.yaml", "tower_crane.yaml", "heat.yaml"])
+def test_rules_with_legal_basis_are_verified(name: str) -> None:
+    assert RULES_DIR / name in VERIFIED
 
 
 @pytest.mark.parametrize("path", VERIFIED, ids=lambda p: p.name)
@@ -42,11 +44,14 @@ def test_quotes_match_official_article(path: Path) -> None:
     )
     assert snapshot["retrieved_from"].startswith("https://www.law.go.kr/DRF/lawService.do")
     assert re.fullmatch(r"[0-9a-f]{64}", snapshot["response_sha256"])
-    assert data["source"] == f"{snapshot['law_name']} {data['source_article']}"
-    article = snapshot["articles"][data["source_article"]]
+    assert data["source"].startswith(snapshot["law_name"])
+    assert all(article in data["source"] for article in data["source_articles"])
+    text = "\n".join(snapshot["articles"][article] for article in data["source_articles"])
 
     for condition in load_rule_set(path).conditions:
-        assert condition.quote is not None and condition.quote in article, condition.id
+        assert condition.quote is not None and condition.quote in text, condition.id
         phrase = UNIT_PHRASES[condition.element].format(n=f"{condition.threshold:g}")
-        expected = f"{phrase} {OPERATOR_WORDS[condition.operator]}"
-        assert expected in condition.quote, (condition.id, expected)
+        expected = rf"{re.escape(phrase)}(?:를|을)? {OPERATOR_WORDS[condition.operator]}"
+        assert re.search(expected, condition.quote), (condition.id, expected)
+        # 순간풍속 기준을 예보 평균풍속과 그대로 비교하면 위험을 낮춰 보게 된다(D-027).
+        assert condition.forecast_lower_bound == ("순간풍속" in condition.quote), condition.id

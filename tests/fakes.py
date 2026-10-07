@@ -13,7 +13,9 @@ class FakeKma:
         self.values: dict[tuple[str, str], dict[str, str]] = {}
         self.fail_with: Exception | None = None
         for hour in range(24):
-            self.set_hour("20261005", hour, PCP="강수없음", WSD="2.0", SNO="적설없음")
+            self.set_hour(
+                "20261005", hour, PCP="강수없음", WSD="2.0", SNO="적설없음", TMP="20", REH="50"
+            )
 
     def set_hour(self, fcst_date: str, hour: int, **values: str) -> None:
         self.values.setdefault((fcst_date, f"{hour:02d}00"), {}).update(values)

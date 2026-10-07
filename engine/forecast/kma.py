@@ -5,7 +5,8 @@
 주소와 키 이름(authKey)만 다르다.
 - 발표 시각 02·05·08·11·14·17·20·23시, 각 발표 10분 이후 제공
 - 응답 항목: baseDate, baseTime, category, fcstDate, fcstTime, fcstValue, nx, ny
-- PCP(1시간 강수량)·SNO(1시간 신적설)는 범주 문자열, WSD(풍속 m/s)는 숫자 문자열
+- PCP(1시간 강수량)·SNO(1시간 신적설)는 범주 문자열, WSD(풍속 m/s)·TMP(1시간 기온 ℃)·REH(습도 %)는
+  숫자 문자열
 - ±900 이상 값은 결측
 실제 응답과의 대조는 활용신청 후 한다(docs/plan.md S02-2). 2026-10-04 확인한 실제 오류 응답:
 - 공공데이터포털, 등록 안 된 키: HTTP 403,
@@ -27,6 +28,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
+from engine.forecast.sensible import sensible_temperature_c
 from engine.judgment.types import Element, ForecastValue, HourlyForecast, WeatherInput
 from engine.kst import KST
 
@@ -186,8 +188,21 @@ def normalize(base_at: datetime, items: Iterable[dict[str, Any]]) -> WeatherInpu
             logger.warning("예보값 해석 불가 category=%s value=%r", item.get("category"), raw)
             continue
         by_time.setdefault(valid_at, {})[element] = value
+    for values in by_time.values():
+        _add_sensible_temperature(values)
     hours = tuple(HourlyForecast(t, by_time[t]) for t in sorted(by_time))
     return WeatherInput(forecast_issued_at=base_at.astimezone(KST), hours=hours)
+
+
+def _add_sensible_temperature(values: dict[Element, ForecastValue]) -> None:
+    """같은 시각의 기온·습도로 체감온도를 만든다. 하나라도 없으면 만들지 않는다(판정 불가)."""
+    temperature = values.get(Element.TEMPERATURE_C)
+    humidity = values.get(Element.HUMIDITY_PCT)
+    if temperature is None or humidity is None:
+        return
+    value = sensible_temperature_c(temperature.lower, humidity.lower)
+    raw = f"{value:.1f}(기온 {temperature.raw}℃·습도 {humidity.raw}%)"
+    values[Element.SENSIBLE_TEMPERATURE_C] = ForecastValue.exact(value, raw)
 
 
 def _kst_datetime(yyyymmdd: str, hhmm: str) -> datetime:
@@ -225,11 +240,16 @@ def _amount_parser(unit: str, none_text: str) -> Callable[[str], ForecastValue |
     return parse
 
 
-def _parse_wind(raw: str) -> ForecastValue | None:
+def _parse_number(raw: str) -> ForecastValue | None:
     try:
         return _number(float(raw), raw)
     except ValueError:
         return None
+
+
+def _parse_humidity(raw: str) -> ForecastValue | None:
+    value = _parse_number(raw)
+    return value if value is not None and 0 <= value.lower <= 100 else None
 
 
 def _number(value: float, raw: str) -> ForecastValue | None:
@@ -242,9 +262,13 @@ _CATEGORY_ELEMENT = {
     "WSD": Element.WIND_SPEED_MPS,
     "PCP": Element.PRECIPITATION_MM_PER_H,
     "SNO": Element.SNOWFALL_CM_PER_H,
+    "TMP": Element.TEMPERATURE_C,
+    "REH": Element.HUMIDITY_PCT,
 }
 _PARSERS: dict[Element, Callable[[str], ForecastValue | None]] = {
-    Element.WIND_SPEED_MPS: _parse_wind,
+    Element.WIND_SPEED_MPS: _parse_number,
     Element.PRECIPITATION_MM_PER_H: _amount_parser("mm", "강수없음"),
     Element.SNOWFALL_CM_PER_H: _amount_parser("cm", "적설없음"),
+    Element.TEMPERATURE_C: _parse_number,
+    Element.HUMIDITY_PCT: _parse_humidity,
 }

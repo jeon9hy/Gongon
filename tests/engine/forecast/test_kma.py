@@ -89,13 +89,32 @@ def test_precipitation_categories(raw: str, expected: ForecastValue) -> None:
 
 
 def test_snow_and_wind_values_and_unrelated_categories() -> None:
-    items = [item("SNO", "적설없음"), item("WSD", "4.3"), item("TMP", "18")]
+    items = [item("SNO", "적설없음"), item("WSD", "4.3"), item("TMP", "18"), item("SKY", "1")]
     values = normalize(BASE_AT, items).hours[0].values
 
+    # 습도가 없으면 체감온도를 만들지 않는다(누락 → 판정 불가).
     assert values == {
         Element.SNOWFALL_CM_PER_H: ForecastValue(0.0, 0.0, True, "적설없음"),
         Element.WIND_SPEED_MPS: ForecastValue(4.3, 4.3, True, "4.3"),
+        Element.TEMPERATURE_C: ForecastValue(18.0, 18.0, True, "18"),
     }
+
+
+@pytest.mark.parametrize(
+    ("tmp", "reh"), [("33", "-1"), ("33", "101"), ("33", "900"), ("-999", "60")]
+)
+def test_sensible_temperature_needs_valid_temperature_and_humidity(tmp: str, reh: str) -> None:
+    values = normalize(BASE_AT, [item("TMP", tmp), item("REH", reh)]).hours[0].values
+
+    assert Element.SENSIBLE_TEMPERATURE_C not in values
+
+
+def test_sensible_temperature_keeps_inputs_in_raw_text() -> None:
+    values = normalize(BASE_AT, [item("TMP", "33"), item("REH", "60")]).hours[0].values
+
+    value = values[Element.SENSIBLE_TEMPERATURE_C]
+    assert value.lower == value.upper
+    assert value.raw == f"{value.lower:.1f}(기온 33℃·습도 60%)"
 
 
 @pytest.mark.parametrize("raw", ["900", "-999", "알수없음", ""])
@@ -209,6 +228,23 @@ def test_real_response_values_are_all_understood() -> None:
         Element.PRECIPITATION_MM_PER_H: ForecastValue(0.0, 0.0, True, "0"),
         Element.SNOWFALL_CM_PER_H: ForecastValue(0.0, 0.0, True, "0"),
     }
-    # 판정에 쓰는 요소(PCP·SNO·WSD)는 하나도 버려지지 않는다(TMP는 쓰지 않음).
-    used = sum(1 for i in items if i["category"] in ("PCP", "SNO", "WSD"))
+    # 판정에 쓰는 요소(PCP·SNO·WSD·TMP)는 하나도 버려지지 않는다.
+    used = sum(1 for i in items if i["category"] in ("PCP", "SNO", "WSD", "TMP"))
     assert sum(len(v) for v in values.values()) == used
+
+
+def test_real_temperature_and_humidity_make_sensible_temperature_every_hour() -> None:
+    # 2026-10-07 17시 발표, 격자 (60, 127) 실제 응답에서 10/8 09~17시 TMP·REH만 발췌했다.
+    path = Path(__file__).parent / "data" / "kma_vilage_fcst_20261007_1700_60_127_tmp_reh.json"
+    items = json.loads(path.read_text(encoding="utf-8"))
+
+    hours = normalize(datetime(2026, 10, 7, 17, tzinfo=KST), items).hours
+
+    assert len(hours) == 9
+    assert all(
+        set(h.values) == {Element.TEMPERATURE_C, Element.HUMIDITY_PCT,
+                          Element.SENSIBLE_TEMPERATURE_C}
+        for h in hours
+    )  # fmt: skip
+    at_14 = next(h for h in hours if h.valid_at.hour == 14).values
+    assert at_14[Element.SENSIBLE_TEMPERATURE_C].raw.endswith("(기온 24℃·습도 35%)")

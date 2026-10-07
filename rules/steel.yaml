@@ -6,7 +6,7 @@ work_type_label: 철골 작업
 rule_version: "2025-09-01 시행"  # 고용노동부령 제450호. 제383조는 이 시행본 기준으로 대조
 source: 산업안전보건기준에 관한 규칙 제383조
 source_snapshot: sources/osh_standards_rule_mst273603.json
-source_article: 제383조
+source_articles: [제383조]
 source_verified: true
 verified_on: 2026-10-07
 conditions:

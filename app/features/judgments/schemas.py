@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 VerdictFilter = Literal["전체", "진행", "확인 필요", "중지 검토", "판정 불가"]
-ElementKey = Literal["rain", "wind", "snow"]
+ElementKey = Literal["rain", "wind", "snow", "heat"]
 RunResult = Literal["done", "failed", "no_rules", "all_done", "no_sites", "out_of_period"]
 
 

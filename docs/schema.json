@@ -29,7 +29,7 @@
   ],
   "properties": {
     "schema_version": {
-      "const": "1.0"
+      "const": "1.1"
     },
     "data_type": {
       "const": "forecast"
@@ -106,7 +106,10 @@
       "required": [
         "wind_speed_mps",
         "precipitation_mm_per_h",
-        "snowfall_cm_per_h"
+        "snowfall_cm_per_h",
+        "temperature_c",
+        "humidity_pct",
+        "sensible_temperature_c"
       ],
       "properties": {
         "wind_speed_mps": {
@@ -117,6 +120,15 @@
         },
         "snowfall_cm_per_h": {
           "const": "cm/h"
+        },
+        "temperature_c": {
+          "const": "°C"
+        },
+        "humidity_pct": {
+          "const": "%"
+        },
+        "sensible_temperature_c": {
+          "const": "°C"
         }
       }
     },
@@ -220,7 +232,10 @@
           "enum": [
             "wind_speed_mps",
             "precipitation_mm_per_h",
-            "snowfall_cm_per_h"
+            "snowfall_cm_per_h",
+            "temperature_c",
+            "humidity_pct",
+            "sensible_temperature_c"
           ]
         },
         "verdict": {

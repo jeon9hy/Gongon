@@ -9,7 +9,7 @@ from urllib.parse import urlencode
 
 from sqlalchemy.orm import Session
 
-from app.core.rules import rule_sets_by_label
+from app.core.rules import judged_labels, rule_sets_by_label
 from app.features.forecasts import service as forecasts_service
 from app.features.judgments import repository
 from app.features.judgments.models import Judgment
@@ -66,12 +66,14 @@ ELEMENT_KEYS: dict[ElementKey, Element] = {
     "rain": Element.PRECIPITATION_MM_PER_H,
     "wind": Element.WIND_SPEED_MPS,
     "snow": Element.SNOWFALL_CM_PER_H,
+    "heat": Element.SENSIBLE_TEMPERATURE_C,
 }
 _KEY_OF = {element: key for key, element in ELEMENT_KEYS.items()}
 _ICON = {
     Element.PRECIPITATION_MM_PER_H: "rain",
     Element.WIND_SPEED_MPS: "wind",
     Element.SNOWFALL_CM_PER_H: "snow",
+    Element.SENSIBLE_TEMPERATURE_C: "thermometer",
 }
 
 
@@ -106,7 +108,7 @@ def run_for_site(
     if site is None:
         return None
     rule_sets = rule_sets_by_label()
-    targets = [rule_sets[w] for w in site.work_types if w in rule_sets]
+    targets = [rule_sets[w] for w in judged_labels(site.work_types) if w in rule_sets]
     if not targets:
         return "no_rules"
 
@@ -279,8 +281,9 @@ def build_dashboard(
     for j in repository.latest_for_site_date(session, site.site_id, target_date):
         latest.setdefault(j.work_type, j)
     rule_sets = rule_sets_by_label()
-    cards = tuple(_card(w, latest.get(w), w in rule_sets) for w in site.work_types)
-    primary_j = next((latest[w] for w in site.work_types if w in latest), None)
+    labels = judged_labels(site.work_types)
+    cards = tuple(_card(w, latest.get(w), w in rule_sets) for w in labels)
+    primary_j = next((latest[w] for w in labels if w in latest), None)
 
     return DashboardView(
         sites=tuple(SiteOption(s.site_id, s.name, s.site_id == site.site_id) for s in sites),
@@ -395,10 +398,11 @@ def _site_summary(
 
     if not working:
         return summary(None, f"작업 기간이 아닙니다 · {site.period_text()}", None)
-    if not any(w in latest for w in site.work_types):
+    labels = judged_labels(site.work_types)
+    if not any(w in latest for w in labels):
         return summary(None, "아직 판정하지 않았습니다", None)
-    # 현장의 단계는 공종 카드 중 가장 높은 단계(기준 미확인 공종의 '확인 필요' 포함).
-    cards = [_card(w, latest.get(w), w in rule_sets) for w in site.work_types]
+    # 현장의 단계는 공종·공통 카드 중 가장 높은 단계(기준 미확인 공종의 '확인 필요' 포함).
+    cards = [_card(w, latest.get(w), w in rule_sets) for w in labels]
     worst = max(
         (c for c in cards if c.verdict is not None), key=lambda c: Verdict(str(c.verdict)).severity
     )
@@ -472,11 +476,12 @@ def _chart(
 ) -> Chart | None:
     if not judgment.hours:
         return None
-    elements = [Element(c["element"]) for c in judgment.hours[0]["conditions"]]
+    elements = _elements(judgment)
     element = ELEMENT_KEYS.get(element_key) if element_key else None
     if element not in elements:
         element = _deciding_element(judgment.hours, elements)
-    entries = [(_dt(h["valid_at"]), _entry(h, element)) for h in judgment.hours]
+    # 같은 요소에 기준이 여럿이면(폭염 31·33도) 가장 먼저 해당하는 낮은 기준선을 그린다.
+    entries = [(_dt(h["valid_at"]), _entry(h, element, lowest=True)) for h in judgment.hours]
     known = [(t, e) for t, e in entries if e is not None and e["lower"] is not None]
     threshold = float(next(e for _, e in entries if e is not None)["threshold"])
     operator = str(next(e for _, e in entries if e is not None)["operator"])
@@ -495,7 +500,7 @@ def _chart(
     selected_text = "예보값 없음"
     for t, e in entries:
         text = "없음" if e is None or e["lower"] is None else _value_text(e, unit)
-        over = e is not None and e["verdict"] == Verdict.STOP_REVIEW.value
+        over = e is not None and _meets(e)
         lower = 0.0 if e is None or e["lower"] is None else float(e["lower"])
         if t.hour == selected_hour:
             selected_text = text
@@ -519,9 +524,7 @@ def _chart(
         ),
         bars=tuple(bars),
         selected_value=selected_text,
-        selected_caption=(
-            f"{selected_hour:02d}:00 {label} 예보 · 기준 {threshold_text}이면 중지 검토"
-        ),
+        selected_caption=(f"{selected_hour:02d}:00 {label} 예보 · 기준 {threshold_text}"),
         threshold_bottom_px=round(threshold / axis_max * _PLOT_HEIGHT_PX),
         threshold_text=threshold_text,
     )
@@ -545,8 +548,30 @@ def href_for(site_id: int, key: ElementKey, hour: int) -> str:
     return dashboard_href(site_id, element=key, hour=hour) + "#chart"
 
 
-def _entry(hour_json: dict[str, Any], element: Element) -> dict[str, Any] | None:
-    return next((c for c in hour_json["conditions"] if c["element"] == element.value), None)
+def _elements(judgment: Judgment) -> list[Element]:
+    """판정에 쓴 요소(기준표 순서, 중복 없음). 한 요소에 조건이 여럿일 수 있다."""
+    if not judgment.hours:
+        return []
+    return list(dict.fromkeys(Element(c["element"]) for c in judgment.hours[0]["conditions"]))
+
+
+def _entry(
+    hour_json: dict[str, Any], element: Element, lowest: bool = False
+) -> dict[str, Any] | None:
+    entries: list[dict[str, Any]] = [
+        c for c in hour_json["conditions"] if c["element"] == element.value
+    ]
+    if not entries:
+        return None
+    return min(entries, key=lambda c: float(c["threshold"])) if lowest else entries[0]
+
+
+def _meets(entry: dict[str, Any]) -> bool:
+    """예보값 구간 전체가 기준에 해당하는지(그래프·표 강조용). 판정 단계는 저장된 verdict를 쓴다."""
+    if entry["lower"] is None:
+        return False
+    lower, threshold = float(entry["lower"]), float(entry["threshold"])
+    return lower >= threshold if entry["operator"] == ">=" else lower > threshold
 
 
 def _value_text(entry: dict[str, Any], unit: str) -> str:
@@ -653,7 +678,7 @@ def serialize_judgment(judgment: Judgment) -> dict[str, Any]:
         return value.astimezone(KST).isoformat()
 
     return {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "data_type": "forecast",
         "judgment_id": judgment.id,
         "site_id": judgment.site_id,
@@ -684,9 +709,7 @@ def get_detail(session: Session, judgment_id: int) -> DetailView | None:
     if judgment is None:
         return None
     site = sites_service.get_site(session, judgment.site_id)
-    elements = (
-        [Element(c["element"]) for c in judgment.hours[0]["conditions"]] if judgment.hours else []
-    )
+    elements = _elements(judgment)
     chips = ["자료 유형: 예보 (현장 관측 아님)"]
     if judgment.forecast_issued_at is not None:
         chips.append(f"예보 발표 {_iso_kst(judgment.forecast_issued_at)}")
@@ -716,7 +739,12 @@ def _criterion(judgment: Judgment, element: Element) -> CriterionCard:
     known = [(t, e) for t, e in present if e["lower"] is not None]
     unit = ELEMENT_UNIT[element]
     peak = max(known, key=lambda te: te[1]["lower"]) if known else None
-    first = present[0][1]
+    rules = {
+        c["condition_id"]: c
+        for h in judgment.hours
+        for c in h["conditions"]
+        if c["element"] == element.value
+    }
     return CriterionCard(
         label=ELEMENT_LABEL[element],
         icon=_ICON[element],
@@ -724,8 +752,11 @@ def _criterion(judgment: Judgment, element: Element) -> CriterionCard:
         peak_value="없음" if peak is None else _value_text(peak[1], unit).removesuffix(f" {unit}"),
         unit=unit,
         peak_time=None if peak is None else f"{peak[0]:%H:%M}",
-        rule_text=f"기준: {float(first['threshold']):g} {unit} "
-        f"{OPERATOR_TEXT[first['operator']]} → 중지 검토",
+        rule_text="기준: "
+        + " / ".join(
+            f"{float(c['threshold']):g} {unit} {OPERATOR_TEXT[c['operator']]}"
+            for c in rules.values()
+        ),
         source=judgment.rule_source,
         source_verified=judgment.rule_source_verified,
     )
@@ -734,9 +765,9 @@ def _criterion(judgment: Judgment, element: Element) -> CriterionCard:
 def _hour_row(hour_json: dict[str, Any], elements: list[Element]) -> HourRow:
     cells = []
     for element in elements:
-        e = _entry(hour_json, element)
+        e = _entry(hour_json, element, lowest=True)
         text = "없음" if e is None or e["lower"] is None else _value_text(e, "").strip()
-        cells.append(Cell(text, e is not None and e["verdict"] == Verdict.STOP_REVIEW.value))
+        cells.append(Cell(text, e is not None and _meets(e)))
     verdict = hour_json["verdict"]
     if verdict == Verdict.GO.value:
         calculation = "모든 요소 기준 미만"

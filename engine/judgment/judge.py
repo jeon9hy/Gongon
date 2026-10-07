@@ -97,7 +97,14 @@ def _judge_condition(condition: Condition, value: ForecastValue | None) -> Condi
 
     over, below = _compare(value, condition.operator, condition.threshold)
     if over:
-        return result(condition.verdict, f"{label} {value.raw} → 기준 {rule_text}에 해당")
+        action = f" · {condition.action}" if condition.action else ""
+        return result(condition.verdict, f"{label} {value.raw} → 기준 {rule_text}에 해당{action}")
+    if below and condition.forecast_lower_bound:  # 평균이 기준 아래여도 순간값은 넘을 수 있다
+        return result(
+            Verdict.CHECK,
+            f"{label} {value.raw}: 예보는 평균값이라 기준 {rule_text}(순간값) 해당 여부 미상"
+            " · 현장 측정 확인",
+        )
     if below:
         return result(Verdict.GO, f"{label} {value.raw} → 기준 {rule_text} 미만")
     # 범주 예보가 기준값에 걸쳐 있어 넘는지 알 수 없다. 넘는다고 단정하지 않는다.
