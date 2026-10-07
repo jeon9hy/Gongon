@@ -1,25 +1,29 @@
 # 현재 작업 인계
 
-- 현재 작업: 기본 흐름(D-019) — S01 doing, S02-2·S03·S04-1·3·4·S05 review · 마지막 수정 도구: Claude Code
-- 브랜치: `feature/S04-basic-app` (`feature/S02-1-geo-grid` 위에서 분기. `main`은 아직 커밋 없음)
-- 완료한 부분
-  - 현장 등록·수정(위경도 → 기상청 격자) → 대시보드 "지금 판정하기" → 기상청 단기예보 수집(발표 시각·격자 재사용) → 철골 판정 → 저장 → 대시보드·상세·내역
-  - 기준표 `rules/steel.yaml`(원문 대조 전), 엔진 `engine/judgment`, 수집 `engine/forecast`, DB `migrations/0001_initial`
-  - 기준 미확인 공종(크레인·고소작업대 등)은 판정하지 않고 `확인 필요`로만 표시(D-017)
-  - 예시 데이터 `sample.py`는 삭제. 로그인·알림 발송은 보류(D-019)
-  - 홈(전체 현장 개요)·현장 대시보드 분리, 주소 자동완성(카카오, D-022), 작업 기간(D-023, 마이그레이션 0002)
-- 개발자가 할 일 (막힌 조건)
-  1. **PostgreSQL 17 설치·DB 생성·`.env`의 `DATABASE_URL` 설정** → `docs/setup.md` "DB 준비". 이게 없어서 `start.bat`이 마이그레이션 단계에서 멈추고 웹앱이 안 열림(2026-10-04 확인)
-  2. (완료) 기상청 키: 공공데이터포털 `KMA_SERVICE_KEY`로 실제 호출 성공, `.env`에 설정됨(D-021)
-  3. (선택) 카카오 REST API 키 → `.env`의 `KAKAO_REST_API_KEY` → 현장 이름 자동완성(D-022, `docs/setup.md`)
-  4. 제383조 원문 대조 → `rules/steel.yaml`의 `quote`·`source_verified`
-- 다음 작업 후보: `docs/schema.json`(S01) · 쿼리 수 측정 도구(S04-1) · S06 매일 17시 실행·알림 미리보기 저장 · S04-2 로그인
-- 메모
-  - 한글 경로: `uv run python -m pytest|alembic|uvicorn`으로 실행(`.exe` trampoline 실패). `alembic.ini`는 ASCII만
-  - Git Bash `curl`은 한글 폼 값을 cp949로 보내 422가 난다. 화면 확인은 브라우저나 Python으로
-  - 헤드리스 Edge 캡처는 명령이 끝난 뒤 조금 늦게 파일이 생긴다
-- 미커밋 변경: 없음(커밋 전 `git status`로 확인)
-- 검증(2026-10-04, 로컬 Windows): `scripts/check.py` 전체 ok — 임시 PostgreSQL 16.2(pgserver, 설치 없이 실행, 프로젝트 의존성 아님)에 `TEST_DATABASE_URL`을 걸어 DB 테스트 포함 실행. DB 없이 실행하면 DB 테스트 24개는 건너뜀(통과 아님). Alembic upgrade·downgrade·check 확인. 헤드리스 Edge로 대시보드(수집 실패·가짜 예보 성공)·상세·현장 설정 확인
-- CI: `postgres:17` 서비스 추가(아직 GitHub에서 실행 확인 전 — push 후 확인)
-- 결정 사항: D-001~D-023 (`docs/decisions.md`)
-- 그 밖의 막힌 조건: Codex 모델 설정(S00). `공온지수` 구현 금지(D-010)
+- 현재 작업: S01 doing. 순차 개발 계획 정리 완료(2026-10-07), 다음 구현 단위 S01-1은 todo
+- 마지막 수정 도구: Codex
+- 브랜치: `feature/S04-basic-app`, 시작 HEAD `1b2040d`. 기존 브랜치 유지
+- 요청: 기능을 하나씩 완성하는 실행 계획과 레퍼런스 확보 방법. 이번 변경은 문서만
+- 변경: `docs/plan.md` 실행 순서·완료 기준·검증 방식, `docs/references.md` 공식 자료 확보 절차, D-024
+- 다음 구현: S01-1 `docs/schema.json`·계약 예시·실제 직렬화 결과 검증 테스트
+- S01-1 읽을 범위: 총정리 §4.2·4.3, judgment types, judgments schemas/service/models와 관련 테스트
+- 계약은 기존 저장 형식을 먼저 대조. 원문 미확인을 숨기지 않고 불필요한 형식 변경은 피함
+- 개발 순서: S01 → S02-1·S03 확인 → S04 잔여·S05 → S04-2 → S06 → S07 → 조건 충족 후 S08~S10
+- S04-2는 기본 흐름 정리 후 착수 예정(D-024). 다중 사용자 배포 전 권한 검증 필수
+- S06은 매일 실행·웹 알림 미리보기 저장. 실제 알림톡은 사업자 등록 후 별도 작업(D-015)
+- 기존 구현: 현장 등록/수정 → 예보 수집 → 철골 판정 → 저장 → 홈·현장 대시보드·상세·내역
+- 기준 미확인 공종은 확인 필요 표시만, 공온지수 금지. 예보·결정·실제 결과 구분 유지
+- 상태 정정: S02-2는 plan.md 기준 done. 이전 인계의 review 표기는 오래된 기록
+- 환경 정정: 2026-10-07 로컬 앱 실행·기존 DB 현장/판정 조회 성공. DB 미설치 차단은 해소됨
+- PostgreSQL 주 버전·현재 환경의 upgrade/downgrade 왕복은 이번 작업에서 확인하지 않음
+- Codex 지침 적용 확인. 과거 모델 설정 오류는 현재 세션의 차단 조건이 아님. S00 main 반영은 남음
+- 화면 관찰: 내일 대상 홈에 과거 예보 수집 성공이 함께 표시됨. S05에서 최신성/판정 없음 구분 개선
+- 공식 자료: data.go.kr 15084084의 2609 활용가이드 ZIP 표시 확인, 첨부 내용은 아직 미확보
+- 격자 출처 정정: 15043492는 초단기예보 자료. 공식 격자표를 다시 확보하고 추가 지역 대조 필요
+- 개발자 확인: 제383조 적용 시행일·값·연산자 최종 원문 대조. `source_verified=false` 유지
+- API 키는 기존 설정 유지. 카카오 실제 호출·검색 화면 검증은 이번에 하지 않음
+- 검증(2026-10-07): 앱 DB와 테스트 DB 대상 분리 확인 후 `uv run python scripts/check.py`
+- 결과: ruff check·format·mypy 통과, pytest 127 passed, skip 없음. 외부 API는 테스트에서 가짜 사용
+- 이번 검증은 법령 원문 확인·실제 알림 발송·배포 검증을 대신하지 않음
+- Git 저장 대상: plan.md, references.md, decisions.md, handoff.md. 코드·DB 계약 변경 없음
+- Windows 한글 경로: `uv run python -m pytest|alembic|uvicorn` 사용
