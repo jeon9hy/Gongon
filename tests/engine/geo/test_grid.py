@@ -1,4 +1,7 @@
+import json
 import math
+from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -10,9 +13,17 @@ def test_projection_origin_maps_to_origin_grid() -> None:
     assert latlon_to_kma_grid(38.0, 126.0) == KmaGrid(nx=43, ny=136)
 
 
-def test_seoul_matches_published_grid() -> None:
-    # 기상청 격자 표의 서울 종로구 (60, 127). [원문 대조 필요] 공식 격자 파일 추가 지점 대조 전
-    assert latlon_to_kma_grid(37.5665, 126.9780) == KmaGrid(nx=60, ny=127)
+_PUBLISHED_POINTS: list[dict[str, Any]] = json.loads(
+    (Path(__file__).parent / "data/kma_grid_20260701.json").read_text(encoding="utf-8")
+)["points"]
+
+
+@pytest.mark.parametrize("point", _PUBLISHED_POINTS, ids=lambda p: str(p["administrative_code"]))
+def test_coordinates_match_official_grid_table(point: dict[str, Any]) -> None:
+    # 공식 2607 격자표의 F/G 기대값과 N/O 입력 좌표. 파일·해시·원본 행은 fixture에 기록.
+    assert latlon_to_kma_grid(point["latitude_deg"], point["longitude_deg"]) == KmaGrid(
+        nx=point["nx"], ny=point["ny"]
+    )
 
 
 @pytest.mark.parametrize(

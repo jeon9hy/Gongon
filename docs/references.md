@@ -8,8 +8,10 @@
 | --- | --- | --- | --- |
 | S01 기준 | [국가법령정보센터 산업안전보건기준에 관한 규칙](https://law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lspttninfSeq=153999) | 제383조, 적용 시행일·개정 이력, 요소별 단위·이상/초과·원문 대조표 | 공식 페이지 접근 확인. 현행 적용 버전·값의 최종 대조 미완료, source_verified=false 유지 |
 | S01-1 계약 | [JSON Schema Draft 2020-12](https://json-schema.org/draft/2020-12), [python-jsonschema 검증 문서](https://python-jsonschema.readthedocs.io/en/stable/validate/) | 타입·필수 필드·열거형·null·시각 형식 및 검증기 지원 범위 | Draft202012Validator + FormatChecker 선택. 공식 문서의 format은 기본 미검사라는 제약 확인, 날짜·시각 오류 거부 테스트 추가 |
-| S02·S03 예보 | [기상청 단기예보 조회서비스](https://www.data.go.kr/data/15084084/openapi.do) | 참고문서의 활용가이드 ZIP 확보 후 getVilageFcst의 WSD·PCP·SNO 단위, 범주·결측·발표/제공 시각·예보 시각 의미 발췌 | 페이지에 `기상청41_단기예보 조회서비스_오픈API활용가이드_2609.zip` 표시 확인. ZIP 내용은 아직 미확보 |
-| S02-1 격자 | 위 단기예보 활용가이드의 격자 변환·첨부 격자표부터 확인 | 공식 원본 파일명·버전·시트/행 + 추가 지역 좌표/격자 테스트 | 기존 [15043492](https://www.data.go.kr/data/15043492/fileData.do)는 초단기예보 자료로 표시됨. 격자표 출처로 확정하지 않음 |
+| S02·S03 예보 | [기상청 단기예보 조회서비스](https://www.data.go.kr/data/15084084/openapi.do) | getVilageFcst의 WSD·PCP·SNO 단위, 범주·결측·발표/제공 시각·예보 시각 의미 발췌 | 2609 활용가이드 ZIP 다운로드 완료. 격자표 대조 완료, DOCX의 예보 시간 의미 대조는 남음 |
+| S02-1 격자 | 위 단기예보 활용가이드에 포함된 `기상청41_단기예보 조회서비스_오픈API활용가이드_격자_위경도(2607).xlsx` | 공식 원본 파일명·버전·시트/행 + 추가 지역 좌표/격자 테스트 | `최종 업데이트 파일_20260701` 시트 2·876·3322·3349·3422행, F/G 격자와 N/O 좌표 대조. 서울·부산·제주·서귀포·강릉 일치 |
+
+S02-1 원본은 공식 다운로드 제한 확인 API의 needCaptcha=false 응답 후 내려받았다. 다운로드 URL·파일 해시와 다섯 행은 `tests/engine/geo/data/kma_grid_20260701.json`에 기록했다. 원본 ZIP SHA256은 `437f3b921d04d907afe3cb2c556077df2d063c6f8c5bf06783fd76ea4b7712f9`, XLSX SHA256은 `746b5e5be10430106abccc795a16c16d0f1fd0f081e8ab2765d0adc983a003c1`이다. 원본은 Windows 임시 폴더의 `gongon-kma-guide-2609.zip`, `gongon-kma-grid-2607.xlsx`에 보관했으며 정리될 수 있다. 재현용 발췌만 Git에 저장하고 테스트에서 네트워크·스프레드시트 라이브러리를 요구하지 않는다.
 | S05 주소 | [Kakao Local 개발 가이드](https://developers.kakao.com/docs/ko/local/dev-guide) | 키워드 검색의 좌표·주소·빈 결과·오류·인증 방식, 실제 결과 대조 | 공식 문서 페이지 확인. 기존 저장 응답을 우선 재사용, 사용자 키의 승인·실제 호출은 별도 확인 |
 
 API 포털의 기본 선택 기능은 초단기실황일 수 있으므로 단기예보 getVilageFcst의 항목인지 확인한다. 실제 응답 구조 확인만으로 예보값의 시간 대표성이나 법령 기준과의 비교 가능성이 검증된 것은 아니다. 엔진의 정시~다음 정시 해석도 가이드와 대조한다.

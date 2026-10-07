@@ -1,0 +1,67 @@
+{
+  "source": {
+    "publisher": "기상청",
+    "url": "https://www.data.go.kr/data/15084084/openapi.do",
+    "download_url": "https://www.data.go.kr/cmm/cmm/fileDownload.do?atchFileId=FILE_000000007696658&fileDetailSn=1",
+    "accessed_at": "2026-10-07",
+    "archive": "기상청41_단기예보 조회서비스_오픈API활용가이드_2609.zip",
+    "archive_sha256": "437f3b921d04d907afe3cb2c556077df2d063c6f8c5bf06783fd76ea4b7712f9",
+    "workbook": "기상청41_단기예보 조회서비스_오픈API활용가이드_격자_위경도(2607).xlsx",
+    "workbook_sha256": "746b5e5be10430106abccc795a16c16d0f1fd0f081e8ab2765d0adc983a003c1",
+    "sheet": "최종 업데이트 파일_20260701",
+    "columns": {
+      "nx": "F",
+      "ny": "G",
+      "longitude_deg": "N",
+      "latitude_deg": "O"
+    },
+    "note": "공식 표의 값을 그대로 발췌. 기대 격자를 변환 함수로 생성하지 않음."
+  },
+  "points": [
+    {
+      "region": "서울특별시",
+      "administrative_code": "1100000000",
+      "source_row": 2,
+      "latitude_deg": 37.5635694444444,
+      "longitude_deg": 126.980008333333,
+      "nx": 60,
+      "ny": 127
+    },
+    {
+      "region": "부산광역시",
+      "administrative_code": "2600000000",
+      "source_row": 876,
+      "latitude_deg": 35.1770194444444,
+      "longitude_deg": 129.076952777777,
+      "nx": 98,
+      "ny": 76
+    },
+    {
+      "region": "제주특별자치도 제주시",
+      "administrative_code": "5011000000",
+      "source_row": 3322,
+      "latitude_deg": 33.4963111111111,
+      "longitude_deg": 126.533208333333,
+      "nx": 53,
+      "ny": 38
+    },
+    {
+      "region": "제주특별자치도 서귀포시",
+      "administrative_code": "5013000000",
+      "source_row": 3349,
+      "latitude_deg": 33.25406007,
+      "longitude_deg": 126.55955,
+      "nx": 53,
+      "ny": 33
+    },
+    {
+      "region": "강원특별자치도 강릉시",
+      "administrative_code": "5115000000",
+      "source_row": 3422,
+      "latitude_deg": 37.7491361111111,
+      "longitude_deg": 128.878497222222,
+      "nx": 92,
+      "ny": 131
+    }
+  ]
+}
