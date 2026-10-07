@@ -1,6 +1,7 @@
 """현장 등록 → 예보 수집 → 판정 저장 → 화면 조회 흐름. 기상청은 가짜(FakeKma)다."""
 
 import urllib.error
+from dataclasses import replace
 from typing import Any
 
 import pytest
@@ -9,6 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
+from app.core.rules import rule_sets_by_label
 from app.features.forecasts.models import ForecastRun
 from app.features.judgments.models import Judgment
 from tests.fakes import FakeKma
@@ -62,7 +64,7 @@ def test_rain_at_threshold_in_afternoon_gives_stop_review_window(
     assert "강우 최대 2.0 mm/h (15:00)" in page
     judgment = session.scalars(select(Judgment)).one()
     assert judgment.verdict == "중지 검토"
-    assert judgment.rule_source_verified is False
+    assert judgment.rule_source_verified is True
     assert fake_kma.calls[0]["base_time"] == "1400"
 
 
@@ -148,9 +150,21 @@ def test_missing_forecast_value_is_unavailable_not_go(
     assert session.scalars(select(Judgment.verdict)).one() == "판정 불가"
 
 
-def test_detail_shows_basis_issue_time_and_pending_source_check(
-    client: TestClient, session: Session, fake_kma: FakeKma
+@pytest.mark.parametrize(
+    ("verified", "source_note"), [(True, "원문 확인"), (False, "원문 대조 필요")]
+)
+def test_detail_shows_basis_issue_time_and_source_check(
+    client: TestClient,
+    session: Session,
+    fake_kma: FakeKma,
+    monkeypatch: pytest.MonkeyPatch,
+    verified: bool,
+    source_note: str,
 ) -> None:
+    # 저장 당시의 원문 대조 상태를 보여준다(이후 기준표가 바뀌어도 내역은 그대로).
+    rules = rule_sets_by_label()
+    changed = {label: replace(r, source_verified=verified) for label, r in rules.items()}
+    monkeypatch.setattr("app.features.judgments.service.rule_sets_by_label", lambda: changed)
     fake_kma.set_hour("20261005", 9, WSD="10.0")
     run(client, add_site(client))
     judgment_id = session.scalars(select(Judgment.id)).one()
@@ -158,8 +172,9 @@ def test_detail_shows_basis_issue_time_and_pending_source_check(
     page = client.get(f"/judgments/{judgment_id}").text
 
     assert "예보 발표 2026-10-04 14:00 KST" in page
-    assert "원문 대조 필요" in page
     assert "산업안전보건기준에 관한 규칙 제383조" in page
+    assert source_note in page
+    assert ("원문 대조 필요" in page) is not verified
     assert "풍속 10.0 → 기준 10 m/s 이상에 해당" in page
     assert "최종 결정은 현장 책임자가 합니다" in page
 

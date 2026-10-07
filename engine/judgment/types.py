@@ -1,7 +1,7 @@
 """판정 엔진의 입력·출력 타입. 예보 수집(engine/forecast)도 이 입력 타입으로 변환해 넘긴다."""
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from enum import StrEnum
 
 
@@ -89,6 +89,7 @@ class RuleSet:
     source: str
     source_verified: bool
     conditions: tuple[Condition, ...]
+    verified_on: date | None = None  # 원문 대조일. source_verified일 때만 있다
 
 
 @dataclass(frozen=True, slots=True)

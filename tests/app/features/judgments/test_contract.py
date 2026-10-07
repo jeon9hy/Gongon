@@ -141,7 +141,7 @@ def test_actual_saved_record_matches_contract(
     record = serialize_judgment(saved)
     validator.validate(json.loads(json.dumps(record, allow_nan=False)))
     assert record["verdict"] == expected
-    assert record["rule_source_verified"] is False
+    assert record["rule_source_verified"] is True
     assert record["hours"] == saved.hours and record["windows"] == saved.windows
     assert datetime.fromisoformat(record["judged_at"]) == saved.judged_at
     if scenario == "collection_failed":

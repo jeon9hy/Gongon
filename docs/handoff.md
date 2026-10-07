@@ -1,28 +1,24 @@
 # 현재 작업 인계
 
-- 현재 작업: S01 doing. 순차 구현 요청에 따라 S01-1·S02-1 완료(2026-10-07)
-- 마지막 수정 도구 Codex, 브랜치 `feature/S04-basic-app` 유지
-- 1차 완료: S01-1 저장 판정 JSON 계약 v1.0(D-025), 커밋 190eb96
-- 결과물: docs/schema.json·contract.md·contract-examples.json, service.serialize_judgment()
-- 기존 DB/화면 유지, 단위·KST 시각·기준 버전·원문 검증 상태·누락·실패 표현 명시
-- S01-1 관련 테스트 26개, 전체 153 passed·skip 없음
-- 2차 완료: S02-1 공식 격자표 추가 지역 대조. 기존 계산식 변경 없음
-- 공식 자료: data.go.kr 15084084의 2609 활용가이드 ZIP 다운로드, 내장 2607 XLSX 확인
-- 공식 표의 서울·부산·강릉·제주·서귀포 좌표/격자 5곳 모두 일치
-- 발췌: tests/engine/geo/data/kma_grid_20260701.json (출처·원본 파일·해시·시트·행·열 포함)
-- 원본: Windows 임시 폴더 gongon-kma-guide-2609.zip, gongon-kma-grid-2607.xlsx. 재현용 발췌만 Git 저장
-- 기존 15043492 격자 출처는 잘못된 링크였으므로 사용하지 않음
-- 최종 검증: scripts/check.py ruff check·format·mypy 통과, pytest 157 passed·skip 없음
-- 외부 API는 테스트에서 가짜 사용. 격자 테스트는 네트워크·Excel 라이브러리 없이 실행
-- 다음: S01 기준 원문 대조 자료 준비·확인일 메타데이터 보완, 기상청 가이드의 예보 시간 의미 대조
-- 개발자 확인 필요: 제383조 적용 시행일·값·연산자 최종 확인. source_verified=false 유지
-- 다운로드 ZIP의 DOCX 예보 시간 의미는 아직 대조하지 않음
-- 계약 한계: 기존 hours에는 upper_inclusive·forecast_comparable 별도 필드 없음
-- 조회 계약이므로 숫자 구간만으로 재판정 금지. 원자료·당시 규칙 필요. 계약 확장 시 마이그레이션 포함
-- 실행 순서: plan.md, 레퍼런스 확보 경로: references.md
-- S04-2는 기본 흐름 정리 후, S06은 웹 알림 미리보기 우선(D-015·D-024)
-- S05 대기: 내일 대상 홈에 과거 수집 성공이 함께 표시됨. 최신성/판정 없음 구분 개선
-- 환경: 로컬 DB 연결·조회 확인. 과거 DB 미설치·Codex 모델 오류는 차단 아님
-- GitHub 이름 변경 완료: jeon9hy/Gongon, origin=https://github.com/jeon9hy/Gongon.git
-- 로컬 Gongon 이름 변경은 다른 프로세스 사용으로 Windows가 거부. 실제 폴더명 gongon 유지
+- 마지막 수정 도구 Claude Code(2026-10-07), 브랜치 `feature/S04-basic-app` 유지
+- 완료: S01 done — 제383조 원문 자동 대조(D-026). 계약 S01-1(D-025)은 이전 커밋
+- 방법: 국가법령정보센터 Open API `lawService.do` MST 273603(고용노동부령 제450호, 2025-09-01 시행)
+- 발췌: `rules/sources/osh_standards_rule_mst273603.json` (제37·383·558·559·560조, 응답 SHA256)
+- 재수집: `uv run python -m scripts.fetch_law_articles --oc test --mst <MST> --articles 37 383 --out ...`
+- 현행 MST 확인: `lawSearch.do?OC=test&target=law&type=XML&query=<법령명>`
+- `rules/steel.yaml`: quote·source_snapshot·source_article·verified_on, `source_verified: true`, rule_version "2025-09-01 시행"
+- 로더: 검증 완료 표시인데 발췌·조문·대조일·인용이 없으면 거부
+- `tests/engine/judgment/test_rule_sources.py`: 인용이 원문 부분 문자열인지, 값·단위·이상/초과가 인용과 같은지
+- 변이 검사: 연산자·값·인용·조항 혼동 4종 모두 실패로 검출 확인(수동 실행, 원복함)
+- 화면: 상세에 "원문 확인" 표시, 현장 설정의 고정 "원문 대조 필요" 문구 제거
+- 검증: `scripts/check.py` ruff·format·mypy 통과, pytest 168 passed·skip 없음
+- 기존 판정 내역은 당시 rule_version·미확인 상태 그대로(추가만). contract-examples는 합성 예시라 유지
+- 다음 후보(plan.md): S01-2 타워크레인 → S01-3 폭염 → S01-4 콘크리트, 그 다음 S03 PCP 시각 정의 대조
+- S01-2 쟁점: 법령은 순간풍속 초과, 단기예보 WSD는 평균풍속. 평균 > 기준이면 순간도 > 기준(하한 논리)
+  - 평균 ≤ 기준이면 순간풍속 미상 → `확인 필요`. 돌풍 계수 등 근거 없는 추정은 쓰지 않음
+- S01-3 쟁점: 별표 13의2 체감온도 측정법을 발췌해 기상청 체감온도 산식(TMP·REH)과 대조 필요
+- S01-4: KCS 14 20 12·14(국가건설기준센터) 원문 확보. 일평균기온을 시간별 TMP로 계산 가능한지 확인
+- 폴더명 Gongon 변경: VS Code 등이 폴더를 사용 중이라 Windows가 거부(2회). VS Code 종료 후 상위 폴더에서
+  `ren gongon Gongon` 실행 필요. GitHub 저장소 이름은 이미 Gongon
+- 기존 대기: S05 홈의 최신성/판정 없음 구분 개선, S04-2는 기본 흐름 정리 후(D-024)
 - Windows 한글 경로: uv run python -m pytest|alembic|uvicorn 사용

@@ -1,5 +1,6 @@
 """기준표(YAML) → RuleSet. 들어오는 경계에서 형식을 검증하고 잘못되면 바로 실패한다."""
 
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -28,14 +29,31 @@ def parse_rule_set(data: Any) -> RuleSet:
     conditions = data.get("conditions")
     if not isinstance(conditions, list) or not conditions:
         raise RuleSetError("conditions가 비어 있음")
-    return RuleSet(
+    rule_set = RuleSet(
         work_type=_text(data, "work_type"),
         work_type_label=_text(data, "work_type_label"),
         rule_version=_text(data, "rule_version"),
         source=_text(data, "source"),
         source_verified=_bool(data, "source_verified"),
         conditions=tuple(_condition(item) for item in conditions),
+        verified_on=data.get("verified_on"),
     )
+    if rule_set.source_verified:
+        _require_verification(data, rule_set)
+    elif rule_set.verified_on is not None:
+        raise RuleSetError("source_verified가 false인데 verified_on이 있음")
+    return rule_set
+
+
+def _require_verification(data: dict[str, Any], rule_set: RuleSet) -> None:
+    # 원문 대조 완료 표시에는 발췌 파일·조문·대조일과 조건별 인용이 모두 있어야 한다.
+    _text(data, "source_snapshot")
+    _text(data, "source_article")
+    if type(rule_set.verified_on) is not date:  # datetime(날짜+시각)도 거부
+        raise RuleSetError("verified_on이 날짜(YYYY-MM-DD)가 아님")
+    unquoted = [c.id for c in rule_set.conditions if not c.quote]
+    if unquoted:
+        raise RuleSetError(f"원문 인용(quote) 없음: {unquoted}")
 
 
 def _condition(item: Any) -> Condition:
