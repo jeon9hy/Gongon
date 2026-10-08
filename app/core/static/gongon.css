@@ -1,12 +1,15 @@
 /* 공온 공통 스타일. 토큰 값은 docs/brand.md §5와 같다. */
+/* 글꼴: Pretendard Variable 1.3.9(SIL OFL 1.1, static/fonts/LICENSE.txt). 외부 CDN 대신 직접 제공한다(D-035). */
+@font-face { font-family: "Pretendard Variable"; font-weight: 45 920; font-style: normal; font-display: swap; src: url("/static/fonts/PretendardVariable.woff2") format("woff2-variations"), url("/static/fonts/PretendardVariable.woff2") format("woff2"); }
+
 /* 2026-10-08 미니멀 정리(D-034): 강조색은 파랑 하나, 글자 굵기 400·500, 그림자 없음, 박스는 테두리 대신 간격으로 구분.
  * 판정 4단계 색은 서비스의 핵심 정보라 그대로 둔다(글자 라벨과 함께). 글꼴은 한글 때문에 Pretendard를 쓴다. */
 :root {
-  --accent: #3E6AE1;          /* 주 행동 버튼·선택·포커스에만 */
-  --accent-strong: #3358C4;   /* 마우스 올림 */
+  --accent: #0066FF;          /* 주 행동 버튼·선택·포커스에만 */
+  --accent-strong: #0054D1;   /* 마우스 올림 */
   --accent-fg: #FFFFFF;
-  --accent-soft: #EEF2FC;
-  --accent-on-dark: #9DB4F2;
+  --accent-soft: #EAF2FE;
+  --accent-on-dark: #69A5FF;
   --ink: #171A20;             /* 제목·강조 글자 */
   --text: #393C41;            /* 본문 */
   --muted: #5C5E62;           /* 보조 글자 */
@@ -20,16 +23,16 @@
   --dark-2: #393C41;
   --dark-text: #E3E4E6;
   --dark-muted: #A9ABAF;
-  --verdict-go-bg: #E3F5E9;
-  --verdict-go-fg: #1E6B3A;
-  --verdict-check-bg: #FDF1DF;
-  --verdict-check-fg: #8A5300;
-  --verdict-stop-bg: #D93025;
+  --verdict-go-bg: #D9FFE6;
+  --verdict-go-fg: #006E25;
+  --verdict-check-bg: #FEF4E6;
+  --verdict-check-fg: #9C5800;
+  --verdict-stop-bg: #E52222;
   --verdict-stop-fg: #FFFFFF;
   --verdict-unknown-bg: #F4F4F4;
   --verdict-unknown-fg: #5C5E62;
-  --stop-soft: #FCEBEA;
-  --stop-text: #A8231A;
+  --stop-soft: #FEECEC;
+  --stop-text: #B00C0C;
   --radius-sm: 4px;           /* 버튼·입력·칩 */
   --radius-md: 4px;
   --radius-lg: 12px;          /* 큰 박스 */
@@ -319,3 +322,10 @@ a.tag:hover { filter: brightness(0.96); }
 .scroller__btn--prev { left: -4px; }
 .scroller__btn--next { right: -4px; }
 .scroller__btn[hidden] { display: none; }
+
+/* 머리의 주 행동은 오른쪽 끝선에 맞춘다(버튼과 안내 문구를 같은 선에) */
+.pagehead__action { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; text-align: right; }
+.pagehead__action p { margin: 0 !important; }
+/* 현재 메뉴는 강조색 밑줄로 표시 */
+.appnav a[aria-current="page"] { box-shadow: inset 0 -2px 0 var(--accent); border-radius: 0; }
+@media (max-width: 760px) { .pagehead__action { align-items: stretch; text-align: left; } }
