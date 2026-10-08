@@ -185,7 +185,6 @@ select:focus-visible, input:focus-visible { outline: 0; border-color: var(--acce
 .site-item { display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--line-soft); border-radius: var(--radius-lg); background: var(--card); padding: 18px; text-decoration: none; }
 .site-item[aria-current="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .site-item strong { font-size: 16px; }
-.site-item span { font-size: 13px; color: var(--muted); }
 .site-add { min-height: 56px; border: 1px dashed var(--line); border-radius: var(--radius-lg); background: transparent; font-size: 14px; font-weight: 700; color: var(--verdict-unknown-fg); display: flex; align-items: center; justify-content: center; gap: 8px; }
 .site-add { text-decoration: none; }
 .site-add[aria-current="true"] { border-color: var(--accent); color: var(--accent); }
@@ -250,3 +249,23 @@ input::placeholder { color: var(--muted); }
 .recent a:hover { background: var(--surface); color: var(--ink); }
 .recent a > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 @media (max-width: 760px) { .hero { padding: 24px; } .hero__title { font-size: 30px; } }
+
+/* 공종·판정 칩: 한 줄로 두고 넘치면 좌우로 밀어서 본다(카드 높이가 공종 수에 따라 늘지 않게) */
+.tag-scroll { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; mask-image: linear-gradient(to right, #000 88%, transparent); }
+.tag-scroll::-webkit-scrollbar { display: none; }
+.tag-scroll > * { flex: 0 0 auto; scroll-snap-align: start; }
+.tag { display: inline-flex; align-items: center; min-height: 28px; padding: 0 10px; border-radius: 8px; background: var(--surface); color: var(--verdict-unknown-fg); font-size: 12px; font-weight: 600; white-space: nowrap; text-decoration: none; }
+a.tag:hover { filter: brightness(0.96); }
+.tag--go { background: var(--verdict-go-bg); color: var(--verdict-go-fg); }
+.tag--check { background: var(--verdict-check-bg); color: var(--verdict-check-fg); }
+.tag--stop { background: var(--stop-soft); color: var(--stop-text); }
+.tag--unknown { background: var(--verdict-unknown-bg); color: var(--verdict-unknown-fg); }
+.recent-run { display: flex; flex-direction: column; gap: 8px; padding: 12px 0; border-top: 1px solid var(--line-soft); }
+.recent-run:first-child { border-top: 0; padding-top: 4px; }
+.recent-run__more { align-self: flex-end; color: var(--muted); text-decoration: none; }
+.recent-run__more:hover { color: var(--accent); }
+.site-item { gap: 8px; }
+.site-item__meta { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.site-item .tag-scroll { margin-top: 2px; }
+.recent-run__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.recent-run__head > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }

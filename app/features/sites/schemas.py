@@ -70,7 +70,9 @@ class SiteInput:
 class SiteListItem:
     href: str
     name: str
-    summary: str
+    hours: str  # "07:00–17:00"
+    period: str | None  # "26.10.04 – 11.03". 기간이 없으면 None
+    work_types: tuple[str, ...]
     selected: bool
 
 

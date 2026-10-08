@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, verdict_badge %}
+{% from "_macros.html" import icon, verdict_badge, verdict_class %}
 {% block title %}홈{% endblock %}
 {% block content %}
 
@@ -75,10 +75,11 @@
 <div class="row row--center" style="align-items: flex-start;">
 <div>
 <h3 class="site-card__name">{{ s.name }}</h3>
-<p class="small muted">작업 {{ s.work_hours }} · {{ s.work_types }}</p>
+<p class="small muted">작업 {{ s.work_hours }}</p>
 </div>
 {% if s.verdict %}{{ verdict_badge(s.verdict) }}{% elif not s.working %}<span class="badge badge--unknown">작업 없음</span>{% else %}<span class="badge badge--unknown">판정 전</span>{% endif %}
 </div>
+<div class="tag-scroll" aria-label="공종">{% for w in s.work_types %}<span class="tag">{{ w }}</span>{% else %}<span class="tag">공종 없음 · 공통 판정만</span>{% endfor %}</div>
 <p class="site-card__reason">{{ s.reason }}</p>
 <div class="row row--center">
 <span class="small muted">{% if s.judged_at %}판정 {{ s.judged_at }}{% else %}&nbsp;{% endif %}</span>
@@ -106,10 +107,14 @@
 {% if view.recent %}
 <ul class="recent">
 {% for r in view.recent %}
-<li><a href="{{ r.href }}">
-<span><strong>{{ r.site_name }}</strong><span class="small muted">{{ r.work }}</span><span class="small muted">{{ r.when }}</span></span>
+<li class="recent-run">
+<div class="recent-run__head">
+<span><strong>{{ r.site_name }}</strong><span class="small muted">{{ r.when }}</span></span>
 {{ verdict_badge(r.verdict) }}
-</a></li>
+</div>
+<div class="tag-scroll" aria-label="공종별 판정">{% for i in r.items %}<a class="tag tag--{{ verdict_class[i.verdict] }}" href="{{ i.href }}">{{ i.work_type }} · {{ i.verdict }}</a>{% endfor %}</div>
+<a class="small recent-run__more" href="{{ r.more_href }}">{{ r.site_name }} 내역 더보기 ›</a>
+</li>
 {% endfor %}
 </ul>
 {% else %}

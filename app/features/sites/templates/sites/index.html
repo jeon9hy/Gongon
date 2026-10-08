@@ -16,7 +16,8 @@
 {% for item in view.items %}
 <a class="site-item" href="{{ item.href }}"{% if item.selected %} aria-current="true"{% endif %}>
 <strong>{{ item.name }}</strong>
-<span>{{ item.summary }}</span>
+<span class="site-item__meta">{{ icon("history", 14) }} {{ item.hours }}{% if item.period %}<span aria-hidden="true">·</span>{{ item.period }}{% endif %}</span>
+<span class="tag-scroll" aria-label="공종">{% for w in item.work_types %}<span class="tag">{{ w }}</span>{% else %}<span class="tag">공종 없음</span>{% endfor %}</span>
 </a>
 {% endfor %}
 <a class="site-add" href="/sites"{% if view.site_id is none %} aria-current="true"{% endif %}>{{ icon("plus", 18, 2.2) }} 현장 추가</a>

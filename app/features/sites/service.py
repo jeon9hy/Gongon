@@ -52,8 +52,9 @@ def build_sites_view(
         SiteListItem(
             href=f"/sites?site_id={r.site_id}",
             name=r.name,
-            summary=f"{_work_types_summary(r.work_types)} · {_hhmm(r.work_start_local)}–"
-            f"{_hhmm(r.work_end_local)}" + _period_suffix(r),
+            hours=f"{_hhmm(r.work_start_local)}–{_hhmm(r.work_end_local)}",
+            period=_short_period(r),
+            work_types=r.work_types,
             selected=r.site_id == site_id,
         )
         for r in records
@@ -199,19 +200,24 @@ def _new_form(today: date | None) -> SiteForm:
     )
 
 
-def _period_suffix(record: SiteRecord) -> str:
-    period = record.period_text()
-    return "" if period is None else f" · {period}"
+def _short_period(record: SiteRecord) -> str | None:
+    """목록용 짧은 기간. 끝 날짜는 시작과 같은 해면 연도를 뺀다."""
+    start, end = record.work_start_date, record.work_end_date
+    if start is None and end is None:
+        return None
+    start_text = "" if start is None else f"{start:%y.%m.%d}"
+    if end is None:
+        end_text = ""
+    elif start is not None and end.year == start.year:
+        end_text = f"{end:%m.%d}"
+    else:
+        end_text = f"{end:%y.%m.%d}"
+    return f"{start_text} – {end_text}"
 
 
 def _hhmm(value: time) -> str:
     return value.strftime("%H:%M")
 
-
-def _work_types_summary(work_types: tuple[str, ...]) -> str:
-    if len(work_types) <= 1:
-        return work_types[0] if work_types else "공종 없음"
-    return f"{work_types[0]} 외 {len(work_types) - 1}개"
 
 
 def _record(site: Site) -> SiteRecord:

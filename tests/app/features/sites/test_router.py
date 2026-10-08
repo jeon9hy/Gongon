@@ -27,7 +27,8 @@ def test_new_site_is_saved_with_kma_grid_and_listed(client: TestClient) -> None:
     page = client.get(response.headers["location"]).text
     assert "저장했습니다" in page
     assert "(60, 127)" in page  # 서울시청 위경도의 기상청 격자
-    assert "철골 작업 외 1개" in page
+    # 목록에 공종이 칩으로 모두 보인다
+    assert '<span class="tag">철골 작업</span><span class="tag">고소작업대</span>' in page
 
 
 @pytest.mark.parametrize(

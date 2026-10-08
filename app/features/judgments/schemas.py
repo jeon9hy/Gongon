@@ -123,7 +123,7 @@ class SiteSummary:
     site_id: int
     name: str
     work_hours: str
-    work_types: str
+    work_types: tuple[str, ...]
     verdict: str | None
     reason: str
     detail_href: str
@@ -139,12 +139,21 @@ class CountTile:
 
 
 @dataclass(frozen=True, slots=True)
-class RecentJudgment:
-    href: str
-    site_name: str
-    work: str
+class RecentItem:
+    work_type: str
     verdict: str
+    href: str
+
+
+@dataclass(frozen=True, slots=True)
+class RecentRun:
+    """홈의 최근 판정 한 줄: 한 현장을 한 번 판정한 결과(공종별 판정 묶음)."""
+
+    site_name: str
+    verdict: str  # 묶음 안에서 가장 높은 단계
     when: str
+    items: tuple[RecentItem, ...]
+    more_href: str  # 그 현장의 판정 내역
 
 
 @dataclass(frozen=True, slots=True)
@@ -152,7 +161,7 @@ class HomeView:
     target_date: str
     sites: tuple[SiteSummary, ...]
     tiles: tuple[CountTile, ...]
-    recent: tuple[RecentJudgment, ...]
+    recent: tuple[RecentRun, ...]
     forecast_status: str
     forecast_issued: str | None
     rule_version: str | None

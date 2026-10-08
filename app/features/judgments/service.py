@@ -30,7 +30,8 @@ from app.features.judgments.schemas import (
     Notice,
     NoticeItem,
     PrimaryJudgment,
-    RecentJudgment,
+    RecentItem,
+    RecentRun,
     RunResult,
     SiteOption,
     SiteSummary,
@@ -343,16 +344,7 @@ def build_home(session: Session, now: datetime, ran: RunResult | None = None) ->
         tiles = (*tiles, CountTile("작업 없음", off_period, None))
 
     names = {s.site_id: s.name for s in sites}
-    recent = tuple(
-        RecentJudgment(
-            href=f"/judgments/{j.id}",
-            site_name=names.get(j.site_id, "삭제된 현장"),
-            work=f"{j.work_type} {_range_text(j.work_start_at, j.work_end_at)}",
-            verdict=j.verdict,
-            when=f"{j.target_date:%m/%d} 대상 · {_kst_text(j.judged_at)} 판정",
-        )
-        for j in repository.page(session, None, None, 0, 5)
-    )
+    recent = _recent_runs(repository.page(session, None, None, 0, RECENT_ROWS), names)
     run = forecasts_service.latest_run(session)
     if run is None:
         forecast_status = "아직 수집하지 않음"
@@ -388,7 +380,7 @@ def _site_summary(
             site_id=site.site_id,
             name=site.name,
             work_hours=f"{site.work_start_local:%H:%M}–{site.work_end_local:%H:%M}",
-            work_types=" · ".join(site.work_types),
+            work_types=tuple(site.work_types),
             verdict=verdict,
             reason=reason,
             detail_href=dashboard_href(site.site_id),
@@ -408,6 +400,30 @@ def _site_summary(
     )
     judged_at = max(j.judged_at for j in latest.values())
     return summary(worst.verdict, f"{worst.work_type} · {worst.reason}", _kst_text(judged_at))
+
+
+RECENT_RUNS = 5
+# 한 번 판정에 공종 수 + 공통 기준만큼 행이 생긴다. 넉넉히 읽어 묶음 5개를 채운다(쿼리 1회).
+RECENT_ROWS = RECENT_RUNS * 10
+
+
+def _recent_runs(rows: list[Judgment], names: Mapping[int, str]) -> tuple[RecentRun, ...]:
+    """같은 현장·대상 날짜·판정 시각의 행을 한 줄로 묶는다. rows는 최신순."""
+    groups: dict[tuple[int, date, datetime], list[Judgment]] = {}
+    for j in rows:
+        groups.setdefault((j.site_id, j.target_date, j.judged_at), []).append(j)
+    runs = []
+    for (site_id, target_date, judged_at), items in list(groups.items())[:RECENT_RUNS]:
+        runs.append(
+            RecentRun(
+                site_name=names.get(site_id, "삭제된 현장"),
+                verdict=max((Verdict(j.verdict) for j in items), key=lambda v: v.severity).value,
+                when=f"{target_date:%m/%d} 대상 · {_kst_text(judged_at)} 판정",
+                items=tuple(RecentItem(j.work_type, j.verdict, f"/judgments/{j.id}") for j in items),
+                more_href=f"/judgments?site_id={site_id}",
+            )
+        )
+    return tuple(runs)
 
 
 def dashboard_href(site_id: int, **params: str | int) -> str:
