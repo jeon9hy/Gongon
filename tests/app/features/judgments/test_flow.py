@@ -55,6 +55,7 @@ def test_rain_at_threshold_in_afternoon_gives_stop_review_window(
     fake_kma.set_hour("20261005", 13, PCP="1mm 미만")
     fake_kma.set_hour("20261005", 14, PCP="1.0mm")  # 기준과 같음 → 이상에 해당
     fake_kma.set_hour("20261005", 15, PCP="2.0mm")
+    fake_kma.set_hour("20261005", 16, PCP="1.5mm")  # 15시 칸의 다음 시각 해석(D-030)도 기준 해당
     site_id = add_site(client)
 
     page = client.get(run(client, site_id)).text
@@ -281,6 +282,7 @@ def test_home_summarizes_each_site_and_links_to_its_dashboard(
     client: TestClient, fake_kma: FakeKma
 ) -> None:
     fake_kma.set_hour("20261005", 15, PCP="2.0mm")
+    fake_kma.set_hour("20261005", 16, PCP="1.5mm")  # D-030: 다음 시각 예보도 기준 해당
     stop_site = add_site(client, work_types=["철골 작업"])
     add_site(client, name="△△현장", latitude="35.1796", longitude="129.0756",
              work_types=["철골 작업"])  # fmt: skip

@@ -119,7 +119,9 @@ def test_actual_saved_record_matches_contract(
     expected: str,
 ) -> None:
     if scenario == "stop":
+        # 강수량은 같은 시각·다음 시각 예보가 모두 기준에 해당해야 중지 검토(D-030)
         fake_kma.set_hour("20261005", 9, PCP="1.0mm")
+        fake_kma.set_hour("20261005", 10, PCP="1.0mm")
     elif scenario == "missing":
         del fake_kma.values[("20261005", "0900")]["WSD"]
     elif scenario == "collection_failed":

@@ -42,8 +42,9 @@ def weather(values_by_hour: dict[int, dict[Element, ForecastValue]]) -> WeatherI
 
 
 def judge_one(value: ForecastValue, cond: Condition) -> Verdict:
-    result = judge(weather({9: {cond.element: value}}), rule_set(cond), DAY.replace(hour=9),
-                   DAY.replace(hour=10))  # fmt: skip
+    # 같은 값이 다음 시각까지 이어지는 날씨: 누적값의 두 시각 해석(D-030)이 같은 결과를 낸다.
+    steady = {9: {cond.element: value}, 10: {cond.element: value}}
+    result = judge(weather(steady), rule_set(cond), DAY.replace(hour=9), DAY.replace(hour=10))
     return result.verdict
 
 
@@ -86,8 +87,8 @@ def test_action_is_added_only_when_condition_applies() -> None:
     cond = Condition("h", RAIN, ">=", 1.0, Verdict.CHECK, True, None, action="휴식 부여")
 
     def reason(value: float) -> str:
-        result = judge(weather({9: {RAIN: exact(value)}}), rule_set(cond), DAY.replace(hour=9),
-                       DAY.replace(hour=10))  # fmt: skip
+        steady = {9: {RAIN: exact(value)}, 10: {RAIN: exact(value)}}
+        result = judge(weather(steady), rule_set(cond), DAY.replace(hour=9), DAY.replace(hour=10))
         return result.hours[0].conditions[0].reason
 
     assert reason(1.0).endswith("에 해당 · 휴식 부여")
@@ -131,7 +132,8 @@ def test_missing_hour_in_work_range_is_unavailable() -> None:
     result = judge(weather({9: {RAIN: exact(0.0)}}), rule_set(condition()),
                    DAY.replace(hour=9), DAY.replace(hour=11))  # fmt: skip
 
-    assert [h.verdict for h in result.hours] == [Verdict.GO, Verdict.UNAVAILABLE]
+    # 9시 칸은 10시 예보(h-1~h 해석)를 알 수 없어 '진행'이라고 하지 않는다(D-030).
+    assert [h.verdict for h in result.hours] == [Verdict.CHECK, Verdict.UNAVAILABLE]
     assert result.verdict == Verdict.UNAVAILABLE
 
 
@@ -139,17 +141,22 @@ def test_stop_review_outranks_unavailable_and_windows_merge_same_verdicts() -> N
     values = {
         7: {RAIN: exact(0.0)},
         8: {RAIN: exact(0.0)},
-        9: {RAIN: exact(2.0)},
-        10: {RAIN: exact(1.5)},
-    }  # 11시 예보 없음
+        9: {RAIN: exact(0.0)},
+        10: {RAIN: exact(2.0)},
+        11: {RAIN: exact(1.5)},
+        12: {RAIN: exact(1.2)},
+    }  # 13시 예보 없음
     result = judge(weather(values), rule_set(condition()), DAY.replace(hour=7),
-                   DAY.replace(hour=12))  # fmt: skip
+                   DAY.replace(hour=14))  # fmt: skip
 
     assert result.verdict == Verdict.STOP_REVIEW
+    # 9시·12시 칸은 두 시각 해석(D-030)의 결과가 달라 확인 필요
     assert [(w.start_at.hour, w.end_at.hour, w.verdict) for w in result.windows] == [
         (7, 9, Verdict.GO),
-        (9, 11, Verdict.STOP_REVIEW),
-        (11, 12, Verdict.UNAVAILABLE),
+        (9, 10, Verdict.CHECK),
+        (10, 12, Verdict.STOP_REVIEW),
+        (12, 13, Verdict.CHECK),
+        (13, 14, Verdict.UNAVAILABLE),
     ]
 
 
@@ -165,7 +172,7 @@ def test_partial_hour_work_time_is_clipped_to_work_range() -> None:
 
 def test_hourly_verdict_is_highest_condition() -> None:
     conds = (condition(RAIN), condition(WIND, threshold=10.0))
-    values = {9: {RAIN: exact(0.0), WIND: exact(10.0)}}
+    values = {9: {RAIN: exact(0.0), WIND: exact(10.0)}, 10: {RAIN: exact(0.0)}}
     result = judge(weather(values), rule_set(*conds), DAY.replace(hour=9), DAY.replace(hour=10))
 
     assert [c.verdict for c in result.hours[0].conditions] == [Verdict.GO, Verdict.STOP_REVIEW]
@@ -183,3 +190,35 @@ def test_naive_work_time_is_rejected() -> None:
     naive = datetime(2026, 10, 5, 9)  # noqa: DTZ001 - 시간대 없는 입력을 거부하는지 확인
     with pytest.raises(ValueError, match="시간대"):
         judge(weather({}), rule_set(condition()), naive, naive + timedelta(hours=1))
+
+
+# D-030: 누적값(강수량·적설)의 예보 시각 h가 h-1~h인지 h~h+1인지 공식 정의가 없다.
+def nine_to_ten(values: dict[int, dict[Element, ForecastValue]], cond: Condition) -> Verdict:
+    result = judge(weather(values), rule_set(cond), DAY.replace(hour=9), DAY.replace(hour=10))
+    return result.hours[0].verdict
+
+
+def test_rain_only_in_next_hour_forecast_is_check_not_go() -> None:
+    result = judge(weather({9: {RAIN: exact(0.0)}, 10: {RAIN: exact(2.0)}}),
+                   rule_set(condition()), DAY.replace(hour=9), DAY.replace(hour=10))  # fmt: skip
+    hour = result.hours[0]
+    assert hour.verdict == Verdict.CHECK
+    assert "10:00 예보는 중지 검토" in hour.conditions[0].reason
+
+
+def test_rain_only_in_same_hour_forecast_is_check_not_stop() -> None:
+    assert (
+        nine_to_ten({9: {RAIN: exact(2.0)}, 10: {RAIN: exact(0.0)}}, condition()) == Verdict.CHECK
+    )
+
+
+def test_missing_same_hour_is_not_filled_by_next_hour() -> None:
+    assert nine_to_ten({9: {}, 10: {RAIN: exact(0.0)}}, condition()) == Verdict.UNAVAILABLE
+
+
+def test_instant_element_uses_only_same_hour() -> None:
+    wind = condition(WIND, threshold=10.0)
+    assert (
+        nine_to_ten({9: {WIND: exact(12.0)}, 10: {WIND: exact(0.0)}}, wind) == Verdict.STOP_REVIEW
+    )
+    assert nine_to_ten({9: {WIND: exact(0.0)}}, wind) == Verdict.GO

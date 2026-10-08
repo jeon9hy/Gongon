@@ -1,6 +1,7 @@
 """규칙 기반 판정. 같은 입력·같은 기준이면 항상 같은 결과를 낸다(LLM·외부 호출 없음)."""
 
 from collections.abc import Iterable
+from dataclasses import replace
 from datetime import datetime, timedelta
 
 from engine.judgment.types import (
@@ -8,6 +9,7 @@ from engine.judgment.types import (
     ELEMENT_UNIT,
     Condition,
     ConditionResult,
+    Element,
     ForecastValue,
     HourlyForecast,
     HourResult,
@@ -20,6 +22,9 @@ from engine.judgment.types import (
 
 _HOUR = timedelta(hours=1)
 OPERATOR_TEXT = {">=": "이상", ">": "초과"}
+# 1시간 누적값. 활용가이드·기상청 공개 자료에 예보 시각 h가 h-1~h인지 h~h+1인지 정의가 없다(D-030).
+# 그래서 h~h+1 구간은 h 예보와 h+1 예보 둘 다로 판정하고, 결과가 다르면 확인 필요로 둔다.
+ACCUMULATED = frozenset({Element.PRECIPITATION_MM_PER_H, Element.SNOWFALL_CM_PER_H})
 
 
 def judge(
@@ -27,7 +32,8 @@ def judge(
 ) -> JudgmentResult:
     """작업 시간에 걸친 정시 예보마다 조건을 비교하고, 구간 판정은 가장 높은 단계로 정한다.
 
-    예보 시각 h는 h:00~h+1:00 구간을 대표한다고 본다(D-018, 활용가이드 대조 필요).
+    순간값(풍속·기온 등)은 예보 시각 h의 값을 h:00~h+1:00에 쓴다(D-018).
+    누적값(강수량·적설)은 h와 h+1 예보를 모두 비교한다(D-030).
     """
     if work_start_at.tzinfo is None or work_end_at.tzinfo is None:
         raise ValueError("작업 시각에 시간대가 없음")
@@ -36,7 +42,7 @@ def judge(
 
     by_time = {h.valid_at: h for h in weather.hours}
     hours = tuple(
-        _judge_hour(slot, by_time.get(slot), rule_set)
+        _judge_hour(slot, by_time.get(slot), by_time.get(slot + _HOUR), rule_set)
         for slot in _hour_slots(work_start_at, work_end_at)
     )
     return JudgmentResult(
@@ -65,13 +71,39 @@ def _hour_slots(start_at: datetime, end_at: datetime) -> list[datetime]:
     return slots
 
 
-def _judge_hour(slot: datetime, forecast: HourlyForecast | None, rule_set: RuleSet) -> HourResult:
-    results = tuple(
-        _judge_condition(c, None if forecast is None else forecast.values.get(c.element))
-        for c in rule_set.conditions
-    )
+def _judge_hour(
+    slot: datetime,
+    forecast: HourlyForecast | None,
+    next_forecast: HourlyForecast | None,
+    rule_set: RuleSet,
+) -> HourResult:
+    def value(f: HourlyForecast | None, condition: Condition) -> ForecastValue | None:
+        return None if f is None else f.values.get(condition.element)
+
+    results = []
+    for c in rule_set.conditions:
+        result = _judge_condition(c, value(forecast, c))
+        if c.element in ACCUMULATED:
+            result = _either_window(result, _judge_condition(c, value(next_forecast, c)), slot)
+        results.append(result)
     verdict = highest(r.verdict for r in results)
-    return HourResult(valid_at=slot, verdict=verdict, conditions=results)
+    return HourResult(valid_at=slot, verdict=verdict, conditions=tuple(results))
+
+
+def _either_window(
+    same_hour: ConditionResult, next_hour: ConditionResult, slot: datetime
+) -> ConditionResult:
+    """h 예보(h~h+1 해석)와 h+1 예보(h-1~h 해석)의 판정이 다르면 어느 쪽인지 단정하지 않는다.
+
+    h 예보가 없으면 그대로 판정 불가다. 다음 시각 예보로 누락을 메우지 않는다.
+    """
+    if same_hour.verdict is next_hour.verdict or same_hour.verdict is Verdict.UNAVAILABLE:
+        return same_hour
+    reason = (
+        f"{same_hour.reason} · {slot + _HOUR:%H}:00 예보는 {next_hour.verdict.value}"
+        f"({next_hour.reason}) → 예보 시각이 어느 1시간인지 미확정이라 확인 필요"
+    )
+    return replace(same_hour, verdict=Verdict.CHECK, reason=reason)
 
 
 def _judge_condition(condition: Condition, value: ForecastValue | None) -> ConditionResult:
