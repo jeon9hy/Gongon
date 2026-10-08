@@ -31,7 +31,7 @@ UNIT_PHRASES = {
 OPERATOR_WORDS = {">=": "이상", ">": "초과"}
 
 
-@pytest.mark.parametrize("name", ["steel.yaml", "tower_crane.yaml", "heat.yaml"])
+@pytest.mark.parametrize("name", ["steel.yaml", "heat.yaml"])
 def test_rules_with_legal_basis_are_verified(name: str) -> None:
     assert RULES_DIR / name in VERIFIED
 

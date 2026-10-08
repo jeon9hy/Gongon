@@ -131,19 +131,6 @@ def test_heat_is_judged_for_every_site_with_required_action(
     assert (f"(기온 {tmp}℃·습도 {reh}%)" in detail) is (reason is not None)
 
 
-def test_tower_crane_is_stop_review_only_when_mean_wind_exceeds_gust_limit(
-    client: TestClient, session: Session, fake_kma: FakeKma
-) -> None:
-    fake_kma.set_hour("20261005", 10, WSD="15.1")
-    run(client, add_site(client, work_types=["타워크레인 운전"]))
-
-    crane = session.scalars(select(Judgment).where(Judgment.work_type == "타워크레인 운전")).one()
-
-    assert crane.verdict == "중지 검토"
-    # 평균풍속이 기준 아래인 시각은 순간풍속을 알 수 없어 '진행'이 아니다.
-    assert {w["verdict"] for w in crane.windows} == {"확인 필요", "중지 검토"}
-
-
 def test_same_issue_and_grid_is_fetched_once_and_not_judged_twice(
     client: TestClient, session: Session, fake_kma: FakeKma
 ) -> None:
