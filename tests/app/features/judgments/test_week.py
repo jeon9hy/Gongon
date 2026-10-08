@@ -31,6 +31,19 @@ def add_site(client: TestClient, **changes: Any) -> int:
     return int(location.split("site_id=")[1].split("&")[0])
 
 
+def add_item(client: TestClient, site_id: int, day: str, work_type: str = "철골 작업") -> None:
+    data = {
+        "site_id": str(site_id),
+        "work_type": work_type,
+        "work_date": day,
+        "start": "07:00",
+        "end": "17:00",
+        "location": "",
+        "memo": "",
+    }
+    assert client.post("/schedule", data=data, follow_redirects=False).status_code == 303
+
+
 def week_html(page: str) -> str:
     """주간 표의 열 머리(날짜·신뢰도)와 칸. 표 아래 설명 문구는 뺀다."""
     start = page.index('id="week-title"')
@@ -49,6 +62,8 @@ def test_week_judges_covered_days_and_marks_sparse_days(
     fake_kma.set_hour("20261006", 10, WSD="12.0")  # 철골 풍속 기준(10 m/s 이상)에 해당
     fake_kma.set_hour("20261008", 0, **CALM)  # 실제 응답처럼 마지막 날은 00시 값 하나뿐
     site_id = add_site(client)
+    for day in ("2026-10-06", "2026-10-07", "2026-10-08"):
+        add_item(client, site_id, day)  # 모레부터는 등록한 작업만 판정한다
 
     client.post("/judgments/run", data={"site_id": site_id})
 
@@ -66,7 +81,8 @@ def test_week_judges_covered_days_and_marks_sparse_days(
     week = week_html(client.get("/dashboard", params={"site_id": site_id}).text)
     assert week.count("신뢰도 높음") == 2  # 10/5, 10/6
     assert week.count("신뢰도 보통") == 1  # 10/7
-    assert week.count("예보 없음") == 4  # 10/8~10/11
+    assert week.count("예보 없음") == 1  # 10/8: 작업은 있으나 작업 시간에 예보 값 없음
+    assert week.count(">작업 없음<") == 3  # 10/9~10/11: 등록한 작업이 없어 판정·표시하지 않음
     assert "예보 대기" in week
 
 
@@ -82,9 +98,8 @@ def test_week_marks_days_outside_work_period(client: TestClient, fake_kma: FakeK
 def test_detail_card_defaults_to_highest_verdict_and_can_switch(
     client: TestClient, fake_kma: FakeKma
 ) -> None:
-    fake_kma.set_hour(
-        "20261005", 10, WSD="12.0"
-    )  # 철골만 풍속 기준에 해당(콘크리트는 풍속 기준 없음)
+    # 철골만 풍속 기준에 해당(콘크리트는 풍속 기준 없음)
+    fake_kma.set_hour("20261005", 10, WSD="12.0")
     site_id = add_site(client, work_types=["콘크리트 타설", "철골 작업"])
     client.post("/judgments/run", data={"site_id": site_id})
 
@@ -107,6 +122,8 @@ def test_days_beyond_short_forecast_show_mid_forecast_reference(
         "rnSt5Am": 30, "rnSt5Pm": 60, "wf5Am": "흐림", "wf5Pm": "흐리고 비",
     }  # fmt: skip
     site_id = add_site(client)
+    add_item(client, site_id, "2026-10-08")
+    add_item(client, site_id, "2026-10-09")
 
     client.post("/judgments/run", data={"site_id": site_id})
     client.post("/judgments/run", data={"site_id": site_id})
@@ -117,9 +134,53 @@ def test_days_beyond_short_forecast_show_mid_forecast_reference(
     assert {d.isoformat() for d in session.scalars(select(Judgment.target_date))} == {"2026-10-05"}
     week = week_html(client.get("/dashboard", params={"site_id": site_id}).text)
     assert week.count("신뢰도 낮음") == 2  # 10/8, 10/9
-    assert (
-        week.count("예보 없음") == 4
-    )  # 10/6·10/7(단기·중기 모두 없음), 10/10·10/11(가짜에 값 없음)
+    assert week.count(">작업 없음<") == 4  # 10/6·10/7·10/10·10/11: 등록한 작업 없음
     assert "오후 흐리고 비 60%" in week  # 철골(강우 기준) → 확인 필요 사유
     assert "wv--ref" in week
     assert "중지 검토" not in week.split("10/08")[1]  # 중기예보로는 확인 필요보다 높이지 않는다
+
+
+def test_later_days_without_registered_work_are_not_judged(
+    client: TestClient, session: Session, fake_kma: FakeKma
+) -> None:
+    # 10/6은 예보가 있어도 작업을 등록하지 않았으므로 현장 기본 공종으로 채우지 않는다.
+    for hour in range(24):
+        fake_kma.set_hour("20261006", hour, **CALM)
+    site_id = add_site(client, work_types=["철골 작업", "콘크리트 타설"])
+
+    client.post("/judgments/run", data={"site_id": site_id})
+
+    days = {d.isoformat() for d in session.scalars(select(Judgment.target_date))}
+    assert days == {"2026-10-05"}  # 내일만 작업이 없을 때 기본 공종으로 판정(D-023)
+    week = week_html(client.get("/dashboard", params={"site_id": site_id}).text)
+    assert week.count(">작업 없음<") == 6
+
+
+def test_home_recent_shows_latest_judgment_per_site_and_date() -> None:
+    from datetime import datetime
+
+    from app.features.judgments.service import _recent_runs
+    from engine.kst import KST
+
+    def row(id_: int, day: date, work: str, verdict: str, hour: int) -> Judgment:
+        judged_at = datetime(2026, 10, 4, hour, tzinfo=KST)
+        return Judgment(id=id_, site_id=1, target_date=day, work_type=work, work_item_id=None,
+                        verdict=verdict, judged_at=judged_at)  # fmt: skip
+
+    tomorrow, today = date(2026, 10, 5), date(2026, 10, 4)
+    rows = [  # 최신순
+        row(4, tomorrow, "철골 작업", "진행", 15),  # 다시 판정: 중지 검토 → 진행으로 갱신
+        row(3, tomorrow, "철골 작업", "중지 검토", 9),
+        row(2, tomorrow, "폭염(공통)", "진행", 9),  # 같은 예보라 다시 저장되지 않은 행도 포함
+        row(1, today, "철골 작업", "확인 필요", 8),
+    ]
+
+    runs = _recent_runs(rows, {1: "○○현장"})
+
+    assert [r.target_label for r in runs] == ["10월 5일(월)", "10월 4일(일)"]
+    latest = runs[0]
+    assert latest.verdict == "진행"
+    assert [(i.work_type, i.verdict) for i in latest.items] == [
+        ("철골 작업", "진행"),
+        ("폭염(공통)", "진행"),
+    ]

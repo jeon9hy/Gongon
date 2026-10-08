@@ -108,6 +108,7 @@
 {% if view.recent %}
 <ul class="recent">
 {% for r in view.recent %}
+{% if loop.first or r.target_label != loop.previtem.target_label %}<li class="recent-date">{{ r.target_label }} 대상</li>{% endif %}
 <li class="recent-run">
 <div class="recent-run__head">
 <span><strong>{{ r.site_name }}</strong><span class="small muted">{{ r.when }}</span></span>

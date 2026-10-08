@@ -172,6 +172,8 @@ def run_for_site(
     forecast_times = sorted(h.valid_at for h in snapshot.weather.hours)
     judged_days: list[date] = []
     for day in working:
+        if day != dates[0] and day not in items_by_day:
+            continue  # 모레부터는 등록한 작업만 판정한다(현장 기본 공종 대체는 내일만, D-023)
         for target in _targets_for(site, items_by_day.get(day, ()), rule_sets):
             rule_set = rule_sets[target.work_type]
             start_at, end_at = _work_range(day, target)
@@ -565,6 +567,7 @@ _CONFIDENCE_NOTE = {
     "판정 전": "예보는 있으나 아직 판정하지 않음",
     "수집 실패": "예보를 받지 못함",
     "기간 밖": "현장 작업 기간이 아님",
+    "작업 없음": "이날 등록한 작업 없음 · 작업 일정에서 추가하면 판정",
 }
 
 
@@ -585,12 +588,16 @@ def _week(
     by_type: dict[str, dict[date, WeekCell]] = {}
     for day in dates:
         in_period = site.works_on(day)
+        # 등록한 작업만 보여 준다. 작업이 없는 내일만 현장 기본 공종으로 대체한다(D-023).
+        has_work = day in items_by_day or day == dates[0]
         pairs = [
             (t, latest.get((day, t.key))) for t in _targets(site, items_by_day.get(day, ()))
-        ] if in_period else []  # fmt: skip
+        ] if in_period and has_work else []  # fmt: skip
         judged = [j for _, j in pairs if j is not None]
         covered = any(_has_forecast(times, *_work_range(day, t)) for t, _ in pairs)
-        confidence = _confidence(in_period, judged, covered)
+        confidence = (
+            _confidence(in_period, judged, covered) if not in_period or has_work else "작업 없음"
+        )
         mid_parts = None if mid is None else mid.days.get(day)
         if confidence == "예보 없음" and mid_parts:
             confidence = "낮음"
@@ -612,6 +619,8 @@ def _week(
     def cell_for(work_type: str, day: WeekDay) -> WeekCell:
         if not day.in_period:
             return WeekCell(None, "off", None, "작업 기간 아님")
+        if day.confidence == "작업 없음":
+            return WeekCell(None, "off", None, "이날 등록한 작업 없음")
         found = by_type[work_type].get(day.day)
         return found or WeekCell(None, "none", None, "그날 이 공종 작업 없음")
 
@@ -673,17 +682,28 @@ RECENT_ROWS = RECENT_RUNS * 10
 
 
 def _recent_runs(rows: list[Judgment], names: Mapping[int, str]) -> tuple[RecentRun, ...]:
-    """같은 현장·대상 날짜·판정 시각의 행을 한 줄로 묶는다. rows는 최신순."""
-    groups: dict[tuple[int, date, datetime], list[Judgment]] = {}
+    """현장·대상 날짜마다 작업별 최신 판정만 묶는다(지난 판정은 판정 내역에 남는다). rows는 최신순.
+
+    같은 예보로 다시 판정하면 새 행을 만들지 않으므로, 판정 시각이 아니라 작업 키로 갱신을 판단한다.
+    """
+    groups: dict[tuple[int, date], dict[str, Judgment]] = {}
     for j in rows:
-        groups.setdefault((j.site_id, j.target_date, j.judged_at), []).append(j)
+        groups.setdefault((j.site_id, j.target_date), {}).setdefault(_key(j), j)
+    ordered = sorted(
+        groups.items(),
+        key=lambda g: (g[0][1], max(j.judged_at for j in g[1].values())),
+        reverse=True,
+    )
     runs = []
-    for (site_id, target_date, judged_at), items in list(groups.items())[:RECENT_RUNS]:
+    for (site_id, target_date), latest in ordered[:RECENT_RUNS]:
+        items = list(latest.values())
+        judged_at = max(j.judged_at for j in items)
         runs.append(
             RecentRun(
+                target_label=_date_text(target_date),
                 site_name=names.get(site_id, "삭제된 현장"),
                 verdict=max((Verdict(j.verdict) for j in items), key=lambda v: v.severity).value,
-                when=f"{target_date:%m/%d} 대상 · {_kst_text(judged_at)} 판정",
+                when=f"{_kst_text(judged_at)} 판정",
                 items=tuple(
                     RecentItem(j.work_type, j.verdict, f"/judgments/{j.id}") for j in items
                 ),

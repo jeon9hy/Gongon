@@ -327,6 +327,17 @@ def test_tomorrow_off_period_judges_only_later_days_with_forecast(
         fake_kma.set_hour("20261006", hour, PCP="강수없음", WSD="2.0", SNO="적설없음",
                           TMP="20", REH="50")  # fmt: skip
     site_id = add_site(client, work_start_date="2026-10-06", work_end_date="2026-10-31")
+    for day in ("2026-10-06", "2026-10-07"):  # 모레부터는 등록한 작업만 판정한다
+        item = {
+            "site_id": str(site_id),
+            "work_type": "철골 작업",
+            "work_date": day,
+            "start": "07:00",
+            "end": "17:00",
+            "location": "",
+            "memo": "",
+        }
+        client.post("/schedule", data=item)
 
     assert "ran=done" in run(client, site_id)
 

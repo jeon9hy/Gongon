@@ -154,8 +154,9 @@ class RecentItem:
 
 @dataclass(frozen=True, slots=True)
 class RecentRun:
-    """홈의 최근 판정 한 줄: 한 현장을 한 번 판정한 결과(공종별 판정 묶음)."""
+    """홈의 최근 판정 한 줄: 한 현장·대상 날짜의 작업별 최신 판정 묶음(다시 판정하면 갱신)."""
 
+    target_label: str  # 10/09(금) — 날짜별로 묶어 보여 준다
     site_name: str
     verdict: str  # 묶음 안에서 가장 높은 단계
     when: str
@@ -259,7 +260,9 @@ class WeekDay:
     label: str  # 10/9(금)
     is_tomorrow: bool
     in_period: bool
-    confidence: Literal["높음", "보통", "낮음", "예보 없음", "판정 전", "수집 실패", "기간 밖"]
+    confidence: Literal[
+        "높음", "보통", "낮음", "예보 없음", "판정 전", "수집 실패", "기간 밖", "작업 없음"
+    ]
     confidence_note: str
 
 
