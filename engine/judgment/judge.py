@@ -21,7 +21,7 @@ from engine.judgment.types import (
 )
 
 _HOUR = timedelta(hours=1)
-OPERATOR_TEXT = {">=": "이상", ">": "초과"}
+OPERATOR_TEXT = {">=": "이상", ">": "초과", "<=": "이하", "<": "미만"}
 # 1시간 누적값. 활용가이드·기상청 공개 자료에 예보 시각 h가 h-1~h인지 h~h+1인지 정의가 없다(D-030).
 # 그래서 h~h+1 구간은 h 예보와 h+1 예보 둘 다로 판정하고, 결과가 다르면 확인 필요로 둔다.
 ACCUMULATED = frozenset({Element.PRECIPITATION_MM_PER_H, Element.SNOWFALL_CM_PER_H})
@@ -138,7 +138,7 @@ def _judge_condition(condition: Condition, value: ForecastValue | None) -> Condi
             " · 현장 측정 확인",
         )
     if below:
-        return result(Verdict.GO, f"{label} {value.raw} → 기준 {rule_text} 미만")
+        return result(Verdict.GO, f"{label} {value.raw} → 기준 {rule_text}에 해당하지 않음")
     # 범주 예보가 기준값에 걸쳐 있어 넘는지 알 수 없다. 넘는다고 단정하지 않는다.
     return result(Verdict.CHECK, f"{label} {value.raw}: 예보 범주가 기준 {rule_text}에 걸쳐 있음")
 
@@ -153,6 +153,16 @@ def _compare(value: ForecastValue, operator: str, threshold: float) -> tuple[boo
     elif operator == ">":
         over = value.lower > threshold
         below = value.upper is not None and value.upper <= threshold
+    elif operator == "<=":  # 낮은 쪽 기준(한중·저온 시공 금지 등)
+        over = value.upper is not None and (
+            value.upper < threshold or (value.upper == threshold and value.upper_inclusive)
+        )
+        below = value.lower > threshold
+    elif operator == "<":
+        over = value.upper is not None and (
+            value.upper < threshold or (value.upper == threshold and not value.upper_inclusive)
+        )
+        below = value.lower >= threshold
     else:
         raise ValueError(f"지원하지 않는 연산 {operator!r}")
     return over, below

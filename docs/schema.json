@@ -29,7 +29,7 @@
   ],
   "properties": {
     "schema_version": {
-      "const": "1.1"
+      "const": "1.2"
     },
     "data_type": {
       "const": "forecast"
@@ -109,7 +109,9 @@
         "snowfall_cm_per_h",
         "temperature_c",
         "humidity_pct",
-        "sensible_temperature_c"
+        "sensible_temperature_c",
+        "daily_mean_temperature_c",
+        "max_temperature_next_24h_c"
       ],
       "properties": {
         "wind_speed_mps": {
@@ -128,6 +130,12 @@
           "const": "%"
         },
         "sensible_temperature_c": {
+          "const": "°C"
+        },
+        "daily_mean_temperature_c": {
+          "const": "°C"
+        },
+        "max_temperature_next_24h_c": {
           "const": "°C"
         }
       }
@@ -235,7 +243,9 @@
             "snowfall_cm_per_h",
             "temperature_c",
             "humidity_pct",
-            "sensible_temperature_c"
+            "sensible_temperature_c",
+            "daily_mean_temperature_c",
+            "max_temperature_next_24h_c"
           ]
         },
         "verdict": {

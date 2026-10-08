@@ -43,7 +43,7 @@ from app.features.judgments.schemas import (
 )
 from app.features.sites import service as sites_service
 from app.features.sites.schemas import SiteRecord
-from engine.forecast import HttpGet, KmaAuth
+from engine.forecast import HttpGet, KmaAuth, with_daily_temperatures
 from engine.judgment import (
     ELEMENT_LABEL,
     ELEMENT_UNIT,
@@ -75,6 +75,8 @@ _ICON = {
     Element.WIND_SPEED_MPS: "wind",
     Element.SNOWFALL_CM_PER_H: "snow",
     Element.SENSIBLE_TEMPERATURE_C: "thermometer",
+    Element.DAILY_MEAN_TEMPERATURE_C: "thermometer",
+    Element.MAX_TEMPERATURE_NEXT_24H_C: "thermometer",
 }
 
 
@@ -121,14 +123,19 @@ def run_for_site(
     snapshot = forecasts_service.get_forecast(
         session, site.grid_nx, site.grid_ny, now, auth, http_get
     )
+    weather = (
+        None
+        if snapshot.weather is None
+        else with_daily_temperatures(snapshot.weather, start_at, end_at)
+    )
     for rule_set in targets:
-        if snapshot.weather is None:
+        if weather is None:
             session.add(
                 _failed_judgment(site, rule_set, target_date, start_at, end_at, snapshot.run_id,
                                  f"예보 수집 실패: {snapshot.failure_reason}")
             )  # fmt: skip
             continue
-        result = judge(snapshot.weather, rule_set, start_at, end_at)
+        result = judge(weather, rule_set, start_at, end_at)
         same = repository.find_same(
             session,
             site_id=site.site_id,
@@ -696,7 +703,7 @@ def serialize_judgment(judgment: Judgment) -> dict[str, Any]:
         return value.astimezone(KST).isoformat()
 
     return {
-        "schema_version": "1.1",
+        "schema_version": "1.2",
         "data_type": "forecast",
         "judgment_id": judgment.id,
         "site_id": judgment.site_id,

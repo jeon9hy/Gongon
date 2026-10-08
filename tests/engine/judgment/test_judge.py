@@ -222,3 +222,25 @@ def test_instant_element_uses_only_same_hour() -> None:
         nine_to_ten({9: {WIND: exact(12.0)}, 10: {WIND: exact(0.0)}}, wind) == Verdict.STOP_REVIEW
     )
     assert nine_to_ten({9: {WIND: exact(0.0)}}, wind) == Verdict.GO
+
+
+# 낮은 쪽 기준(한중 콘크리트 일평균 4℃ 이하, 저온 시공 금지 등)
+@pytest.mark.parametrize(
+    ("operator", "value", "expected"),
+    [
+        ("<=", 3.9, Verdict.STOP_REVIEW),
+        ("<=", 4.0, Verdict.STOP_REVIEW),
+        ("<=", 4.1, Verdict.GO),
+        ("<", 3.9, Verdict.STOP_REVIEW),
+        ("<", 4.0, Verdict.GO),
+        ("<", 4.1, Verdict.GO),
+    ],
+)
+def test_low_side_threshold_boundary(operator: str, value: float, expected: Verdict) -> None:
+    cond = condition(Element.TEMPERATURE_C, operator=operator, threshold=4.0)
+    assert judge_one(exact(value), cond) == expected
+
+
+def test_low_side_category_straddling_threshold_is_check() -> None:
+    cond = condition(RAIN, operator="<=", threshold=0.5)
+    assert judge_one(ForecastValue(0.0, 1.0, False, "1mm 미만"), cond) == Verdict.CHECK

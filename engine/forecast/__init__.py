@@ -1,3 +1,4 @@
+from engine.forecast.daily import with_daily_temperatures
 from engine.forecast.kma import (
     API_HUB,
     DATA_GO_KR,
@@ -22,4 +23,5 @@ __all__ = [
     "fetch_vilage_forecast",
     "latest_base_at",
     "normalize",
+    "with_daily_temperatures",
 ]

@@ -29,6 +29,9 @@ class Element(StrEnum):
     HUMIDITY_PCT = "humidity_pct"
     # 기온·습도로 계산한 값(engine/forecast/sensible.py). 둘 중 하나라도 없으면 만들지 않는다.
     SENSIBLE_TEMPERATURE_C = "sensible_temperature_c"
+    # 하루 단위 값(engine/forecast/daily.py). 작업 시간의 모든 시각에 같은 값으로 넣는다.
+    DAILY_MEAN_TEMPERATURE_C = "daily_mean_temperature_c"  # KCS 정의: 03~24시 3시간 간격 8회 평균
+    MAX_TEMPERATURE_NEXT_24H_C = "max_temperature_next_24h_c"  # 작업 종료 후 24시간 최고
 
 
 ELEMENT_LABEL = {
@@ -38,6 +41,8 @@ ELEMENT_LABEL = {
     Element.TEMPERATURE_C: "기온",
     Element.HUMIDITY_PCT: "습도",
     Element.SENSIBLE_TEMPERATURE_C: "체감온도",
+    Element.DAILY_MEAN_TEMPERATURE_C: "일평균기온",
+    Element.MAX_TEMPERATURE_NEXT_24H_C: "종료 후 24시간 최고기온",
 }
 ELEMENT_UNIT = {
     Element.WIND_SPEED_MPS: "m/s",
@@ -46,6 +51,8 @@ ELEMENT_UNIT = {
     Element.TEMPERATURE_C: "°C",
     Element.HUMIDITY_PCT: "%",
     Element.SENSIBLE_TEMPERATURE_C: "°C",
+    Element.DAILY_MEAN_TEMPERATURE_C: "°C",
+    Element.MAX_TEMPERATURE_NEXT_24H_C: "°C",
 }
 
 

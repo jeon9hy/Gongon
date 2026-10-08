@@ -8,7 +8,7 @@ import yaml
 
 from engine.judgment.types import Condition, Element, RuleSet, Verdict
 
-_OPERATORS = (">=", ">")
+_OPERATORS = (">=", ">", "<=", "<")
 
 
 class RuleSetError(ValueError):
