@@ -362,7 +362,8 @@ def build_home(session: Session, now: datetime, ran: RunResult | None = None) ->
         tiles = (*tiles, CountTile("작업 없음", off_period, None))
 
     names = {s.site_id: s.name for s in sites}
-    recent = _recent_runs(repository.page(session, None, None, 0, RECENT_ROWS), names)
+    recent_rows = repository.page(session, None, None, 0, RECENT_ROWS, site_ids=site_ids)
+    recent = _recent_runs(recent_rows, names)
     run = forecasts_service.latest_run(session)
     if run is None:
         forecast_status = "아직 수집하지 않음"
@@ -394,7 +395,9 @@ def _site_summary(
 ) -> SiteSummary:
     working = site.works_on(target_date)
 
-    def summary(verdict: str | None, reason: str, judged_at: str | None) -> SiteSummary:
+    def summary(
+        verdict: str | None, reason: str, judged_at: str | None, cards: tuple[WorkCard, ...] = ()
+    ) -> SiteSummary:
         return SiteSummary(
             site_id=site.site_id,
             name=site.name,
@@ -405,20 +408,23 @@ def _site_summary(
             detail_href=dashboard_href(site.site_id),
             judged_at=judged_at,
             working=working,
+            cards=cards,
         )
 
     if not working:
         return summary(None, f"작업 기간이 아닙니다 · {site.period_text()}", None)
     targets = _targets(site, items)
+    cards = tuple(_card(t.label, latest.get(t.key), t.work_type in rule_sets) for t in targets)
     if not any(t.key in latest for t in targets):
-        return summary(None, "아직 판정하지 않았습니다", None)
+        return summary(None, "아직 판정하지 않았습니다", None, cards)
     # 현장의 단계는 작업·공통 카드 중 가장 높은 단계(기준 미확인 공종의 '확인 필요' 포함).
-    cards = [_card(t.label, latest.get(t.key), t.work_type in rule_sets) for t in targets]
     worst = max(
         (c for c in cards if c.verdict is not None), key=lambda c: Verdict(str(c.verdict)).severity
     )
     judged_at = max(j.judged_at for j in latest.values())
-    return summary(worst.verdict, f"{worst.work_type} · {worst.reason}", _kst_text(judged_at))
+    return summary(
+        worst.verdict, f"{worst.work_type} · {worst.reason}", _kst_text(judged_at), cards
+    )
 
 
 @dataclass(frozen=True, slots=True)

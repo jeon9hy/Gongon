@@ -129,6 +129,7 @@ class SiteSummary:
     detail_href: str
     judged_at: str | None
     working: bool  # 대상 날짜가 작업 기간 안인가
+    cards: tuple[WorkCard, ...] = ()  # 작업·공종별 단계(작업 기간 밖이면 비어 있음)
 
 
 @dataclass(frozen=True, slots=True)

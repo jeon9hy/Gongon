@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import date, datetime
 
 from sqlalchemy import func, select
@@ -72,12 +73,20 @@ def get(session: Session, judgment_id: int) -> Judgment | None:
 
 
 def page(
-    session: Session, site_id: int | None, verdict: str | None, offset: int, limit: int
+    session: Session,
+    site_id: int | None,
+    verdict: str | None,
+    offset: int,
+    limit: int,
+    site_ids: Sequence[int] | None = None,
 ) -> list[Judgment]:
+    """site_ids를 주면 그 현장들만(홈에서 삭제한 현장을 뺄 때)."""
     # 목록에는 시간별 상세(JSONB)가 필요 없다.
     query = select(Judgment).options(defer(Judgment.hours), defer(Judgment.windows))
     if site_id is not None:
         query = query.where(Judgment.site_id == site_id)
+    if site_ids is not None:
+        query = query.where(Judgment.site_id.in_(site_ids))
     if verdict is not None:
         query = query.where(Judgment.verdict == verdict)
     query = query.order_by(Judgment.target_date.desc(), Judgment.judged_at.desc(), Judgment.id)

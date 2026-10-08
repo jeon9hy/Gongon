@@ -24,6 +24,8 @@ class Site(Base):
     # 작업 기간(현지 날짜, 양 끝 포함). 비어 있으면 기간 제한 없음(0002 이전에 등록한 현장).
     work_start_date: Mapped[date | None] = mapped_column(Date)
     work_end_date: Mapped[date | None] = mapped_column(Date)
+    # 삭제한 현장(D-040). 판정 내역을 보관하려고 행은 남기고 목록·조회에서만 뺀다.
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

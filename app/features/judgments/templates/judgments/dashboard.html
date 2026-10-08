@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, verdict_badge, verdict_class %}
+{% from "_macros.html" import icon, verdict_badge, verdict_class, site_menu %}
 {% block title %}내일 공사 ON?{% endblock %}
 {% block content %}
 
@@ -8,6 +8,7 @@
 <a class="btn btn--soft btn--sm" href="/">{{ icon("arrow-left", 16, 2.2) }} 전체 현장</a>
 </div>
 {% if view.sites %}
+<div class="row row--center">
 <form method="get" action="/dashboard" class="row row--center">
 <label class="visually-hidden" for="site-select">현장</label>
 <select id="site-select" class="btn" name="site_id" onchange="this.form.submit()">
@@ -15,6 +16,8 @@
 </select>
 <noscript><button class="btn btn--soft" type="submit">보기</button></noscript>
 </form>
+{% if view.site_id is not none %}{{ site_menu(view.site_id, view.site_name) }}{% endif %}
+</div>
 {% endif %}
 </header>
 
@@ -62,7 +65,7 @@
 <p class="small muted section-description">내일 작업별로 가장 높은 단계를 표시합니다. 등록한 작업이 없으면 현장 기본 공종으로 판정합니다.</p>
 <div class="windows">
 {% for c in view.cards %}
-<div class="window{% if c.verdict == '중지 검토' %} window--stop{% endif %}">
+<div class="window window--{{ verdict_class.get(c.verdict, 'unknown') }}">
 <div class="window__head"><span class="window__title"><span>{{ c.work_type }}</span><span class="small muted">{{ c.time_range }}</span></span>{% if c.verdict %}{{ verdict_badge(c.verdict) }}{% else %}<span class="badge badge--unknown">판정 전</span>{% endif %}</div>
 <div class="window__footer"><p class="window__reason">{{ c.reason }}</p>{% if c.detail_href %}<a class="window__link" href="{{ c.detail_href }}">상세 근거 {{ icon("arrow-right", 13) }}</a>{% endif %}</div>
 </div>
@@ -83,13 +86,13 @@
 {% if not p.failure_reason %}
 <div class="stats stats--compact" aria-label="단계별 시간">
 {% for t in p.tiles %}
-<div class="stat">{{ verdict_badge(t.verdict) }}<span class="stat__value">{{ t.hours }}<small>시간</small></span></div>
+<div class="stat{% if not t.hours %} is-zero{% endif %}">{{ verdict_badge(t.verdict) }}<span class="stat__value">{{ t.hours }}<small>시간</small></span></div>
 {% endfor %}
 </div>
 {% endif %}
 <div class="windows">
 {% for w in p.windows %}
-<div class="window{% if w.verdict == '중지 검토' %} window--stop{% endif %}">
+<div class="window window--{{ verdict_class.get(w.verdict, 'unknown') }}">
 <div class="window__head"><span>{{ w.time_range }}</span>{{ verdict_badge(w.verdict) }}</div>
 {% if w.reason %}<span class="window__reason">{{ w.reason }}</span>{% endif %}
 </div>

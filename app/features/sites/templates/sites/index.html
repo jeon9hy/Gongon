@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon %}
+{% from "_macros.html" import icon, site_danger_zone %}
 {% block title %}현장 설정{% endblock %}
 {% block content %}
 
@@ -25,6 +25,7 @@
 </aside>
 
 {% set form = view.form %}
+<div class="stack split__main">
 <form class="form" method="post" action="{% if view.site_id is none %}/sites{% else %}/sites/{{ view.site_id }}{% endif %}">
 
 {% if view.errors %}
@@ -32,6 +33,8 @@
 <strong>저장하지 못했습니다</strong>
 <ul>{% for e in view.errors %}<li>{{ e }}</li>{% endfor %}</ul>
 </div>
+{% elif view.deleted %}
+<div class="alert alert--ok" role="status">{{ icon("check", 16, 2.4) }} 현장을 삭제했습니다. 지난 판정 내역은 판정 내역에 남아 있습니다.</div>
 {% elif view.saved %}
 <div class="alert alert--ok" role="status">{{ icon("check", 16, 2.4) }} 저장했습니다. 대시보드에서 판정할 수 있습니다.</div>
 {% endif %}
@@ -117,6 +120,11 @@
 <button class="btn btn--accent" type="submit">{% if view.site_id is none %}등록{% else %}저장{% endif %}</button>
 </div>
 </form>
+{% if view.site_id is not none %}
+{% set current = view.items | selectattr("selected") | first %}
+{{ site_danger_zone(view.site_id, current.name) }}
+{% endif %}
+</div>
 </div>
 <script>
 // 주소 칸 → 장소 후보(서버 /sites/places, D-022). 결과는 textContent로만 넣는다.

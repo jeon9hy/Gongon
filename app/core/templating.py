@@ -11,6 +11,15 @@ STATIC_DIR = CORE_DIR / "static"
 templates = Jinja2Templates(directory=CORE_DIR / "templates")
 
 
+def static_url(name: str) -> str:
+    """정적 파일 주소에 수정 시각을 붙인다. 파일이 바뀌면 주소도 바뀌어 옛 캐시를 쓰지 않는다."""
+    version = int((STATIC_DIR / name).stat().st_mtime)
+    return f"/static/{name}?v={version}"
+
+
+templates.env.globals["static_url"] = static_url
+
+
 def register_template_dir(directory: Path) -> None:
     """기능 폴더의 templates를 검색 경로에 추가한다. 템플릿 이름은 `<기능>/<파일>`로 둔다."""
     loader = templates.env.loader

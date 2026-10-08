@@ -64,8 +64,11 @@ def sites(
     now: Annotated[datetime, Depends(now_kst)],
     site_id: int | None = None,
     saved: bool = False,
+    deleted: bool = False,
 ) -> HTMLResponse:
-    view = service.build_sites_view(session, site_id, saved=saved, today=now.date())
+    view = service.build_sites_view(
+        session, site_id, saved=saved, today=now.date(), deleted=deleted
+    )
     if view is None:
         raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
     return _render(request, view)
@@ -113,3 +116,12 @@ def update_site(request: Request, session: SessionDep, site_id: int, fields: For
         assert view is not None
         return _render(request, view, status_code=422)
     return RedirectResponse(f"/sites?site_id={site_id}&saved=true", status_code=303)
+
+
+@router.post("/sites/{site_id}/delete")
+def delete_site(
+    session: SessionDep, now: Annotated[datetime, Depends(now_kst)], site_id: int
+) -> RedirectResponse:
+    if not service.delete_site(session, site_id, now):
+        raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
+    return RedirectResponse("/sites?deleted=true", status_code=303)

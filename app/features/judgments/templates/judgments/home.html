@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, verdict_badge, verdict_class %}
+{% from "_macros.html" import icon, verdict_badge, verdict_class, site_menu %}
 {% block title %}홈{% endblock %}
 {% block content %}
 
@@ -51,7 +51,7 @@
 
 <section class="stats" aria-label="내일 판정 요약">
 {% for t in view.tiles %}
-<div class="stat stat--{{ verdict_class.get(t.badge, 'unknown') }}">
+<div class="stat stat--{{ verdict_class.get(t.badge, 'unknown') }}{% if not t.count %} is-zero{% endif %}">
 {% if t.badge %}{{ verdict_badge(t.badge) }}{% else %}<span class="badge badge--unknown">{{ t.label }}</span>{% endif %}
 <span class="stat__value">{{ t.count }}<small>곳</small></span>
 </div>
@@ -67,27 +67,32 @@
 <ul class="sitelist">
 {% for s in view.sites %}
 <li class="siterow siterow--{{ verdict_class.get(s.verdict, 'unknown') }}">
-<div class="siterow__name">
-<a href="{{ s.detail_href }}">{{ s.name }}</a>
+<div class="siterow__head">
+<div class="siterow__title">
+<a class="siterow__name" href="{{ s.detail_href }}">{{ s.name }}</a>
+<p class="siterow__meta">{{ icon("history", 13) }} {{ s.work_hours }}<span aria-hidden="true">·</span>{% if s.judged_at %}{{ s.judged_at }} 판정{% else %}판정 기록 없음{% endif %}</p>
 </div>
-<div class="siterow__main">
-<dl class="site-meta">
-<div><dt>작업 시간</dt><dd>{{ s.work_hours }}</dd></div>
-<div><dt>최근 판정</dt><dd>{{ s.judged_at or '아직 판정하지 않음' }}</dd></div>
-</dl>
+<div class="siterow__status">
+{% if s.verdict %}{{ verdict_badge(s.verdict) }}{% elif not s.working %}<span class="badge badge--unknown">작업 없음</span>{% else %}<span class="badge badge--unknown">판정 전</span>{% endif %}
+{{ site_menu(s.site_id, s.name) }}
+</div>
+</div>
+{% if s.cards %}
+<ul class="checks" aria-label="작업별 판정">
+{% for c in s.cards %}<li class="check check--{{ verdict_class.get(c.verdict, 'unknown') }}"><span class="check__name">{{ c.work_type }}</span><span class="check__verdict">{{ c.verdict or "판정 전" }}</span></li>{% endfor %}
+</ul>
+{% else %}
 <div class="tag-scroll" aria-label="공종">{% for w in s.work_types %}<span class="tag">{{ w }}</span>{% else %}<span class="tag">공종 없음 · 공통 판정만</span>{% endfor %}</div>
-<p class="siterow__reason" title="{{ s.reason }}">{{ s.reason }}</p>
-</div>
-<div class="siterow__verdict">{% if s.verdict %}{{ verdict_badge(s.verdict) }}{% elif not s.working %}<span class="badge badge--unknown">작업 없음</span>{% else %}<span class="badge badge--unknown">판정 전</span>{% endif %}</div>
-<div class="siterow__actions">
-<a class="btn btn--soft btn--sm" href="/schedule?site_id={{ s.site_id }}" aria-label="{{ s.name }} 작업 일정">작업 일정</a>
+{% endif %}
+<p class="siterow__reason">{% if s.verdict %}<span class="siterow__reason-label">가장 높은 단계</span>{% endif %}{{ s.reason }}</p>
+<div class="siterow__foot">
 {% if s.working %}
 <form method="post" action="/judgments/run">
 <input type="hidden" name="site_id" value="{{ s.site_id }}">
-<button class="btn btn--sm" type="submit">판정하기</button>
+<button class="btn btn--soft btn--sm" type="submit">{{ icon("cloud-sun", 15) }} {% if s.verdict %}다시 판정{% else %}판정하기{% endif %}</button>
 </form>
 {% endif %}
-<a class="btn btn--soft btn--sm" href="{{ s.detail_href }}" aria-label="{{ s.name }} 자세히">{{ icon("arrow-right", 14, 2.2) }}</a>
+<a class="siterow__link" href="{{ s.detail_href }}" aria-label="{{ s.name }} 대시보드에서 보기">대시보드에서 보기 {{ icon("arrow-right", 15, 2.2) }}</a>
 </div>
 </li>
 {% endfor %}

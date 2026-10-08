@@ -1,6 +1,6 @@
-"""현장 등록·수정·조회. 다른 기능은 list_sites·get_site로 현장 정보를 읽는다."""
+"""현장 등록·수정·삭제·조회. 다른 기능은 list_sites·get_site로 읽는다(삭제한 현장은 빠진다)."""
 
-from datetime import date, time, timedelta
+from datetime import date, datetime, time, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -38,6 +38,7 @@ def build_sites_view(
     errors: tuple[str, ...] = (),
     saved: bool = False,
     today: date | None = None,
+    deleted: bool = False,
 ) -> SitesView | None:
     """site_id가 없으면 새 현장 등록 화면, 없는 현장이면 None. today는 새 현장 기본 작업 기간용."""
     records = list_sites(session)
@@ -71,6 +72,7 @@ def build_sites_view(
         work_type_options=options,
         errors=errors,
         saved=saved,
+        deleted=deleted,
     )
 
 
@@ -94,6 +96,17 @@ def update_site(session: Session, site_id: int, form: SiteForm) -> tuple[bool, t
     repository.update_site(site, data)
     session.commit()
     return True, ()
+
+
+def delete_site(session: Session, site_id: int, now: datetime) -> bool:
+    """현장을 목록·판정 대상에서 뺀다. 판정 내역·작업 일정 행은 기록으로 남긴다(D-040).
+    없거나 이미 삭제한 현장이면 False."""
+    site = repository.get_site(session, site_id)
+    if site is None:
+        return False
+    repository.mark_deleted(site, now)
+    session.commit()
+    return True
 
 
 def basis_status(label: str) -> BasisStatus:

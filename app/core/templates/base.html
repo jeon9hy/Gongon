@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}공온{% endblock %} · 공온</title>
 <link rel="preload" href="/static/fonts/PretendardVariable.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/static/gongon.css">
+<link rel="stylesheet" href="{{ static_url('gongon.css') }}">
 </head>
 <body>
 <a class="skip-link" href="#main">본문으로 바로 가기</a>
@@ -80,6 +80,17 @@ document.querySelectorAll(".tag-scroll").forEach((row) => {
   row.addEventListener("scroll", update, { passive: true });
   new ResizeObserver(update).observe(row);
   update();
+});
+// 더보기 메뉴(⋯)는 바깥을 누르거나 Esc를 누르면 닫는다. 하나를 열면 다른 메뉴는 닫는다.
+const closeMenus = (except) => document.querySelectorAll("details.menu[open]").forEach((menu) => {
+  if (menu !== except) menu.open = false;
+});
+document.addEventListener("click", (e) => closeMenus(e.target.closest("details.menu")));
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  const open = document.querySelector("details.menu[open]");
+  closeMenus(null);
+  if (open) open.querySelector("summary").focus();
 });
 </script>
 </body>

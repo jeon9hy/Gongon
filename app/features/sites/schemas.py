@@ -92,3 +92,4 @@ class SitesView:
     work_type_options: tuple[WorkTypeOption, ...]
     errors: tuple[str, ...]
     saved: bool
+    deleted: bool = False  # 방금 현장을 삭제하고 돌아왔는가
