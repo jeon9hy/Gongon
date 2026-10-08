@@ -822,6 +822,7 @@ def get_detail(session: Session, judgment_id: int) -> DetailView | None:
         f"기상청 격자 ({judgment.grid_nx}, {judgment.grid_ny})",
     ]
     return DetailView(
+        site_id=None if site is None else site.site_id,
         site_name="삭제된 현장" if site is None else site.name,
         target_date=_date_text(judgment.target_date),
         work_type=judgment.work_type,

@@ -58,6 +58,29 @@ def test_item_is_saved_and_listed_under_its_day(client: TestClient) -> None:
     assert "09:00–12:00" in page and "A구역" in page
 
 
+def test_navigation_keeps_the_selected_site_through_judgment_detail(
+    client: TestClient, session: Session
+) -> None:
+    add_site(client, name="첫 현장")
+    site_id = add_site(client, name="선택한 현장")
+    add_item(client, site_id)
+    run(client, site_id)
+    judgment = session.scalar(select(Judgment).where(Judgment.site_id == site_id, STEEL))
+    assert judgment is not None
+    for path in (
+        f"/dashboard?site_id={site_id}",
+        f"/schedule?site_id={site_id}",
+        f"/sites?site_id={site_id}",
+        f"/judgments?site_id={site_id}",
+        f"/judgments/{judgment.id}",
+    ):
+        response = client.get(path)
+        assert response.status_code == 200
+        navigation = response.text.split('<nav class="appnav"')[1].split("</nav>")[0]
+        for destination in ("dashboard", "schedule", "judgments", "sites"):
+            assert f'href="/{destination}?site_id={site_id}"' in navigation
+
+
 @pytest.mark.parametrize(
     ("changes", "message"),
     [

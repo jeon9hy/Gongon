@@ -70,7 +70,7 @@ engine/judgment, engine/geo ──> (표준 라이브러리, 전달받은 데이
 서버 렌더링(FastAPI + Jinja2)으로 기능별 `app/features/<기능>/templates/`에 둔다(D-004). JS 빌드 단계는 두지 않는다.
 문구·용어·색상 값은 `docs/brand.md`.
 - 공통 기반: `app/core/templating.py`(Jinja2 설정, 기능이 `register_template_dir()`로 자기 templates를 등록), `app/core/templates/base.html`(레이아웃·메뉴), `_macros.html`(아이콘·판정 배지), `app/core/static/gongon.css`(brand.md 토큰을 CSS 변수로 옮김, `/static/`).
-- 기능 화면: `app/features/<기능>/templates/<기능>/*.html`. 서버 렌더링 링크로 동작하고(탭·필터는 쿼리 문자열) JS는 쓰지 않는다. 예외: 현장 선택 `<select>`의 `onchange` 제출(`<noscript>` 버튼 대체), 현장 설정의 장소 후보 자동완성(템플릿 안 작은 스크립트, D-022 — JS 없이도 위경도 직접 입력으로 저장 가능). 외부 API 결과는 `textContent`로만 넣는다.
+- 기능 화면: `app/features/<기능>/templates/<기능>/*.html`. 서버 렌더링 링크로 동작하고(탭·필터는 쿼리 문자열) JS는 보조 상호작용에만 쓴다. 예외: 모바일 달력의 날짜 상세 앵커 전환(D-037), 공종 칩 넘김 버튼(기본 가로 스크롤 유지), 현장 선택 `<select>`의 `onchange` 제출(`<noscript>` 버튼 대체), 현장 설정의 장소 후보 자동완성(템플릿 안 작은 스크립트, D-022 — JS 없이도 위경도 직접 입력으로 저장 가능). 외부 API 결과는 `textContent`로만 넣는다.
 - `service.py`가 DB·엔진 결과로 화면 모델(`schemas.py`)을 만들고 템플릿은 표시만 한다. 쓰기(폼 제출)는 POST 후 303으로 GET 화면에 돌아간다(새로고침 중복 실행 방지). 예시 데이터 단계(S05-0)의 `sample.py`는 D-019에서 지웠다.
 
 ## 5. 테스트

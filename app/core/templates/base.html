@@ -9,28 +9,29 @@
 <link rel="stylesheet" href="/static/gongon.css">
 </head>
 <body>
+<a class="skip-link" href="#main">본문으로 바로 가기</a>
 <header class="appbar">
 <div class="appbar__inner">
 <a class="logo-word" href="/" aria-label="공온 홈">공온<span class="logo-toggle" aria-hidden="true"></span></a>
 <nav class="appnav" aria-label="주 메뉴">
+{% set current_site_id = view.site_id | default(view.selected_site_id | default(none)) if view is defined else none %}
 {% for key, href, label in [("home", "/", "홈"), ("dashboard", "/dashboard", "현장 대시보드"), ("schedule", "/schedule", "작업 일정"), ("history", "/judgments", "판정 내역"), ("sites", "/sites", "현장 설정")] %}
-<a href="{{ href }}"{% if nav_active == key %} aria-current="page"{% endif %}>{{ label }}</a>
+<a href="{{ href }}{% if key != 'home' and current_site_id %}?site_id={{ current_site_id }}{% endif %}"{% if nav_active == key %} aria-current="page"{% endif %}>{{ label }}</a>
 {% endfor %}
 </nav>
 <div class="appbar__actions">
 <a class="btn btn--accent btn--sm" href="/sites">{{ icon("plus", 14, 2.4) }} 현장 추가</a>
-<button class="btn btn--sm" type="button" disabled title="로그인 기능 준비 중">로그인</button>
 </div>
 </div>
 </header>
 
-<main class="page">
+<main class="page page--{{ nav_active }}" id="main" tabindex="-1">
 {% block content %}{% endblock %}
 </main>
 
 <footer class="statusbar" aria-label="자료 안내">
 <div class="statusbar__inner">
-<span><strong>판단 보조</strong> 최종 결정은 현장 책임자가 합니다</span>
+<span>최종 판단은 현장 책임자가 합니다.</span>
 <span class="statusbar__sep" aria-hidden="true"></span>
 <span>예보 기상청 단기예보</span>
 <span class="statusbar__sep" aria-hidden="true"></span>
@@ -38,6 +39,15 @@
 </div>
 </footer>
 <script>
+// 작은 화면에서는 날짜를 고른 직후 상세가 보이도록 링크에 문서 앵커를 붙인다.
+const calendarMedia = window.matchMedia("(max-width: 760px)");
+const updateCalendarLinks = () => document.querySelectorAll(".calcell__link").forEach((link) => {
+  const url = new URL(link.href);
+  url.hash = calendarMedia.matches ? "day-detail" : "";
+  link.href = url.href;
+});
+calendarMedia.addEventListener("change", updateCalendarLinks);
+updateCalendarLinks();
 // 칩 줄(.tag-scroll)이 넘치면 양옆에 ‹ › 버튼을 붙인다. 스크립트가 없어도 손가락·휠로 밀어서 볼 수 있다.
 document.querySelectorAll(".tag-scroll").forEach((row) => {
   const box = document.createElement("div");

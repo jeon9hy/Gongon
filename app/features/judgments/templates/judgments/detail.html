@@ -4,14 +4,15 @@
 {% block content %}
 
 <div class="row row--center">
-<a class="btn" href="/judgments">{{ icon("arrow-left", 16, 2.2) }} 판정 내역</a>
+<a class="btn" href="/judgments{% if view.site_id %}?site_id={{ view.site_id }}{% endif %}">{{ icon("arrow-left", 16, 2.2) }} 판정 내역</a>
 </div>
 
 <article class="card" style="gap: 20px;">
 <div class="row" style="align-items: flex-start;">
 <div>
 <p class="muted" style="font-size: 14px; font-weight: 600;">{{ view.site_name }} · {{ view.target_date }}</p>
-<h1 class="title title--sm" style="margin-top: 6px;">{{ view.work_type }} {{ view.work_range }}</h1>
+<h1 class="title title--sm" style="margin-top: 6px;">{{ view.work_type }}</h1>
+<p class="subtitle">작업 시간 {{ view.work_range }}</p>
 </div>
 {% if view.verdict == "중지 검토" %}
 <span class="badge badge--stop badge--lg">{{ icon("pause", 20, 2.4) }}{{ view.verdict }}</span>

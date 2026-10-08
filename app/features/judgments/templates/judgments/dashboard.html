@@ -26,21 +26,22 @@
 </section>
 {% else %}
 
-<section class="row">
+<section class="pagehead">
 <div>
+<p class="pagehead__eyebrow">{{ view.target_date }} · {{ view.site_name }}</p>
 <h1 class="title">내일 공사 ON?</h1>
-<p class="subtitle">{{ view.target_date }} · {{ view.site_name }} · 작업 {{ view.work_hours }} · 공종 {{ view.cards | length }}개</p>
-</div>
-<div class="chips">
+<dl class="site-meta dashboard-meta"><div><dt>기본 작업 시간</dt><dd>{{ view.work_hours }}</dd></div><div><dt>판정 항목</dt><dd>{{ view.cards | length }}개</dd></div></dl>
+<div class="pagehead__meta">
 {% if view.forecast_issued %}<span class="chip">예보 발표 {{ view.forecast_issued }}</span>{% endif %}
 {% if view.rule_version %}<span class="chip">기준 {{ view.rule_version }}{% if not view.rule_verified %} · <span class="todo">원문 대조 필요</span>{% endif %}</span>{% endif %}
+</div>
+</div>
 {% if not view.off_period_note %}
-<form method="post" action="/judgments/run">
+<form method="post" action="/judgments/run" class="pagehead__action">
 <input type="hidden" name="site_id" value="{{ view.site_id }}">
 <button class="btn btn--accent" type="submit">{% if view.primary %}다시 판정하기{% else %}지금 판정하기{% endif %}</button>
 </form>
 {% endif %}
-</div>
 </section>
 
 {% if view.off_period_note %}
@@ -54,15 +55,16 @@
 <div class="stack split__main">
 
 <article class="card">
-<div>
+<div class="section-heading">
 <h2 class="h2">공종별 판정</h2>
-<p class="small muted" style="margin-top: 4px;">내일 등록한 작업마다(작업이 없으면 현장 공종마다) 가장 높은 단계 · <a href="/schedule?site_id={{ view.site_id }}">작업 일정</a></p>
+<a class="btn btn--soft btn--sm" href="/schedule?site_id={{ view.site_id }}">작업 일정 {{ icon("arrow-right", 14) }}</a>
 </div>
+<p class="small muted section-description">내일 작업별로 가장 높은 단계를 표시합니다. 등록한 작업이 없으면 현장 기본 공종으로 판정합니다.</p>
 <div class="windows">
 {% for c in view.cards %}
 <div class="window{% if c.verdict == '중지 검토' %} window--stop{% endif %}">
-<div class="window__head"><span>{{ c.work_type }} <span class="small muted">{{ c.time_range }}</span></span>{% if c.verdict %}{{ verdict_badge(c.verdict) }}{% else %}<span class="badge badge--unknown">판정 전</span>{% endif %}</div>
-<span class="window__reason">{{ c.reason }}{% if c.detail_href %} · <a href="{{ c.detail_href }}" style="font-weight: 700;">상세 근거</a>{% endif %}</span>
+<div class="window__head"><span class="window__title"><span>{{ c.work_type }}</span><span class="small muted">{{ c.time_range }}</span></span>{% if c.verdict %}{{ verdict_badge(c.verdict) }}{% else %}<span class="badge badge--unknown">판정 전</span>{% endif %}</div>
+<div class="window__footer"><p class="window__reason">{{ c.reason }}</p>{% if c.detail_href %}<a class="window__link" href="{{ c.detail_href }}">상세 근거 {{ icon("arrow-right", 13) }}</a>{% endif %}</div>
 </div>
 {% endfor %}
 </div>

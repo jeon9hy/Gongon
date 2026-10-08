@@ -5,8 +5,9 @@
 
 <section class="pagehead">
 <div>
+<p class="pagehead__eyebrow">현장의 다음 작업</p>
 <h1 class="title">작업 일정</h1>
-<p class="subtitle">날짜를 누르면 그날 작업을 보고 추가할 수 있습니다. 내일 작업은 그 작업의 공종·시간으로 판정합니다.</p>
+<p class="subtitle">날짜를 골라 작업을 기록하세요. 내일 작업의 날씨 영향도 함께 확인할 수 있습니다.</p>
 </div>
 {% if view.sites %}
 <form method="get" action="/schedule" class="pagehead__action">
@@ -32,7 +33,7 @@
 </section>
 {% else %}
 <div class="split">
-<section class="split__main" aria-labelledby="month-title">
+<section class="panel split__main calendar-panel" aria-labelledby="month-title">
 <div class="calhead">
 <div class="calhead__nav">
 <a class="btn btn--sm" href="{{ view.prev_href }}" aria-label="이전 달">{{ icon("arrow-left", 14, 2.2) }}</a>
@@ -52,6 +53,7 @@
 <td class="calcell{% if not c.in_month %} is-outside{% endif %}{% if not c.in_period %} is-off{% endif %}{% if c.selected %} is-selected{% endif %}{% if c.is_target %} is-target{% endif %}">
 <a class="calcell__link" href="{{ c.href }}" aria-label="{{ c.day.month }}월 {{ c.day.day }}일, 작업 {{ c.items | length + c.more }}건"{% if c.selected %} aria-current="date"{% endif %}>
 <span class="calcell__day">{{ c.day.day }}{% if c.is_today %}<span class="calcell__flag">오늘</span>{% elif c.is_target %}<span class="calcell__flag calcell__flag--target">판정</span>{% endif %}</span>
+{% if c.items %}<span class="calcell__count">{{ c.items | length + c.more }}건</span>{% endif %}
 {% for i in c.items %}<span class="calitem"><span class="calitem__time">{{ i.start_local.strftime("%H:%M") }}</span> {{ i.work_type }}</span>{% endfor %}
 {% if c.more %}<span class="calitem calitem--more">+{{ c.more }}건</span>{% endif %}
 </a>
@@ -61,10 +63,10 @@
 {% endfor %}
 </tbody>
 </table>
-<p class="small muted" style="margin-top: 10px;">흐린 칸은 작업 기간 밖이거나 다른 달입니다. ‘판정’ 표시가 내일(판정 대상)입니다.</p>
+<p class="small muted" style="margin-top: 10px;">파란 날짜는 내일, 테두리는 선택한 날입니다. 흐린 날짜는 작업 기간 밖이거나 다른 달입니다.</p>
 </section>
 
-<aside class="stack split__side">
+<aside class="stack split__side" id="day-detail">
 {% set d = view.detail %}
 <section class="panel" aria-labelledby="day-title">
 <div class="panel__head">
@@ -78,11 +80,15 @@
 <li class="itemrow itemrow--stack">
 <div class="itemrow__top">
 <span class="itemrow__time">{{ i.start_local.strftime("%H:%M") }}–{{ i.end_local.strftime("%H:%M") }}</span>
-<form method="post" action="/schedule/{{ i.item_id }}/delete">
+<details class="delete-action">
+<summary aria-label="{{ d.day_text }} {{ i.work_type }} 삭제 확인">삭제</summary>
+<form method="post" action="/schedule/{{ i.item_id }}/delete" class="delete-action__confirm">
+<p class="small">{{ i.work_type }} 작업을 삭제할까요? 삭제한 일정은 되돌릴 수 없습니다.</p>
 <input type="hidden" name="site_id" value="{{ view.site_id }}">
 <input type="hidden" name="day" value="{{ d.day.isoformat() }}">
-<button class="btn btn--sm" type="submit" aria-label="{{ d.day_text }} {{ i.work_type }} 작업 지우기">지우기</button>
+<button class="btn btn--sm" type="submit" aria-label="{{ d.day_text }} {{ i.work_type }} 작업 지우기">작업 삭제</button>
 </form>
+</details>
 </div>
 <strong>{{ i.work_type }}</strong>
 {% if i.location %}<span class="small muted">{{ icon("site", 13) }} {{ i.location }}</span>{% endif %}
@@ -114,7 +120,7 @@
 <label class="field">작업 위치 (선택)<input type="text" name="location" maxlength="60" placeholder="예: A구역 3층" value="{{ view.form.location }}"></label>
 <label class="field">메모 (선택)<input type="text" name="memo" maxlength="500" value="{{ view.form.memo }}"></label>
 <button class="btn btn--accent" type="submit">{{ icon("plus", 16, 2.2) }} 작업 추가</button>
-<p class="small muted">공종은 현장 설정에 등록한 것만 고를 수 있습니다. 예보 때문에 일정이 자동으로 바뀌지 않습니다.</p>
+<p class="small muted">다른 공종이 필요하면 <a href="/sites?site_id={{ view.site_id }}">현장 설정</a>에서 추가하세요. 일정 변경은 담당자가 결정합니다.</p>
 </div>
 </form>
 {% endif %}

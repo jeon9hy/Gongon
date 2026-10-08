@@ -7,6 +7,7 @@
 <div>
 <p class="pagehead__eyebrow">{{ view.target_date }} · 전체 현장</p>
 <h1 class="title">내일 공사 ON?</h1>
+<p class="subtitle">현장별 날씨 영향을 살펴보고, 내일 작업을 준비하세요.</p>
 <div class="pagehead__meta">
 {% if view.forecast_issued %}<span class="chip">예보 발표 {{ view.forecast_issued }}</span>{% endif %}
 {% if view.rule_version %}<span class="chip">기준 {{ view.rule_version }}{% if not view.rule_verified %} · 원문 대조 필요{% endif %}</span>{% endif %}
@@ -15,7 +16,7 @@
 {% if view.sites %}
 <form method="post" action="/judgments/run-all" class="pagehead__action">
 <button class="btn btn--accent" type="submit">{{ icon("cloud-sun", 18) }} 전체 현장 판정하기</button>
-<p class="small muted" style="margin-top: 6px;">현장 {{ view.sites | length }}곳 · 같은 격자는 예보를 한 번만 받습니다</p>
+<p class="small muted">등록한 현장 {{ view.sites | length }}곳의 내일 작업을 확인합니다</p>
 </form>
 {% endif %}
 </section>
@@ -50,7 +51,7 @@
 
 <section class="stats" aria-label="내일 판정 요약">
 {% for t in view.tiles %}
-<div class="stat">
+<div class="stat stat--{{ verdict_class.get(t.badge, 'unknown') }}">
 {% if t.badge %}{{ verdict_badge(t.badge) }}{% else %}<span class="badge badge--unknown">{{ t.label }}</span>{% endif %}
 <span class="stat__value">{{ t.count }}<small>곳</small></span>
 </div>
@@ -65,17 +66,21 @@
 </div>
 <ul class="sitelist">
 {% for s in view.sites %}
-<li class="siterow{% if s.verdict == '중지 검토' %} siterow--stop{% endif %}">
+<li class="siterow siterow--{{ verdict_class.get(s.verdict, 'unknown') }}">
 <div class="siterow__name">
 <a href="{{ s.detail_href }}">{{ s.name }}</a>
-<span class="small muted">작업 {{ s.work_hours }}{% if s.judged_at %} · 판정 {{ s.judged_at }}{% endif %}</span>
 </div>
 <div class="siterow__main">
+<dl class="site-meta">
+<div><dt>작업 시간</dt><dd>{{ s.work_hours }}</dd></div>
+<div><dt>최근 판정</dt><dd>{{ s.judged_at or '아직 판정하지 않음' }}</dd></div>
+</dl>
 <div class="tag-scroll" aria-label="공종">{% for w in s.work_types %}<span class="tag">{{ w }}</span>{% else %}<span class="tag">공종 없음 · 공통 판정만</span>{% endfor %}</div>
 <p class="siterow__reason" title="{{ s.reason }}">{{ s.reason }}</p>
 </div>
-<div>{% if s.verdict %}{{ verdict_badge(s.verdict) }}{% elif not s.working %}<span class="badge badge--unknown">작업 없음</span>{% else %}<span class="badge badge--unknown">판정 전</span>{% endif %}</div>
+<div class="siterow__verdict">{% if s.verdict %}{{ verdict_badge(s.verdict) }}{% elif not s.working %}<span class="badge badge--unknown">작업 없음</span>{% else %}<span class="badge badge--unknown">판정 전</span>{% endif %}</div>
 <div class="siterow__actions">
+<a class="btn btn--soft btn--sm" href="/schedule?site_id={{ s.site_id }}" aria-label="{{ s.name }} 작업 일정">작업 일정</a>
 {% if s.working %}
 <form method="post" action="/judgments/run">
 <input type="hidden" name="site_id" value="{{ s.site_id }}">

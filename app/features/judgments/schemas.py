@@ -199,6 +199,7 @@ class HourRow:
 
 @dataclass(frozen=True, slots=True)
 class DetailView:
+    site_id: int | None
     site_name: str
     target_date: str
     work_type: str
