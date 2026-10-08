@@ -3,25 +3,19 @@
 {% block title %}홈{% endblock %}
 {% block content %}
 
-<header class="row row--center">
-<a class="logo-word" href="/" aria-label="공온 홈">공온<span class="logo-toggle" aria-hidden="true"></span></a>
-<a class="btn btn--soft" href="/sites">{{ icon("plus", 16, 2.2) }} 현장 추가</a>
-</header>
-
-<section class="hero">
-<div class="hero__text">
-<p class="hero__eyebrow">{{ view.target_date }} · 전체 현장</p>
-<h1 class="hero__title">내일 공사 ON?</h1>
-<p class="hero__sub">기상청 단기예보와 작업 기준을 비교해 현장마다 내일 작업 판정을 보여줍니다.</p>
-<div class="chips">
-{% if view.forecast_issued %}<span class="chip chip--on-dark">예보 발표 {{ view.forecast_issued }}</span>{% endif %}
-{% if view.rule_version %}<span class="chip chip--on-dark">기준 {{ view.rule_version }}{% if not view.rule_verified %} · 원문 대조 필요{% endif %}</span>{% endif %}
+<section class="pagehead">
+<div>
+<p class="pagehead__eyebrow">{{ view.target_date }} · 전체 현장</p>
+<h1 class="title">내일 공사 ON?</h1>
+<div class="pagehead__meta">
+{% if view.forecast_issued %}<span class="chip">예보 발표 {{ view.forecast_issued }}</span>{% endif %}
+{% if view.rule_version %}<span class="chip">기준 {{ view.rule_version }}{% if not view.rule_verified %} · 원문 대조 필요{% endif %}</span>{% endif %}
 </div>
 </div>
 {% if view.sites %}
-<form method="post" action="/judgments/run-all" class="hero__action">
-<button class="btn btn--accent btn--lg" type="submit">{{ icon("cloud-sun", 20) }} 전체 현장 판정하기</button>
-<span class="hero__hint">현장 {{ view.sites | length }}곳 · 같은 격자는 예보를 한 번만 받습니다</span>
+<form method="post" action="/judgments/run-all" class="pagehead__action">
+<button class="btn btn--accent" type="submit">{{ icon("cloud-sun", 18) }} 전체 현장 판정하기</button>
+<p class="small muted" style="margin-top: 6px;">현장 {{ view.sites | length }}곳 · 같은 격자는 예보를 한 번만 받습니다</p>
 </form>
 {% endif %}
 </section>
@@ -42,7 +36,7 @@
 <li class="step">
 <span class="step__icon">{{ icon("cloud-sun", 22) }}</span>
 <strong>2. 판정하기</strong>
-<span>기상청 예보를 받아 강우·풍속·강설을 기준과 비교합니다.</span>
+<span>기상청 예보를 받아 강우·풍속·기온을 기준과 비교합니다.</span>
 </li>
 <li class="step">
 <span class="step__icon">{{ icon("check", 22, 2.4) }}</span>
@@ -54,56 +48,54 @@
 </section>
 {% else %}
 
-<section class="count-tiles" aria-label="내일 판정 요약">
+<section class="stats" aria-label="내일 판정 요약">
 {% for t in view.tiles %}
-<div class="tile">
+<div class="stat">
 {% if t.badge %}{{ verdict_badge(t.badge) }}{% else %}<span class="badge badge--unknown">{{ t.label }}</span>{% endif %}
-<div><span class="tile__count">{{ t.count }}</span> <span class="small muted">곳</span></div>
+<span class="stat__value">{{ t.count }}<small>곳</small></span>
 </div>
 {% endfor %}
 </section>
 
 <div class="split">
-<section class="stack split__main" aria-labelledby="sites-title">
-<div class="row row--center">
+<section class="panel split__main" aria-labelledby="sites-title">
+<div class="panel__head">
 <h2 class="h2" id="sites-title">현장별 내일 판정</h2>
 <span class="small muted">현장마다 가장 높은 단계</span>
 </div>
-<div class="site-grid">
+<ul class="sitelist">
 {% for s in view.sites %}
-<article class="site-card{% if s.verdict == '중지 검토' %} site-card--stop{% endif %}">
-<div class="row row--center" style="align-items: flex-start;">
-<div>
-<h3 class="site-card__name">{{ s.name }}</h3>
-<p class="small muted">작업 {{ s.work_hours }}</p>
+<li class="siterow{% if s.verdict == '중지 검토' %} siterow--stop{% endif %}">
+<div class="siterow__name">
+<a href="{{ s.detail_href }}">{{ s.name }}</a>
+<span class="small muted">작업 {{ s.work_hours }}{% if s.judged_at %} · 판정 {{ s.judged_at }}{% endif %}</span>
 </div>
-{% if s.verdict %}{{ verdict_badge(s.verdict) }}{% elif not s.working %}<span class="badge badge--unknown">작업 없음</span>{% else %}<span class="badge badge--unknown">판정 전</span>{% endif %}
-</div>
+<div class="siterow__main">
 <div class="tag-scroll" aria-label="공종">{% for w in s.work_types %}<span class="tag">{{ w }}</span>{% else %}<span class="tag">공종 없음 · 공통 판정만</span>{% endfor %}</div>
-<p class="site-card__reason">{{ s.reason }}</p>
-<div class="row row--center">
-<span class="small muted">{% if s.judged_at %}판정 {{ s.judged_at }}{% else %}&nbsp;{% endif %}</span>
-<div class="row row--center" style="gap: 8px;">
+<p class="siterow__reason" title="{{ s.reason }}">{{ s.reason }}</p>
+</div>
+<div>{% if s.verdict %}{{ verdict_badge(s.verdict) }}{% elif not s.working %}<span class="badge badge--unknown">작업 없음</span>{% else %}<span class="badge badge--unknown">판정 전</span>{% endif %}</div>
+<div class="siterow__actions">
 {% if s.working %}
 <form method="post" action="/judgments/run">
 <input type="hidden" name="site_id" value="{{ s.site_id }}">
-<button class="btn btn--soft btn--sm" type="submit">판정하기</button>
+<button class="btn btn--sm" type="submit">판정하기</button>
 </form>
 {% endif %}
-<a class="btn btn--ink btn--sm" href="{{ s.detail_href }}">자세히 {{ icon("arrow-right", 14, 2.2) }}</a>
+<a class="btn btn--soft btn--sm" href="{{ s.detail_href }}" aria-label="{{ s.name }} 자세히">{{ icon("arrow-right", 14, 2.2) }}</a>
 </div>
-</div>
-</article>
+</li>
 {% endfor %}
-</div>
+</ul>
 </section>
 
 <aside class="stack split__side">
-<article class="card card--tight">
-<div class="row row--center">
+<section class="panel">
+<div class="panel__head">
 <h2 class="h2">최근 판정</h2>
 <a class="small" href="/judgments">전체 보기 ›</a>
 </div>
+<div class="panel__body">
 {% if view.recent %}
 <ul class="recent">
 {% for r in view.recent %}
@@ -118,23 +110,20 @@
 {% endfor %}
 </ul>
 {% else %}
-<p class="small muted">아직 판정 기록이 없습니다.</p>
+<p class="small muted" style="padding: 8px 0;">아직 판정 기록이 없습니다.</p>
 {% endif %}
-</article>
+</div>
+</section>
 
-<article class="card card--tight">
-<h2 class="h2">데이터 상태</h2>
-<dl class="facts">
+<section class="panel">
+<div class="panel__head"><h2 class="h2">데이터 상태</h2></div>
+<div class="panel__body">
+<dl class="facts" style="padding: 8px 0;">
 <dt>최근 예보 수집</dt><dd>{{ view.forecast_status }}</dd>
 <dt>자료 유형</dt><dd>예보 (관측 아님)</dd>
 </dl>
-</article>
-
-<article class="card card--dark">
-<span class="icon-circle">{{ icon("info", 20) }}</span>
-<h2 class="h2">판단 보조 자료입니다</h2>
-<p>예보값과 법령 기준을 비교한 결과입니다. 최종 결정은 현장 책임자가 합니다. ‘진행’도 현장 안전을 보장하지 않습니다.</p>
-</article>
+</div>
+</section>
 </aside>
 </div>
 {% endif %}

@@ -260,9 +260,9 @@ def test_home_is_separate_from_site_dashboard_in_menu(client: TestClient) -> Non
     home = client.get("/").text
     dashboard = client.get("/dashboard").text
 
-    assert 'class="rail__logo is-active"' in home
-    assert 'href="/dashboard" aria-label="현장 대시보드" aria-current="page"' not in home
-    assert 'href="/dashboard" aria-label="현장 대시보드" aria-current="page"' in dashboard
+    assert '<a href="/" aria-current="page">홈</a>' in home
+    assert '<a href="/dashboard" aria-current="page">현장 대시보드</a>' not in home
+    assert '<a href="/dashboard" aria-current="page">현장 대시보드</a>' in dashboard
 
 
 def test_home_summarizes_each_site_and_links_to_its_dashboard(
@@ -280,7 +280,7 @@ def test_home_summarizes_each_site_and_links_to_its_dashboard(
     assert f'href="/dashboard?site_id={stop_site}"' in page
     assert "철골 작업 · 15:00–16:00 · 강우 최대 2.0 mm/h (15:00)" in page
     assert "아직 판정하지 않았습니다" in page  # 두 번째 현장
-    assert page.count("site-card--stop") == 1
+    assert page.count("siterow--stop") == 1
 
 
 def test_run_all_judges_every_site_and_fetches_shared_grid_once(

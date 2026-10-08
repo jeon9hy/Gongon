@@ -5,8 +5,7 @@
 
 <header class="row row--center">
 <div class="row row--center">
-<a class="logo-word" href="/" aria-label="공온 홈">공온<span class="logo-toggle" aria-hidden="true"></span></a>
-<a class="btn btn--soft" href="/">{{ icon("arrow-left", 16, 2.2) }} 전체 현장</a>
+<a class="btn btn--soft btn--sm" href="/">{{ icon("arrow-left", 16, 2.2) }} 전체 현장</a>
 </div>
 {% if view.sites %}
 <form method="get" action="/dashboard" class="row row--center">
@@ -71,15 +70,21 @@
 
 {% set p = view.primary %}
 {% if p %}
-<div class="split">
-<article class="card" style="flex: 1 1 300px; min-width: 0;">
+<article class="card">
 <div class="row row--center">
 <div>
 <h2 class="h2">{{ p.work_type }} 판정</h2>
 <p class="small muted" style="margin-top: 4px;">작업 구간별 결과</p>
 </div>
-<span class="icon-circle">{{ icon("rain", 20) }}</span>
+<a class="btn btn--accent btn--sm" href="/judgments/{{ p.judgment_id }}">상세 근거 보기 {{ icon("arrow-right", 14, 2.2) }}</a>
 </div>
+{% if not p.failure_reason %}
+<div class="stats stats--compact" aria-label="단계별 시간">
+{% for t in p.tiles %}
+<div class="stat">{{ verdict_badge(t.verdict) }}<span class="stat__value">{{ t.hours }}<small>시간</small></span></div>
+{% endfor %}
+</div>
+{% endif %}
 <div class="windows">
 {% for w in p.windows %}
 <div class="window{% if w.verdict == '중지 검토' %} window--stop{% endif %}">
@@ -88,20 +93,7 @@
 </div>
 {% endfor %}
 </div>
-<a class="btn btn--accent" style="align-self: flex-start;" href="/judgments/{{ p.judgment_id }}">상세 근거 보기 {{ icon("arrow-right", 16, 2.2) }}</a>
 </article>
-
-{% if not p.failure_reason %}
-<div class="tiles">
-{% for t in p.tiles %}
-<div class="tile">
-{{ verdict_badge(t.verdict) }}
-<div><span class="tile__count">{{ t.hours }}</span> <span class="small muted">시간</span></div>
-</div>
-{% endfor %}
-</div>
-{% endif %}
-</div>
 
 {% set chart = p.chart %}
 {% if chart %}
@@ -173,11 +165,7 @@
 </article>
 {% endif %}
 
-<article class="card card--dark">
-<span class="icon-circle">{{ icon("info", 20) }}</span>
-<h2 class="h2">판단 보조 자료입니다</h2>
-<p>예보값과 법령 기준을 비교한 결과입니다. 최종 결정은 현장 책임자가 합니다. ‘진행’도 현장 안전을 보장하지 않습니다.</p>
-</article>
+<div class="note">{{ icon("info", 16) }}<p><strong>판단 보조 자료입니다.</strong> 예보값과 기준을 비교한 결과이며 최종 결정은 현장 책임자가 합니다. ‘진행’도 현장 안전을 보장하지 않습니다.</p></div>
 
 <article class="card card--tight">
 <h2 class="h2">데이터 상태</h2>
