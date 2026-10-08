@@ -4,7 +4,7 @@ from datetime import date, datetime
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, defer
 
-from app.features.judgments.models import Judgment
+from app.features.judgments.models import Judgment, JudgmentRun
 
 LATEST_LIMIT = 50
 
@@ -121,3 +121,16 @@ def verdict_counts(session: Session, site_id: int | None) -> dict[str, int]:
     if site_id is not None:
         query = query.where(Judgment.site_id == site_id)
     return {verdict: count for verdict, count in session.execute(query)}
+
+
+def latest_runs(session: Session, site_ids: Sequence[int]) -> dict[int, JudgmentRun]:
+    """현장마다 가장 최근 판정 실행(쿼리 1회). 실행은 시간 순으로 추가되어 가장 큰 id가 최근이다."""
+    if not site_ids:
+        return {}
+    latest_ids = (
+        select(func.max(JudgmentRun.id))
+        .where(JudgmentRun.site_id.in_(site_ids))
+        .group_by(JudgmentRun.site_id)
+    )
+    rows = session.scalars(select(JudgmentRun).where(JudgmentRun.id.in_(latest_ids)))
+    return {r.site_id: r for r in rows}

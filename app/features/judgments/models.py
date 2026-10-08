@@ -66,3 +66,17 @@ class Judgment(Base):
     hours: Mapped[list[dict[str, Any]]] = mapped_column(JSONB)
     windows: Mapped[list[dict[str, Any]]] = mapped_column(JSONB)  # 같은 판정이 이어진 작업 구간
     judged_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class JudgmentRun(Base):
+    """판정 실행 한 번(수동·자동). 새 판정이 없어도 언제 확인했는지 남긴다(D-044)."""
+
+    __tablename__ = "judgment_runs"
+    __table_args__ = (Index("ix_judgment_runs_site_ran", "site_id", "ran_at"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    site_id: Mapped[int] = mapped_column(ForeignKey("sites.id"))
+    ran_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # 실행 시각(KST 기준 now)
+    forecast_issued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    result: Mapped[str] = mapped_column(String(20))  # RunResult 코드
+    stored_count: Mapped[int] = mapped_column(Integer)  # 이번 실행에서 새로 저장한 판정 수

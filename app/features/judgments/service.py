@@ -4,7 +4,7 @@ import logging
 from bisect import bisect_left
 from collections.abc import Mapping
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime, time, timedelta
 from typing import Any, Literal
 from urllib.parse import urlencode
@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from app.core.rules import judged_labels, rule_sets_by_label
 from app.features.forecasts import service as forecasts_service
 from app.features.judgments import repository
-from app.features.judgments.models import Judgment
+from app.features.judgments.models import Judgment, JudgmentRun
 from app.features.judgments.schemas import (
     Bar,
     Cell,
@@ -182,6 +182,7 @@ def run_for_site(
                                  snapshot.run_id, f"예보 수집 실패: {snapshot.failure_reason}",
                                  target.item_id)
             )  # fmt: skip
+        _record_run(session, site.site_id, now, None, "failed", 0)
         session.commit()
         return "failed"
 
@@ -222,11 +223,35 @@ def run_for_site(
     if region_id is not None and any(d not in judged_days for d in working):
         # 단기예보 밖의 작업일은 중기예보를 참고로 보여 준다(D-042). 판정 내역에는 저장하지 않는다.
         forecasts_service.get_mid_forecast(session, region_id, now, mid_service_key, http_get)
+    outcome: RunResult = "beyond_forecast" if not judged_days else "done" if stored else "unchanged"
+    _record_run(session, site.site_id, now, snapshot.weather.forecast_issued_at, outcome, stored)
     session.commit()
-    if not judged_days:
-        return "beyond_forecast"
     logger.info("판정 site_id=%s dates=%s base_at=%s", site.site_id, judged_days, snapshot.base_at)
-    return "done" if stored else "unchanged"
+    return outcome
+
+
+def _record_run(
+    session: Session,
+    site_id: int,
+    now: datetime,
+    issued_at: datetime | None,
+    result: RunResult,
+    stored: int,
+) -> None:
+    """예보를 확인한 실행만 남긴다(기간 밖·기준 없음처럼 예보를 보지 않은 실행은 제외)."""
+    session.add(JudgmentRun(site_id=site_id, ran_at=now, forecast_issued_at=issued_at,
+                            result=result, stored_count=stored))  # fmt: skip
+
+
+def checked_text(run: JudgmentRun | None) -> str | None:
+    """'10월 8일 18:15 확인 · 17:00 발표 예보'. 실행 기록이 없으면 None."""
+    if run is None:
+        return None
+    if run.forecast_issued_at is None:
+        return f"{_kst_text(run.ran_at)} 확인 · 예보 수집 실패"
+    return (
+        f"{_kst_text(run.ran_at)} 확인 · {run.forecast_issued_at.astimezone(KST):%H:%M} 발표 예보"
+    )
 
 
 def _has_forecast(times: list[datetime], start_at: datetime, end_at: datetime) -> bool:
@@ -439,6 +464,7 @@ def build_dashboard(
             "판정하지 않습니다."
         ),
         week=_week(session, site, rule_sets, now),
+        checked=checked_text(repository.latest_runs(session, [site.site_id]).get(site.site_id)),
         next_forecast=next_forecast_text(now),
         can_run=any(site.works_on(d) for d in horizon_dates(now)),
     )
@@ -459,6 +485,8 @@ def build_home(session: Session, now: datetime, ran: RunResult | None = None) ->
                       items_by_site.get(s.site_id, ()))
         for s in sites
     )  # fmt: skip
+    runs = repository.latest_runs(session, site_ids)
+    summaries = tuple(replace(s, checked=checked_text(runs.get(s.site_id))) for s in summaries)
 
     # 개발자 지정 순서: 판정 전 → 판정 불가 → 중지 검토 → 확인 필요 → 진행 (작업 없음은 맨 뒤).
     counts = {v.value: 0 for v in (Verdict.UNAVAILABLE, Verdict.STOP_REVIEW, Verdict.CHECK,
@@ -482,7 +510,7 @@ def build_home(session: Session, now: datetime, ran: RunResult | None = None) ->
     recent_rows = repository.page(
         session, None, None, 0, RECENT_ROWS, site_ids=site_ids, until=target_date
     )
-    recent = _recent_runs(recent_rows, names)
+    recent = _recent_runs(recent_rows, names, runs, target_date)
     run = forecasts_service.latest_run(session)
     if run is None:
         forecast_status = "아직 수집하지 않음"
@@ -703,7 +731,12 @@ RECENT_RUNS = 5
 RECENT_ROWS = RECENT_RUNS * 10
 
 
-def _recent_runs(rows: list[Judgment], names: Mapping[int, str]) -> tuple[RecentRun, ...]:
+def _recent_runs(
+    rows: list[Judgment],
+    names: Mapping[int, str],
+    site_runs: Mapping[int, JudgmentRun] | None = None,
+    current_from: date | None = None,
+) -> tuple[RecentRun, ...]:
     """현장·대상 날짜마다 작업별 최신 판정만 묶는다(지난 판정은 판정 내역에 남는다). rows는 최신순.
 
     같은 예보로 다시 판정하면 새 행을 만들지 않으므로, 판정 시각이 아니라 작업 키로 갱신을 판단한다.
@@ -725,7 +758,7 @@ def _recent_runs(rows: list[Judgment], names: Mapping[int, str]) -> tuple[Recent
                 target_label=_date_text(target_date),
                 site_name=names.get(site_id, "삭제된 현장"),
                 verdict=max((Verdict(j.verdict) for j in items), key=lambda v: v.severity).value,
-                when=f"{_kst_text(judged_at)} 판정",
+                when=_recent_when(site_id, target_date, judged_at, site_runs, current_from),
                 items=tuple(
                     RecentItem(j.work_type, j.verdict, f"/judgments/{j.id}") for j in items
                 ),
@@ -733,6 +766,21 @@ def _recent_runs(rows: list[Judgment], names: Mapping[int, str]) -> tuple[Recent
             )
         )
     return tuple(runs)
+
+
+def _recent_when(
+    site_id: int,
+    target_date: date,
+    judged_at: datetime,
+    runs: Mapping[int, JudgmentRun] | None,
+    current_from: date | None,
+) -> str:
+    """아직 다가올 날짜면 마지막 확인 시각을, 지난 날짜면 판정이 나온 시각을 보여 준다."""
+    run = None if runs is None else runs.get(site_id)
+    is_current = current_from is not None and target_date >= current_from
+    if is_current and run is not None and run.ran_at >= judged_at:
+        return checked_text(run) or ""
+    return f"{_kst_text(judged_at)} 판정"
 
 
 def dashboard_href(site_id: int, **params: str | int) -> str:

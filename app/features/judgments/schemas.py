@@ -126,6 +126,7 @@ class DashboardView:
     off_period_note: str | None  # 대상 날짜가 작업 기간 밖이면 안내 문구
     week: "WeekView | None" = None  # 내일부터 7일(D-041)
     next_forecast: str = ""  # 다음 예보 발표·반영 시각 안내
+    checked: str | None = None  # 마지막 판정 실행(확인) 시각(D-044)
     work_options: "tuple[WorkOption, ...]" = ()  # 상세 카드에서 고를 수 있는 작업(2개 이상일 때)
     can_run: bool = True  # 7일 중 작업일이 있어 판정할 수 있는가
 
@@ -143,6 +144,7 @@ class SiteSummary:
     detail_href: str
     judged_at: str | None
     working: bool  # 대상 날짜가 작업 기간 안인가
+    checked: str | None = None  # 마지막 판정 실행(확인) 시각·사용한 예보 발표(D-044)
     cards: tuple[WorkCard, ...] = ()  # 작업·공종별 단계(작업 기간 밖이면 비어 있음)
 
 

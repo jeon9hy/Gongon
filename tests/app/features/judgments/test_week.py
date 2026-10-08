@@ -199,3 +199,26 @@ def test_rerun_with_same_forecast_says_unchanged_and_when_next(client: TestClien
         "새로 발표된 예보가 없어 판정이 그대로입니다. 다음 예보 17:00 발표 · 17:10 이후 반영"
         in page
     )
+
+
+def test_rerun_updates_last_checked_time_without_new_judgments(
+    client: TestClient, session: Session
+) -> None:
+    from datetime import datetime, timedelta
+
+    from app.core.clock import now_kst
+    from tests.conftest import FIXED_NOW
+
+    site_id = add_site(client)
+    client.post("/judgments/run", data={"site_id": site_id})
+    first_rows = list(session.scalars(select(Judgment.id)))
+
+    later: datetime = FIXED_NOW + timedelta(minutes=50)  # 15:50, 아직 14시 발표 예보
+    client.app.dependency_overrides[now_kst] = lambda: later  # type: ignore[attr-defined]
+    client.post("/judgments/run", data={"site_id": site_id})
+
+    assert list(session.scalars(select(Judgment.id))) == first_rows  # 판정 기록은 그대로
+    home = client.get("/").text
+    dashboard = client.get("/dashboard", params={"site_id": site_id}).text
+    assert "10월 4일 15:50 확인 · 14:00 발표 예보" in home  # 사용자에게는 확인 시각이 갱신된다
+    assert "10월 4일 15:50 확인 · 14:00 발표 예보" in dashboard

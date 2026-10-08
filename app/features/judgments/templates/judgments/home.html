@@ -69,7 +69,7 @@
 <div class="siterow__head">
 <div class="siterow__title">
 <a class="siterow__name" href="{{ s.detail_href }}">{{ s.name }}</a>
-<p class="siterow__meta">{{ icon("history", 13) }} {{ s.work_hours }}<span aria-hidden="true">·</span>{% if s.judged_at %}{{ s.judged_at }} 판정{% else %}판정 기록 없음{% endif %}</p>
+<p class="siterow__meta">{{ icon("history", 13) }} {{ s.work_hours }}<span aria-hidden="true">·</span>{% if s.checked %}{{ s.checked }}{% elif s.judged_at %}{{ s.judged_at }} 판정{% else %}판정 기록 없음{% endif %}</p>
 </div>
 <div class="siterow__status">
 {% if s.verdict %}{{ verdict_badge(s.verdict) }}{% elif not s.working %}<span class="badge badge--unknown">작업 없음</span>{% else %}<span class="badge badge--unknown">판정 전</span>{% endif %}
