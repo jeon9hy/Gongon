@@ -3,7 +3,9 @@
 사용: uv run python -m scripts.fetch_law_articles --mst 273603 --articles 37 383 \\
         --appendices 13-2 --out rules/sources/osh_standards_rule_mst273603.json
 - MST(법령일련번호)는 시행본마다 다르다. 현행 MST는 lawSearch.do로 확인한다(docs/references.md).
-- OC(신청한 이메일 ID)는 --oc 또는 환경변수 LAW_OC. 발췌에는 OC를 남기지 않는다.
+- OC(open.law.go.kr에서 신청한 인증키)는 --oc, 환경변수 LAW_OC, .env의 LAW_OC 순.
+  발췌에는 OC를 남기지 않는다.
+- 저장한 발췌가 지금 원문과 같은지는 scripts/verify_law_sources.py로 확인한다.
 - 조문 텍스트는 공식 응답의 조문·항·호 내용을 줄 단위로 이어 붙인 것이며, 기준표의 quote는
   이 텍스트의 부분 문자열이어야 한다(tests/engine/judgment/test_rule_sources.py).
 """
@@ -19,6 +21,7 @@ import xml.etree.ElementTree as ET
 from datetime import datetime
 from pathlib import Path
 
+from app.core.config import ENV_FILE, read_env_file
 from engine.kst import KST
 
 API_URL = "https://www.law.go.kr/DRF/lawService.do"
@@ -80,7 +83,9 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--articles", nargs="+", required=True, help="조문 번호. 가지조문은 566-2")
     parser.add_argument("--appendices", nargs="*", default=[], help="별표 번호. 13의2는 13-2")
     parser.add_argument("--out", type=Path, required=True)
-    parser.add_argument("--oc", default=os.environ.get("LAW_OC"))
+    parser.add_argument(
+        "--oc", default=os.environ.get("LAW_OC") or read_env_file(ENV_FILE).get("LAW_OC")
+    )
     args = parser.parse_args(argv)
     if not args.oc:
         parser.error("OC가 없음: --oc 또는 LAW_OC")
