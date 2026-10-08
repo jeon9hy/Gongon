@@ -43,19 +43,22 @@
 - 화면 시안: https://claude.ai/artifact/SjmZorkCm7z1Rs71QpCgLz (개발자 계정에서만 열림)
 - 로고 방향: "공온" 글자 + ON 토글 스위치 모양
 - 메뉴 레일 아이콘(2026-10-04 개발자 요청): 맨 위 로고 버튼은 안전모, 대시보드는 구름·해(날씨). 글자 로고("공온" + ON 토글)는 대시보드 위쪽에 그대로 쓴다. 아이콘 경로는 Lucide(ISC 라이선스)
-- 형태: 밝은 회색 바탕, 큰 라운드 카드(셸 32px, 카드 24px, 버튼·칩은 완전 둥글게), 아이콘은 선 아이콘
-- 글꼴: Plus Jakarta Sans(숫자·영문) + IBM Plex Sans KR(한글)
+- 디자인 시스템(D-028, 2026-10-08 개발자 요청): 원티드 Montage(`@wanteddev/wds` 3.12.2 `theme.css`, MIT) 색·둥글기·그림자·글꼴을 따른다. 위 시안의 라임 포인트·Plus Jakarta·IBM Plex는 더 쓰지 않는다
+- 형태: 밝은 회색 바탕, 흰 카드 + 옅은 테두리(카드·메뉴 16px, 버튼·입력 10px), 선택 상태는 연파랑 바탕 + 파랑 글자, 아이콘은 선 아이콘
+- 글꼴: Pretendard Variable(jsDelivr CDN)
 
 | 토큰 | 값 | 용도 |
 | --- | --- | --- |
-| `accent` | `#C6F24E` | 브랜드 포인트, 주요 버튼(글자는 `ink`) |
-| `ink` | `#15171A` | 본문 글자, 선택된 메뉴 |
-| `muted` | `#5F6670` | 보조 글자 |
-| `surface` | `#F5F6F7` | 셸·입력칸 바탕 |
+| `accent` | `#0066FF` (primary-normal) | 주요 버튼(글자 흰색), 선택·포커스 |
+| `accent-soft` | `#EAF2FE` | 선택된 메뉴·필터 바탕 |
+| `ink` | `#171719` (label-normal) | 본문 글자 |
+| `muted` | `#70737C` | 보조 글자 |
+| `surface` | `#F7F7F8` (background-alternative) | 페이지·옅은 면 바탕 |
 | `card` | `#FFFFFF` | 카드 |
-| `verdict-go` | 바탕 `#E4F8C1` / 글자 `#3F6212` | 진행 |
-| `verdict-check` | 바탕 `#FEF0D7` / 글자 `#8A4B08` | 확인 필요 |
-| `verdict-stop` | 바탕 `#B93A0F` / 글자 `#FFFFFF` | 중지 검토(가장 진하게 구분) |
-| `verdict-unknown` | 바탕 `#ECEEF1` / 글자 `#4B525B` | 판정 불가 |
+| `line` | `#E1E2E4` (line-solid-normal) | 경계선·입력 테두리 |
+| `verdict-go` | 바탕 `#D9FFE6` / 글자 `#006E25` | 진행 |
+| `verdict-check` | 바탕 `#FEF4E6` / 글자 `#9C5800` | 확인 필요 |
+| `verdict-stop` | 바탕 `#E52222` / 글자 `#FFFFFF` | 중지 검토(가장 진하게 구분) |
+| `verdict-unknown` | 바탕 `#F4F4F5` / 글자 `#46474C` | 판정 불가 |
 
 판정은 색만으로 구분하지 않고 항상 글자 라벨을 함께 표시한다. 토큰은 `app/core/static/gongon.css`의 CSS 변수로 옮겼다(S05-0). 값을 바꾸면 이 표와 그 파일을 함께 고친다.
