@@ -48,6 +48,7 @@ def find_same(
     grid_ny: int,
     work_start_at: datetime,
     work_end_at: datetime,
+    work_item_id: int | None,
 ) -> Judgment | None:
     """같은 예보·기준·위치·작업 시간으로 이미 낸 판정(uq_judgments_reuse_key와 같은 키)."""
     return session.scalars(
@@ -61,6 +62,7 @@ def find_same(
             Judgment.grid_ny == grid_ny,
             Judgment.work_start_at == work_start_at,
             Judgment.work_end_at == work_end_at,
+            Judgment.work_item_id.is_not_distinct_from(work_item_id),
         )
     ).first()
 

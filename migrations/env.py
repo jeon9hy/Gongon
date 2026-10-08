@@ -5,6 +5,7 @@ from sqlalchemy import create_engine, pool
 
 import app.features.forecasts.models
 import app.features.judgments.models
+import app.features.schedules.models
 import app.features.sites.models  # noqa: F401  (테이블을 메타데이터에 등록)
 from app.core.config import get_settings
 from app.core.db import Base

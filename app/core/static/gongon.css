@@ -329,3 +329,15 @@ a.tag:hover { filter: brightness(0.96); }
 /* 현재 메뉴는 강조색 밑줄로 표시 */
 .appnav a[aria-current="page"] { box-shadow: inset 0 -2px 0 var(--accent); border-radius: 0; }
 @media (max-width: 760px) { .pagehead__action { align-items: stretch; text-align: left; } }
+
+/* 작업 일정 */
+.dayblock { padding: 16px 0; border-top: 1px solid var(--line-soft); }
+.dayblock:first-of-type { border-top: 0; }
+.dayblock__date { margin: 0 0 8px; font-weight: 500; color: var(--ink); display: flex; gap: 8px; align-items: center; }
+.dayblock__empty { margin: 0; }
+.itemlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.itemrow { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 12px; background: var(--surface); border-radius: var(--radius-sm); }
+.itemrow__time { font-variant-numeric: tabular-nums; color: var(--ink); }
+.itemrow__main { min-width: 0; }
+.itemrow__memo { display: block; margin-top: 2px; }
+.field select { min-height: 40px; }

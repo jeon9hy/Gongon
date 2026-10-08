@@ -37,6 +37,7 @@ class Judgment(Base):
             "grid_ny",
             "work_start_at",
             "work_end_at",
+            text("coalesce(work_item_id, 0)"),  # 작업별 판정(0004). 작업 없음은 0으로 묶는다
             unique=True,
             postgresql_where=text("forecast_issued_at IS NOT NULL"),
         ),
@@ -48,6 +49,10 @@ class Judgment(Base):
     work_type: Mapped[str] = mapped_column(String(40))  # 공종 이름(예: 철골 작업)
     work_start_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     work_end_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # 작업 일정(S08-1)으로 낸 판정이면 그 작업. 현장 기본 시간·공통 기준 판정은 None.
+    work_item_id: Mapped[int | None] = mapped_column(
+        ForeignKey("work_items.id", ondelete="SET NULL")
+    )
     verdict: Mapped[str] = mapped_column(String(10))
     rule_version: Mapped[str] = mapped_column(String(40))
     rule_source: Mapped[str] = mapped_column(String(200))

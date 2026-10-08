@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}작업 일정{% endblock %}
+{% block content %}
+
+<section class="pagehead">
+<div>
+<h1 class="title">작업 일정</h1>
+<p class="subtitle">날짜별 작업을 등록하면 그 작업의 공종·시간으로 판정합니다. 작업이 없는 날은 현장 기본 작업 시간으로 판정합니다.</p>
+</div>
+{% if view.sites %}
+<form method="get" action="/schedule" class="pagehead__action">
+<label class="visually-hidden" for="schedule-site">현장</label>
+<select id="schedule-site" name="site_id" onchange="this.form.submit()">
+{% for s in view.sites %}<option value="{{ s.site_id }}"{% if s.selected %} selected{% endif %}>{{ s.name }}</option>{% endfor %}
+</select>
+<noscript><button class="btn btn--soft btn--sm" type="submit">보기</button></noscript>
+</form>
+{% endif %}
+</section>
+
+{% if view.message %}<div class="alert alert--ok" role="status">{{ icon("check", 16, 2.4) }} {{ view.message }}</div>{% endif %}
+{% if view.errors %}
+<div class="alert alert--error" role="alert"><strong>저장하지 못했습니다</strong><ul>{% for e in view.errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+{% endif %}
+
+{% if view.site_id is none %}
+<section class="card">
+<h2 class="h2">먼저 현장을 등록하세요</h2>
+<p class="small muted">현장의 공종·작업 기간 안에서 작업 일정을 등록합니다.</p>
+<a class="btn btn--accent" style="align-self: flex-start;" href="/sites">{{ icon("plus", 16, 2.2) }} 현장 등록</a>
+</section>
+{% else %}
+<div class="split">
+<section class="panel split__main" aria-labelledby="days-title">
+<div class="panel__head">
+<h2 class="h2" id="days-title">{{ view.site_name }} · 내일부터 7일</h2>
+{% if view.period_text %}<span class="small muted">작업 기간 {{ view.period_text }}</span>{% endif %}
+</div>
+{% for d in view.days %}
+<div class="dayblock">
+<p class="dayblock__date">{{ d.day_text }}{% if d.is_target %} <span class="tag tag--go">판정 대상(내일)</span>{% endif %}</p>
+{% if d.items %}
+<ul class="itemlist">
+{% for i in d.items %}
+<li class="itemrow">
+<span class="itemrow__time">{{ i.start_local.strftime("%H:%M") }}–{{ i.end_local.strftime("%H:%M") }}</span>
+<span class="itemrow__main"><strong>{{ i.work_type }}</strong>{% if i.location %} <span class="muted">· {{ i.location }}</span>{% endif %}{% if i.memo %}<span class="small muted itemrow__memo">{{ i.memo }}</span>{% endif %}</span>
+<form method="post" action="/schedule/{{ i.item_id }}/delete">
+<input type="hidden" name="site_id" value="{{ view.site_id }}">
+<button class="btn btn--sm" type="submit" aria-label="{{ d.day_text }} {{ i.work_type }} 작업 지우기">지우기</button>
+</form>
+</li>
+{% endfor %}
+</ul>
+{% else %}
+<p class="small muted dayblock__empty">등록한 작업 없음 · 현장 기본 작업 시간으로 판정</p>
+{% endif %}
+</div>
+{% else %}
+<p class="small muted" style="padding: 16px 0;">앞으로 7일 중 작업 기간에 드는 날이 없습니다.</p>
+{% endfor %}
+</section>
+
+<aside class="stack split__side">
+<form class="panel" method="post" action="/schedule">
+<div class="panel__head"><h2 class="h2">작업 추가</h2></div>
+<input type="hidden" name="site_id" value="{{ view.site_id }}">
+<div class="stack" style="gap: 14px; padding-top: 16px;">
+<label class="field">공종
+<select name="work_type">
+{% for w in view.work_types %}<option value="{{ w }}"{% if w == view.form.work_type %} selected{% endif %}>{{ w }}</option>{% endfor %}
+</select>
+</label>
+<label class="field">날짜<input type="date" name="work_date" value="{{ view.form.work_date }}" required></label>
+<div class="inline">
+<label class="field" style="flex: 1 1 120px;">시작<input type="time" name="start" value="{{ view.form.start }}" required></label>
+<label class="field" style="flex: 1 1 120px;">종료<input type="time" name="end" value="{{ view.form.end }}" required></label>
+</div>
+<label class="field">작업 위치 (선택)<input type="text" name="location" maxlength="60" placeholder="예: A구역 3층" value="{{ view.form.location }}"></label>
+<label class="field">메모 (선택)<input type="text" name="memo" maxlength="500" value="{{ view.form.memo }}"></label>
+<button class="btn btn--accent" type="submit">{{ icon("plus", 16, 2.2) }} 작업 추가</button>
+<p class="small muted">공종은 현장 설정에 등록한 것만 고를 수 있습니다. 예보 때문에 일정이 자동으로 바뀌지 않습니다.</p>
+</div>
+</form>
+</aside>
+</div>
+{% endif %}
+{% endblock %}

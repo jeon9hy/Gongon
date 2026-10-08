@@ -13,7 +13,7 @@
 <div class="appbar__inner">
 <a class="logo-word" href="/" aria-label="공온 홈">공온<span class="logo-toggle" aria-hidden="true"></span></a>
 <nav class="appnav" aria-label="주 메뉴">
-{% for key, href, label in [("home", "/", "홈"), ("dashboard", "/dashboard", "현장 대시보드"), ("history", "/judgments", "판정 내역"), ("sites", "/sites", "현장 설정")] %}
+{% for key, href, label in [("home", "/", "홈"), ("dashboard", "/dashboard", "현장 대시보드"), ("schedule", "/schedule", "작업 일정"), ("history", "/judgments", "판정 내역"), ("sites", "/sites", "현장 설정")] %}
 <a href="{{ href }}"{% if nav_active == key %} aria-current="page"{% endif %}>{{ label }}</a>
 {% endfor %}
 </nav>

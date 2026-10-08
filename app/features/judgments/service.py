@@ -3,7 +3,8 @@
 import logging
 from collections.abc import Mapping
 from copy import deepcopy
-from datetime import date, datetime, timedelta
+from dataclasses import dataclass
+from datetime import date, datetime, time, timedelta
 from typing import Any
 from urllib.parse import urlencode
 
@@ -41,6 +42,8 @@ from app.features.judgments.schemas import (
     WorkCard,
     WorkWindow,
 )
+from app.features.schedules import service as schedules_service
+from app.features.schedules.schemas import WorkItemRecord
 from app.features.sites import service as sites_service
 from app.features.sites.schemas import SiteRecord
 from engine.forecast import HttpGet, KmaAuth, with_daily_temperatures
@@ -111,30 +114,28 @@ def run_for_site(
     if site is None:
         return None
     rule_sets = rule_sets_by_label()
-    targets = [rule_sets[w] for w in judged_labels(site.work_types) if w in rule_sets]
+    target_date = target_date_for(now)
+    items = schedules_service.items_on(session, site.site_id, target_date)
+    targets = [t for t in _targets(site, items) if t.work_type in rule_sets]
     if not targets:
         return "no_rules"
-
-    target_date = target_date_for(now)
     if not site.works_on(target_date):
         return "out_of_period"  # 작업하지 않는 날은 예보도 받지 않는다
-    start_at = datetime.combine(target_date, site.work_start_local, KST)
-    end_at = datetime.combine(target_date, site.work_end_local, KST)
     snapshot = forecasts_service.get_forecast(
         session, site.grid_nx, site.grid_ny, now, auth, http_get
     )
-    weather = (
-        None
-        if snapshot.weather is None
-        else with_daily_temperatures(snapshot.weather, start_at, end_at)
-    )
-    for rule_set in targets:
-        if weather is None:
+    for target in targets:
+        rule_set = rule_sets[target.work_type]
+        start_at = datetime.combine(target_date, target.start_local, KST)
+        end_at = datetime.combine(target_date, target.end_local, KST)
+        if snapshot.weather is None:
             session.add(
                 _failed_judgment(site, rule_set, target_date, start_at, end_at, snapshot.run_id,
-                                 f"예보 수집 실패: {snapshot.failure_reason}")
+                                 f"예보 수집 실패: {snapshot.failure_reason}", target.item_id)
             )  # fmt: skip
             continue
+        # 일평균·종료 후 24시간 최고기온은 작업 시간마다 다르다(콘크리트, D-033).
+        weather = with_daily_temperatures(snapshot.weather, start_at, end_at)
         result = judge(weather, rule_set, start_at, end_at)
         same = repository.find_same(
             session,
@@ -147,10 +148,11 @@ def run_for_site(
             grid_ny=site.grid_ny,
             work_start_at=start_at,
             work_end_at=end_at,
+            work_item_id=target.item_id,
         )
         if same is None:
             session.add(_judgment(site, rule_set, target_date, start_at, end_at,
-                                  snapshot.run_id, result))  # fmt: skip
+                                  snapshot.run_id, result, target.item_id))  # fmt: skip
     session.commit()
     logger.info("판정 site_id=%s target=%s base_at=%s", site.site_id, target_date, snapshot.base_at)
 
@@ -180,6 +182,7 @@ def _judgment(
     end_at: datetime,
     run_id: int,
     result: JudgmentResult,
+    work_item_id: int | None,
 ) -> Judgment:
     thresholds = {c.id: (c.threshold, c.operator) for c in rule_set.conditions}
     return Judgment(
@@ -188,6 +191,7 @@ def _judgment(
         work_type=rule_set.work_type_label,
         work_start_at=start_at,
         work_end_at=end_at,
+        work_item_id=work_item_id,
         verdict=result.verdict.value,
         rule_version=rule_set.rule_version,
         rule_source=rule_set.source,
@@ -237,6 +241,7 @@ def _failed_judgment(
     end_at: datetime,
     run_id: int,
     reason: str,
+    work_item_id: int | None,
 ) -> Judgment:
     return Judgment(
         site_id=site.site_id,
@@ -244,6 +249,7 @@ def _failed_judgment(
         work_type=rule_set.work_type_label,
         work_start_at=start_at,
         work_end_at=end_at,
+        work_item_id=work_item_id,
         verdict=Verdict.UNAVAILABLE.value,
         rule_version=rule_set.rule_version,
         rule_source=rule_set.source,
@@ -287,11 +293,12 @@ def build_dashboard(
 
     latest: dict[str, Judgment] = {}
     for j in repository.latest_for_site_date(session, site.site_id, target_date):
-        latest.setdefault(j.work_type, j)
+        latest.setdefault(_key(j), j)
     rule_sets = rule_sets_by_label()
-    labels = judged_labels(site.work_types)
-    cards = tuple(_card(w, latest.get(w), w in rule_sets) for w in labels)
-    primary_j = next((latest[w] for w in labels if w in latest), None)
+    targets = _targets(site, schedules_service.items_on(session, site.site_id, target_date))
+    paired = tuple((t, latest.get(t.key)) for t in targets)
+    cards = tuple(_card(t.label, j, t.work_type in rule_sets) for t, j in paired)
+    primary_j = next((j for _, j in paired if j is not None), None)
 
     return DashboardView(
         sites=tuple(SiteOption(s.site_id, s.name, s.site_id == site.site_id) for s in sites),
@@ -309,7 +316,7 @@ def build_dashboard(
         collection_status=_collection_status(primary_j),
         judged_at=None if primary_j is None else _kst_text(primary_j.judged_at),
         grid=f"({site.grid_nx}, {site.grid_ny})",
-        notice=_notice(site, target_date, cards, latest),
+        notice=_notice(site, target_date, cards, tuple(j for _, j in paired)),
         message=message,
         message_is_error=ran not in (None, "done"),
         off_period_note=None
@@ -325,13 +332,17 @@ def build_home(session: Session, now: datetime, ran: RunResult | None = None) ->
     """전체 현장의 내일 판정 개요. 현장 수와 관계없이 판정 조회는 한 번만 한다."""
     target_date = target_date_for(now)
     sites = sites_service.list_sites(session)
+    site_ids = [s.site_id for s in sites]
     by_site: dict[int, dict[str, Judgment]] = {}
-    for j in repository.latest_for_sites_date(session, [s.site_id for s in sites], target_date):
-        by_site.setdefault(j.site_id, {}).setdefault(j.work_type, j)
+    for j in repository.latest_for_sites_date(session, site_ids, target_date):
+        by_site.setdefault(j.site_id, {}).setdefault(_key(j), j)
+    items_by_site = schedules_service.items_on_for_sites(session, site_ids, target_date)
     rule_sets = rule_sets_by_label()
     summaries = tuple(
-        _site_summary(s, by_site.get(s.site_id, {}), rule_sets, target_date) for s in sites
-    )
+        _site_summary(s, by_site.get(s.site_id, {}), rule_sets, target_date,
+                      items_by_site.get(s.site_id, ()))
+        for s in sites
+    )  # fmt: skip
 
     counts = {v.value: 0 for v in (Verdict.STOP_REVIEW, Verdict.CHECK, Verdict.UNAVAILABLE,
                                    Verdict.GO)}  # fmt: skip
@@ -379,6 +390,7 @@ def _site_summary(
     latest: dict[str, Judgment],
     rule_sets: Mapping[str, RuleSet],
     target_date: date,
+    items: tuple[WorkItemRecord, ...],
 ) -> SiteSummary:
     working = site.works_on(target_date)
 
@@ -397,16 +409,55 @@ def _site_summary(
 
     if not working:
         return summary(None, f"작업 기간이 아닙니다 · {site.period_text()}", None)
-    labels = judged_labels(site.work_types)
-    if not any(w in latest for w in labels):
+    targets = _targets(site, items)
+    if not any(t.key in latest for t in targets):
         return summary(None, "아직 판정하지 않았습니다", None)
-    # 현장의 단계는 공종·공통 카드 중 가장 높은 단계(기준 미확인 공종의 '확인 필요' 포함).
-    cards = [_card(w, latest.get(w), w in rule_sets) for w in labels]
+    # 현장의 단계는 작업·공통 카드 중 가장 높은 단계(기준 미확인 공종의 '확인 필요' 포함).
+    cards = [_card(t.label, latest.get(t.key), t.work_type in rule_sets) for t in targets]
     worst = max(
         (c for c in cards if c.verdict is not None), key=lambda c: Verdict(str(c.verdict)).severity
     )
     judged_at = max(j.judged_at for j in latest.values())
     return summary(worst.verdict, f"{worst.work_type} · {worst.reason}", _kst_text(judged_at))
+
+
+@dataclass(frozen=True, slots=True)
+class _Target:
+    """판정·표시 단위 하나: 등록한 작업(S08-1) 또는 현장 기본 시간의 공종·공통 기준."""
+
+    key: str  # 최신 판정을 묶는 키(작업이면 "item:<id>", 아니면 공종 이름)
+    label: str
+    work_type: str
+    start_local: time
+    end_local: time
+    item_id: int | None
+
+
+def _targets(site: SiteRecord, items: tuple[WorkItemRecord, ...]) -> list[_Target]:
+    """그날 작업이 있으면 작업마다, 없으면 현장 공종마다. 공통 기준(폭염)은 현장 기본 시간으로."""
+    if items:
+        main = [
+            _Target(
+                f"item:{i.item_id}", i.label, i.work_type, i.start_local, i.end_local, i.item_id
+            )
+            for i in items
+        ]
+    else:
+        main = [
+            _Target(w, w, w, site.work_start_local, site.work_end_local, None)
+            for w in site.work_types
+        ]
+    common = [
+        _Target(w, w, w, site.work_start_local, site.work_end_local, None)
+        for w in judged_labels(())
+    ]
+    return main + common
+
+
+def _key(judgment: Judgment) -> str:
+    if judgment.work_item_id is not None:
+        return f"item:{judgment.work_item_id}"
+    return judgment.work_type
 
 
 RECENT_RUNS = 5
@@ -503,7 +554,10 @@ def _chart(
 ) -> Chart | None:
     if not judgment.hours:
         return None
-    elements = _elements(judgment)
+    # 그래프는 시간별로 달라지는 요소만 그린다. 하루 단위 값(일평균기온 등)은 상세 표에서 본다.
+    elements = [e for e in _elements(judgment) if e in _KEY_OF]
+    if not elements:
+        return None
     element = ELEMENT_KEYS.get(element_key) if element_key else None
     if element not in elements:
         element = _deciding_element(judgment.hours, elements)
@@ -666,16 +720,19 @@ def _collection_status(judgment: Judgment | None) -> str:
 
 
 def _notice(
-    site: SiteRecord, target_date: date, cards: tuple[WorkCard, ...], latest: dict[str, Judgment]
+    site: SiteRecord,
+    target_date: date,
+    cards: tuple[WorkCard, ...],
+    judgments: tuple[Judgment | None, ...],
 ) -> Notice | None:
-    """알림 문구 미리보기. 실제 발송은 사업자 등록 후(D-015)."""
-    if not latest:
+    """알림 문구 미리보기. 실제 발송은 사업자 등록 후(D-015). judgments는 cards와 같은 순서."""
+    judged = [j for j in judgments if j is not None]
+    if not judged:
         return None
     items = []
-    for card in cards:
+    for card, judgment in zip(cards, judgments, strict=True):
         if card.verdict is None or card.verdict == Verdict.GO.value:
             continue
-        judgment = latest.get(card.work_type)
         if judgment is None:
             items.append(NoticeItem(card.work_type, card.verdict, "기준 확인 전"))
             continue
@@ -690,7 +747,7 @@ def _notice(
                     reason,
                 )
             )
-    first = next(iter(latest.values()))
+    first = judged[0]
     return Notice(
         title=f"[공온] 내일({target_date.month}/{target_date.day}) {site.name}",
         items=tuple(items),
