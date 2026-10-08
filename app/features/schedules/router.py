@@ -35,11 +35,13 @@ def schedule(
     session: SessionDep,
     now: NowDep,
     site_id: int | None = None,
+    month: str | None = None,
+    day: str | None = None,
     saved: bool = False,
     deleted: bool = False,
 ) -> HTMLResponse:
     message = "작업을 추가했습니다." if saved else "작업을 지웠습니다." if deleted else None
-    view = service.build_view(session, site_id, now.date(), message=message)
+    view = service.build_view(session, site_id, now.date(), message=message, month=month, day=day)
     if view is None:
         raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
     return _render(request, view)
@@ -65,13 +67,18 @@ def add_item(
         if view is None:
             raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
         return _render(request, view, status_code=422)
-    return RedirectResponse(f"/schedule?site_id={site_id}&saved=1", status_code=303)
+    return RedirectResponse(
+        f"/schedule?site_id={site_id}&day={form.work_date}&saved=1", status_code=303
+    )
 
 
 @router.post("/schedule/{item_id}/delete")
 def delete_item(
-    session: SessionDep, item_id: int, site_id: Annotated[int, Form()]
+    session: SessionDep,
+    item_id: int,
+    site_id: Annotated[int, Form()],
+    day: Annotated[str, Form()] = "",
 ) -> RedirectResponse:
     if not service.delete_item(session, site_id, item_id):
         raise HTTPException(status_code=404, detail="작업을 찾을 수 없습니다")
-    return RedirectResponse(f"/schedule?site_id={site_id}&deleted=1", status_code=303)
+    return RedirectResponse(f"/schedule?site_id={site_id}&day={day}&deleted=1", status_code=303)

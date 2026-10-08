@@ -159,3 +159,47 @@ def test_dashboard_opens_when_first_card_has_daily_elements(
 
     assert response.status_code == 200
     assert "콘크리트 타설" in response.text
+
+
+# ---------- 월 달력 ----------
+
+
+def test_month_grid_starts_on_monday_and_selects_tomorrow(client: TestClient) -> None:
+    site_id = add_site(client)
+    page = client.get(f"/schedule?site_id={site_id}").text  # 지금 10/4 → 내일 10/5가 든 10월
+    assert "2026년 10월" in page
+    # 10월 1일은 목요일 → 달력은 9월 28일(월)부터, 11월 1일(일)까지 5주
+    assert page.count('<td class="calcell') == 35
+    assert 'day=2026-09-28"' in page and 'day=2026-11-01"' in page
+    selected = (
+        f'href="/schedule?site_id={site_id}&amp;month=2026-10&amp;day=2026-10-05" '
+        'aria-label="10월 5일, 작업 0건" aria-current="date"'
+    )
+    assert selected in page  # 내일(판정 대상)이 기본 선택
+    assert "month=2026-09" in page and "month=2026-11" in page  # 이전·다음 달
+
+
+def test_cell_shows_three_items_and_counts_the_rest(client: TestClient) -> None:
+    site_id = add_site(client)
+    for hour in (8, 9, 10, 11):
+        add_item(client, site_id, start=f"{hour:02d}:00", end=f"{hour:02d}:30")
+    page = client.get(f"/schedule?site_id={site_id}&day=2026-10-05").text
+    assert "+1건" in page
+    assert "작업 4건" in page  # 칸의 읽기용 라벨은 전체 건수
+    assert page.count("08:00–08:30") == 1  # 상세 패널에는 네 건 모두
+    assert "11:00–11:30" in page
+
+
+@pytest.mark.parametrize("query", ["month=2026-13", "month=abc", "day=2026-02-30", "day=x"])
+def test_malformed_month_or_day_falls_back(client: TestClient, query: str) -> None:
+    site_id = add_site(client)
+    response = client.get(f"/schedule?site_id={site_id}&{query}")
+    assert response.status_code == 200
+    assert "2026년 10월" in response.text
+
+
+def test_past_day_shows_detail_without_add_form(client: TestClient) -> None:
+    site_id = add_site(client)
+    page = client.get(f"/schedule?site_id={site_id}&day=2026-10-04").text  # 오늘
+    assert "작업을 추가할 수 없습니다" in page
+    assert 'action="/schedule">' not in page.replace('method="get" action="/schedule"', "")
