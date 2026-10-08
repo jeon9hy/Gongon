@@ -1,11 +1,12 @@
 """판정 실행·저장과 화면 모델 만들기. 판정 계산은 engine/judgment.judge만 한다."""
 
 import logging
+from bisect import bisect_left
 from collections.abc import Mapping
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import urlencode
 
 from sqlalchemy.orm import Session
@@ -39,6 +40,10 @@ from app.features.judgments.schemas import (
     Tab,
     Tile,
     VerdictFilter,
+    WeekCell,
+    WeekDay,
+    WeekRow,
+    WeekView,
     WorkCard,
     WorkWindow,
 )
@@ -63,6 +68,7 @@ logger = logging.getLogger(__name__)
 
 VERDICT_FILTERS: tuple[VerdictFilter, ...] = ("전체", "진행", "확인 필요", "중지 검토", "판정 불가")
 HISTORY_PAGE_SIZE = 30
+WEEK_DAYS = 7  # 주간 보기 범위(D-041). 예보가 없는 날은 판정하지 않는다
 _WEEKDAYS = "월화수목금토일"
 _PLOT_HEIGHT_PX = 200
 _MIN_BAR_PX = 6
@@ -101,66 +107,113 @@ RUN_MESSAGES: dict[RunResult, str] = {
     ),
     "no_sites": "등록된 현장이 없습니다. 먼저 현장을 등록하세요.",
     "out_of_period": (
-        "내일은 작업 기간이 아니라 판정하지 않았습니다. 현장 설정에서 작업 기간을 확인하세요."
+        "앞으로 7일은 작업 기간이 아니라 판정하지 않았습니다. 현장 설정에서 작업 기간을 확인하세요."
+    ),
+    "beyond_forecast": (
+        "앞으로 작업일이 아직 예보 범위 밖이라 판정하지 않았습니다. 예보가 나오면 판정하세요."
     ),
 }
+
+
+def horizon_dates(now: datetime) -> tuple[date, ...]:
+    """주간 보기 날짜: 내일부터 WEEK_DAYS일(D-041)."""
+    tomorrow = target_date_for(now)
+    return tuple(tomorrow + timedelta(days=offset) for offset in range(WEEK_DAYS))
 
 
 def run_for_site(
     session: Session, site_id: int, now: datetime, auth: KmaAuth, http_get: HttpGet
 ) -> RunResult | None:
-    """현장의 내일 판정을 내고 저장한다. 없는 현장이면 None."""
+    """현장의 내일부터 7일 판정을 내고 저장한다(D-041). 없는 현장이면 None.
+
+    예보를 한 번 받아 그 예보에 값이 있는 날만 판정한다. 예보 범위 밖인 날은 저장하지 않는다.
+    """
     site = sites_service.get_site(session, site_id)
     if site is None:
         return None
     rule_sets = rule_sets_by_label()
-    target_date = target_date_for(now)
-    items = schedules_service.items_on(session, site.site_id, target_date)
-    targets = [t for t in _targets(site, items) if t.work_type in rule_sets]
-    if not targets:
+    dates = horizon_dates(now)
+    if not any(_targets_for(site, (), rule_sets)):
         return "no_rules"
-    if not site.works_on(target_date):
+    working = [d for d in dates if site.works_on(d)]
+    if not working:
         return "out_of_period"  # 작업하지 않는 날은 예보도 받지 않는다
+    items_by_day = schedules_service.items_between(session, site.site_id, working[0], working[-1])
     snapshot = forecasts_service.get_forecast(
         session, site.grid_nx, site.grid_ny, now, auth, http_get
     )
-    for target in targets:
-        rule_set = rule_sets[target.work_type]
-        start_at = datetime.combine(target_date, target.start_local, KST)
-        end_at = datetime.combine(target_date, target.end_local, KST)
-        if snapshot.weather is None:
+    if snapshot.weather is None:
+        # 실패는 가장 가까운 작업일에만 남긴다(같은 원인을 날짜마다 반복 기록하지 않음).
+        day = working[0]
+        for target in _targets_for(site, items_by_day.get(day, ()), rule_sets):
+            start_at, end_at = _work_range(day, target)
             session.add(
-                _failed_judgment(site, rule_set, target_date, start_at, end_at, snapshot.run_id,
-                                 f"예보 수집 실패: {snapshot.failure_reason}", target.item_id)
+                _failed_judgment(site, rule_sets[target.work_type], day, start_at, end_at,
+                                 snapshot.run_id, f"예보 수집 실패: {snapshot.failure_reason}",
+                                 target.item_id)
             )  # fmt: skip
-            continue
-        # 일평균·종료 후 24시간 최고기온은 작업 시간마다 다르다(콘크리트, D-033).
-        weather = with_daily_temperatures(snapshot.weather, start_at, end_at)
-        result = judge(weather, rule_set, start_at, end_at)
-        same = repository.find_same(
-            session,
-            site_id=site.site_id,
-            target_date=target_date,
-            work_type=rule_set.work_type_label,
-            forecast_issued_at=result.forecast_issued_at,
-            rule_version=rule_set.rule_version,
-            grid_nx=site.grid_nx,
-            grid_ny=site.grid_ny,
-            work_start_at=start_at,
-            work_end_at=end_at,
-            work_item_id=target.item_id,
-        )
-        if same is None:
-            session.add(_judgment(site, rule_set, target_date, start_at, end_at,
-                                  snapshot.run_id, result, target.item_id))  # fmt: skip
-    session.commit()
-    logger.info("판정 site_id=%s target=%s base_at=%s", site.site_id, target_date, snapshot.base_at)
+        session.commit()
+        return "failed"
 
-    return "failed" if snapshot.weather is None else "done"
+    forecast_times = sorted(h.valid_at for h in snapshot.weather.hours)
+    judged_days: list[date] = []
+    for day in working:
+        for target in _targets_for(site, items_by_day.get(day, ()), rule_sets):
+            rule_set = rule_sets[target.work_type]
+            start_at, end_at = _work_range(day, target)
+            if not _has_forecast(forecast_times, start_at, end_at):
+                continue  # 작업 시간에 예보 값이 하나도 없으면 판정하지 않는다(예보 범위 밖)
+            if day not in judged_days:
+                judged_days.append(day)
+            # 일평균·종료 후 24시간 최고기온은 작업 시간마다 다르다(콘크리트, D-033).
+            weather = with_daily_temperatures(snapshot.weather, start_at, end_at)
+            result = judge(weather, rule_set, start_at, end_at)
+            same = repository.find_same(
+                session,
+                site_id=site.site_id,
+                target_date=day,
+                work_type=rule_set.work_type_label,
+                forecast_issued_at=result.forecast_issued_at,
+                rule_version=rule_set.rule_version,
+                grid_nx=site.grid_nx,
+                grid_ny=site.grid_ny,
+                work_start_at=start_at,
+                work_end_at=end_at,
+                work_item_id=target.item_id,
+            )
+            if same is None:
+                session.add(_judgment(site, rule_set, day, start_at, end_at,
+                                      snapshot.run_id, result, target.item_id))  # fmt: skip
+    session.commit()
+    if not judged_days:
+        return "beyond_forecast"
+    logger.info("판정 site_id=%s dates=%s base_at=%s", site.site_id, judged_days, snapshot.base_at)
+    return "done"
+
+
+def _has_forecast(times: list[datetime], start_at: datetime, end_at: datetime) -> bool:
+    """작업 시간에 걸친 정시 예보가 하나라도 있는가(times는 정렬됨)."""
+    first_slot = start_at.replace(minute=0, second=0, microsecond=0)
+    index = bisect_left(times, first_slot)
+    return index < len(times) and times[index] < end_at
+
+
+def _targets_for(
+    site: SiteRecord, items: tuple[WorkItemRecord, ...], rule_sets: Mapping[str, RuleSet]
+) -> list["_Target"]:
+    """판정할 수 있는(기준이 있는) 대상만."""
+    return [t for t in _targets(site, items) if t.work_type in rule_sets]
+
+
+def _work_range(day: date, target: "_Target") -> tuple[datetime, datetime]:
+    return (
+        datetime.combine(day, target.start_local, KST),
+        datetime.combine(day, target.end_local, KST),
+    )
 
 
 def run_all(session: Session, now: datetime, auth: KmaAuth, http_get: HttpGet) -> RunResult:
-    """모든 현장의 내일 판정. 같은 격자는 예보를 한 번만 받는다(forecasts 재사용)."""
+    """모든 현장의 7일 판정. 같은 격자는 예보를 한 번만 받는다(forecasts 재사용)."""
     results = [
         run_for_site(session, s.site_id, now, auth, http_get)
         for s in sites_service.list_sites(session)
@@ -171,7 +224,10 @@ def run_all(session: Session, now: datetime, auth: KmaAuth, http_get: HttpGet) -
         return "failed"
     if "done" in results:
         return "all_done"
-    return "out_of_period" if "out_of_period" in results else "no_rules"
+    for code in ("beyond_forecast", "out_of_period"):
+        if code in results:
+            return code
+    return "no_rules"
 
 
 def _judgment(
@@ -325,6 +381,8 @@ def build_dashboard(
             f"내일({_date_text(target_date)})은 작업 기간({site.period_text()})이 아니라 "
             "판정하지 않습니다."
         ),
+        week=_week(session, site, rule_sets, now),
+        can_run=any(site.works_on(d) for d in horizon_dates(now)),
     )
 
 
@@ -344,7 +402,8 @@ def build_home(session: Session, now: datetime, ran: RunResult | None = None) ->
         for s in sites
     )  # fmt: skip
 
-    counts = {v.value: 0 for v in (Verdict.STOP_REVIEW, Verdict.CHECK, Verdict.UNAVAILABLE,
+    # 개발자 지정 순서: 판정 전 → 판정 불가 → 중지 검토 → 확인 필요 → 진행 (작업 없음은 맨 뒤).
+    counts = {v.value: 0 for v in (Verdict.UNAVAILABLE, Verdict.STOP_REVIEW, Verdict.CHECK,
                                    Verdict.GO)}  # fmt: skip
     not_judged = off_period = 0
     for summary in summaries:
@@ -355,14 +414,16 @@ def build_home(session: Session, now: datetime, ran: RunResult | None = None) ->
         else:
             counts[summary.verdict] += 1
     tiles = (
-        *(CountTile(v, n, v) for v, n in counts.items()),
         CountTile("판정 전", not_judged, None),
+        *(CountTile(v, n, v) for v, n in counts.items()),
     )
     if off_period:
         tiles = (*tiles, CountTile("작업 없음", off_period, None))
 
     names = {s.site_id: s.name for s in sites}
-    recent_rows = repository.page(session, None, None, 0, RECENT_ROWS, site_ids=site_ids)
+    recent_rows = repository.page(
+        session, None, None, 0, RECENT_ROWS, site_ids=site_ids, until=target_date
+    )
     recent = _recent_runs(recent_rows, names)
     run = forecasts_service.latest_run(session)
     if run is None:
@@ -382,7 +443,8 @@ def build_home(session: Session, now: datetime, ran: RunResult | None = None) ->
         rule_version=None if primary_rules is None else primary_rules.rule_version,
         rule_verified=primary_rules is not None and primary_rules.source_verified,
         message=None if ran is None else RUN_MESSAGES[ran],
-        message_is_error=ran in ("failed", "no_rules", "no_sites", "out_of_period"),
+        message_is_error=ran
+        in ("failed", "no_rules", "no_sites", "out_of_period", "beyond_forecast"),
     )
 
 
@@ -458,6 +520,85 @@ def _targets(site: SiteRecord, items: tuple[WorkItemRecord, ...]) -> list[_Targe
         for w in judged_labels(())
     ]
     return main + common
+
+
+_CONFIDENCE_NOTE = {
+    "높음": "1시간 간격 예보로 작업 시간 전체를 판정",
+    "보통": "3시간 간격 예보라 일부 시각만 판정 · 나머지는 판정 불가",
+    "예보 없음": "단기예보 범위 밖 · 예보가 나오면 판정",
+    "판정 전": "예보는 있으나 아직 판정하지 않음",
+    "수집 실패": "예보를 받지 못함",
+    "기간 밖": "현장 작업 기간이 아님",
+}
+
+
+def _week(
+    session: Session, site: SiteRecord, rule_sets: Mapping[str, RuleSet], now: datetime
+) -> WeekView:
+    """작업(공종)별 7일. 칸은 그날 그 공종 대상들 중 가장 높은 단계(쿼리: 판정·작업·예보 각 1회)."""
+    dates = horizon_dates(now)
+    latest: dict[tuple[date, str], Judgment] = {}
+    for j in repository.latest_for_site_between(session, site.site_id, dates[0], dates[-1]):
+        latest.setdefault((j.target_date, _key(j)), j)
+    items_by_day = schedules_service.items_between(session, site.site_id, dates[0], dates[-1])
+    times = forecasts_service.latest_forecast_times(session, site.grid_nx, site.grid_ny)
+
+    days: list[WeekDay] = []
+    by_type: dict[str, dict[date, WeekCell]] = {}
+    for day in dates:
+        in_period = site.works_on(day)
+        pairs = [
+            (t, latest.get((day, t.key))) for t in _targets(site, items_by_day.get(day, ()))
+        ] if in_period else []  # fmt: skip
+        judged = [j for _, j in pairs if j is not None]
+        covered = any(_has_forecast(times, *_work_range(day, t)) for t, _ in pairs)
+        confidence = _confidence(in_period, judged, covered)
+        days.append(WeekDay(day, f"{day:%m/%d}({_WEEKDAYS[day.weekday()]})", day == dates[0],
+                            in_period, confidence, _CONFIDENCE_NOTE[confidence]))  # fmt: skip
+        for target, judgment in pairs:
+            card = _card(target.label, judgment, target.work_type in rule_sets)
+            cell = _week_cell(card, "pending" if confidence in ("예보 없음", "판정 전") else "none")
+            current = by_type.setdefault(target.work_type, {}).get(day)
+            if current is None or _rank(cell) > _rank(current):
+                by_type[target.work_type][day] = cell
+
+    def cell_for(work_type: str, day: WeekDay) -> WeekCell:
+        if not day.in_period:
+            return WeekCell(None, "off", None, "작업 기간 아님")
+        found = by_type[work_type].get(day.day)
+        return found or WeekCell(None, "none", None, "그날 이 공종 작업 없음")
+
+    rows = tuple(
+        WeekRow(work_type, tuple(cell_for(work_type, d) for d in days)) for work_type in by_type
+    )
+    return WeekView(days=tuple(days), rows=rows)
+
+
+def _confidence(
+    in_period: bool, judged: list[Judgment], covered: bool
+) -> Literal["높음", "보통", "예보 없음", "판정 전", "수집 실패", "기간 밖"]:
+    """그날 판정에 쓴 예보 자료의 촘촘함. 저장된 시간별 값이 있는지로만 정한다(추정 없음)."""
+    if not in_period:
+        return "기간 밖"
+    if not judged:
+        return "판정 전" if covered else "예보 없음"
+    if all(j.failure_reason for j in judged):
+        return "수집 실패"
+    hours = [h for j in judged if not j.failure_reason for h in j.hours]
+    has_value = [any(c["raw"] is not None for c in h["conditions"]) for h in hours]
+    if not any(has_value):
+        return "예보 없음"
+    return "높음" if all(has_value) else "보통"
+
+
+def _week_cell(card: WorkCard, empty_state: Literal["none", "pending"]) -> WeekCell:
+    if card.verdict is None:
+        return WeekCell(None, empty_state, None, card.reason)
+    return WeekCell(card.verdict, "verdict", card.detail_href, f"{card.work_type} · {card.reason}")
+
+
+def _rank(cell: WeekCell) -> int:
+    return -1 if cell.verdict is None else Verdict(cell.verdict).severity
 
 
 def _key(judgment: Judgment) -> str:

@@ -39,7 +39,7 @@
 {% if view.rule_version %}<span class="chip">기준 {{ view.rule_version }}{% if not view.rule_verified %} · <span class="todo">원문 대조 필요</span>{% endif %}</span>{% endif %}
 </div>
 </div>
-{% if not view.off_period_note %}
+{% if view.can_run %}
 <form method="post" action="/judgments/run" class="pagehead__action">
 <input type="hidden" name="site_id" value="{{ view.site_id }}">
 <button class="btn btn--accent" type="submit">{% if view.primary %}다시 판정하기{% else %}지금 판정하기{% endif %}</button>
@@ -72,6 +72,48 @@
 {% endfor %}
 </div>
 </article>
+
+{% set wk = view.week %}
+{% if wk and wk.rows %}
+<article class="card" aria-labelledby="week-title">
+<div class="section-heading">
+<h2 class="h2" id="week-title">앞으로 7일</h2>
+<span class="small muted">멀수록 예보가 성겨 신뢰도가 낮아집니다</span>
+</div>
+<div class="week-wrap">
+<table class="week">
+<thead>
+<tr>
+<th scope="col" class="week__corner">작업</th>
+{% for d in wk.days %}
+<th scope="col" class="week__day{% if d.is_tomorrow %} is-tomorrow{% endif %}{% if not d.in_period %} is-off{% endif %}">
+<span class="week__date">{% if d.is_tomorrow %}내일 {% endif %}{{ d.label }}</span>
+<span class="conf conf--{{ {'높음': 'high', '보통': 'mid', '예보 없음': 'none', '판정 전': 'pending', '수집 실패': 'fail', '기간 밖': 'off'}[d.confidence] }}" title="{{ d.confidence_note }}">{% if d.confidence in ('높음', '보통') %}신뢰도 {% endif %}{{ d.confidence }}</span>
+</th>
+{% endfor %}
+</tr>
+</thead>
+<tbody>
+{% for r in wk.rows %}
+<tr>
+<th scope="row" class="week__type">{{ r.work_type }}</th>
+{% for c in r.cells %}
+<td class="week__cell week__cell--{{ c.state }}{% if loop.first %} is-tomorrow{% endif %}">
+{% if c.state == "verdict" %}
+{% if c.href %}<a class="wv wv--{{ verdict_class[c.verdict] }}" href="{{ c.href }}" title="{{ c.note }}">{{ c.verdict }}</a>{% else %}<span class="wv wv--{{ verdict_class[c.verdict] }}" title="{{ c.note }}">{{ c.verdict }}</span>{% endif %}
+{% elif c.state == "pending" %}<span class="wv wv--empty" title="{{ c.note }}">예보 대기</span>
+{% elif c.state == "off" %}<span class="wv wv--off" title="{{ c.note }}">—</span>
+{% else %}<span class="wv wv--none" title="{{ c.note }}">작업 없음</span>{% endif %}
+</td>
+{% endfor %}
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+<p class="small muted">신뢰도 높음: 1시간 예보로 작업 시간 전체 판정 · 보통: 3시간 예보라 일부 시각만 판정(나머지는 판정 불가) · 예보 없음: 단기예보 범위 밖. 칸을 누르면 판정 근거를 봅니다.</p>
+</article>
+{% endif %}
 
 {% set p = view.primary %}
 {% if p %}

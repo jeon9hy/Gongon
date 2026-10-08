@@ -1,11 +1,14 @@
 """판정 화면이 쓰는 표시용 모델. 판정 계산은 engine/judgment가 하고, 여기서는 보여줄 값만 담는다."""
 
 from dataclasses import dataclass
+from datetime import date
 from typing import Literal
 
 VerdictFilter = Literal["전체", "진행", "확인 필요", "중지 검토", "판정 불가"]
 ElementKey = Literal["rain", "wind", "snow", "heat"]
-RunResult = Literal["done", "failed", "no_rules", "all_done", "no_sites", "out_of_period"]
+RunResult = Literal[
+    "done", "failed", "no_rules", "all_done", "no_sites", "out_of_period", "beyond_forecast"
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,6 +117,8 @@ class DashboardView:
     message: str | None
     message_is_error: bool
     off_period_note: str | None  # 대상 날짜가 작업 기간 밖이면 안내 문구
+    week: "WeekView | None" = None  # 내일부터 7일(D-041)
+    can_run: bool = True  # 7일 중 작업일이 있어 판정할 수 있는가
 
 
 @dataclass(frozen=True, slots=True)
@@ -243,3 +248,35 @@ class HistoryView:
     page: int
     prev_href: str | None
     next_href: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class WeekDay:
+    """주간 보기 열 하나(D-041). confidence는 그날 판정에 쓴 예보 자료의 촘촘함이다."""
+
+    day: date
+    label: str  # 10/9(금)
+    is_tomorrow: bool
+    in_period: bool
+    confidence: Literal["높음", "보통", "예보 없음", "판정 전", "수집 실패", "기간 밖"]
+    confidence_note: str
+
+
+@dataclass(frozen=True, slots=True)
+class WeekCell:
+    verdict: str | None  # None: 그날 이 공종 판정 없음(state가 사유)
+    state: Literal["verdict", "none", "pending", "off"]
+    href: str | None
+    note: str
+
+
+@dataclass(frozen=True, slots=True)
+class WeekRow:
+    work_type: str
+    cells: tuple[WeekCell, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class WeekView:
+    days: tuple[WeekDay, ...]
+    rows: tuple[WeekRow, ...]

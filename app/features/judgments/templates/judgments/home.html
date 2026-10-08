@@ -15,8 +15,7 @@
 </div>
 {% if view.sites %}
 <form method="post" action="/judgments/run-all" class="pagehead__action">
-<button class="btn btn--accent" type="submit">{{ icon("cloud-sun", 18) }} 전체 현장 판정하기</button>
-<p class="small muted">등록한 현장 {{ view.sites | length }}곳의 내일 작업을 확인합니다</p>
+<button class="btn btn--accent" type="submit" title="등록한 현장의 내일부터 7일 작업을 예보로 판정합니다">{{ icon("cloud-sun", 18) }} 현장 {{ view.sites | length }}곳 판정하기</button>
 </form>
 {% endif %}
 </section>
@@ -49,7 +48,7 @@
 </section>
 {% else %}
 
-<section class="stats" aria-label="내일 판정 요약">
+<section class="stats stats--home" aria-label="내일 판정 요약">
 {% for t in view.tiles %}
 <div class="stat stat--{{ verdict_class.get(t.badge, 'unknown') }}{% if not t.count %} is-zero{% endif %}">
 {% if t.badge %}{{ verdict_badge(t.badge) }}{% else %}<span class="badge badge--unknown">{{ t.label }}</span>{% endif %}

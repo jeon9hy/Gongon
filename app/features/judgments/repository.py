@@ -21,6 +21,26 @@ def latest_for_site_date(session: Session, site_id: int, target_date: date) -> l
     )
 
 
+def latest_for_site_between(
+    session: Session, site_id: int, start: date, end: date
+) -> list[Judgment]:
+    """한 현장의 [start, end] 판정을 최신순으로(주간 보기, 쿼리 1회). 시간별 상세는 읽지 않는다."""
+    days = (end - start).days + 1
+    return list(
+        session.scalars(
+            select(Judgment)
+            .options(defer(Judgment.windows))
+            .where(
+                Judgment.site_id == site_id,
+                Judgment.target_date >= start,
+                Judgment.target_date <= end,
+            )
+            .order_by(Judgment.judged_at.desc(), Judgment.id.desc())
+            .limit(LATEST_LIMIT * days)
+        )
+    )
+
+
 def latest_for_sites_date(
     session: Session, site_ids: list[int], target_date: date
 ) -> list[Judgment]:
@@ -79,14 +99,17 @@ def page(
     offset: int,
     limit: int,
     site_ids: Sequence[int] | None = None,
+    until: date | None = None,
 ) -> list[Judgment]:
-    """site_ids를 주면 그 현장들만(홈에서 삭제한 현장을 뺄 때)."""
+    """site_ids를 주면 그 현장들만(홈에서 삭제한 현장을 뺄 때), until을 주면 그 날짜까지 대상만."""
     # 목록에는 시간별 상세(JSONB)가 필요 없다.
     query = select(Judgment).options(defer(Judgment.hours), defer(Judgment.windows))
     if site_id is not None:
         query = query.where(Judgment.site_id == site_id)
     if site_ids is not None:
         query = query.where(Judgment.site_id.in_(site_ids))
+    if until is not None:
+        query = query.where(Judgment.target_date <= until)
     if verdict is not None:
         query = query.where(Judgment.verdict == verdict)
     query = query.order_by(Judgment.target_date.desc(), Judgment.judged_at.desc(), Judgment.id)

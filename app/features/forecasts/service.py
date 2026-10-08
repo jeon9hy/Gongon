@@ -89,6 +89,23 @@ def latest_run(session: Session) -> RunStatus | None:
     )
 
 
+def latest_forecast_times(session: Session, nx: int, ny: int) -> list[datetime]:
+    """이 격자의 가장 최근 성공 수집에 값이 있는 예보 시각(정렬). 수집 전이면 빈 목록."""
+    run = session.scalars(
+        select(ForecastRun)
+        .where(
+            ForecastRun.grid_nx == nx,
+            ForecastRun.grid_ny == ny,
+            ForecastRun.status == STATUS_SUCCESS,
+        )
+        .order_by(ForecastRun.base_at.desc(), ForecastRun.id.desc())
+    ).first()
+    snapshot = None if run is None else _snapshot(run)
+    if snapshot is None or snapshot.weather is None:
+        return []
+    return sorted(h.valid_at for h in snapshot.weather.hours)
+
+
 def _snapshot(run: ForecastRun) -> ForecastSnapshot:
     if run.status != STATUS_SUCCESS or run.raw_items is None:
         return ForecastSnapshot(run.id, run.base_at, None, run.failure_reason or "수집 실패")

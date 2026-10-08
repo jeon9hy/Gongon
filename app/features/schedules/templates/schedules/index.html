@@ -39,7 +39,7 @@
 <a class="btn btn--sm" href="{{ view.prev_href }}" aria-label="이전 달">{{ icon("arrow-left", 14, 2.2) }}</a>
 <h2 class="h2" id="month-title">{{ view.month_title }}</h2>
 <a class="btn btn--sm" href="{{ view.next_href }}" aria-label="다음 달">{{ icon("arrow-right", 14, 2.2) }}</a>
-<a class="btn btn--soft btn--sm" href="{{ view.this_month_href }}">내일로</a>
+<a class="today-btn" href="{{ view.this_month_href }}" title="내일 날짜로 이동" aria-label="내일 날짜로 이동">{{ icon("cloud-sun", 18) }}<span>내일</span></a>
 </div>
 <span class="small muted">{{ view.site_name }}{% if view.period_text %} · 작업 기간 {{ view.period_text }}{% endif %}</span>
 </div>
@@ -98,7 +98,7 @@
 </ul>
 {% endif %}
 {% if d.note %}<p class="small muted" style="padding: 8px 0 0;">{{ d.note }}</p>{% endif %}
-{% if d.is_target %}<a class="small" href="/dashboard?site_id={{ view.site_id }}">대시보드에서 판정 보기 ›</a>{% endif %}
+{% if d.is_target %}<a class="btn btn--ink btn--sm day-judge-link" href="/dashboard?site_id={{ view.site_id }}">{{ icon("dashboard", 15) }} 내일 판정 보기 {{ icon("arrow-right", 14, 2.2) }}</a>{% endif %}
 </div>
 </section>
 

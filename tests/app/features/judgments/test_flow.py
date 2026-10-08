@@ -303,11 +303,11 @@ def test_run_all_without_sites_says_so(client: TestClient) -> None:
     assert location == "/?ran=no_sites"
 
 
-def test_day_outside_work_period_is_not_judged_or_fetched(
+def test_week_outside_work_period_is_not_judged_or_fetched(
     client: TestClient, session: Session, fake_kma: FakeKma
 ) -> None:
-    # 고정 시각 10/4 → 대상 10/5. 작업 기간이 10/6부터면 판정하지 않는다.
-    site_id = add_site(client, work_start_date="2026-10-06", work_end_date="2026-10-31")
+    # 고정 시각 10/4 → 주간 10/5~10/11. 작업 기간이 10/12부터면 예보도 받지 않는다.
+    site_id = add_site(client, work_start_date="2026-10-12", work_end_date="2026-10-31")
 
     location = run(client, site_id)
 
@@ -315,8 +315,32 @@ def test_day_outside_work_period_is_not_judged_or_fetched(
     assert fake_kma.calls == []
     assert count(session, Judgment) == 0
     page = client.get(location).text
-    assert "작업 기간(2026-10-06~2026-10-31)이 아니라 판정하지 않습니다" in page
+    assert "작업 기간(2026-10-12~2026-10-31)이 아니라 판정하지 않습니다" in page
     assert 'action="/judgments/run"' not in page  # 판정 버튼을 숨긴다
+
+
+def test_tomorrow_off_period_judges_only_later_days_with_forecast(
+    client: TestClient, session: Session, fake_kma: FakeKma
+) -> None:
+    # 내일(10/5)은 작업 기간 밖, 10/6은 예보가 있고, 10/7은 예보가 없다.
+    for hour in range(24):
+        fake_kma.set_hour("20261006", hour, PCP="강수없음", WSD="2.0", SNO="적설없음",
+                          TMP="20", REH="50")  # fmt: skip
+    site_id = add_site(client, work_start_date="2026-10-06", work_end_date="2026-10-31")
+
+    assert "ran=done" in run(client, site_id)
+
+    days = set(session.scalars(select(Judgment.target_date)))
+    assert {d.isoformat() for d in days} == {"2026-10-06"}  # 범위 밖인 10/7은 저장하지 않음
+
+
+def test_work_days_beyond_forecast_are_not_judged(
+    client: TestClient, session: Session, fake_kma: FakeKma
+) -> None:
+    site_id = add_site(client, work_start_date="2026-10-08", work_end_date="2026-10-31")
+
+    assert "ran=beyond_forecast" in run(client, site_id)
+    assert count(session, Judgment) == 0  # 예보에 없는 날을 정상값으로 채워 판정하지 않는다
 
 
 def test_last_day_of_work_period_is_still_judged(client: TestClient, session: Session) -> None:

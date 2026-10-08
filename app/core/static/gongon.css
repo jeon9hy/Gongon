@@ -621,3 +621,51 @@ a.tag:hover { filter: brightness(0.96); }
   .siterow__name { font-size: 17px; }
   .menu__panel { width: min(260px, calc(100vw - 48px)); }
 }
+
+/* 홈 요약: 판정 전 → 판정 불가 → 중지 검토 → 확인 필요 → 진행. 같은 크기 타일 */
+.page--home .stats--home { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.page--home .stat__value small { font-size: 16px; font-weight: 600; margin-left: 4px; }
+
+/* 달력의 '내일' 이동: 라임 알약 아이콘 버튼 */
+.today-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px 0 10px; border-radius: 999px; background: var(--accent); color: var(--ink); font-size: 13px; font-weight: 600; text-decoration: none; transition: transform var(--ease), background-color var(--ease); }
+.today-btn:hover { background: var(--accent-strong); color: var(--ink); transform: translateY(-1px); }
+.today-btn svg { flex: 0 0 auto; }
+.day-judge-link { align-self: flex-start; margin-top: 12px; }
+
+/* 대시보드 주간 표(D-041): 작업 × 7일. 내일 열 강조, 신뢰도는 열 머리에 */
+.week-wrap { overflow-x: auto; margin: 0 -4px; padding: 0 4px; }
+.week { width: 100%; min-width: 720px; border-collapse: separate; border-spacing: 4px; table-layout: fixed; font-size: 13px; }
+.week th, .week td { padding: 0; background: transparent; border: 0; }
+.week__corner { width: 120px; text-align: left; font-size: 12px; font-weight: 500; color: var(--muted); vertical-align: bottom; padding-bottom: 6px !important; }
+.week__day { vertical-align: bottom; padding: 8px 4px !important; border-radius: var(--radius-md) var(--radius-md) 0 0; text-align: center; }
+.week__day.is-tomorrow { background: var(--ink); }
+.week__day.is-tomorrow .week__date { color: #FFFFFF; }
+.week__day.is-off .week__date { color: var(--placeholder); }
+.week__date { display: block; font-size: 13px; font-weight: 600; color: var(--ink); white-space: nowrap; margin-bottom: 6px; }
+.conf { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.conf::before { content: ""; width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
+.conf--high { background: var(--accent); color: var(--ink); }
+.conf--mid { background: #FFF0D2; color: var(--verdict-check-fg); }
+.conf--none, .conf--pending, .conf--off { background: var(--surface); color: var(--muted); }
+.conf--none::before, .conf--off::before { background: transparent; border: 1px solid currentColor; }
+.conf--fail { background: var(--stop-soft); color: var(--stop-text); }
+.week__type { text-align: left; font-size: 13px; font-weight: 600; color: var(--ink); padding: 0 8px 0 0 !important; overflow-wrap: anywhere; }
+.week__cell { height: 44px; }
+.week__cell.is-tomorrow { background: #0F0F0F0A; border-radius: 0 0 var(--radius-md) var(--radius-md); }
+.wv { display: flex; align-items: center; justify-content: center; gap: 5px; height: 40px; border-radius: var(--radius-md); font-size: 12px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+a.wv:hover { filter: brightness(0.96); box-shadow: inset 0 0 0 2px var(--ink); }
+.wv--go { background: var(--verdict-go-bg); color: var(--verdict-go-fg); }
+.wv--check { background: var(--verdict-check-bg); color: var(--verdict-check-fg); }
+.wv--stop { background: var(--verdict-stop-bg); color: #FFFFFF; }
+.wv--unknown { background: var(--card); color: var(--verdict-unknown-fg); border: 1px dashed var(--line); }
+.wv--go::before, .wv--check::before, .wv--stop::before, .wv--unknown::before { content: ""; width: 6px; height: 6px; border-radius: 999px; }
+.wv--go::before { background: var(--verdict-go-mark); }
+.wv--check::before { background: var(--verdict-check-mark); }
+.wv--stop::before { background: #FFFFFF; }
+.wv--unknown::before { background: var(--verdict-unknown-mark); }
+.wv--empty { color: var(--placeholder); background: repeating-linear-gradient(135deg, transparent 0 6px, #EFEFEB 6px 7px); font-weight: 500; }
+.wv--none { color: var(--placeholder); font-weight: 500; }
+.wv--off { color: var(--line); }
+.delete-action summary { list-style: none; border-radius: var(--radius-sm); }
+.delete-action summary::-webkit-details-marker { display: none; }
+.delete-action summary:hover, .delete-action[open] summary { color: var(--stop-text); background: var(--stop-soft); }

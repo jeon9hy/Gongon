@@ -1,4 +1,4 @@
-"""작업 일정(S08-1). 판정 기능은 items_on·items_on_for_sites로 그날 작업을 읽는다."""
+"""작업 일정(S08-1). 판정 기능은 items_on·items_on_for_sites·items_between으로 작업을 읽는다."""
 
 from datetime import date, time, timedelta
 
@@ -25,6 +25,16 @@ _WEEKDAYS = "월화수목금토일"
 
 def items_on(session: Session, site_id: int, day: date) -> tuple[WorkItemRecord, ...]:
     return tuple(_record(i) for i in repository.list_between(session, [site_id], day, day))
+
+
+def items_between(
+    session: Session, site_id: int, start: date, end: date
+) -> dict[date, tuple[WorkItemRecord, ...]]:
+    """한 현장의 [start, end] 작업을 날짜별로(쿼리 1회). 작업 없는 날은 빠진다."""
+    by_day: dict[date, list[WorkItemRecord]] = {}
+    for item in repository.list_between(session, [site_id], start, end):
+        by_day.setdefault(item.work_date, []).append(_record(item))
+    return {day: tuple(items) for day, items in by_day.items()}
 
 
 def items_on_for_sites(
