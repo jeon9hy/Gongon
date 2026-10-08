@@ -5,10 +5,15 @@ from typing import Any
 
 
 class FakeKma:
-    """기상청 getVilageFcst 가짜. 응답 구조는 활용가이드 형식, 값은 테스트가 정한다."""
+    """기상청 getVilageFcst·getMidLandFcst 가짜. 응답 구조는 활용가이드 형식, 값은 테스트가 정한다.
+
+    중기예보는 mid_item을 정하지 않으면 실제 '자료 없음' 형식(resultCode 03)으로 답한다.
+    """
 
     def __init__(self) -> None:
         self.calls: list[dict[str, str]] = []
+        self.mid_calls: list[dict[str, str]] = []
+        self.mid_item: dict[str, Any] | None = None
         # (fcstDate, fcstTime) → {category: value}
         self.values: dict[tuple[str, str], dict[str, str]] = {}
         self.fail_with: Exception | None = None
@@ -21,6 +26,8 @@ class FakeKma:
         self.values.setdefault((fcst_date, f"{hour:02d}00"), {}).update(values)
 
     def __call__(self, url: str, params: dict[str, str], timeout_s: float) -> bytes:
+        if "MidFcstInfoService" in url:
+            return self._mid(params)
         self.calls.append(params)
         if self.fail_with is not None:
             raise self.fail_with
@@ -50,4 +57,20 @@ class FakeKma:
                 },
             }
         }
+        return json.dumps(body, ensure_ascii=False).encode("utf-8")
+
+    def _mid(self, params: dict[str, str]) -> bytes:
+        self.mid_calls.append(params)
+        if self.mid_item is None:
+            body: dict[str, Any] = {
+                "response": {"header": {"resultCode": "03", "resultMsg": "NO_DATA"}}
+            }
+        else:
+            body = {
+                "response": {
+                    "header": {"resultCode": "00", "resultMsg": "NORMAL_SERVICE"},
+                    "body": {"dataType": "JSON", "items": {"item": [self.mid_item]},
+                             "pageNo": 1, "numOfRows": 10, "totalCount": 1},
+                }
+            }  # fmt: skip
         return json.dumps(body, ensure_ascii=False).encode("utf-8")

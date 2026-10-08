@@ -1,4 +1,4 @@
-"""예보 수집과 재사용. 같은 발표 시각·격자는 한 번만 받아 여러 현장이 공유한다."""
+"""예보 수집과 재사용. 같은 발표 시각·격자(중기는 예보구역)는 한 번만 받아 현장들이 공유한다."""
 
 import logging
 from dataclasses import dataclass
@@ -7,14 +7,24 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.features.forecasts.models import STATUS_FAILED, STATUS_SUCCESS, ForecastRun
+from app.features.forecasts.models import (
+    STATUS_FAILED,
+    STATUS_SUCCESS,
+    ForecastRun,
+    MidForecastRun,
+)
 from engine.forecast import (
     ForecastFetchError,
     HttpGet,
     KmaAuth,
+    MidLandForecast,
+    fetch_mid_land,
     fetch_vilage_forecast,
     latest_base_at,
+    latest_issue_at,
     normalize,
+    parse_mid_land,
+    previous_issue_at,
 )
 from engine.forecast.kma import urllib_get
 from engine.judgment import WeatherInput
@@ -110,3 +120,50 @@ def _snapshot(run: ForecastRun) -> ForecastSnapshot:
     if run.status != STATUS_SUCCESS or run.raw_items is None:
         return ForecastSnapshot(run.id, run.base_at, None, run.failure_reason or "수집 실패")
     return ForecastSnapshot(run.id, run.base_at, normalize(run.base_at, run.raw_items), None)
+
+
+def get_mid_forecast(
+    session: Session, region_id: str, now: datetime, service_key: str, http_get: HttpGet
+) -> MidLandForecast | None:
+    """중기육상예보. 최근 발표가 아직 제공 전이면 그 전 발표를 쓴다(제공 지연은 문서에 없음).
+
+    실패는 시도마다 기록하고 None을 돌려준다. 주간 보기의 참고 정보라 판정 실행을 멈추지 않는다.
+    """
+    latest = latest_issue_at(now)
+    for issued_at in (latest, previous_issue_at(latest)):
+        cached = session.scalars(
+            select(MidForecastRun).where(
+                MidForecastRun.issued_at == issued_at,
+                MidForecastRun.region_id == region_id,
+                MidForecastRun.status == STATUS_SUCCESS,
+            )
+        ).first()
+        if cached is not None and cached.raw_item is not None:
+            return parse_mid_land(cached.issued_at, cached.raw_item)
+        try:
+            item = fetch_mid_land(service_key, issued_at, region_id, http_get)
+        except ForecastFetchError as error:
+            logger.warning("중기예보 수집 실패 tmFc=%s regId=%s: %s", issued_at, region_id, error)
+            session.add(MidForecastRun(issued_at=issued_at, region_id=region_id,
+                                       status=STATUS_FAILED, failure_reason=str(error),
+                                       raw_item=None))  # fmt: skip
+            session.flush()
+            continue
+        session.add(MidForecastRun(issued_at=issued_at, region_id=region_id,
+                                   status=STATUS_SUCCESS, failure_reason=None,
+                                   raw_item=item))  # fmt: skip
+        session.flush()
+        return parse_mid_land(issued_at, item)
+    return None
+
+
+def latest_mid_forecast(session: Session, region_id: str) -> MidLandForecast | None:
+    """이 예보구역의 가장 최근 성공 수집(주간 보기용, 쿼리 1회)."""
+    run = session.scalars(
+        select(MidForecastRun)
+        .where(MidForecastRun.region_id == region_id, MidForecastRun.status == STATUS_SUCCESS)
+        .order_by(MidForecastRun.issued_at.desc(), MidForecastRun.id.desc())
+    ).first()
+    if run is None or run.raw_item is None:
+        return None
+    return parse_mid_land(run.issued_at, run.raw_item)

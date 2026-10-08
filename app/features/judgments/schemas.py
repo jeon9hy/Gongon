@@ -118,6 +118,7 @@ class DashboardView:
     message_is_error: bool
     off_period_note: str | None  # 대상 날짜가 작업 기간 밖이면 안내 문구
     week: "WeekView | None" = None  # 내일부터 7일(D-041)
+    work_options: "tuple[WorkOption, ...]" = ()  # 상세 카드에서 고를 수 있는 작업(2개 이상일 때)
     can_run: bool = True  # 7일 중 작업일이 있어 판정할 수 있는가
 
 
@@ -258,14 +259,14 @@ class WeekDay:
     label: str  # 10/9(금)
     is_tomorrow: bool
     in_period: bool
-    confidence: Literal["높음", "보통", "예보 없음", "판정 전", "수집 실패", "기간 밖"]
+    confidence: Literal["높음", "보통", "낮음", "예보 없음", "판정 전", "수집 실패", "기간 밖"]
     confidence_note: str
 
 
 @dataclass(frozen=True, slots=True)
 class WeekCell:
     verdict: str | None  # None: 그날 이 공종 판정 없음(state가 사유)
-    state: Literal["verdict", "none", "pending", "off"]
+    state: Literal["verdict", "reference", "none", "pending", "off"]  # reference: 중기예보 참고
     href: str | None
     note: str
 
@@ -280,3 +281,11 @@ class WeekRow:
 class WeekView:
     days: tuple[WeekDay, ...]
     rows: tuple[WeekRow, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class WorkOption:
+    label: str
+    verdict: str
+    href: str
+    selected: bool

@@ -669,3 +669,19 @@ a.wv:hover { filter: brightness(0.96); box-shadow: inset 0 0 0 2px var(--ink); }
 .delete-action summary { list-style: none; border-radius: var(--radius-sm); }
 .delete-action summary::-webkit-details-marker { display: none; }
 .delete-action summary:hover, .delete-action[open] summary { color: var(--stop-text); background: var(--stop-soft); }
+.conf--low { background: #EDEDEA; color: var(--text); }
+.conf--low::before { background: var(--placeholder); }
+/* 중기예보 참고 칸: 같은 단계 색이지만 점선 테두리로 '저장한 판정이 아님'을 구분 */
+.wv--ref { background: transparent; border: 1px dashed currentColor; font-weight: 500; }
+.wv--ref.wv--check { color: var(--verdict-check-fg); background: #FFF8EA; }
+
+/* 상세 카드의 작업 고르기: 알약 칩, 고른 작업은 검정 */
+.work-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-bottom: 14px; border-bottom: 1px solid var(--line-soft); }
+.work-picker > .small { margin-right: 4px; }
+.work-pick { display: inline-flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 6px 0 12px; border-radius: 999px; border: 1px solid var(--line-soft); background: var(--card); font-size: 13px; font-weight: 500; color: var(--ink); text-decoration: none; }
+.work-pick span { padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--verdict-unknown-bg); color: var(--verdict-unknown-fg); }
+.work-pick--go span { background: var(--verdict-go-bg); color: var(--verdict-go-fg); }
+.work-pick--check span { background: var(--verdict-check-bg); color: var(--verdict-check-fg); }
+.work-pick--stop span { background: var(--verdict-stop-bg); color: #FFFFFF; }
+.work-pick:hover { border-color: var(--line); color: var(--ink); }
+.work-pick[aria-current="true"] { background: var(--ink); border-color: var(--ink); color: #FFFFFF; }

@@ -42,8 +42,9 @@ def dashboard(
     element: ElementKey | None = None,
     hour: Annotated[int | None, Query(ge=0, le=23)] = None,
     ran: RunResult | None = None,
+    work: Annotated[str | None, Query(max_length=60)] = None,
 ) -> HTMLResponse:
-    view = service.build_dashboard(session, site_id, element, hour, now, ran)
+    view = service.build_dashboard(session, site_id, element, hour, now, ran, work)
     if view is None:
         raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
     return templates.TemplateResponse(
@@ -59,7 +60,9 @@ def run(
     http_get: Annotated[HttpGet, Depends(forecasts_service.get_http_get)],
     site_id: Annotated[int, Form()],
 ) -> RedirectResponse:
-    result = service.run_for_site(session, site_id, now, settings.kma_auth(), http_get)
+    result = service.run_for_site(
+        session, site_id, now, settings.kma_auth(), http_get, settings.kma_service_key
+    )
     if result is None:
         raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
     # 새로고침해도 다시 실행되지 않도록 결과는 GET으로 보여준다.
@@ -73,7 +76,7 @@ def run_all(
     settings: Annotated[Settings, Depends(get_settings)],
     http_get: Annotated[HttpGet, Depends(forecasts_service.get_http_get)],
 ) -> RedirectResponse:
-    result = service.run_all(session, now, settings.kma_auth(), http_get)
+    result = service.run_all(session, now, settings.kma_auth(), http_get, settings.kma_service_key)
     return RedirectResponse(f"/?ran={result}", status_code=303)
 
 

@@ -88,7 +88,7 @@
 {% for d in wk.days %}
 <th scope="col" class="week__day{% if d.is_tomorrow %} is-tomorrow{% endif %}{% if not d.in_period %} is-off{% endif %}">
 <span class="week__date">{% if d.is_tomorrow %}내일 {% endif %}{{ d.label }}</span>
-<span class="conf conf--{{ {'높음': 'high', '보통': 'mid', '예보 없음': 'none', '판정 전': 'pending', '수집 실패': 'fail', '기간 밖': 'off'}[d.confidence] }}" title="{{ d.confidence_note }}">{% if d.confidence in ('높음', '보통') %}신뢰도 {% endif %}{{ d.confidence }}</span>
+<span class="conf conf--{{ {'높음': 'high', '보통': 'mid', '낮음': 'low', '예보 없음': 'none', '판정 전': 'pending', '수집 실패': 'fail', '기간 밖': 'off'}[d.confidence] }}" title="{{ d.confidence_note }}">{% if d.confidence in ('높음', '보통', '낮음') %}신뢰도 {% endif %}{{ d.confidence }}</span>
 </th>
 {% endfor %}
 </tr>
@@ -101,6 +101,7 @@
 <td class="week__cell week__cell--{{ c.state }}{% if loop.first %} is-tomorrow{% endif %}">
 {% if c.state == "verdict" %}
 {% if c.href %}<a class="wv wv--{{ verdict_class[c.verdict] }}" href="{{ c.href }}" title="{{ c.note }}">{{ c.verdict }}</a>{% else %}<span class="wv wv--{{ verdict_class[c.verdict] }}" title="{{ c.note }}">{{ c.verdict }}</span>{% endif %}
+{% elif c.state == "reference" %}<span class="wv wv--{{ verdict_class[c.verdict] }} wv--ref" title="{{ c.note }}">{{ c.verdict }}</span>
 {% elif c.state == "pending" %}<span class="wv wv--empty" title="{{ c.note }}">예보 대기</span>
 {% elif c.state == "off" %}<span class="wv wv--off" title="{{ c.note }}">—</span>
 {% else %}<span class="wv wv--none" title="{{ c.note }}">작업 없음</span>{% endif %}
@@ -111,17 +112,23 @@
 </tbody>
 </table>
 </div>
-<p class="small muted">신뢰도 높음: 1시간 예보로 작업 시간 전체 판정 · 보통: 3시간 예보라 일부 시각만 판정(나머지는 판정 불가) · 예보 없음: 단기예보 범위 밖. 칸을 누르면 판정 근거를 봅니다.</p>
+<p class="small muted">신뢰도 높음: 1시간 예보로 작업 시간 전체 판정 · 보통: 3시간 예보라 일부 시각만 판정(나머지는 판정 불가) · 낮음: 중기예보 참고(강수확률·날씨만, 저장하지 않음, 단계는 확인 필요까지) · 예보 없음: 예보 범위 밖. 칸을 누르면 판정 근거를 봅니다.</p>
 </article>
 {% endif %}
 
 {% set p = view.primary %}
 {% if p %}
-<article class="card">
+<article class="card" id="primary" style="scroll-margin-top: 80px;">
+{% if view.work_options %}
+<nav class="work-picker" aria-label="자세히 볼 작업">
+<span class="small muted">자세히 볼 작업</span>
+{% for o in view.work_options %}<a class="work-pick work-pick--{{ verdict_class[o.verdict] }}" href="{{ o.href }}"{% if o.selected %} aria-current="true"{% endif %}>{{ o.label }}<span>{{ o.verdict }}</span></a>{% endfor %}
+</nav>
+{% endif %}
 <div class="row row--center">
 <div>
 <h2 class="h2">{{ p.work_type }} 판정</h2>
-<p class="small muted" style="margin-top: 4px;">작업 구간별 결과</p>
+<p class="small muted" style="margin-top: 4px;">{% if view.work_options %}내일 작업 중 가장 높은 단계를 먼저 보여 줍니다 · 위에서 다른 작업을 고르세요{% else %}작업 구간별 결과{% endif %}</p>
 </div>
 <a class="btn btn--accent btn--sm" href="/judgments/{{ p.judgment_id }}">상세 근거 보기 {{ icon("arrow-right", 14, 2.2) }}</a>
 </div>

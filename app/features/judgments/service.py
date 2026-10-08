@@ -45,22 +45,31 @@ from app.features.judgments.schemas import (
     WeekRow,
     WeekView,
     WorkCard,
+    WorkOption,
     WorkWindow,
 )
 from app.features.schedules import service as schedules_service
 from app.features.schedules.schemas import WorkItemRecord
 from app.features.sites import service as sites_service
 from app.features.sites.schemas import SiteRecord
-from engine.forecast import HttpGet, KmaAuth, with_daily_temperatures
+from engine.forecast import (
+    HttpGet,
+    KmaAuth,
+    MidHalfDay,
+    land_region_for,
+    with_daily_temperatures,
+)
 from engine.judgment import (
     ELEMENT_LABEL,
     ELEMENT_UNIT,
     OPERATOR_TEXT,
     Element,
     JudgmentResult,
+    MidPart,
     RuleSet,
     Verdict,
     judge,
+    mid_reference,
 )
 from engine.kst import KST
 
@@ -122,7 +131,12 @@ def horizon_dates(now: datetime) -> tuple[date, ...]:
 
 
 def run_for_site(
-    session: Session, site_id: int, now: datetime, auth: KmaAuth, http_get: HttpGet
+    session: Session,
+    site_id: int,
+    now: datetime,
+    auth: KmaAuth,
+    http_get: HttpGet,
+    mid_service_key: str = "",
 ) -> RunResult | None:
     """현장의 내일부터 7일 판정을 내고 저장한다(D-041). 없는 현장이면 None.
 
@@ -184,6 +198,10 @@ def run_for_site(
             if same is None:
                 session.add(_judgment(site, rule_set, day, start_at, end_at,
                                       snapshot.run_id, result, target.item_id))  # fmt: skip
+    region_id = land_region_for(site.address)
+    if region_id is not None and any(d not in judged_days for d in working):
+        # 단기예보 밖의 작업일은 중기예보를 참고로 보여 준다(D-042). 판정 내역에는 저장하지 않는다.
+        forecasts_service.get_mid_forecast(session, region_id, now, mid_service_key, http_get)
     session.commit()
     if not judged_days:
         return "beyond_forecast"
@@ -212,10 +230,12 @@ def _work_range(day: date, target: "_Target") -> tuple[datetime, datetime]:
     )
 
 
-def run_all(session: Session, now: datetime, auth: KmaAuth, http_get: HttpGet) -> RunResult:
+def run_all(
+    session: Session, now: datetime, auth: KmaAuth, http_get: HttpGet, mid_service_key: str = ""
+) -> RunResult:
     """모든 현장의 7일 판정. 같은 격자는 예보를 한 번만 받는다(forecasts 재사용)."""
     results = [
-        run_for_site(session, s.site_id, now, auth, http_get)
+        run_for_site(session, s.site_id, now, auth, http_get, mid_service_key)
         for s in sites_service.list_sites(session)
     ]
     if not results:
@@ -336,6 +356,7 @@ def build_dashboard(
     hour: int | None,
     now: datetime,
     ran: RunResult | None = None,
+    work: str | None = None,
 ) -> DashboardView | None:
     """현장이 없으면 빈 대시보드, 없는 site_id면 None."""
     message = None if ran is None else RUN_MESSAGES[ran]
@@ -354,7 +375,18 @@ def build_dashboard(
     targets = _targets(site, schedules_service.items_on(session, site.site_id, target_date))
     paired = tuple((t, latest.get(t.key)) for t in targets)
     cards = tuple(_card(t.label, j, t.work_type in rule_sets) for t, j in paired)
-    primary_j = next((j for _, j in paired if j is not None), None)
+    judged = [(t, j) for t, j in paired if j is not None]
+    # 상세 카드: 고른 작업, 없으면 가장 높은 단계(같으면 앞쪽) 작업(D-041 후속).
+    chosen = next(((t, j) for t, j in judged if t.key == work), None) or max(
+        judged, key=lambda p: (Verdict(p[1].verdict).severity, -judged.index(p)), default=None
+    )
+    primary_j = None if chosen is None else chosen[1]
+    chosen_key = None if chosen is None else chosen[0].key
+    work_options = tuple(
+        WorkOption(t.label, j.verdict, dashboard_href(site.site_id, work=t.key) + "#primary",
+                   t.key == chosen_key)
+        for t, j in judged
+    ) if len(judged) > 1 else ()  # fmt: skip
 
     return DashboardView(
         sites=tuple(SiteOption(s.site_id, s.name, s.site_id == site.site_id) for s in sites),
@@ -363,7 +395,10 @@ def build_dashboard(
         target_date=_date_text(target_date),
         work_hours=f"{site.work_start_local:%H:%M}–{site.work_end_local:%H:%M}",
         cards=cards,
-        primary=None if primary_j is None else _primary(primary_j, site.site_id, element_key, hour),
+        primary=None
+        if primary_j is None
+        else _primary(primary_j, site.site_id, element_key, hour, chosen_key),
+        work_options=work_options,
         forecast_issued=None
         if primary_j is None or primary_j.forecast_issued_at is None
         else _kst_text(primary_j.forecast_issued_at),
@@ -525,7 +560,8 @@ def _targets(site: SiteRecord, items: tuple[WorkItemRecord, ...]) -> list[_Targe
 _CONFIDENCE_NOTE = {
     "높음": "1시간 간격 예보로 작업 시간 전체를 판정",
     "보통": "3시간 간격 예보라 일부 시각만 판정 · 나머지는 판정 불가",
-    "예보 없음": "단기예보 범위 밖 · 예보가 나오면 판정",
+    "낮음": "중기예보 참고(오전·오후 강수확률·날씨만) · 기준과 직접 비교 불가 · 저장하지 않음",
+    "예보 없음": "단기·중기예보 모두 없음 · 예보가 나오면 판정",
     "판정 전": "예보는 있으나 아직 판정하지 않음",
     "수집 실패": "예보를 받지 못함",
     "기간 밖": "현장 작업 기간이 아님",
@@ -542,6 +578,8 @@ def _week(
         latest.setdefault((j.target_date, _key(j)), j)
     items_by_day = schedules_service.items_between(session, site.site_id, dates[0], dates[-1])
     times = forecasts_service.latest_forecast_times(session, site.grid_nx, site.grid_ny)
+    region_id = land_region_for(site.address)
+    mid = None if region_id is None else forecasts_service.latest_mid_forecast(session, region_id)
 
     days: list[WeekDay] = []
     by_type: dict[str, dict[date, WeekCell]] = {}
@@ -553,11 +591,20 @@ def _week(
         judged = [j for _, j in pairs if j is not None]
         covered = any(_has_forecast(times, *_work_range(day, t)) for t, _ in pairs)
         confidence = _confidence(in_period, judged, covered)
+        mid_parts = None if mid is None else mid.days.get(day)
+        if confidence == "예보 없음" and mid_parts:
+            confidence = "낮음"
         days.append(WeekDay(day, f"{day:%m/%d}({_WEEKDAYS[day.weekday()]})", day == dates[0],
                             in_period, confidence, _CONFIDENCE_NOTE[confidence]))  # fmt: skip
         for target, judgment in pairs:
-            card = _card(target.label, judgment, target.work_type in rule_sets)
-            cell = _week_cell(card, "pending" if confidence in ("예보 없음", "판정 전") else "none")
+            if confidence == "낮음" and mid_parts:
+                cell = _mid_cell(target, rule_sets, mid_parts)
+            else:
+                card = _card(target.label, judgment, target.work_type in rule_sets)
+                state: Literal["none", "pending"] = (
+                    "pending" if confidence in ("예보 없음", "판정 전") else "none"
+                )
+                cell = _week_cell(card, state)
             current = by_type.setdefault(target.work_type, {}).get(day)
             if current is None or _rank(cell) > _rank(current):
                 by_type[target.work_type][day] = cell
@@ -574,9 +621,22 @@ def _week(
     return WeekView(days=tuple(days), rows=rows)
 
 
+def _mid_cell(
+    target: "_Target", rule_sets: Mapping[str, RuleSet], parts: tuple[MidHalfDay, ...]
+) -> WeekCell:
+    rule_set = rule_sets.get(target.work_type)
+    if rule_set is None:
+        return WeekCell(Verdict.CHECK.value, "reference", None,
+                        f"{target.label} · 판정 기준 확인 전 · 현장에서 직접 판단")  # fmt: skip
+    verdict, reason = mid_reference(
+        rule_set, [MidPart(p.part, p.rain_probability_pct, p.weather) for p in parts]
+    )
+    return WeekCell(verdict.value, "reference", None, f"{target.label} · {reason}")
+
+
 def _confidence(
     in_period: bool, judged: list[Judgment], covered: bool
-) -> Literal["높음", "보통", "예보 없음", "판정 전", "수집 실패", "기간 밖"]:
+) -> Literal["높음", "보통", "낮음", "예보 없음", "판정 전", "수집 실패", "기간 밖"]:
     """그날 판정에 쓴 예보 자료의 촘촘함. 저장된 시간별 값이 있는지로만 정한다(추정 없음)."""
     if not in_period:
         return "기간 밖"
@@ -669,7 +729,11 @@ def _card(work_type: str, judgment: Judgment | None, has_rules: bool) -> WorkCar
 
 
 def _primary(
-    judgment: Judgment, site_id: int, element_key: ElementKey | None, hour: int | None
+    judgment: Judgment,
+    site_id: int,
+    element_key: ElementKey | None,
+    hour: int | None,
+    work: str | None = None,
 ) -> PrimaryJudgment:
     windows = tuple(
         WorkWindow(
@@ -691,13 +755,17 @@ def _primary(
         verdict=judgment.verdict,
         windows=windows,
         tiles=tuple(Tile(v, n) for v, n in counts.items()),
-        chart=_chart(judgment, site_id, element_key, hour),
+        chart=_chart(judgment, site_id, element_key, hour, work),
         failure_reason=judgment.failure_reason,
     )
 
 
 def _chart(
-    judgment: Judgment, site_id: int, element_key: ElementKey | None, hour: int | None
+    judgment: Judgment,
+    site_id: int,
+    element_key: ElementKey | None,
+    hour: int | None,
+    work: str | None = None,
 ) -> Chart | None:
     if not judgment.hours:
         return None
@@ -740,14 +808,14 @@ def _chart(
                 aria_label=f"{t.hour:02d}:00 {label} {text}" + (", 기준 해당" if over else ""),
                 over=over,
                 selected=t.hour == selected_hour,
-                href=href_for(site_id, key, t.hour),
+                href=href_for(site_id, key, t.hour, work),
             )
         )
     threshold_text = f"{threshold:g} {unit} {OPERATOR_TEXT[operator]}"
     return Chart(
         title=f"시간대별 예보 · {judgment.work_type} 기준",
         tabs=tuple(
-            Tab(ELEMENT_LABEL[e], href_for(site_id, _KEY_OF[e], selected_hour), e == element)
+            Tab(ELEMENT_LABEL[e], href_for(site_id, _KEY_OF[e], selected_hour, work), e == element)
             for e in elements
         ),
         bars=tuple(bars),
@@ -771,9 +839,10 @@ def _deciding_element(hours: list[dict[str, Any]], elements: list[Element]) -> E
     return max(elements, key=lambda e: (severity(e), -elements.index(e)))
 
 
-def href_for(site_id: int, key: ElementKey, hour: int) -> str:
+def href_for(site_id: int, key: ElementKey, hour: int, work: str | None = None) -> str:
     # #chart: 스크립트 없이 새로 불러와도 그래프 위치로 이동한다(스크립트가 있으면 카드만 교체).
-    return dashboard_href(site_id, element=key, hour=hour) + "#chart"
+    extra: dict[str, str | int] = {} if work is None else {"work": work}
+    return dashboard_href(site_id, element=key, hour=hour, **extra) + "#chart"
 
 
 def _elements(judgment: Judgment) -> list[Element]:
