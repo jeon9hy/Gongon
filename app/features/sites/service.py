@@ -219,7 +219,6 @@ def _hhmm(value: time) -> str:
     return value.strftime("%H:%M")
 
 
-
 def _record(site: Site) -> SiteRecord:
     return SiteRecord(
         site_id=site.id,

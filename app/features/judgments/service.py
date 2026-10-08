@@ -419,7 +419,9 @@ def _recent_runs(rows: list[Judgment], names: Mapping[int, str]) -> tuple[Recent
                 site_name=names.get(site_id, "삭제된 현장"),
                 verdict=max((Verdict(j.verdict) for j in items), key=lambda v: v.severity).value,
                 when=f"{target_date:%m/%d} 대상 · {_kst_text(judged_at)} 판정",
-                items=tuple(RecentItem(j.work_type, j.verdict, f"/judgments/{j.id}") for j in items),
+                items=tuple(
+                    RecentItem(j.work_type, j.verdict, f"/judgments/{j.id}") for j in items
+                ),
                 more_href=f"/judgments?site_id={site_id}",
             )
         )
