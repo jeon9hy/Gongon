@@ -7,7 +7,14 @@ from typing import Literal
 VerdictFilter = Literal["전체", "진행", "확인 필요", "중지 검토", "판정 불가"]
 ElementKey = Literal["rain", "wind", "snow", "heat"]
 RunResult = Literal[
-    "done", "failed", "no_rules", "all_done", "no_sites", "out_of_period", "beyond_forecast"
+    "done",
+    "failed",
+    "no_rules",
+    "all_done",
+    "no_sites",
+    "out_of_period",
+    "beyond_forecast",
+    "unchanged",
 ]
 
 
@@ -118,6 +125,7 @@ class DashboardView:
     message_is_error: bool
     off_period_note: str | None  # 대상 날짜가 작업 기간 밖이면 안내 문구
     week: "WeekView | None" = None  # 내일부터 7일(D-041)
+    next_forecast: str = ""  # 다음 예보 발표·반영 시각 안내
     work_options: "tuple[WorkOption, ...]" = ()  # 상세 카드에서 고를 수 있는 작업(2개 이상일 때)
     can_run: bool = True  # 7일 중 작업일이 있어 판정할 수 있는가
 
@@ -176,6 +184,7 @@ class HomeView:
     rule_verified: bool
     message: str | None
     message_is_error: bool
+    next_forecast: str = ""
 
 
 @dataclass(frozen=True, slots=True)

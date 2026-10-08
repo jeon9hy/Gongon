@@ -9,6 +9,7 @@ from engine.forecast.kma import (
     KmaEndpoint,
     fetch_vilage_forecast,
     latest_base_at,
+    next_base_at,
     normalize,
 )
 from engine.forecast.mid import (
@@ -38,6 +39,7 @@ __all__ = [
     "land_region_for",
     "latest_base_at",
     "latest_issue_at",
+    "next_base_at",
     "normalize",
     "parse_mid_land",
     "previous_issue_at",

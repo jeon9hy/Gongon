@@ -35,7 +35,7 @@
 <h1 class="title">내일 공사 ON?</h1>
 <dl class="site-meta dashboard-meta"><div><dt>기본 작업 시간</dt><dd>{{ view.work_hours }}</dd></div><div><dt>판정 항목</dt><dd>{{ view.cards | length }}개</dd></div></dl>
 <div class="pagehead__meta">
-{% if view.forecast_issued %}<span class="chip">예보 발표 {{ view.forecast_issued }}</span>{% endif %}
+{% if view.forecast_issued %}<span class="chip">예보 발표 {{ view.forecast_issued }} · {{ view.next_forecast }}</span>{% endif %}
 {% if view.rule_version %}<span class="chip">기준 {{ view.rule_version }}{% if not view.rule_verified %} · <span class="todo">원문 대조 필요</span>{% endif %}</span>{% endif %}
 </div>
 </div>

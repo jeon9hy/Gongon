@@ -96,6 +96,15 @@ def latest_base_at(now: datetime) -> datetime:
     raise AssertionError("하루 전 23시 발표는 항상 제공된다")
 
 
+def next_base_at(now: datetime) -> datetime:
+    """now 이후 처음 받을 수 있게 될 발표 시각(제공은 AVAILABLE_AFTER 뒤)."""
+    latest = latest_base_at(now)
+    later = [h for h in BASE_HOURS if h > latest.hour]
+    if later:
+        return latest.replace(hour=later[0])
+    return (latest + timedelta(days=1)).replace(hour=BASE_HOURS[0])
+
+
 def urllib_get(url: str, params: dict[str, str], timeout_s: float) -> bytes:
     full_url = f"{url}?{urllib.parse.urlencode(params)}"
     with urllib.request.urlopen(full_url, timeout=timeout_s) as response:

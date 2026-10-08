@@ -57,6 +57,7 @@ from engine.forecast import (
     KmaAuth,
     MidHalfDay,
     land_region_for,
+    next_base_at,
     with_daily_temperatures,
 )
 from engine.judgment import (
@@ -106,6 +107,20 @@ def target_date_for(now: datetime) -> date:
     return now.astimezone(KST).date() + timedelta(days=1)
 
 
+def run_message(ran: RunResult, now: datetime) -> str:
+    """결과 문구. 판정이 그대로면 다음 예보가 언제 반영되는지 덧붙인다."""
+    if ran == "unchanged":
+        return f"{RUN_MESSAGES[ran]} {next_forecast_text(now)}"
+    return RUN_MESSAGES[ran]
+
+
+def next_forecast_text(now: datetime) -> str:
+    """예보는 3시간마다 발표되고 10분 뒤 제공된다. 같은 예보로 다시 판정하면 결과가 같다."""
+    nxt = next_base_at(now)
+    ready = nxt + timedelta(minutes=10)
+    return f"다음 예보 {nxt:%H:%M} 발표 · {ready:%H:%M} 이후 반영"
+
+
 # 판정 실행 결과 코드 → 대시보드 문구. URL에는 코드만 싣는다(임의 문구 표시 방지).
 RUN_MESSAGES: dict[RunResult, str] = {
     "done": "판정했습니다.",
@@ -118,6 +133,7 @@ RUN_MESSAGES: dict[RunResult, str] = {
     "out_of_period": (
         "앞으로 7일은 작업 기간이 아니라 판정하지 않았습니다. 현장 설정에서 작업 기간을 확인하세요."
     ),
+    "unchanged": "새로 발표된 예보가 없어 판정이 그대로입니다.",
     "beyond_forecast": (
         "앞으로 작업일이 아직 예보 범위 밖이라 판정하지 않았습니다. 예보가 나오면 판정하세요."
     ),
@@ -171,6 +187,7 @@ def run_for_site(
 
     forecast_times = sorted(h.valid_at for h in snapshot.weather.hours)
     judged_days: list[date] = []
+    stored = 0  # 새로 저장한 판정 수. 0이면 같은 예보로 이미 판정한 결과와 같다
     for day in working:
         if day != dates[0] and day not in items_by_day:
             continue  # 모레부터는 등록한 작업만 판정한다(현장 기본 공종 대체는 내일만, D-023)
@@ -198,6 +215,7 @@ def run_for_site(
                 work_item_id=target.item_id,
             )
             if same is None:
+                stored += 1
                 session.add(_judgment(site, rule_set, day, start_at, end_at,
                                       snapshot.run_id, result, target.item_id))  # fmt: skip
     region_id = land_region_for(site.address)
@@ -208,7 +226,7 @@ def run_for_site(
     if not judged_days:
         return "beyond_forecast"
     logger.info("판정 site_id=%s dates=%s base_at=%s", site.site_id, judged_days, snapshot.base_at)
-    return "done"
+    return "done" if stored else "unchanged"
 
 
 def _has_forecast(times: list[datetime], start_at: datetime, end_at: datetime) -> bool:
@@ -246,6 +264,8 @@ def run_all(
         return "failed"
     if "done" in results:
         return "all_done"
+    if "unchanged" in results:
+        return "unchanged"
     for code in ("beyond_forecast", "out_of_period"):
         if code in results:
             return code
@@ -361,7 +381,7 @@ def build_dashboard(
     work: str | None = None,
 ) -> DashboardView | None:
     """현장이 없으면 빈 대시보드, 없는 site_id면 None."""
-    message = None if ran is None else RUN_MESSAGES[ran]
+    message = None if ran is None else run_message(ran, now)
     sites = sites_service.list_sites(session)
     target_date = target_date_for(now)
     if not sites:
@@ -411,7 +431,7 @@ def build_dashboard(
         grid=f"({site.grid_nx}, {site.grid_ny})",
         notice=_notice(site, target_date, cards, tuple(j for _, j in paired)),
         message=message,
-        message_is_error=ran not in (None, "done"),
+        message_is_error=ran not in (None, "done", "unchanged"),
         off_period_note=None
         if site.works_on(target_date)
         else (
@@ -419,6 +439,7 @@ def build_dashboard(
             "판정하지 않습니다."
         ),
         week=_week(session, site, rule_sets, now),
+        next_forecast=next_forecast_text(now),
         can_run=any(site.works_on(d) for d in horizon_dates(now)),
     )
 
@@ -479,7 +500,8 @@ def build_home(session: Session, now: datetime, ran: RunResult | None = None) ->
         forecast_issued=None if run is None or not run.succeeded else _kst_text(run.base_at),
         rule_version=None if primary_rules is None else primary_rules.rule_version,
         rule_verified=primary_rules is not None and primary_rules.source_verified,
-        message=None if ran is None else RUN_MESSAGES[ran],
+        message=None if ran is None else run_message(ran, now),
+        next_forecast=next_forecast_text(now),
         message_is_error=ran
         in ("failed", "no_rules", "no_sites", "out_of_period", "beyond_forecast"),
     )

@@ -184,3 +184,18 @@ def test_home_recent_shows_latest_judgment_per_site_and_date() -> None:
         ("철골 작업", "진행"),
         ("폭염(공통)", "진행"),
     ]
+
+
+def test_rerun_with_same_forecast_says_unchanged_and_when_next(client: TestClient) -> None:
+    site_id = add_site(client)
+    client.post("/judgments/run", data={"site_id": site_id})
+
+    again = client.post("/judgments/run", data={"site_id": site_id}, follow_redirects=False)
+    page = client.get(again.headers["location"]).text
+
+    assert "ran=unchanged" in again.headers["location"]
+    # 고정 시각 10/4 15:00 → 최근 발표 14시, 다음 발표 17시(10분 뒤 제공)
+    assert (
+        "새로 발표된 예보가 없어 판정이 그대로입니다. 다음 예보 17:00 발표 · 17:10 이후 반영"
+        in page
+    )

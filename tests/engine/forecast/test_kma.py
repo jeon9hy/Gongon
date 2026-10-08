@@ -248,3 +248,20 @@ def test_real_temperature_and_humidity_make_sensible_temperature_every_hour() ->
     )  # fmt: skip
     at_14 = next(h for h in hours if h.valid_at.hour == 14).values
     assert at_14[Element.SENSIBLE_TEMPERATURE_C].raw.endswith("(기온 24℃·습도 35%)")
+
+
+@pytest.mark.parametrize(
+    ("now", "expected"),
+    [
+        (datetime(2026, 10, 4, 15, 0, tzinfo=KST), datetime(2026, 10, 4, 17, 0, tzinfo=KST)),
+        # 17시 발표는 17:10부터 제공되므로 17:05에는 아직 다음 발표가 17시다
+        (datetime(2026, 10, 4, 17, 5, tzinfo=KST), datetime(2026, 10, 4, 17, 0, tzinfo=KST)),
+        (datetime(2026, 10, 4, 17, 10, tzinfo=KST), datetime(2026, 10, 4, 20, 0, tzinfo=KST)),
+        (datetime(2026, 10, 4, 23, 30, tzinfo=KST), datetime(2026, 10, 5, 2, 0, tzinfo=KST)),
+        (datetime(2026, 10, 5, 1, 0, tzinfo=KST), datetime(2026, 10, 5, 2, 0, tzinfo=KST)),
+    ],
+)
+def test_next_base_at(now: datetime, expected: datetime) -> None:
+    from engine.forecast import next_base_at
+
+    assert next_base_at(now) == expected
