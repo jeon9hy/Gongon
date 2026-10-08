@@ -461,7 +461,9 @@ def _card(work_type: str, judgment: Judgment | None, has_rules: bool) -> WorkCar
         return WorkCard(work_type, time_range, judgment.verdict, judgment.failure_reason, href)
     flagged = [w for w in judgment.windows if w["verdict"] != Verdict.GO.value]
     if not flagged:
-        return WorkCard(work_type, time_range, judgment.verdict, "모든 시간 기준 미만", href)
+        return WorkCard(
+            work_type, time_range, judgment.verdict, "모든 시간 기준에 해당하지 않음", href
+        )
     worst = max(flagged, key=lambda w: Verdict(w["verdict"]).severity)
     reason = _window_reason(judgment.hours, worst)
     window_text = _range_text(_dt(worst["start_at"]), _dt(worst["end_at"]))
@@ -592,11 +594,30 @@ def _entry(
 
 
 def _meets(entry: dict[str, Any]) -> bool:
-    """예보값 구간 전체가 기준에 해당하는지(그래프·표 강조용). 판정 단계는 저장된 verdict를 쓴다."""
+    """예보값 구간 전체가 기준에 해당하는지(그래프·표 강조용). 판정 단계는 저장된 verdict를 쓴다.
+
+    낮은 쪽 기준(이하·미만)은 상한으로 본다. 범주 예보의 상한 포함 여부는 저장하지 않으므로
+    '미만'에서 상한이 기준과 같으면 강조하지 않는다(강조를 과장하지 않는 쪽).
+    """
     if entry["lower"] is None:
         return False
-    lower, threshold = float(entry["lower"]), float(entry["threshold"])
-    return lower >= threshold if entry["operator"] == ">=" else lower > threshold
+    lower, threshold, operator = float(entry["lower"]), float(entry["threshold"]), entry["operator"]
+    upper = None if entry["upper"] is None else float(entry["upper"])
+    if operator == ">=":
+        return lower >= threshold
+    if operator == ">":
+        return lower > threshold
+    if operator == "<=":
+        return upper is not None and upper <= threshold
+    return upper is not None and upper < threshold  # "<"
+
+
+def _element_meets(hour_json: dict[str, Any], element: Element) -> bool:
+    """그 시각에 이 요소의 조건 중 하나라도 기준에 해당하는가.
+
+    같은 요소에 높은 쪽·낮은 쪽 기준이 함께 있을 수 있다(콘크리트 일평균기온 25 초과·4 이하).
+    """
+    return any(_meets(c) for c in hour_json["conditions"] if c["element"] == element.value)
 
 
 def _value_text(entry: dict[str, Any], unit: str) -> str:
@@ -792,10 +813,10 @@ def _hour_row(hour_json: dict[str, Any], elements: list[Element]) -> HourRow:
     for element in elements:
         e = _entry(hour_json, element, lowest=True)
         text = "없음" if e is None or e["lower"] is None else _value_text(e, "").strip()
-        cells.append(Cell(text, e is not None and _meets(e)))
+        cells.append(Cell(text, _element_meets(hour_json, element)))
     verdict = hour_json["verdict"]
     if verdict == Verdict.GO.value:
-        calculation = "모든 요소 기준 미만"
+        calculation = "기준에 해당하는 요소 없음"
     else:
         calculation = " / ".join(
             c["reason"] for c in hour_json["conditions"] if c["verdict"] == verdict
