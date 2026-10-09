@@ -128,16 +128,39 @@ def test_missing_element_is_unavailable_not_filled_as_normal() -> None:
     assert result.hours[0].conditions[0].value is None
 
 
-def test_missing_hour_in_work_range_is_unavailable() -> None:
+def test_missing_hour_is_estimated_from_the_nearest_same_day_value() -> None:
     result = judge(weather({9: {RAIN: exact(0.0)}}), rule_set(condition()),
                    DAY.replace(hour=9), DAY.replace(hour=11))  # fmt: skip
 
-    # 9시 칸은 10시 예보(h-1~h 해석)를 알 수 없어 '진행'이라고 하지 않는다(D-030).
-    assert [h.verdict for h in result.hours] == [Verdict.CHECK, Verdict.UNAVAILABLE]
+    # 10시 예보가 없어 10시 칸과 9시 칸의 h+1 해석(D-030) 모두
+    # 같은 날 가장 가까운 9시 값으로 추정한다(D-053).
+    assert [h.verdict for h in result.hours] == [Verdict.GO, Verdict.GO]
+    assert "09시 예보값으로 추정" in result.hours[1].conditions[0].reason
+    assert result.verdict == Verdict.GO
+
+
+def test_estimated_hour_over_the_threshold_is_check_not_stop_review() -> None:
+    # 3시간 간격처럼 12·15시 값만 있고 기준을 넘음
+    # → 실제 값인 12시는 중지 검토, 추정한 13시는 확인 필요까지
+    values = {12: {RAIN: exact(5.0)}, 15: {RAIN: exact(5.0)}}
+    result = judge(weather(values), rule_set(condition()), DAY.replace(hour=12),
+                   DAY.replace(hour=14))  # fmt: skip
+
+    assert [h.verdict for h in result.hours] == [Verdict.STOP_REVIEW, Verdict.CHECK]
+    assert result.hours[1].conditions[0].reason.endswith("12시 예보값으로 추정")
+
+
+def test_no_value_on_the_same_day_stays_unavailable() -> None:
+    # 다른 날 값으로는 추정하지 않는다
+    other_day = WeatherInput(
+        ISSUED_AT, (HourlyForecast(DAY.replace(hour=0) + timedelta(days=1), {RAIN: exact(0.0)}),)
+    )
+    result = judge(other_day, rule_set(condition()), DAY.replace(hour=9), DAY.replace(hour=10))
+
     assert result.verdict == Verdict.UNAVAILABLE
 
 
-def test_stop_review_outranks_unavailable_and_windows_merge_same_verdicts() -> None:
+def test_stop_review_outranks_estimated_hours_and_windows_merge_same_verdicts() -> None:
     values = {
         7: {RAIN: exact(0.0)},
         8: {RAIN: exact(0.0)},
@@ -145,18 +168,17 @@ def test_stop_review_outranks_unavailable_and_windows_merge_same_verdicts() -> N
         10: {RAIN: exact(2.0)},
         11: {RAIN: exact(1.5)},
         12: {RAIN: exact(1.2)},
-    }  # 13시 예보 없음
+    }  # 13시 예보 없음 → 12시 값(1.2)으로 추정, 기준을 넘어도 확인 필요까지
     result = judge(weather(values), rule_set(condition()), DAY.replace(hour=7),
                    DAY.replace(hour=14))  # fmt: skip
 
     assert result.verdict == Verdict.STOP_REVIEW
-    # 9시·12시 칸은 두 시각 해석(D-030)의 결과가 달라 확인 필요
+    # 9시 칸은 두 시각 해석(D-030)의 결과가 달라 확인 필요
     assert [(w.start_at.hour, w.end_at.hour, w.verdict) for w in result.windows] == [
         (7, 9, Verdict.GO),
         (9, 10, Verdict.CHECK),
-        (10, 12, Verdict.STOP_REVIEW),
-        (12, 13, Verdict.CHECK),
-        (13, 14, Verdict.UNAVAILABLE),
+        (10, 13, Verdict.STOP_REVIEW),  # 12시 칸의 h+1(13시)도 12시 값으로 추정해 같은 결과
+        (13, 14, Verdict.CHECK),
     ]
 
 

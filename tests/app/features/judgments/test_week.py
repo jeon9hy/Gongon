@@ -1,5 +1,6 @@
-"""주간 보기(S08-3, D-041): 예보가 있는 날만 판정하고, 자료가 성긴 날은 신뢰도를 낮춰 표시한다."""
+"""주간 보기(S08-3, D-041·D-050): 예보가 있는 날만 판정하고, 날마다 공온지수를 표시한다."""
 
+import re
 from datetime import date
 from typing import Any
 
@@ -12,7 +13,7 @@ from tests.fakes import FakeKma
 
 SITE: dict[str, Any] = {
     "name": "○○현장",
-    "address": "서울 중구 세종대로 110",
+    "road_address": "서울 중구 세종대로 110",
     "latitude": "37.5665",
     "longitude": "126.9780",
     "work_start": "07:00",
@@ -44,8 +45,14 @@ def add_item(client: TestClient, site_id: int, day: str, work_type: str = "철�
     assert client.post("/schedule", data=data, follow_redirects=False).status_code == 303
 
 
+def day_scores(week: str) -> dict[str, int]:
+    """열 머리마다 공온지수 점수(날짜 'MM/DD' → 점수). 점수가 없는 날은 빠진다."""
+    found = re.findall(r'(\d\d/\d\d)\(.\)</span>\s*<span class="gidx[^"]*"[^>]*><b>(\d+)</b>', week)
+    return {day: int(score) for day, score in found}
+
+
 def week_html(page: str) -> str:
-    """주간 표의 열 머리(날짜·신뢰도)와 칸. 표 아래 설명 문구는 뺀다."""
+    """주간 표의 열 머리(날짜·공온지수)와 칸. 표 아래 설명 문구는 뺀다."""
     start = page.index('id="week-title"')
     return page[start : page.index("</table>", start)]
 
@@ -54,7 +61,7 @@ def test_week_judges_covered_days_and_marks_sparse_days(
     client: TestClient, session: Session, fake_kma: FakeKma
 ) -> None:
     # 고정 시각 10/4 → 내일 10/5. 10/6은 1시간 간격, 10/7은 3시간 간격(실제 4일 뒤 응답 형태),
-    # 10/8은 작업 시간(07~17시) 밖의 00시 값뿐이라 판정하지 않는다.
+    # 10/8은 00시 값뿐이지만 같은 날 값으로 작업 시간 전체를 추정해 판정한다(D-053).
     for hour in range(24):
         fake_kma.set_hour("20261006", hour, **CALM)
     for hour in range(0, 24, 3):
@@ -68,22 +75,22 @@ def test_week_judges_covered_days_and_marks_sparse_days(
     client.post("/judgments/run", data={"site_id": site_id})
 
     days = sorted({d for d in session.scalars(select(Judgment.target_date))})
-    assert days == [date(2026, 10, 5), date(2026, 10, 6), date(2026, 10, 7)]
+    assert days == [date(2026, 10, 5), date(2026, 10, 6), date(2026, 10, 7), date(2026, 10, 8)]
     assert len(fake_kma.calls) == 1  # 예보는 한 번만 받아 여러 날에 쓴다
     steel = {
         j.target_date: j.verdict
         for j in session.scalars(select(Judgment).where(Judgment.work_type == "철골 작업"))
     }
     assert steel[date(2026, 10, 6)] == "중지 검토"
-    # 3시간 간격인 날은 값이 없는 시각을 정상으로 채우지 않는다
-    assert steel[date(2026, 10, 7)] == "판정 불가"
+    # 3시간 간격인 날은 같은 날 가까운 시각 값으로 추정한다(기준을 넘으면 확인 필요까지)
+    assert steel[date(2026, 10, 7)] == "진행"
+    assert steel[date(2026, 10, 8)] == "진행"
 
     week = week_html(client.get("/dashboard", params={"site_id": site_id}).text)
-    assert week.count("신뢰도 높음") == 2  # 10/5, 10/6
-    assert week.count("신뢰도 보통") == 1  # 10/7
-    assert week.count("예보 없음") == 1  # 10/8: 작업은 있으나 작업 시간에 예보 값 없음
+    scores = day_scores(week)
+    assert set(scores) == {"10/05", "10/06", "10/07", "10/08"}  # 판정을 저장한 날만 공온지수
+    assert scores["10/06"] <= 30  # 중지 검토가 있는 날은 30점까지(D-050)
     assert week.count(">작업 없음<") == 3  # 10/9~10/11: 등록한 작업이 없어 판정·표시하지 않음
-    assert "예보 대기" in week
 
 
 def test_week_marks_days_outside_work_period(client: TestClient, fake_kma: FakeKma) -> None:
@@ -107,8 +114,11 @@ def test_detail_card_defaults_to_highest_verdict_and_can_switch(
     switched = client.get("/dashboard", params={"site_id": site_id, "work": "콘크리트 타설"}).text
 
     # 목록 순서상 콘크리트가 먼저지만 가장 높은 단계(중지 검토)인 철골을 먼저 보여 준다
-    assert '<h2 class="h2">철골 작업 판정</h2>' in page
-    assert '<h2 class="h2">콘크리트 타설 판정</h2>' in switched
+    assert 'id="work-detail-title">철골 작업 판정</h2>' in page
+    assert 'id="work-detail-title">콘크리트 타설 판정</h2>' in switched
+    # 기본 진입은 모달을 닫아 두고, 작업을 골라 들어오면 연다
+    assert 'id="work-detail" autofocus aria-labelledby="work-detail-title" data-open' not in page
+    assert 'id="work-detail" autofocus aria-labelledby="work-detail-title" data-open' in switched
     assert "work=%EC%BD%98" in switched  # 그래프 요소·시각을 바꿔도 고른 작업을 유지
 
 
@@ -133,7 +143,8 @@ def test_days_beyond_short_forecast_show_mid_forecast_reference(
     # 중기예보 참고는 판정 내역에 저장하지 않는다
     assert {d.isoformat() for d in session.scalars(select(Judgment.target_date))} == {"2026-10-05"}
     week = week_html(client.get("/dashboard", params={"site_id": site_id}).text)
-    assert week.count("신뢰도 낮음") == 2  # 10/8, 10/9
+    assert week.count('class="week__sub week__sub--mid"') == 2  # 10/8, 10/9: 중기 참고, 점수 없음
+    assert set(day_scores(week)) == {"10/05"}
     assert week.count(">작업 없음<") == 4  # 10/6·10/7·10/10·10/11: 등록한 작업 없음
     assert "오후 흐리고 비 60%" in week  # 철골(강우 기준) → 확인 필요 사유
     assert "wv--ref" in week
@@ -195,10 +206,7 @@ def test_rerun_with_same_forecast_says_unchanged_and_when_next(client: TestClien
 
     assert "ran=unchanged" in again.headers["location"]
     # 고정 시각 10/4 15:00 → 최근 발표 14시, 다음 발표 17시(10분 뒤 제공)
-    assert (
-        "새로 발표된 예보가 없어 판정이 그대로입니다. 다음 예보 17:00 발표 · 17:10 이후 반영"
-        in page
-    )
+    assert "새로 발표된 예보가 없어 판정이 그대로입니다. 다음 예보 17:00 발표(17:10 반영)" in page
 
 
 def test_rerun_updates_last_checked_time_without_new_judgments(
@@ -220,5 +228,5 @@ def test_rerun_updates_last_checked_time_without_new_judgments(
     assert list(session.scalars(select(Judgment.id))) == first_rows  # 판정 기록은 그대로
     home = client.get("/").text
     dashboard = client.get("/dashboard", params={"site_id": site_id}).text
-    assert "10월 4일 15:50 확인 · 14:00 발표 예보" in home  # 사용자에게는 확인 시각이 갱신된다
+    assert "15:50 확인" in home  # 사용자에게는 확인 시각이 갱신된다(홈 카드는 짧게)
     assert "10월 4일 15:50 확인 · 14:00 발표 예보" in dashboard

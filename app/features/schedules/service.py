@@ -9,6 +9,7 @@ from app.features.schedules.models import WorkItem
 from app.features.schedules.schemas import (
     CalendarDay,
     DayDetail,
+    MonthChoice,
     ScheduleView,
     SiteChoice,
     WorkItemForm,
@@ -18,7 +19,10 @@ from app.features.sites import service as sites_service
 from app.features.sites.schemas import SiteRecord
 
 CELL_ITEMS = 3  # 달력 칸에 보이는 작업 수(나머지는 +N)
+MONTH_PICK_SPAN = 6  # 달 고르기 목록에 늘 넣는 보고 있는 달 앞뒤 개월 수
+MONTH_PICK_MAX = 24  # 달 고르기 목록은 보고 있는 달에서 앞뒤 최대 이 개월까지
 MAX_LOCATION = 60
+MAX_DAYS = 31  # 한 번에 추가할 수 있는 날 수
 MAX_MEMO = 500
 _WEEKDAYS = "월화수목금토일"
 
@@ -103,6 +107,7 @@ def build_view(
                     is_target=d == tomorrow,
                     in_period=site.works_on(d),
                     selected=d == selected,
+                    addable=d > today and site.works_on(d),
                     items=tuple(on_day[:CELL_ITEMS]),
                     more=max(0, len(on_day) - CELL_ITEMS),
                 )
@@ -111,12 +116,8 @@ def build_view(
         weeks = tuple(tuple(cells[i : i + 7]) for i in range(0, len(cells), 7))
         detail = _detail(site, selected, today, tuple(by_day.get(selected, [])))
 
-    default_form = WorkItemForm(
-        work_type="" if site is None or not site.work_types else site.work_types[0],
-        work_date=selected.isoformat(),
-        start="" if site is None else f"{site.work_start_local:%H:%M}",
-        end="" if site is None else f"{site.work_end_local:%H:%M}",
-    )
+    # 공종·시간은 미리 고르지 않는다(개발자 요청). 날짜만 고른 날로 채운다.
+    default_form = WorkItemForm(work_type="", work_date=selected.isoformat(), start="", end="")
     base = "" if site is None else f"/schedule?site_id={site.site_id}&month="
     return ScheduleView(
         sites=tuple(
@@ -130,6 +131,7 @@ def build_view(
         prev_href=f"{base}{(first - timedelta(days=1)):%Y-%m}",
         next_href=f"{base}{(last + timedelta(days=1)):%Y-%m}",
         this_month_href=f"{base}{tomorrow:%Y-%m}&day={tomorrow.isoformat()}",
+        month_groups=() if site is None else _month_groups(site, first, tomorrow, base),
         weeks=weeks,
         detail=detail,
         work_types=() if site is None else site.work_types,
@@ -169,10 +171,10 @@ def add_item(
     site = sites_service.get_site(session, site_id)
     if site is None:
         return False, ("현장을 찾을 수 없습니다.",)
-    item, errors = _validate(site, form, today)
-    if item is None:
+    items, errors = _validate(site, form, today)
+    if not items:
         return False, errors
-    repository.add(session, item)
+    repository.add_all(session, items)
     return True, ()
 
 
@@ -182,16 +184,28 @@ def delete_item(session: Session, site_id: int, item_id: int) -> bool:
 
 def _validate(
     site: SiteRecord, form: WorkItemForm, today: date
-) -> tuple[WorkItem | None, tuple[str, ...]]:
+) -> tuple[list[WorkItem], tuple[str, ...]]:
+    """고른 날짜마다 작업 하나씩(여러 날 한 번에 추가).
+
+    하루라도 맞지 않으면 아무것도 만들지 않는다.
+    """
     errors: list[str] = []
-    if form.work_type not in site.work_types:
+    if not form.work_type:
+        errors.append("공종을 고르세요.")
+    elif form.work_type not in site.work_types:
         errors.append("현장에 등록한 공종 중에서 고르세요. 공종은 현장 설정에서 바꿉니다.")
-    day = _date(form.work_date)
-    if day is None:
-        errors.append("작업 날짜를 입력하세요.")
-    elif day <= today:
+    raw_days = [r for r in (*form.work_dates, form.work_date) if r.strip()]
+    parsed = [_date(r) for r in raw_days]
+    days = sorted({d for d in parsed if d is not None})
+    if not raw_days:
+        errors.append("작업 날짜를 고르세요.")
+    elif None in parsed:
+        errors.append("작업 날짜를 날짜 형식으로 입력하세요.")
+    elif len(days) > MAX_DAYS:
+        errors.append(f"한 번에 {MAX_DAYS}일까지 추가할 수 있습니다.")
+    elif any(d <= today for d in days):
         errors.append("작업 날짜는 내일 이후여야 합니다(판정은 다음 날 작업을 봅니다).")
-    elif not site.works_on(day):
+    elif not all(site.works_on(d) for d in days):
         errors.append(f"현장 작업 기간({site.period_text()}) 안의 날짜를 고르세요.")
     start, end = _time(form.start), _time(form.end)
     if start is None or end is None:
@@ -203,18 +217,21 @@ def _validate(
         errors.append(f"작업 위치는 {MAX_LOCATION}자 이하로 입력하세요.")
     if len(memo) > MAX_MEMO:
         errors.append(f"메모는 {MAX_MEMO}자 이하로 입력하세요.")
-    if errors or day is None or start is None or end is None:
-        return None, tuple(errors)
+    if errors or start is None or end is None:
+        return [], tuple(errors)
     return (
-        WorkItem(
-            site_id=site.site_id,
-            work_type=form.work_type,
-            work_date=day,
-            start_local=start,
-            end_local=end,
-            location=location,
-            memo=memo,
-        ),
+        [
+            WorkItem(
+                site_id=site.site_id,
+                work_type=form.work_type,
+                work_date=d,
+                start_local=start,
+                end_local=end,
+                location=location,
+                memo=memo,
+            )
+            for d in days
+        ],
         (),
     )
 
@@ -236,6 +253,50 @@ def _record(item: WorkItem) -> WorkItemRecord:
         location=item.location,
         memo=item.memo,
     )
+
+
+def _month_groups(
+    site: SiteRecord, shown: date, tomorrow: date, base: str
+) -> tuple[tuple[int, tuple[MonthChoice, ...]], ...]:
+    """달 고르기 목록: 보고 있는 달 앞뒤 MONTH_PICK_SPAN개월 + 작업 기간 + 내일이 든 달.
+
+    작업 기간이 너무 길면 보고 있는 달 중심 앞뒤 MONTH_PICK_MAX개월로 자른다.
+    """
+    anchors = [shown, tomorrow.replace(day=1)]
+    for edge in (site.work_start_date, site.work_end_date):
+        if edge is not None:
+            anchors.append(edge.replace(day=1))
+    # 작업 기간이 짧아도 앞뒤로 넘겨 볼 수 있게 보고 있는 달 앞뒤 MONTH_PICK_SPAN개월은 항상 넣는다.
+    anchors += [_add_months(shown, -MONTH_PICK_SPAN), _add_months(shown, MONTH_PICK_SPAN)]
+    start, end = min(anchors), max(anchors)
+    start = max(start, _add_months(shown, -MONTH_PICK_MAX))
+    end = min(end, _add_months(shown, MONTH_PICK_MAX))
+
+    groups: dict[int, list[MonthChoice]] = {}
+    month = start
+    while month <= end:
+        groups.setdefault(month.year, []).append(
+            MonthChoice(
+                label=f"{month.month}월",
+                href=f"{base}{month:%Y-%m}",
+                selected=month == shown,
+                in_period=_overlaps_period(site, month),
+                is_target=month == tomorrow.replace(day=1),
+            )
+        )
+        month = _add_months(month, 1)
+    return tuple((year, tuple(months)) for year, months in groups.items())
+
+
+def _overlaps_period(site: SiteRecord, first: date) -> bool:
+    """이 달 중 하루라도 작업 기간에 드는가(기간 끝이 비어 있으면 그쪽으로 제한 없음)."""
+    start, end = site.work_start_date, site.work_end_date
+    return (start is None or start <= _month_end(first)) and (end is None or end >= first)
+
+
+def _add_months(first: date, months: int) -> date:
+    index = first.year * 12 + first.month - 1 + months
+    return date(index // 12, index % 12 + 1, 1)
 
 
 def _day_text(day: date) -> str:

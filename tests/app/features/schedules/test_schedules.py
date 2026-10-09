@@ -1,5 +1,6 @@
 """작업 일정 입력(S08-1)과 작업별 판정 연결. 기상청은 가짜(FakeKma), 지금은 2026-10-04 15:00 KST."""
 
+import re
 from typing import Any
 
 import pytest
@@ -13,7 +14,7 @@ from tests.fakes import FakeKma
 
 SITE: dict[str, Any] = {
     "name": "○○현장",
-    "address": "서울 중구 세종대로 110",
+    "road_address": "서울 중구 세종대로 110",
     "latitude": "37.5665",
     "longitude": "126.9780",
     "work_start": "07:00",
@@ -77,8 +78,9 @@ def test_navigation_keeps_the_selected_site_through_judgment_detail(
         response = client.get(path)
         assert response.status_code == 200
         navigation = response.text.split('<nav class="appnav"')[1].split("</nav>")[0]
-        for destination in ("dashboard", "schedule", "judgments", "sites"):
+        for destination in ("dashboard", "schedule", "sites"):
             assert f'href="/{destination}?site_id={site_id}"' in navigation
+        assert 'href="/judgments"' in navigation  # 판정 내역은 늘 전체 현장으로 연다
 
 
 @pytest.mark.parametrize(
@@ -221,8 +223,114 @@ def test_malformed_month_or_day_falls_back(client: TestClient, query: str) -> No
     assert "2026년 10월" in response.text
 
 
-def test_past_day_shows_detail_without_add_form(client: TestClient) -> None:
+def test_past_day_shows_detail_without_add_button(client: TestClient) -> None:
     site_id = add_site(client)
     page = client.get(f"/schedule?site_id={site_id}&day=2026-10-04").text  # 오늘
     assert "작업을 추가할 수 없습니다" in page
-    assert 'action="/schedule">' not in page.replace('method="get" action="/schedule"', "")
+    assert 'type="button" data-open-add' not in page  # 모달 자체는 있어도 여는 버튼이 없다
+
+
+def month_menu(page: str) -> str:
+    return page.split('class="monthpick__menu"')[1].split("</details>")[0]
+
+
+def month_classes(menu: str, month: str) -> set[str]:
+    """달 고르기 목록에서 그 달 링크의 class 목록."""
+    found = re.search(rf'<a class="([^"]*)" href="[^"]*month={month}"', menu)
+    assert found is not None, month
+    return set(found.group(1).split())
+
+
+def test_month_picker_spans_six_months_each_way_and_marks_the_work_period(
+    client: TestClient,
+) -> None:
+    # 작업 기간 2026-10-01~2026-12-31, 보고 있는 달 10월 → 2026-04~2027-04, 10~12월만 작업 기간.
+    site_id = add_site(client)
+
+    menu = month_menu(client.get(f"/schedule?site_id={site_id}").text)
+
+    assert "month=2026-03" not in menu and "month=2027-05" not in menu
+    assert "month=2026-04" in menu and "month=2027-04" in menu
+    assert "2026년" in menu and "2027년" in menu
+    assert 'aria-current="true">10월</a>' in menu
+    for month in ("2026-10", "2026-11", "2026-12"):
+        assert "is-period" in month_classes(menu, month)
+    for month in ("2026-09", "2027-01"):  # 기간 바로 앞뒤 달
+        assert "is-period" not in month_classes(menu, month)
+
+
+def test_month_picker_marks_a_month_with_only_a_few_period_days(client: TestClient) -> None:
+    site_id = add_site(client, work_end_date="2027-01-03")  # 1월은 3일만 기간 안
+
+    menu = month_menu(client.get(f"/schedule?site_id={site_id}").text)
+
+    assert "is-period" in month_classes(menu, "2027-01")
+    assert "is-period" not in month_classes(menu, "2027-02")
+
+
+@pytest.mark.parametrize("missing", ["work_type", "start", "end"])
+def test_item_without_a_required_value_is_not_saved_and_modal_reopens(
+    client: TestClient, session: Session, missing: str
+) -> None:
+    site_id = add_site(client)
+
+    response = add_item(client, site_id, **{missing: ""})
+
+    assert response.status_code == 422
+    assert session.scalar(select(WorkItem.id)) is None
+    assert 'id="add-item" autofocus aria-labelledby="add-item-title" data-open' in response.text
+
+
+def test_add_form_has_no_preselected_work_type_or_times(client: TestClient) -> None:
+    site_id = add_site(client)
+
+    page = client.get(f"/schedule?site_id={site_id}").text
+
+    assert '<option value="" selected disabled>공종 선택</option>' in page
+    assert 'name="start" value=""' in page and 'name="end" value=""' in page
+
+
+def add_on_days(client: TestClient, site_id: int, *days: str) -> Any:
+    data: dict[str, Any] = {**ITEM, "work_date": "", "site_id": str(site_id)}
+    if days:
+        data["work_dates"] = list(days)
+    return client.post("/schedule", data=data, follow_redirects=False)
+
+
+def test_picked_dates_add_one_item_per_day(client: TestClient, session: Session) -> None:
+    site_id = add_site(client)
+
+    response = add_on_days(client, site_id, "2026-10-09", "2026-10-05", "2026-10-07")
+
+    assert response.status_code == 303
+    assert "day=2026-10-05" in response.headers["location"]  # 가장 이른 날로 돌아간다
+    days = sorted(d.isoformat() for d in session.scalars(select(WorkItem.work_date)))
+    assert days == ["2026-10-05", "2026-10-07", "2026-10-09"]
+
+
+@pytest.mark.parametrize(
+    ("days", "message"),
+    [
+        (("2026-10-05", "2026-10-04"), "내일 이후"),  # 하나라도 오늘이면 아무것도 만들지 않는다
+        (("2026-10-05", "2027-01-03"), "작업 기간"),
+        ((), "작업 날짜를 고르세요"),
+    ],
+)
+def test_bad_picked_dates_save_nothing(
+    client: TestClient, session: Session, days: tuple[str, ...], message: str
+) -> None:
+    site_id = add_site(client)
+
+    response = add_on_days(client, site_id, *days)
+
+    assert response.status_code == 422 and message in response.text
+    assert session.scalar(select(WorkItem.id)) is None
+
+
+def test_date_picker_disables_days_that_cannot_take_work(client: TestClient) -> None:
+    site_id = add_site(client)
+
+    page = client.get(f"/schedule?site_id={site_id}").text
+
+    assert 'data-date="2026-10-04" disabled' in page  # 오늘
+    assert 'data-date="2026-10-05" aria-pressed="true"' in page  # 고른 날(내일)

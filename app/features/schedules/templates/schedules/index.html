@@ -3,16 +3,15 @@
 {% block title %}작업 일정{% endblock %}
 {% block content %}
 
-<section class="pagehead">
-<div>
-<p class="pagehead__eyebrow">현장의 다음 작업</p>
-<h1 class="title">작업 일정</h1>
-<p class="subtitle">날짜를 골라 작업을 기록하세요. 내일 작업의 날씨 영향도 함께 확인할 수 있습니다.</p>
+<section class="hero" aria-labelledby="schedule-title">
+<div class="hero__main">
+<p class="hero__date">{{ icon("calendar", 15) }} 작업 일정{% if view.site_name %} · {{ view.site_name }}{% endif %}</p>
+<h1 class="hero__title" id="schedule-title">{{ view.month_title.split(" ")[-1] if view.site_id is not none else "이번 달" }} 공사 ON?</h1>
 </div>
 {% if view.sites %}
-<form method="get" action="/schedule" class="pagehead__action">
+<form method="get" action="/schedule" class="hero__action">
 <label class="visually-hidden" for="schedule-site">현장</label>
-<select id="schedule-site" name="site_id" onchange="this.form.submit()">
+<select id="schedule-site" class="hero__select" name="site_id" onchange="this.form.submit()">
 {% for s in view.sites %}<option value="{{ s.site_id }}"{% if s.selected %} selected{% endif %}>{{ s.name }}</option>{% endfor %}
 </select>
 <noscript><button class="btn btn--soft btn--sm" type="submit">보기</button></noscript>
@@ -21,9 +20,6 @@
 </section>
 
 {% if view.message %}<div class="alert alert--ok" role="status">{{ icon("check", 16, 2.4) }} {{ view.message }}</div>{% endif %}
-{% if view.errors %}
-<div class="alert alert--error" role="alert"><strong>저장하지 못했습니다</strong><ul>{% for e in view.errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
-{% endif %}
 
 {% if view.site_id is none %}
 <section class="card">
@@ -37,11 +33,23 @@
 <div class="calhead">
 <div class="calhead__nav">
 <a class="btn btn--sm" href="{{ view.prev_href }}" aria-label="이전 달">{{ icon("arrow-left", 14, 2.2) }}</a>
-<h2 class="h2" id="month-title">{{ view.month_title }}</h2>
+<details class="monthpick">
+<summary class="monthpick__toggle" aria-label="{{ view.month_title }} · 다른 달 고르기"><h2 class="h2" id="month-title">{{ view.month_title }}</h2>{{ icon("chevron-down", 16, 2.2) }}</summary>
+<div class="monthpick__menu">
+{% for year, months in view.month_groups %}
+<div class="monthpick__year">
+<p class="monthpick__label">{{ year }}년</p>
+<div class="monthpick__grid">
+{% for m in months %}<a class="monthpick__month{% if m.in_period %} is-period{% endif %}{% if m.is_target %} is-target{% endif %}" href="{{ m.href }}"{% if m.selected %} aria-current="true"{% endif %}>{{ m.label }}</a>{% endfor %}
+</div>
+</div>
+{% endfor %}
+</div>
+</details>
 <a class="btn btn--sm" href="{{ view.next_href }}" aria-label="다음 달">{{ icon("arrow-right", 14, 2.2) }}</a>
 <a class="today-btn" href="{{ view.this_month_href }}" title="내일 날짜로 이동" aria-label="내일 날짜로 이동">{{ icon("cloud-sun", 18) }}<span>내일</span></a>
 </div>
-<span class="small muted">{{ view.site_name }}{% if view.period_text %} · 작업 기간 {{ view.period_text }}{% endif %}</span>
+{% if view.period_text %}<span class="small muted">작업 기간 {{ view.period_text }}</span>{% endif %}
 </div>
 
 <table class="calendar">
@@ -63,7 +71,6 @@
 {% endfor %}
 </tbody>
 </table>
-<p class="small muted" style="margin-top: 10px;">‘판정’ 표시는 내일(판정 대상), 검은 테두리는 선택한 날입니다. 빗금 칸은 작업 기간 밖, 흐린 칸은 다른 달입니다.</p>
 </section>
 
 <aside class="stack split__side" id="day-detail">
@@ -79,7 +86,7 @@
 {% for i in d.items %}
 <li class="itemrow itemrow--stack">
 <div class="itemrow__top">
-<span class="itemrow__time">{{ i.start_local.strftime("%H:%M") }}–{{ i.end_local.strftime("%H:%M") }}</span>
+<strong class="itemrow__name">{{ i.work_type }}</strong>
 <details class="delete-action">
 <summary aria-label="{{ d.day_text }} {{ i.work_type }} 삭제 확인">삭제</summary>
 <form method="post" action="/schedule/{{ i.item_id }}/delete" class="delete-action__confirm">
@@ -90,39 +97,98 @@
 </form>
 </details>
 </div>
-<strong>{{ i.work_type }}</strong>
-{% if i.location %}<span class="small muted">{{ icon("site", 13) }} {{ i.location }}</span>{% endif %}
+<span class="itemrow__meta"><span class="itemrow__time">{{ i.start_local.strftime("%H:%M") }}–{{ i.end_local.strftime("%H:%M") }}</span>{% if i.location %}<span>{{ icon("site", 13) }} {{ i.location }}</span>{% endif %}</span>
 {% if i.memo %}<span class="small itemrow__memo">{{ i.memo }}</span>{% endif %}
 </li>
 {% endfor %}
 </ul>
 {% endif %}
-{% if d.note %}<p class="small muted" style="padding: 8px 0 0;">{{ d.note }}</p>{% endif %}
+{% if not d.items %}<div class="empty-art empty-art--sm"><img class="mascot" src="/static/brand/mascot-schedule.png" alt="" width="120" height="95"><p>{{ d.note or "이날 등록한 작업이 없습니다." }}</p></div>
+{% elif d.note %}<p class="small muted" style="padding: 8px 0 0;">{{ d.note }}</p>{% endif %}
+<div class="day-actions">
+{% if d.can_add %}<button class="btn btn--accent btn--sm" type="button" data-open-add>{{ icon("plus", 15, 2.2) }} 작업 추가</button>{% endif %}
 {% if d.is_target %}<a class="btn btn--ink btn--sm day-judge-link" href="/dashboard?site_id={{ view.site_id }}">{{ icon("dashboard", 15) }} 내일 판정 보기 {{ icon("arrow-right", 14, 2.2) }}</a>{% endif %}
+</div>
 </div>
 </section>
 
-{% if d.can_add %}
-<form class="panel" method="post" action="/schedule">
-<div class="panel__head"><h2 class="h2">작업 추가</h2></div>
+{% if view.work_types %}
+<dialog class="modal" id="add-item" autofocus aria-labelledby="add-item-title"{% if view.errors %} data-open{% endif %}>
+<form class="modal__box" method="post" action="/schedule">
+<div class="modal__head">
+<h2 class="h2" id="add-item-title">작업 추가</h2>
+<button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button>
+</div>
+{% if view.errors %}<div class="alert alert--error" role="alert"><ul>{% for e in view.errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
 <input type="hidden" name="site_id" value="{{ view.site_id }}">
-<div class="stack" style="gap: 14px; padding-top: 16px;">
 <label class="field">공종
-<select name="work_type">
+<select name="work_type" required>
+<option value=""{% if not view.form.work_type %} selected{% endif %} disabled>공종 선택</option>
 {% for w in view.work_types %}<option value="{{ w }}"{% if w == view.form.work_type %} selected{% endif %}>{{ w }}</option>{% endfor %}
 </select>
 </label>
-<label class="field">날짜<input type="date" name="work_date" value="{{ view.form.work_date }}" required></label>
+<div class="field">작업 날짜 <small class="muted">여러 날을 눌러 고르세요</small></div>
+<div class="datepick" data-datepick>
+<p class="datepick__month">{{ view.month_title }}</p>
+<div class="datepick__grid" role="group" aria-label="작업 날짜 고르기">
+{% for w in "월화수목금토일" %}<span class="datepick__dow">{{ w }}</span>{% endfor %}
+{% for week in view.weeks %}{% for c in week %}<button type="button" class="datepick__day{% if not c.in_month %} is-outside{% endif %}" data-date="{{ c.day.isoformat() }}"{% if not c.addable or not c.in_month %} disabled{% endif %} aria-pressed="{{ 'true' if c.day.isoformat() in view.form.work_dates or (not view.form.work_dates and c.day.isoformat() == view.form.work_date) else 'false' }}">{{ c.day.day }}</button>{% endfor %}{% endfor %}
+</div>
+<div class="datepick__chips" aria-live="polite"></div>
+<div class="datepick__inputs">{% for dte in view.form.work_dates %}<input type="hidden" name="work_dates" value="{{ dte }}">{% endfor %}</div>
+<noscript><input type="date" name="work_date" value="{{ view.form.work_date }}"></noscript>
+</div>
 <div class="inline">
 <label class="field" style="flex: 1 1 120px;">시작<input type="time" name="start" value="{{ view.form.start }}" required></label>
 <label class="field" style="flex: 1 1 120px;">종료<input type="time" name="end" value="{{ view.form.end }}" required></label>
 </div>
 <label class="field">작업 위치 (선택)<input type="text" name="location" maxlength="60" placeholder="예: A구역 3층" value="{{ view.form.location }}"></label>
 <label class="field">메모 (선택)<input type="text" name="memo" maxlength="500" value="{{ view.form.memo }}"></label>
+<p class="small muted">다른 공종이 필요하면 <a href="/sites?site_id={{ view.site_id }}">현장 설정</a>에서 추가하세요.</p>
+<div class="modal__actions">
+<button class="btn btn--soft" type="button" data-close>취소</button>
 <button class="btn btn--accent" type="submit">{{ icon("plus", 16, 2.2) }} 작업 추가</button>
-<p class="small muted">다른 공종이 필요하면 <a href="/sites?site_id={{ view.site_id }}">현장 설정</a>에서 추가하세요. 일정 변경은 담당자가 결정합니다.</p>
 </div>
 </form>
+</dialog>
+<script>
+// 작업 추가 모달: 버튼으로 열고, 바깥(배경)·취소·Esc로 닫는다. 저장 실패로 돌아오면 바로 연다.
+(() => {
+  const dialog = document.getElementById("add-item");
+  document.querySelectorAll("[data-open-add]").forEach((b) => b.addEventListener("click", () => dialog.showModal()));
+  dialog.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => dialog.close()));
+  dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
+  // 날짜 고르기: 누를 때마다 켜고 끄며, 고른 날짜를 칩과 숨은 입력(work_dates)으로 둔다.
+  const pick = dialog.querySelector("[data-datepick]");
+  const chips = pick.querySelector(".datepick__chips");
+  const inputs = pick.querySelector(".datepick__inputs");
+  const days = [...pick.querySelectorAll(".datepick__day")];
+  const sync = () => {
+    const chosen = days.filter((b) => b.getAttribute("aria-pressed") === "true");
+    inputs.replaceChildren(...chosen.map((b) => Object.assign(document.createElement("input"), { type: "hidden", name: "work_dates", value: b.dataset.date })));
+    chips.replaceChildren(...chosen.map((b) => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "datepick__chip";
+      const d = new Date(b.dataset.date + "T00:00:00");
+      chip.textContent = `${d.getMonth() + 1}/${d.getDate()}(${"일월화수목금토"[d.getDay()]}) ×`;
+      chip.setAttribute("aria-label", `${chip.textContent.slice(0, -2)} 빼기`);
+      chip.addEventListener("click", () => { b.setAttribute("aria-pressed", "false"); sync(); });
+      return chip;
+    }));
+    if (!chosen.length) chips.textContent = "고른 날짜 없음";
+  };
+  days.forEach((b) => b.addEventListener("click", () => {
+    b.setAttribute("aria-pressed", String(b.getAttribute("aria-pressed") !== "true"));
+    sync();
+  }));
+  sync();
+  dialog.querySelector("form").addEventListener("submit", (e) => {
+    if (!inputs.children.length) { e.preventDefault(); chips.textContent = "작업 날짜를 하나 이상 고르세요."; }
+  });
+  if (dialog.hasAttribute("data-open")) dialog.showModal();
+})();
+</script>
 {% endif %}
 </aside>
 </div>

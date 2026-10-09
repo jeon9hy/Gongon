@@ -34,6 +34,8 @@ def judge(
 
     순간값(풍속·기온 등)은 예보 시각 h의 값을 h:00~h+1:00에 쓴다(D-018).
     누적값(강수량·적설)은 h와 h+1 예보를 모두 비교한다(D-030).
+    그 시각 예보가 없으면(4일 뒤 3시간 간격, 00시 값뿐 등)
+    같은 날 가장 가까운 예보값으로 추정한다(D-053).
     """
     if work_start_at.tzinfo is None or work_end_at.tzinfo is None:
         raise ValueError("작업 시각에 시간대가 없음")
@@ -42,7 +44,14 @@ def judge(
 
     by_time = {h.valid_at: h for h in weather.hours}
     hours = tuple(
-        _judge_hour(slot, by_time.get(slot), by_time.get(slot + _HOUR), rule_set)
+        _judge_hour(
+            slot,
+            by_time[slot],
+            by_time.get(slot + _HOUR) or _nearest_same_day(slot + _HOUR, weather.hours, slot),
+            rule_set,
+        )
+        if slot in by_time
+        else _judge_estimated_hour(slot, weather.hours, rule_set)
         for slot in _hour_slots(work_start_at, work_end_at)
     )
     return JudgmentResult(
@@ -88,6 +97,42 @@ def _judge_hour(
         results.append(result)
     verdict = highest(r.verdict for r in results)
     return HourResult(valid_at=slot, verdict=verdict, conditions=tuple(results))
+
+
+def _nearest_same_day(
+    at: datetime, forecasts: tuple[HourlyForecast, ...], day_of: datetime
+) -> HourlyForecast | None:
+    """day_of와 같은 현지 날짜의 예보 중 at에 가장 가까운 것(같으면 이른 시각). 없으면 None."""
+    same_day = [f for f in forecasts if f.valid_at.date() == day_of.date()]
+    if not same_day:
+        return None
+    return min(same_day, key=lambda f: (abs(f.valid_at - at), f.valid_at))
+
+
+def _judge_estimated_hour(
+    slot: datetime, forecasts: tuple[HourlyForecast, ...], rule_set: RuleSet
+) -> HourResult:
+    """같은 날(현지 날짜) 가장 가까운 예보 시각의 값으로 판정한다(D-053, 개발자 결정).
+
+    직접 비교한 값이 아니므로 기준을 넘어도 '확인 필요'까지만 내고 사유에 추정임을 남긴다.
+    같은 날 예보가 하나도 없으면 판정 불가다.
+    """
+    nearest = _nearest_same_day(slot, forecasts, slot)
+    if nearest is None:
+        return _judge_hour(slot, None, None, rule_set)
+    judged = _judge_hour(slot, nearest, nearest, rule_set)
+    note = f"{nearest.valid_at:%H}시 예보값으로 추정"
+    conditions = tuple(
+        replace(
+            c,
+            verdict=Verdict.CHECK if c.verdict is Verdict.STOP_REVIEW else c.verdict,
+            reason=f"{c.reason} · {note}",
+        )
+        for c in judged.conditions
+    )
+    return HourResult(
+        valid_at=slot, verdict=highest(c.verdict for c in conditions), conditions=conditions
+    )
 
 
 def _either_window(

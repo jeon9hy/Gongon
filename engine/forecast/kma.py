@@ -179,6 +179,23 @@ def _snippet(body: bytes) -> str:
     return " ".join(body.decode("utf-8", errors="replace").split())[:_ERROR_BODY_CHARS]
 
 
+def rain_probability_by_hour(items: Iterable[dict[str, Any]]) -> dict[datetime, int]:
+    """원자료의 강수확률(POP, %)을 예보 시각별로. 해석할 수 없는 값은 버린다(공온지수 v2, D-052)."""
+    out: dict[datetime, int] = {}
+    for item in items:
+        if str(item.get("category")) != "POP":
+            continue
+        try:
+            valid_at = _kst_datetime(str(item["fcstDate"]), str(item["fcstTime"]))
+            pct = int(str(item.get("fcstValue", "")).strip())
+        except (KeyError, ValueError):
+            logger.warning("강수확률 해석 불가: %r", item)
+            continue
+        if 0 <= pct <= 100:
+            out[valid_at] = pct
+    return out
+
+
 def normalize(base_at: datetime, items: Iterable[dict[str, Any]]) -> WeatherInput:
     """원자료 → 판정 입력. 해석할 수 없는 값은 버려서 판정에서 누락(판정 불가)으로 처리되게 한다."""
     by_time: dict[datetime, dict[Element, ForecastValue]] = {}

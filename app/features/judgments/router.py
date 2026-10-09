@@ -87,8 +87,11 @@ def history(
     verdict: VerdictFilter = "전체",
     site_id: int | None = None,
     page: Annotated[int, Query(ge=1, le=1000)] = 1,
+    size: int = service.HISTORY_PAGE_SIZES[0],
 ) -> HTMLResponse:
-    view = service.build_history(session, verdict, site_id, page)
+    if size not in service.HISTORY_PAGE_SIZES:
+        raise HTTPException(status_code=422, detail=f"size는 {service.HISTORY_PAGE_SIZES} 중 하나")
+    view = service.build_history(session, verdict, site_id, page, size)
     return templates.TemplateResponse(
         request, "judgments/history.html", {"nav_active": "history", "view": view}
     )

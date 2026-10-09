@@ -1,6 +1,7 @@
 """예보 수집과 재사용. 같은 발표 시각·격자(중기는 예보구역)는 한 번만 받아 현장들이 공유한다."""
 
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -26,7 +27,7 @@ from engine.forecast import (
     parse_mid_land,
     previous_issue_at,
 )
-from engine.forecast.kma import urllib_get
+from engine.forecast.kma import rain_probability_by_hour, urllib_get
 from engine.judgment import WeatherInput
 
 logger = logging.getLogger(__name__)
@@ -114,6 +115,23 @@ def latest_forecast_times(session: Session, nx: int, ny: int) -> list[datetime]:
     if snapshot is None or snapshot.weather is None:
         return []
     return sorted(h.valid_at for h in snapshot.weather.hours)
+
+
+def rain_probability_by_run(
+    session: Session, run_ids: Sequence[int]
+) -> dict[int, dict[datetime, int]]:
+    """수집별 강수확률(POP, %)을 예보 시각별로(쿼리 1회). 원자료가 없는 수집은 빠진다."""
+    if not run_ids:
+        return {}
+    rows = session.execute(
+        select(ForecastRun.id, ForecastRun.raw_items).where(
+            ForecastRun.id.in_(set(run_ids)), ForecastRun.raw_items.is_not(None)
+        )
+    )
+    # 실패한 수집은 raw_items가 JSON null로 저장될 수 있어 목록만 읽는다.
+    return {
+        run_id: rain_probability_by_hour(items) for run_id, items in rows if isinstance(items, list)
+    }
 
 
 def _snapshot(run: ForecastRun) -> ForecastSnapshot:

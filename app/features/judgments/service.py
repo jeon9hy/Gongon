@@ -2,7 +2,7 @@
 
 import logging
 from bisect import bisect_left
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from dataclasses import dataclass, replace
 from datetime import date, datetime, time, timedelta
@@ -25,12 +25,15 @@ from app.features.judgments.schemas import (
     DetailView,
     ElementKey,
     FilterLink,
+    HistoryDay,
     HistoryRow,
+    HistorySite,
     HistoryView,
     HomeView,
     HourRow,
     Notice,
     NoticeItem,
+    PageLink,
     PrimaryJudgment,
     RecentItem,
     RecentRun,
@@ -72,12 +75,14 @@ from engine.judgment import (
     judge,
     mid_reference,
 )
+from engine.judgment.index import GongonIndex, HourInput, gongon_index, margin_pct
 from engine.kst import KST
 
 logger = logging.getLogger(__name__)
 
 VERDICT_FILTERS: tuple[VerdictFilter, ...] = ("전체", "진행", "확인 필요", "중지 검토", "판정 불가")
-HISTORY_PAGE_SIZE = 30
+HISTORY_PAGE_SIZES = (30, 50, 100)  # 판정 내역 한 쪽에 보이는 판정 수(고를 수 있는 값)
+HISTORY_VISIBLE_ROWS = 5  # 판정 내역에서 현장 묶음마다 바로 보이는 줄 수(나머지는 더보기)
 WEEK_DAYS = 7  # 주간 보기 범위(D-041). 예보가 없는 날은 판정하지 않는다
 _WEEKDAYS = "월화수목금토일"
 _PLOT_HEIGHT_PX = 200
@@ -118,7 +123,7 @@ def next_forecast_text(now: datetime) -> str:
     """예보는 3시간마다 발표되고 10분 뒤 제공된다. 같은 예보로 다시 판정하면 결과가 같다."""
     nxt = next_base_at(now)
     ready = nxt + timedelta(minutes=10)
-    return f"다음 예보 {nxt:%H:%M} 발표 · {ready:%H:%M} 이후 반영"
+    return f"다음 예보 {nxt:%H:%M} 발표({ready:%H:%M} 반영)"
 
 
 # 판정 실행 결과 코드 → 대시보드 문구. URL에는 코드만 싣는다(임의 문구 표시 방지).
@@ -243,6 +248,16 @@ def _record_run(
                             result=result, stored_count=stored))  # fmt: skip
 
 
+def checked_short_text(run: JudgmentRun | None, now: datetime) -> str | None:
+    """홈 카드용 짧은 확인 시각. 오늘이면 '22:45 확인', 다른 날이면 '10/7 22:45 확인'."""
+    if run is None:
+        return None
+    ran = run.ran_at.astimezone(KST)
+    if ran.date() == now.astimezone(KST).date():
+        return f"{ran:%H:%M} 확인"
+    return f"{ran.month}/{ran.day} {ran:%H:%M} 확인"
+
+
 def checked_text(run: JudgmentRun | None) -> str | None:
     """'10월 8일 18:15 확인 · 17:00 발표 예보'. 실행 기록이 없으면 None."""
     if run is None:
@@ -255,10 +270,13 @@ def checked_text(run: JudgmentRun | None) -> str | None:
 
 
 def _has_forecast(times: list[datetime], start_at: datetime, end_at: datetime) -> bool:
-    """작업 시간에 걸친 정시 예보가 하나라도 있는가(times는 정렬됨)."""
-    first_slot = start_at.replace(minute=0, second=0, microsecond=0)
-    index = bisect_left(times, first_slot)
-    return index < len(times) and times[index] < end_at
+    """작업 날(현지 날짜)에 예보 시각이 하나라도 있는가(times는 정렬됨).
+
+    작업 시간에 값이 없어도 같은 날 값으로 추정해 판정한다(D-053, engine judge).
+    """
+    day_start = start_at.astimezone(KST).replace(hour=0, minute=0, second=0, microsecond=0)
+    index = bisect_left(times, day_start)
+    return index < len(times) and times[index] < day_start + timedelta(days=1)
 
 
 def _targets_for(
@@ -421,7 +439,15 @@ def build_dashboard(
     rule_sets = rule_sets_by_label()
     targets = _targets(site, schedules_service.items_on(session, site.site_id, target_date))
     paired = tuple((t, latest.get(t.key)) for t in targets)
-    cards = tuple(_card(t.label, j, t.work_type in rule_sets) for t, j in paired)
+    cards = tuple(
+        _card(t.label, j, t.work_type in rule_sets)
+        if j is None
+        else replace(
+            _card(t.label, j, t.work_type in rule_sets),
+            open_href=dashboard_href(site.site_id, work=t.key),
+        )
+        for t, j in paired
+    )
     judged = [(t, j) for t, j in paired if j is not None]
     # 상세 카드: 고른 작업, 없으면 가장 높은 단계(같으면 앞쪽) 작업(D-041 후속).
     chosen = next(((t, j) for t, j in judged if t.key == work), None) or max(
@@ -442,6 +468,7 @@ def build_dashboard(
         target_date=_date_text(target_date),
         work_hours=f"{site.work_start_local:%H:%M}–{site.work_end_local:%H:%M}",
         cards=cards,
+        detail_open=work is not None or element_key is not None or hour is not None,
         primary=None
         if primary_j is None
         else _primary(primary_j, site.site_id, element_key, hour, chosen_key),
@@ -486,7 +513,11 @@ def build_home(session: Session, now: datetime, ran: RunResult | None = None) ->
         for s in sites
     )  # fmt: skip
     runs = repository.latest_runs(session, site_ids)
-    summaries = tuple(replace(s, checked=checked_text(runs.get(s.site_id))) for s in summaries)
+    summaries = tuple(
+        replace(s, checked=checked_text(run), checked_short=checked_short_text(run, now))
+        for s in summaries
+        for run in [runs.get(s.site_id)]
+    )
 
     # 개발자 지정 순서: 판정 전 → 판정 불가 → 중지 검토 → 확인 필요 → 진행 (작업 없음은 맨 뒤).
     counts = {v.value: 0 for v in (Verdict.UNAVAILABLE, Verdict.STOP_REVIEW, Verdict.CHECK,
@@ -627,8 +658,18 @@ def _week(
     """작업(공종)별 7일. 칸은 그날 그 공종 대상들 중 가장 높은 단계(쿼리: 판정·작업·예보 각 1회)."""
     dates = horizon_dates(now)
     latest: dict[tuple[date, str], Judgment] = {}
+    previous: dict[
+        tuple[date, str], Judgment
+    ] = {}  # 직전 발표 예보로 낸 판정(공온지수 예보 안정성)
     for j in repository.latest_for_site_between(session, site.site_id, dates[0], dates[-1]):
-        latest.setdefault((j.target_date, _key(j)), j)
+        key = (j.target_date, _key(j))
+        if key not in latest:
+            latest[key] = j
+        elif key not in previous and j.forecast_issued_at != latest[key].forecast_issued_at:
+            previous[key] = j
+    pops = forecasts_service.rain_probability_by_run(
+        session, [j.forecast_run_id for j in latest.values() if j.forecast_run_id is not None]
+    )
     items_by_day = schedules_service.items_between(session, site.site_id, dates[0], dates[-1])
     times = forecasts_service.latest_forecast_times(session, site.grid_nx, site.grid_ny)
     region_id = land_region_for(site.address)
@@ -651,8 +692,7 @@ def _week(
         mid_parts = None if mid is None else mid.days.get(day)
         if confidence == "예보 없음" and mid_parts:
             confidence = "낮음"
-        days.append(WeekDay(day, f"{day:%m/%d}({_WEEKDAYS[day.weekday()]})", day == dates[0],
-                            in_period, confidence, _CONFIDENCE_NOTE[confidence]))  # fmt: skip
+        day_cells: list[WeekCell] = []
         for target, judgment in pairs:
             if confidence == "낮음" and mid_parts:
                 cell = _mid_cell(target, rule_sets, mid_parts)
@@ -662,9 +702,22 @@ def _week(
                     "pending" if confidence in ("예보 없음", "판정 전") else "none"
                 )
                 cell = _week_cell(card, state)
+            day_cells.append(cell)
             current = by_type.setdefault(target.work_type, {}).get(day)
             if current is None or _rank(cell) > _rank(current):
                 by_type[target.work_type][day] = cell
+        # 공온지수(D-050)는 단기예보로 저장한 판정이 있는 날만.
+        # 중기예보 참고 날은 기준과 직접 비교할 수 없어 내지 않는다.
+        changed = any(
+            (old := previous.get((day, t.key))) is not None
+            and j is not None
+            and old.verdict != j.verdict
+            for t, j in pairs
+        )
+        index = None if confidence == "낮음" else _day_index(judged, day_cells, changed, pops)
+        days.append(WeekDay(day, f"{day:%m/%d}({_WEEKDAYS[day.weekday()]})", day == dates[0],
+                            in_period, confidence, _CONFIDENCE_NOTE[confidence],
+                            index, _index_note(index, confidence)))  # fmt: skip
 
     def cell_for(work_type: str, day: WeekDay) -> WeekCell:
         if not day.in_period:
@@ -714,6 +767,63 @@ def _week_cell(card: WorkCard, empty_state: Literal["none", "pending"]) -> WeekC
     if card.verdict is None:
         return WeekCell(None, empty_state, None, card.reason)
     return WeekCell(card.verdict, "verdict", card.detail_href, f"{card.work_type} · {card.reason}")
+
+
+def _day_index(
+    judged: list[Judgment],
+    cells: list[WeekCell],
+    changed: bool,
+    pops: Mapping[int, Mapping[datetime, int]],
+) -> GongonIndex | None:
+    """그날 판정한 작업의 시각별 단계·기준 여유·강수확률과 칸들의 단계로 공온지수(D-052)."""
+    hours = [
+        _hour_input(h, pops.get(j.forecast_run_id or -1, {}))
+        for j in judged
+        if not j.failure_reason
+        for h in j.hours
+    ]
+    day_verdicts = [Verdict(c.verdict) for c in cells if c.verdict is not None]
+    return gongon_index(hours, day_verdicts, changed)
+
+
+def _hour_input(hour: Mapping[str, Any], pop_by_time: Mapping[datetime, int]) -> HourInput:
+    """저장된 시각 기록 → 공온지수 입력. 기준 여유는 비교한 조건 중 가장 작은 값."""
+    margins = [
+        m
+        for c in hour["conditions"]
+        if c.get("threshold") is not None
+        and (m := margin_pct(c.get("lower"), c.get("upper"), c["threshold"], c["operator"]))
+        is not None
+    ]
+    rain_sensitive = any(
+        c["element"] == Element.PRECIPITATION_MM_PER_H.value for c in hour["conditions"]
+    )
+    return HourInput(
+        verdict=Verdict(hour["verdict"]),
+        margin_pct=min(margins) if margins else None,
+        rain_probability_pct=pop_by_time.get(_dt(hour["valid_at"])) if rain_sensitive else None,
+    )
+
+
+def _index_note(index: GongonIndex | None, confidence: str) -> str:
+    detail = _CONFIDENCE_NOTE[confidence]
+    if index is None:
+        if confidence == "낮음":
+            return f"공온지수 없음 · 중기예보는 기준과 직접 비교할 수 없음 · {detail}"
+        return detail
+    parts = [f"공온지수 {index.score}"]
+    if index.partial:
+        parts.append(f"예보 값이 있는 {index.compared_hours}/{index.total_hours}시각 기준")
+    if index.near_threshold_hours:
+        parts.append(f"기준에 가까운 시각 {index.near_threshold_hours}")
+    if index.rainy_hours:
+        parts.append(f"강수확률 30% 이상 시각 {index.rainy_hours}")
+    if index.changed:
+        parts.append("직전 예보와 판정이 바뀌어 10점 감점")
+    if index.capped_by is not None:
+        parts.append(f"'{index.capped_by.value}' 작업이 있어 상한 적용")
+    parts.append(f"예보 상세도: {detail}")
+    return " · ".join(parts)
 
 
 def _rank(cell: WeekCell) -> int:
@@ -1191,40 +1301,76 @@ def _hour_row(hour_json: dict[str, Any], elements: list[Element]) -> HourRow:
 # ---------- 내역 ----------
 
 
+def _history_days(rows: Sequence[Judgment], names: Mapping[int, str]) -> tuple[HistoryDay, ...]:
+    """이 쪽의 판정을 대상 날짜 → 현장으로 묶는다.
+
+    rows는 작업별 최신 판정, 날짜·현장·최근 순(repository.page)."""
+    days: dict[date, dict[int, list[HistoryRow]]] = {}
+    for j in rows:
+        row = HistoryRow(
+            judgment_id=j.id,
+            target_date=f"{j.target_date:%m/%d}({_WEEKDAYS[j.target_date.weekday()]})",
+            site_name=names.get(j.site_id, "삭제된 현장"),
+            work_type=j.work_type,
+            time_range=_range_text(j.work_start_at, j.work_end_at),
+            verdict=j.verdict,
+            issued="—"
+            if j.forecast_issued_at is None
+            else f"{j.forecast_issued_at.astimezone(KST):%m/%d %H:%M}",
+            rule_version=j.rule_version,
+            note=j.failure_reason,
+        )
+        days.setdefault(j.target_date, {}).setdefault(j.site_id, []).append(row)
+    return tuple(
+        HistoryDay(
+            label=f"{day.month}월 {day.day}일({_WEEKDAYS[day.weekday()]})",
+            count=sum(len(site_rows) for site_rows in by_site.values()),
+            sites=tuple(
+                HistorySite(site_rows[0].site_name, tuple(site_rows))
+                for site_rows in by_site.values()
+            ),
+        )
+        for day, by_site in days.items()
+    )
+
+
 def build_history(
-    session: Session, verdict: VerdictFilter, site_id: int | None, page: int
+    session: Session, verdict: VerdictFilter, site_id: int | None, page: int, size: int
 ) -> HistoryView:
+    """size는 HISTORY_PAGE_SIZES 중 하나(라우터가 검증)."""
     sites = sites_service.list_sites(session)
     names = {s.site_id: s.name for s in sites}
-    counts = repository.verdict_counts(session, site_id)
+    # 삭제한 현장의 판정은 기록으로 남기되 내역 목록에는 내지 않는다(D-054).
+    # 상세 주소로는 열 수 있다.
+    active = [s.site_id for s in sites]
+    counts = repository.verdict_counts(session, site_id, active)
     verdict_value = None if verdict == "전체" else verdict
-    # 다음 페이지가 있는지 알기 위해 한 건 더 읽는다.
-    rows = repository.page(session, site_id, verdict_value, (page - 1) * HISTORY_PAGE_SIZE,
-                           HISTORY_PAGE_SIZE + 1)  # fmt: skip
-    has_next = len(rows) > HISTORY_PAGE_SIZE
+    total = sum(counts.values()) if verdict_value is None else counts.get(verdict_value, 0)
+    last_page = max(1, -(-total // size))
+    shown = repository.page(
+        session, site_id, verdict_value, (page - 1) * size, size, site_ids=active
+    )
 
     def href(v: str, p: int) -> str:
         params: dict[str, str | int] = {"verdict": v, "page": p}
         if site_id is not None:
             params["site_id"] = site_id
+        if size != HISTORY_PAGE_SIZES[0]:
+            params["size"] = size
         return "/judgments?" + urlencode(params)
 
     return HistoryView(
-        rows=tuple(
-            HistoryRow(
-                judgment_id=j.id,
-                target_date=f"{j.target_date:%m/%d}({_WEEKDAYS[j.target_date.weekday()]})",
-                site_name=names.get(j.site_id, "삭제된 현장"),
-                work=f"{j.work_type} {_range_text(j.work_start_at, j.work_end_at)}",
-                verdict=j.verdict,
-                issued="—"
-                if j.forecast_issued_at is None
-                else f"{j.forecast_issued_at.astimezone(KST):%m/%d %H:%M}",
-                rule_version=j.rule_version,
-                note=j.failure_reason,
-            )
-            for j in rows[:HISTORY_PAGE_SIZE]
+        days=_history_days(shown, names),
+        count=len(shown),
+        total=total,
+        first_index=(page - 1) * size + 1 if shown else 0,
+        size=size,
+        size_options=HISTORY_PAGE_SIZES,
+        pages=tuple(
+            PageLink("…", None) if p is None else PageLink(str(p), href(verdict, p), p == page)
+            for p in page_window(page, last_page)
         ),
+        visible_rows=HISTORY_VISIBLE_ROWS,
         filters=tuple(
             FilterLink(
                 label=label,
@@ -1239,8 +1385,25 @@ def build_history(
         selected_verdict=verdict,
         page=page,
         prev_href=href(verdict, page - 1) if page > 1 else None,
-        next_href=href(verdict, page + 1) if has_next else None,
+        next_href=href(verdict, page + 1) if page < last_page else None,
     )
+
+
+def page_window(page: int, last: int, around: int = 2) -> list[int | None]:
+    """쪽 번호 목록: 처음·끝과 현재 앞뒤 around쪽.
+
+    두 쪽 이상 비면 None('…'), 한 쪽만 비면 그 쪽을 그대로 보인다.
+    """
+    shown = sorted({1, last, *range(max(1, page - around), min(last, page + around) + 1)})
+    out: list[int | None] = []
+    for p in shown:
+        previous = out[-1] if out else None
+        if previous is not None and p - previous == 2:
+            out.append(previous + 1)
+        elif previous is not None and p - previous > 2:
+            out.append(None)
+        out.append(p)
+    return out
 
 
 # ---------- 표시 형식 ----------

@@ -3,49 +3,45 @@
 {% block title %}내일 공사 ON?{% endblock %}
 {% block content %}
 
-<header class="row row--center">
-<div class="row row--center">
-<a class="btn btn--soft btn--sm" href="/">{{ icon("arrow-left", 16, 2.2) }} 전체 현장</a>
-</div>
-{% if view.sites %}
-<div class="row row--center">
-<form method="get" action="/dashboard" class="row row--center">
-<label class="visually-hidden" for="site-select">현장</label>
-<select id="site-select" class="btn" name="site_id" onchange="this.form.submit()">
-{% for s in view.sites %}<option value="{{ s.site_id }}"{% if s.selected %} selected{% endif %}>{{ s.name }}</option>{% endfor %}
-</select>
-<noscript><button class="btn btn--soft" type="submit">보기</button></noscript>
-</form>
-{% if view.site_id is not none %}{{ site_menu(view.site_id, view.site_name) }}{% endif %}
-</div>
-{% endif %}
-</header>
 
 {% if view.site_id is none %}
-<section class="card" style="gap: 16px;">
+<section class="card empty-art empty-art--start">
+<img class="mascot mascot--lg" src="/static/brand/mascot-hello.png" alt="" width="180" height="140">
 <h1 class="title">내일 공사 ON?</h1>
 <p>먼저 현장을 등록하세요. 위치·공종·작업 시간을 한 번 등록하면 기상청 예보로 내일 작업 판정을 받습니다.</p>
 <a class="btn btn--accent" style="align-self: flex-start;" href="/sites">{{ icon("plus", 16, 2.2) }} 현장 등록</a>
 </section>
 {% else %}
 
-<section class="pagehead">
-<div>
-<p class="pagehead__eyebrow">{{ view.target_date }} · {{ view.site_name }}</p>
-<h1 class="title">내일 공사 ON?</h1>
-<dl class="site-meta dashboard-meta"><div><dt>기본 작업 시간</dt><dd>{{ view.work_hours }}</dd></div><div><dt>판정 항목</dt><dd>{{ view.cards | length }}개</dd></div></dl>
-<div class="pagehead__meta">
-{% if view.checked %}<span class="chip">{{ view.checked }}</span>{% endif %}
-{% if view.forecast_issued %}<span class="chip">예보 발표 {{ view.forecast_issued }} · {{ view.next_forecast }}</span>{% endif %}
-{% if view.rule_version %}<span class="chip">기준 {{ view.rule_version }}{% if not view.rule_verified %} · <span class="todo">원문 대조 필요</span>{% endif %}</span>{% endif %}
+<section class="hero" aria-labelledby="dash-title">
+<div class="hero__main">
+<p class="hero__date">{{ icon("calendar", 15) }} 현장 대시보드 · {{ view.target_date }} 판정</p>
+<h1 class="hero__title" id="dash-title">{{ view.site_name }} 공사 ON?</h1>
+<ul class="hero__facts">
+<li>{{ icon("history", 15) }}<span>기본 작업 시간 {{ view.work_hours }}</span></li>
+<li>{{ icon("check", 15, 2.4) }}<span>판정 항목 {{ view.cards | length }}개</span></li>
+{% if view.forecast_issued %}<li>{{ icon("cloud-sun", 15) }}<span>예보 {{ view.forecast_issued }} 발표</span></li><li>{{ icon("history", 15) }}<span>{{ view.next_forecast }}</span></li>{% endif %}
+{% if view.rule_version %}<li>{{ icon("info", 15) }}<span>기준 {{ view.rule_version }}{% if not view.rule_verified %} · 원문 대조 필요{% endif %}</span></li>{% endif %}
+</ul>
 </div>
+<div class="hero__side hero__side--row">
+<div class="hero__tools">
+<form method="get" action="/dashboard">
+<label class="visually-hidden" for="site-select">현장</label>
+<select id="site-select" name="site_id" onchange="this.form.submit()">
+{% for s in view.sites %}<option value="{{ s.site_id }}"{% if s.selected %} selected{% endif %}>{{ s.name }}</option>{% endfor %}
+</select>
+<noscript><button class="btn btn--soft" type="submit">보기</button></noscript>
+</form>
+{{ site_menu(view.site_id, view.site_name) }}
 </div>
 {% if view.can_run %}
-<form method="post" action="/judgments/run" class="pagehead__action">
+<form method="post" action="/judgments/run" class="hero__action">
 <input type="hidden" name="site_id" value="{{ view.site_id }}">
-<button class="btn btn--accent" type="submit">{% if view.primary %}다시 판정하기{% else %}지금 판정하기{% endif %}</button>
+<button class="btn hero__button" type="submit">{{ icon("cloud-sun", 18) }} {% if view.primary %}다시 판정하기{% else %}지금 판정하기{% endif %}</button>
 </form>
 {% endif %}
+</div>
 </section>
 
 {% if view.off_period_note %}
@@ -63,13 +59,12 @@
 <h2 class="h2">공종별 판정</h2>
 <a class="btn btn--soft btn--sm" href="/schedule?site_id={{ view.site_id }}">작업 일정 {{ icon("arrow-right", 14) }}</a>
 </div>
-<p class="small muted section-description">내일 작업별로 가장 높은 단계를 표시합니다. 등록한 작업이 없으면 현장 기본 공종으로 판정합니다.</p>
 <div class="windows">
 {% for c in view.cards %}
-<div class="window window--{{ verdict_class.get(c.verdict, 'unknown') }}">
+{% if c.open_href %}<a class="window window--link window--{{ verdict_class.get(c.verdict, 'unknown') }}" href="{{ c.open_href }}" title="시간대별 예보 보기">{% else %}<div class="window window--{{ verdict_class.get(c.verdict, 'unknown') }}">{% endif %}
 <div class="window__head"><span class="window__title"><span>{{ c.work_type }}</span><span class="small muted">{{ c.time_range }}</span></span>{% if c.verdict %}{{ verdict_badge(c.verdict) }}{% else %}<span class="badge badge--unknown">판정 전</span>{% endif %}</div>
-<div class="window__footer"><p class="window__reason">{{ c.reason }}</p>{% if c.detail_href %}<a class="window__link" href="{{ c.detail_href }}">상세 근거 {{ icon("arrow-right", 13) }}</a>{% endif %}</div>
-</div>
+<div class="window__footer"><p class="window__reason">{{ c.reason }}</p>{% if c.open_href %}<span class="window__link">시간대별 예보 {{ icon("arrow-right", 13) }}</span>{% endif %}</div>
+{% if c.open_href %}</a>{% else %}</div>{% endif %}
 {% endfor %}
 </div>
 </article>
@@ -77,7 +72,7 @@
 {% set wk = view.week %}
 {% if wk and not wk.rows %}
 <article class="card">
-<div class="section-heading"><h2 class="h2">앞으로 7일</h2></div>
+<div class="section-heading"><h2 class="h2">7일 공온지수</h2></div>
 <p class="small muted">앞으로 7일 등록한 작업이 없습니다. 작업 일정에 작업을 넣으면 날짜별로 미리 판정합니다.</p>
 <a class="btn btn--soft btn--sm" style="align-self: flex-start;" href="/schedule?site_id={{ view.site_id }}">{{ icon("calendar", 15) }} 작업 일정에서 추가</a>
 </article>
@@ -85,8 +80,24 @@
 {% if wk and wk.rows %}
 <article class="card" aria-labelledby="week-title">
 <div class="section-heading">
-<h2 class="h2" id="week-title">앞으로 7일</h2>
-<span class="small muted">멀수록 예보가 성겨 신뢰도가 낮아집니다</span>
+<h2 class="h2" id="week-title">7일 공온지수</h2>
+<details class="explain">
+<summary class="explain__toggle">{{ icon("info", 15) }} 공온지수란?</summary>
+<div class="explain__panel" role="note">
+<div class="explain__head"><img src="/static/brand/mascot-question.png" alt="" width="64" height="64"><p class="explain__title">공온지수</p></div>
+<p class="explain__lead">그날 작업이 기상 기준에 걸리지 않는 정도(0~100). 기상청 예보에서 근거를 댈 수 있는 것만 씁니다. 판정을 대신하지 않습니다.</p>
+<dl class="explain__list">
+<div><dt>기본</dt><dd>작업 시각마다 진행 100 · 확인 필요 50 · 중지 검토 0점의 평균</dd></div>
+<div><dt>기준 여유</dt><dd>진행이어도 예보값이 기준까지 10% 이내면 70, 20% 이내면 85점</dd></div>
+<div><dt>강수확률</dt><dd>비 기준이 있는 작업은 강수확률 60% 이상 70, 30% 이상 85점까지</dd></div>
+<div><dt>예보 변경</dt><dd>직전 발표 예보와 판정이 바뀐 작업이 있으면 10점 감점</dd></div>
+<div><dt>상한</dt><dd>확인 필요가 있으면 70, 중지 검토가 있으면 30점까지</dd></div>
+<div><dt>3시간 예보</dt><dd>4일 뒤처럼 3시간 간격 예보인 날은 값이 있는 시각만 계산</dd></div>
+<div><dt>점수 없음</dt><dd>5일 뒤부터(중기예보)는 기준과 직접 비교할 수 없어 점수를 내지 않음</dd></div>
+</dl>
+<p class="explain__foot">날짜 머리를 가리키면 그날 근거, 칸을 누르면 판정 근거를 봅니다.</p>
+</div>
+</details>
 </div>
 <div class="week-wrap">
 <table class="week">
@@ -95,8 +106,14 @@
 <th scope="col" class="week__corner">작업</th>
 {% for d in wk.days %}
 <th scope="col" class="week__day{% if d.is_tomorrow %} is-tomorrow{% endif %}{% if not d.in_period %} is-off{% endif %}">
-<span class="week__date">{% if d.is_tomorrow %}내일 {% endif %}{{ d.label }}</span>
-<span class="conf conf--{{ {'높음': 'high', '보통': 'mid', '낮음': 'low', '예보 없음': 'none', '판정 전': 'pending', '수집 실패': 'fail', '기간 밖': 'off', '작업 없음': 'off'}[d.confidence] }}" title="{{ d.confidence_note }}">{% if d.confidence in ('높음', '보통', '낮음') %}신뢰도 {% endif %}{{ d.confidence }}</span>
+<span class="week__date">{% if d.is_tomorrow %}<em>내일</em>{% endif %}{{ d.label }}</span>
+{% if d.index %}
+<span class="gidx ring ring--{% if d.index.score >= 80 %}high{% elif d.index.score >= 50 %}mid{% else %}low{% endif %}" style="--p: {{ d.index.score }}" title="{{ d.index_note }}" role="img" aria-label="공온지수 {{ d.index.score }}"><b>{{ d.index.score }}</b></span>
+<span class="week__sub"></span>
+{% else %}
+<span class="ring ring--empty" title="{{ d.index_note }}" aria-hidden="true"><b>–</b></span>
+<span class="week__sub week__sub--{{ {'낮음': 'mid', '예보 없음': 'none', '판정 전': 'pending', '수집 실패': 'fail'}.get(d.confidence, 'off') }}">{{ {'낮음': '중기 참고', '높음': '점수 없음', '보통': '점수 없음'}.get(d.confidence, d.confidence) }}</span>
+{% endif %}
 </th>
 {% endfor %}
 </tr>
@@ -106,13 +123,12 @@
 <tr>
 <th scope="row" class="week__type">{{ r.work_type }}</th>
 {% for c in r.cells %}
-<td class="week__cell week__cell--{{ c.state }}{% if loop.first %} is-tomorrow{% endif %}">
+<td class="week__cell week__cell--{{ c.state }}{% if wk.days[loop.index0].is_tomorrow %} is-tomorrow{% endif %}">
 {% if c.state == "verdict" %}
 {% if c.href %}<a class="wv wv--{{ verdict_class[c.verdict] }}" href="{{ c.href }}" title="{{ c.note }}">{{ c.verdict }}</a>{% else %}<span class="wv wv--{{ verdict_class[c.verdict] }}" title="{{ c.note }}">{{ c.verdict }}</span>{% endif %}
 {% elif c.state == "reference" %}<span class="wv wv--{{ verdict_class[c.verdict] }} wv--ref" title="{{ c.note }}">{{ c.verdict }}</span>
 {% elif c.state == "pending" %}<span class="wv wv--empty" title="{{ c.note }}">예보 대기</span>
-{% elif c.state == "off" %}<span class="wv wv--off" title="{{ c.note }}">—</span>
-{% else %}<span class="wv wv--none" title="{{ c.note }}">—</span>{% endif %}
+{% else %}<span class="wv wv--blank" title="{{ c.note }}"></span>{% endif %}
 </td>
 {% endfor %}
 </tr>
@@ -120,25 +136,19 @@
 </tbody>
 </table>
 </div>
-<p class="small muted">신뢰도 높음: 1시간 예보로 작업 시간 전체 판정 · 보통: 3시간 예보라 일부 시각만 판정(나머지는 판정 불가) · 낮음: 중기예보 참고(강수확률·날씨만, 저장하지 않음, 단계는 확인 필요까지) · 예보 없음: 예보 범위 밖. 칸을 누르면 판정 근거를 봅니다.</p>
 </article>
 {% endif %}
 
 {% set p = view.primary %}
 {% if p %}
-<article class="card" id="primary" style="scroll-margin-top: 80px;">
-{% if view.work_options %}
-<nav class="work-picker" aria-label="자세히 볼 작업">
-<span class="small muted">자세히 볼 작업</span>
-{% for o in view.work_options %}<a class="work-pick work-pick--{{ verdict_class[o.verdict] }}" href="{{ o.href }}"{% if o.selected %} aria-current="true"{% endif %}>{{ o.label }}<span>{{ o.verdict }}</span></a>{% endfor %}
-</nav>
-{% endif %}
-<div class="row row--center">
-<div>
-<h2 class="h2">{{ p.work_type }} 판정</h2>
-<p class="small muted" style="margin-top: 4px;">{% if view.work_options %}내일 작업 중 가장 높은 단계를 먼저 보여 줍니다 · 위에서 다른 작업을 고르세요{% else %}작업 구간별 결과{% endif %}</p>
+<dialog class="modal modal--wide" id="work-detail" autofocus aria-labelledby="work-detail-title"{% if view.detail_open %} data-open{% endif %}>
+<div class="modal__box">
+<div class="modal__head">
+<h2 class="h2" id="work-detail-title">{{ p.work_type }} 판정</h2>
+<div class="modal__tools">
+<a class="btn btn--soft btn--sm" href="/judgments/{{ p.judgment_id }}">상세 근거 {{ icon("arrow-right", 14, 2.2) }}</a>
+<button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button>
 </div>
-<a class="btn btn--accent btn--sm" href="/judgments/{{ p.judgment_id }}">상세 근거 보기 {{ icon("arrow-right", 14, 2.2) }}</a>
 </div>
 {% if not p.failure_reason %}
 <div class="stats stats--compact" aria-label="단계별 시간">
@@ -155,11 +165,9 @@
 </div>
 {% endfor %}
 </div>
-</article>
-
 {% set chart = p.chart %}
 {% if chart %}
-<article class="card" id="chart" style="gap: 18px; scroll-margin-top: 20px;">
+<section class="detail-chart" id="chart" aria-label="시간대별 예보">
 <div class="row">
 <div>
 <h2 class="h2">{{ chart.title }}</h2>
@@ -195,8 +203,30 @@
 <span><i style="background: var(--line);"></i>기준 미만·기타</span>
 <span>막대를 누르면 그 시각의 예보값을 봅니다</span>
 </div>
-</article>
+</section>
 {% endif %}
+<div class="modal__actions">
+<button class="btn btn--soft" type="button" data-close>닫기</button>
+</div>
+</div>
+</dialog>
+<script>
+// 작업 상세 모달: 공종별 판정 줄을 누르면 그 작업으로 다시 열린다. 닫으면 주소의 작업·요소·시각을 지워
+// 새로고침해도 다시 열리지 않게 한다. 바깥(배경)·Esc·닫기로 닫는다.
+(() => {
+  const dialog = document.getElementById("work-detail");
+  const clean = () => {
+    const url = new URL(location.href);
+    ["work", "element", "hour"].forEach((k) => url.searchParams.delete(k));
+    url.hash = "";
+    history.replaceState(null, "", url);
+  };
+  dialog.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => dialog.close()));
+  dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
+  dialog.addEventListener("close", clean);
+  if (dialog.hasAttribute("data-open")) dialog.showModal();
+})();
+</script>
 {% else %}
 <article class="card">
 <h2 class="h2">아직 내일 판정이 없습니다</h2>
@@ -223,7 +253,6 @@
 <span class="muted">최종 판단은 현장 책임자가 합니다.</span><br>
 {% if view.notice.detail_href %}<a href="{{ view.notice.detail_href }}" style="font-weight: 700;">상세 근거 보기 ›</a>{% endif %}
 </div>
-<p class="small muted">카카오톡 발송은 사업자 등록 후 제공 · 지금은 웹에서 확인</p>
 </article>
 {% endif %}
 

@@ -3,19 +3,20 @@
 {% block title %}홈{% endblock %}
 {% block content %}
 
-<section class="pagehead">
-<div>
-<p class="pagehead__eyebrow">{{ view.target_date }} · 전체 현장</p>
-<h1 class="title">내일 공사 ON?</h1>
-<p class="subtitle">현장별 날씨 영향을 살펴보고, 내일 작업을 준비하세요.</p>
-<div class="pagehead__meta">
-{% if view.forecast_issued %}<span class="chip">예보 발표 {{ view.forecast_issued }} · {{ view.next_forecast }}</span>{% endif %}
-{% if view.rule_version %}<span class="chip">기준 {{ view.rule_version }}{% if not view.rule_verified %} · 원문 대조 필요{% endif %}</span>{% endif %}
-</div>
+<section class="hero" aria-labelledby="home-title">
+<div class="hero__main">
+<p class="hero__date">{{ icon("calendar", 15) }} {{ view.target_date }} · 전체 현장</p>
+<h1 class="hero__title" id="home-title">내일 공사 ON?</h1>
+{% if view.forecast_issued or view.rule_version %}
+<ul class="hero__facts">
+{% if view.forecast_issued %}<li>{{ icon("cloud-sun", 15) }}<span>예보 {{ view.forecast_issued }} 발표</span></li><li>{{ icon("history", 15) }}<span>{{ view.next_forecast }}</span></li>{% endif %}
+{% if view.rule_version %}<li>{{ icon("info", 15) }}<span>기준 {{ view.rule_version }}{% if not view.rule_verified %} · 원문 대조 필요{% endif %}</span></li>{% endif %}
+</ul>
+{% endif %}
 </div>
 {% if view.sites %}
-<form method="post" action="/judgments/run-all" class="pagehead__action">
-<button class="btn btn--accent" type="submit" title="등록한 현장의 내일부터 7일 작업을 예보로 판정합니다">{{ icon("cloud-sun", 18) }} 현장 {{ view.sites | length }}곳 판정하기</button>
+<form method="post" action="/judgments/run-all" class="hero__action">
+<button class="btn hero__button" type="submit" title="등록한 현장의 내일부터 7일 작업을 예보로 판정합니다">{{ icon("cloud-sun", 18) }} 현장 {{ view.sites | length }}곳 판정하기</button>
 </form>
 {% endif %}
 </section>
@@ -26,20 +27,26 @@
 
 {% if not view.sites %}
 <section class="card steps-card">
+<div class="steps-card__intro">
+<img class="mascot mascot--lg" src="/static/brand/mascot-3d.png" alt="" width="200" height="160">
+<div>
 <h2 class="h2">세 단계면 내일 판정을 받습니다</h2>
+<p class="small muted">현장을 등록하면 공온이가 내일 작업에 날씨 영향을 미리 알려 드립니다.</p>
+</div>
+</div>
 <ol class="steps">
 <li class="step">
-<span class="step__icon">{{ icon("site", 22) }}</span>
+<img class="step__art" src="/static/brand/icon-site.png" alt="" width="48" height="48">
 <strong>1. 현장 등록</strong>
 <span>주소로 장소를 찾고 공종·작업 시간을 고릅니다.</span>
 </li>
 <li class="step">
-<span class="step__icon">{{ icon("cloud-sun", 22) }}</span>
+<img class="step__art" src="/static/brand/icon-weather.png" alt="" width="48" height="48">
 <strong>2. 판정하기</strong>
 <span>기상청 예보를 받아 강우·풍속·기온을 기준과 비교합니다.</span>
 </li>
 <li class="step">
-<span class="step__icon">{{ icon("check", 22, 2.4) }}</span>
+<img class="step__art" src="/static/brand/icon-rules.png" alt="" width="48" height="48">
 <strong>3. 근거 확인</strong>
 <span>시간대별 예보값과 기준·계산을 보고 현장에서 최종 결정합니다.</span>
 </li>
@@ -61,7 +68,6 @@
 <section class="panel split__main" aria-labelledby="sites-title">
 <div class="panel__head">
 <h2 class="h2" id="sites-title">현장별 내일 판정</h2>
-<span class="small muted">현장마다 가장 높은 단계</span>
 </div>
 <ul class="sitelist">
 {% for s in view.sites %}
@@ -69,7 +75,7 @@
 <div class="siterow__head">
 <div class="siterow__title">
 <a class="siterow__name" href="{{ s.detail_href }}">{{ s.name }}</a>
-<p class="siterow__meta">{{ icon("history", 13) }} {{ s.work_hours }}<span aria-hidden="true">·</span>{% if s.checked %}{{ s.checked }}{% elif s.judged_at %}{{ s.judged_at }} 판정{% else %}판정 기록 없음{% endif %}</p>
+<p class="siterow__meta">{{ icon("history", 13) }} {{ s.work_hours }}<span aria-hidden="true">·</span>{% if s.checked_short %}{{ s.checked_short }}{% else %}판정 기록 없음{% endif %}</p>
 </div>
 <div class="siterow__status">
 {% if s.verdict %}{{ verdict_badge(s.verdict) }}{% elif not s.working %}<span class="badge badge--unknown">작업 없음</span>{% else %}<span class="badge badge--unknown">판정 전</span>{% endif %}
@@ -111,7 +117,7 @@
 {% if loop.first or r.target_label != loop.previtem.target_label %}<li class="recent-date">{{ r.target_label }} 대상</li>{% endif %}
 <li class="recent-run">
 <div class="recent-run__head">
-<span><strong>{{ r.site_name }}</strong><span class="small muted">{{ r.when }}</span></span>
+<strong>{{ r.site_name }}</strong>
 {{ verdict_badge(r.verdict) }}
 </div>
 <div class="tag-scroll" aria-label="공종별 판정">{% for i in r.items %}<a class="tag tag--{{ verdict_class[i.verdict] }}" href="{{ i.href }}">{{ i.work_type }} · {{ i.verdict }}</a>{% endfor %}</div>

@@ -23,10 +23,10 @@ def list_between(session: Session, site_ids: list[int], start: date, end: date) 
     )
 
 
-def add(session: Session, item: WorkItem) -> WorkItem:
-    session.add(item)
+def add_all(session: Session, items: list[WorkItem]) -> None:
+    """여러 날 작업을 한 번에 저장한다(모두 저장하거나 하나도 저장하지 않음)."""
+    session.add_all(items)
     session.commit()
-    return item
 
 
 def delete_item(session: Session, site_id: int, item_id: int) -> bool:

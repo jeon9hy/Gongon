@@ -22,7 +22,7 @@
 | 판정 저장·조회·상세 | `app/features/judgments/` | `service.run_for_site()`(engine 호출 + 저장), 대시보드·상세·내역 화면 | 있음 | S04-4·S05 |
 | 알림 | `app/features/notifications/` | 메시지 생성·발송 어댑터(미리보기 어댑터만, 알림톡은 사업자 등록 후 D-015)·발송 이력 | 계획 | S06 |
 | 실행 작업 | `app/jobs/` | `daily_forecast_judgment_notify` | 계획 | S06 |
-| DB 변경 이력 | `migrations/` | Alembic 리비전(`0001`~`0004_work_items`) | 있음 | S04-1 |
+| DB 변경 이력 | `migrations/` | Alembic 리비전(`0001`~`0008_site_road_lot_address`) | 있음 | S04-1 |
 | 작업 일정·변경 | `app/features/schedules/` | `service.items_on()`·`items_on_for_sites()`(그날 작업), `/schedule` 화면 | 있음(S08-1) | S08·S09 |
 | 팀·공유·확인 | `app/features/teams/` | — | 계획(첫 확장) | S09 |
 | 실제 작업 기록 | `app/features/work_records/` | — | 계획(첫 확장) | S10 |
@@ -70,7 +70,7 @@ engine/judgment, engine/geo ──> (표준 라이브러리, 전달받은 데이
 서버 렌더링(FastAPI + Jinja2)으로 기능별 `app/features/<기능>/templates/`에 둔다(D-004). JS 빌드 단계는 두지 않는다.
 문구·용어·색상 값은 `docs/brand.md`.
 - 공통 기반: `app/core/templating.py`(Jinja2 설정, 기능이 `register_template_dir()`로 자기 templates를 등록), `app/core/templates/base.html`(레이아웃·메뉴), `_macros.html`(아이콘·판정 배지), `app/core/static/gongon.css`(brand.md 토큰을 CSS 변수로 옮김, `/static/`).
-- 기능 화면: `app/features/<기능>/templates/<기능>/*.html`. 서버 렌더링 링크로 동작하고(탭·필터는 쿼리 문자열) JS는 보조 상호작용에만 쓴다. 예외: 모바일 달력의 날짜 상세 앵커 전환(D-037), 공종 칩 넘김 버튼(기본 가로 스크롤 유지), 현장 선택 `<select>`의 `onchange` 제출(`<noscript>` 버튼 대체), 현장 설정의 장소 후보 자동완성(템플릿 안 작은 스크립트, D-022 — JS 없이도 위경도 직접 입력으로 저장 가능). 외부 API 결과는 `textContent`로만 넣는다.
+- 기능 화면: `app/features/<기능>/templates/<기능>/*.html`. 서버 렌더링 링크로 동작하고(탭·필터는 쿼리 문자열) JS는 보조 상호작용에만 쓴다. 예외: 모바일 달력의 날짜 상세 앵커 전환(D-037), 공종 칩 넘김 버튼(기본 가로 스크롤 유지), 현장 선택 `<select>`의 `onchange` 제출(`<noscript>` 버튼 대체), 현장 설정의 주소 찾기(다음 우편번호 서비스 외부 스크립트 + 템플릿 안 작은 스크립트, D-047 — JS 없이도 위경도 직접 입력으로 저장 가능). 외부 API 결과는 `textContent`로만 넣는다.
 - `service.py`가 DB·엔진 결과로 화면 모델(`schemas.py`)을 만들고 템플릿은 표시만 한다. 쓰기(폼 제출)는 POST 후 303으로 GET 화면에 돌아간다(새로고침 중복 실행 방지). 예시 데이터 단계(S05-0)의 `sample.py`는 D-019에서 지웠다.
 
 ## 5. 테스트

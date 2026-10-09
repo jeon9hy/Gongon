@@ -1,7 +1,8 @@
 from collections.abc import Sequence
 from datetime import date, datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import Select, func, select
+from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.orm import Session, defer
 
 from app.features.judgments.models import Judgment, JudgmentRun
@@ -92,6 +93,37 @@ def get(session: Session, judgment_id: int) -> Judgment | None:
     return session.get(Judgment, judgment_id)
 
 
+def _latest_ids(
+    site_id: int | None, site_ids: Sequence[int] | None, until: date | None
+) -> Select[int]:
+    """날짜·현장·작업(공종·작업 일정·작업 시간)마다 가장 최근 판정 하나의 id.
+
+    PostgreSQL DISTINCT ON으로 고른다.
+
+    다시 판정해 덮어쓴 이전 판정은 기록으로 남기되 목록에는 내지 않는다(D-049).
+    """
+    key = (
+        Judgment.target_date,
+        Judgment.site_id,
+        Judgment.work_type,
+        Judgment.work_item_id,
+        Judgment.work_start_at,
+        Judgment.work_end_at,
+    )
+    query = (
+        select(Judgment.id)
+        .ext(distinct_on(*key))
+        .order_by(*key, Judgment.judged_at.desc(), Judgment.id.desc())
+    )
+    if site_id is not None:
+        query = query.where(Judgment.site_id == site_id)
+    if site_ids is not None:
+        query = query.where(Judgment.site_id.in_(site_ids))
+    if until is not None:
+        query = query.where(Judgment.target_date <= until)
+    return query
+
+
 def page(
     session: Session,
     site_id: int | None,
@@ -101,25 +133,35 @@ def page(
     site_ids: Sequence[int] | None = None,
     until: date | None = None,
 ) -> list[Judgment]:
-    """site_ids를 주면 그 현장들만(홈에서 삭제한 현장을 뺄 때), until을 주면 그 날짜까지 대상만."""
+    """작업별 최신 판정만, 대상 날짜 → 현장 → 최근 순.
+
+    site_ids를 주면 그 현장들만(홈에서 삭제한 현장을 뺄 때), until을 주면 그 날짜까지 대상만.
+    판정 단계 필터는 최신 판정에 건다(덮어쓰인 이전 판정의 단계로 걸리지 않게).
+    """
     # 목록에는 시간별 상세(JSONB)가 필요 없다.
-    query = select(Judgment).options(defer(Judgment.hours), defer(Judgment.windows))
-    if site_id is not None:
-        query = query.where(Judgment.site_id == site_id)
-    if site_ids is not None:
-        query = query.where(Judgment.site_id.in_(site_ids))
-    if until is not None:
-        query = query.where(Judgment.target_date <= until)
+    query = (
+        select(Judgment)
+        .options(defer(Judgment.hours), defer(Judgment.windows))
+        .where(Judgment.id.in_(_latest_ids(site_id, site_ids, until).scalar_subquery()))
+    )
     if verdict is not None:
         query = query.where(Judgment.verdict == verdict)
-    query = query.order_by(Judgment.target_date.desc(), Judgment.judged_at.desc(), Judgment.id)
+    # 내역 화면이 날짜·현장으로 묶을 때 한 묶음이 이어지게 한다.
+    query = query.order_by(
+        Judgment.target_date.desc(), Judgment.site_id, Judgment.judged_at.desc(), Judgment.id
+    )
     return list(session.scalars(query.offset(offset).limit(limit)))
 
 
-def verdict_counts(session: Session, site_id: int | None) -> dict[str, int]:
-    query = select(Judgment.verdict, func.count()).group_by(Judgment.verdict)
-    if site_id is not None:
-        query = query.where(Judgment.site_id == site_id)
+def verdict_counts(
+    session: Session, site_id: int | None, site_ids: Sequence[int] | None = None
+) -> dict[str, int]:
+    """작업별 최신 판정의 단계별 건수(목록과 같은 기준)."""
+    query = (
+        select(Judgment.verdict, func.count())
+        .where(Judgment.id.in_(_latest_ids(site_id, site_ids, None).scalar_subquery()))
+        .group_by(Judgment.verdict)
+    )
     return {verdict: count for verdict, count in session.execute(query)}
 
 

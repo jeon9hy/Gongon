@@ -59,8 +59,9 @@ def add_item(
     end: Annotated[str, Form()] = "",
     location: Annotated[str, Form()] = "",
     memo: Annotated[str, Form()] = "",
+    work_dates: Annotated[list[str] | None, Form()] = None,
 ) -> Response:
-    form = WorkItemForm(work_type, work_date, start, end, location, memo)
+    form = WorkItemForm(work_type, work_date, start, end, location, memo, tuple(work_dates or ()))
     ok, errors = service.add_item(session, site_id, form, now.date())
     if not ok:
         view = service.build_view(session, site_id, now.date(), form, errors)
@@ -68,7 +69,9 @@ def add_item(
             raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
         return _render(request, view, status_code=422)
     return RedirectResponse(
-        f"/schedule?site_id={site_id}&day={form.work_date}&saved=1", status_code=303
+        f"/schedule?site_id={site_id}&day={min(d for d in (*form.work_dates, form.work_date) if d)}"
+        "&saved=1",
+        status_code=303,
     )
 
 

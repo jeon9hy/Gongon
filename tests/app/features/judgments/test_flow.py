@@ -17,7 +17,7 @@ from tests.fakes import FakeKma
 
 SITE: dict[str, Any] = {
     "name": "○○현장",
-    "address": "서울 중구 세종대로 110",
+    "road_address": "서울 중구 세종대로 110",
     "latitude": "37.5665",
     "longitude": "126.9780",
     "work_start": "07:00",
@@ -238,11 +238,12 @@ def test_history_filters_by_verdict_and_site(
     only_first = client.get("/judgments", params={"site_id": first}).text
 
     assert "△△현장" in unavailable and "KMA_SERVICE_KEY" in unavailable
-    assert "<td>○○현장</td>" not in unavailable
-    assert "<td>△△현장</td>" not in only_first
+    assert "○○현장</h3>" not in unavailable
+    assert "△△현장</h3>" not in only_first
+    assert "○○현장</h3>" in only_first
 
 
-@pytest.mark.parametrize("params", [{"verdict": "안전"}, {"page": 0}, {"hour": 24}])
+@pytest.mark.parametrize("params", [{"verdict": "안전"}, {"page": 0}, {"size": 40}, {"hour": 24}])
 def test_out_of_range_query_is_rejected(client: TestClient, params: dict[str, Any]) -> None:
     path = "/dashboard" if "hour" in params else "/judgments"
     assert client.get(path, params=params).status_code == 422
@@ -374,3 +375,40 @@ def test_run_all_skips_sites_outside_period_and_home_counts_them(
     assert count(session, Judgment) == 2
     assert "작업 기간이 아닙니다 · 2026-11-01~2026-11-30" in home
     assert "작업 없음" in home
+
+
+def test_history_shows_five_rows_per_site_and_folds_the_rest(client: TestClient) -> None:
+    site_id = add_site(client)
+    for start in ("07:00", "08:00", "09:00", "10:00", "11:00", "12:00"):  # 내일 작업 6건 + 폭염
+        item = {"site_id": str(site_id), "work_type": "철골 작업", "work_date": "2026-10-05",
+                "start": start, "end": "13:00", "location": "", "memo": ""}  # fmt: skip
+        assert client.post("/schedule", data=item, follow_redirects=False).status_code == 303
+    run(client, site_id)
+
+    page = client.get("/judgments", params={"site_id": site_id}).text
+
+    group = page.split('class="hsite"')[1]
+    shown, folded = group.split('class="hmore"')
+    assert shown.count('<li><a class="hrow') == 5
+    assert "2건 더보기" in folded and folded.count('<li><a class="hrow') == 2
+
+
+def test_history_lists_only_the_latest_judgment_per_work(
+    client: TestClient, fake_kma: FakeKma, session: Session
+) -> None:
+    from datetime import timedelta
+
+    from app.core.clock import now_kst
+    from tests.conftest import FIXED_NOW
+
+    site_id = add_site(client)
+    run(client, site_id)  # 14시 발표 예보로 판정
+    client.app.dependency_overrides[now_kst] = lambda: FIXED_NOW + timedelta(hours=3)  # type: ignore[attr-defined]
+    run(client, site_id)  # 17시 발표 예보로 다시 판정 → 같은 작업의 새 판정
+    stored = len(list(session.scalars(select(Judgment.id))))
+
+    page = client.get("/judgments", params={"site_id": site_id}).text
+
+    shown = page.count('<li><a class="hrow')
+    assert stored > shown > 0  # 이전 판정은 기록에 남지만 목록에는 최신만
+    assert "예보 10/04 14:00" not in page

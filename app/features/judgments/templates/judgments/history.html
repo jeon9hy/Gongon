@@ -1,12 +1,13 @@
 {% extends "base.html" %}
-{% from "_macros.html" import verdict_badge %}
+{% from "_macros.html" import icon, verdict_badge %}
 {% block title %}판정 내역{% endblock %}
 {% block content %}
 
-<section class="row">
-<div>
-<h1 class="title">판정 내역</h1>
-<p class="subtitle">예보로 낸 판정 기록입니다. 실제 작업 진행·중단 기록과는 별개입니다.</p>
+<section class="hero" aria-labelledby="history-title">
+<div class="hero__main">
+<p class="hero__date">{{ icon("history", 15) }} 예보 판정 기록</p>
+<h1 class="hero__title" id="history-title">판정 내역</h1>
+<p class="hero__lead">예보로 낸 판정입니다. 실제 작업 기록과는 별개입니다.</p>
 </div>
 </section>
 
@@ -18,47 +19,64 @@
 </nav>
 <form method="get" action="/judgments">
 <input type="hidden" name="verdict" value="{{ view.selected_verdict }}">
-<label>현장
-<select name="site_id" onchange="this.form.submit()">
-<option value=""{% if view.selected_site_id is none %} selected{% endif %}>전체</option>
+{% if view.total %}<span class="filters__count">총 <strong>{{ view.total }}</strong>건 중 {{ view.first_index }}–{{ view.first_index + view.count - 1 }}</span>{% endif %}
+<label class="visually-hidden" for="page-size">한 쪽에 보기</label>
+<select id="page-size" name="size" onchange="this.form.submit()">
+{% for n in view.size_options %}<option value="{{ n }}"{% if n == view.size %} selected{% endif %}>{{ n }}개씩</option>{% endfor %}
+</select>
+<label class="visually-hidden" for="history-site">현장</label>
+<select id="history-site" name="site_id" onchange="this.form.submit()">
+<option value=""{% if view.selected_site_id is none %} selected{% endif %}>전체 현장</option>
 {% for s in view.site_options %}<option value="{{ s.site_id }}"{% if s.selected %} selected{% endif %}>{{ s.name }}</option>{% endfor %}
 </select>
-</label>
 <noscript><button class="btn btn--soft" type="submit">적용</button></noscript>
 </form>
 </div>
 
-<div class="table-wrap table-wrap--plain">
-<table style="min-width: 860px;" class="nowrap">
-<thead>
-<tr>
-<th scope="col">대상 날짜</th><th scope="col">현장</th><th scope="col">공종 · 구간</th>
-<th scope="col">판정</th><th scope="col">예보 발표</th><th scope="col">기준 버전</th>
-<th scope="col"><span class="visually-hidden">상세</span></th>
-</tr>
-</thead>
-<tbody>
-{% for row in view.rows %}
-<tr>
-<td style="font-weight: 700;">{{ row.target_date }}</td>
-<td>{{ row.site_name }}</td>
-<td>{{ row.work }}</td>
-<td>{{ verdict_badge(row.verdict) }}{% if row.note %}<span class="row-note">{{ row.note }}</span>{% endif %}</td>
-<td style="color: var(--verdict-unknown-fg);">{{ row.issued }}</td>
-<td style="color: var(--verdict-unknown-fg);">{{ row.rule_version }}</td>
-<td style="text-align: right;"><a class="btn btn--soft" style="min-height: 40px; font-size: 13px;" href="/judgments/{{ row.judgment_id }}">상세</a></td>
-</tr>
+{% for day in view.days %}
+{% set day_index = loop.index %}
+<section class="hday" aria-label="{{ day.label }} 대상 판정">
+<header class="hday__head"><h2 class="hday__title">{{ day.label }}</h2><span class="hday__count">판정 {{ day.count }}건</span></header>
+{% for site in day.sites %}
+<div class="hsite">
+<h3 class="hsite__name">{{ icon("site", 14) }} {{ site.site_name }}</h3>
+{% macro hrow(row) %}<li><a class="hrow" href="/judgments/{{ row.judgment_id }}">
+<span class="hrow__verdict">{{ verdict_badge(row.verdict) }}</span>
+<span class="hrow__work"><strong>{{ row.work_type }}</strong><span>{{ row.time_range }}</span></span>
+<span class="hrow__meta">예보 {{ row.issued }}<span class="hrow__rule"> · 기준 {{ row.rule_version }}</span>{% if row.note %}<span class="hrow__note">{{ row.note }}</span>{% endif %}</span>
+<span class="hrow__chev" aria-hidden="true">{{ icon("arrow-right", 15, 2.2) }}</span>
+</a></li>{% endmacro %}
+<ul class="hrows">
+{% for row in site.rows[:view.visible_rows] %}
+{{ hrow(row) }}
 {% endfor %}
-</tbody>
-</table>
-{% if not view.rows %}<p class="empty">이 조건의 판정 내역이 없습니다.</p>{% endif %}
+</ul>
+{% if site.rows | length > view.visible_rows %}
+{% set more_id = "more-" ~ day_index ~ "-" ~ loop.index %}
+<div class="hmore">
+<input type="checkbox" id="{{ more_id }}" class="hmore__check visually-hidden">
+<ul class="hrows hmore__rows">
+{% for row in site.rows[view.visible_rows:] %}
+{{ hrow(row) }}
+{% endfor %}
+</ul>
+<label for="{{ more_id }}" class="hmore__toggle"><span class="when-closed">{{ site.rows | length - view.visible_rows }}건 더보기</span><span class="when-open">접기</span>{{ icon("chevron-down", 15, 2.2) }}</label>
 </div>
+{% endif %}
+</div>
+{% endfor %}
+</section>
+{% else %}
+<div class="empty-art"><img class="mascot" src="/static/brand/mascot-search.png" alt="" width="150" height="135"><p>이 조건의 판정 내역이 없습니다.</p></div>
+{% endfor %}
 
-<div class="row row--center">
-<p class="small muted">{{ view.page }}쪽 · {{ view.rows | length }}건 표시</p>
-<div class="row row--center" style="gap: 8px;">
-{% if view.prev_href %}<a class="btn btn--soft" href="{{ view.prev_href }}">이전</a>{% endif %}
-{% if view.next_href %}<a class="btn btn--soft" href="{{ view.next_href }}">다음</a>{% endif %}
+{% if view.total %}
+<nav class="pager" aria-label="판정 내역 쪽">
+<div class="pager__pages">
+{% if view.prev_href %}<a class="pager__btn" href="{{ view.prev_href }}" aria-label="이전 쪽">{{ icon("arrow-left", 15, 2.2) }}</a>{% else %}<span class="pager__btn is-disabled" aria-hidden="true">{{ icon("arrow-left", 15, 2.2) }}</span>{% endif %}
+{% for p in view.pages %}{% if p.href %}<a class="pager__num" href="{{ p.href }}"{% if p.current %} aria-current="page"{% endif %}>{{ p.label }}</a>{% else %}<span class="pager__gap">…</span>{% endif %}{% endfor %}
+{% if view.next_href %}<a class="pager__btn" href="{{ view.next_href }}" aria-label="다음 쪽">{{ icon("arrow-right", 15, 2.2) }}</a>{% else %}<span class="pager__btn is-disabled" aria-hidden="true">{{ icon("arrow-right", 15, 2.2) }}</span>{% endif %}
 </div>
-</div>
+</nav>
+{% endif %}
 {% endblock %}

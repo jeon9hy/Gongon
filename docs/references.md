@@ -14,7 +14,7 @@
 | S08-3-2 중기 | [기상청 중기예보 조회서비스](https://www.data.go.kr/data/15059468/openapi.do) | getMidLandFcst 항목(rnSt·wf, 6시 발표 4~10일·18시 발표 5~10일), 중기육상예보구역 코드표(10개), 날씨예보 종류(비·눈·비/눈·소나기) | ZIP `기상청28_중기예보 조회서비스_오픈API활용가이드_251212.zip`(SHA256 303bf7a6c128e47d…, 안의 DOCX 241128·중기기온예보구역코드 2025.12 xlsx). 강원 영서·영동은 xlsx 11D2 도시 목록. 실제 응답 2026-10-08 06시 발표 저장(tests/engine/forecast/data) |
 
 S02-1 원본은 공식 다운로드 제한 확인 API의 needCaptcha=false 응답 후 내려받았다. 다운로드 URL·파일 해시와 다섯 행은 `tests/engine/geo/data/kma_grid_20260701.json`에 기록했다. 원본 ZIP SHA256은 `437f3b921d04d907afe3cb2c556077df2d063c6f8c5bf06783fd76ea4b7712f9`, XLSX SHA256은 `746b5e5be10430106abccc795a16c16d0f1fd0f081e8ab2765d0adc983a003c1`이다. 원본은 Windows 임시 폴더의 `gongon-kma-guide-2609.zip`, `gongon-kma-grid-2607.xlsx`에 보관했으며 정리될 수 있다. 재현용 발췌만 Git에 저장하고 테스트에서 네트워크·스프레드시트 라이브러리를 요구하지 않는다.
-| S05 주소 | [Kakao Local 개발 가이드](https://developers.kakao.com/docs/ko/local/dev-guide) | 키워드 검색의 좌표·주소·빈 결과·오류·인증 방식, 실제 결과 대조 | 공식 문서 페이지 확인. 기존 저장 응답을 우선 재사용, 사용자 키의 승인·실제 호출은 별도 확인 |
+| S05 주소 | [Kakao Local 개발 가이드](https://developers.kakao.com/docs/ko/local/dev-guide) | 주소 검색하기(`/v2/local/search/address.json`)의 좌표·지번/도로명·빈 결과·오류·인증 방식(D-047, 키워드 검색 대체) | 2026-10-08 실제 응답 저장(tests/app/features/sites/data/kakao_address_*.json). 우편번호 창은 [다음 우편번호 서비스](https://postcode.map.daum.net/guide)(키 불필요, 스크립트 응답 200 확인) |
 
 API 포털의 기본 선택 기능은 초단기실황일 수 있으므로 단기예보 getVilageFcst의 항목인지 확인한다. 실제 응답 구조 확인만으로 예보값의 시간 대표성이나 법령 기준과의 비교 가능성이 검증된 것은 아니다. 엔진의 정시~다음 정시 해석도 가이드와 대조한다.
 
