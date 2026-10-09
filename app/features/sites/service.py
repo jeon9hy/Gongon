@@ -118,11 +118,15 @@ def basis_status(label: str) -> BasisStatus:
 
 def validate(form: SiteForm) -> tuple[SiteInput | None, tuple[str, ...]]:
     errors: list[str] = []
-    address = form.address.strip()
-    if not address or len(address) > ADDRESS_MAX:
+    road_address = form.road_address.strip()
+    lot_address = form.lot_address.strip()
+    address = road_address or lot_address
+    if not address:
         errors.append(
-            f"주소를 1~{ADDRESS_MAX}자로 입력하세요. 주소 칸에서 장소를 찾아 고를 수 있습니다."
+            "도로명 주소나 지번 주소 중 하나는 입력하세요. [주소 찾기]로 고를 수 있습니다."
         )
+    elif max(len(road_address), len(lot_address)) > ADDRESS_MAX:
+        errors.append(f"주소는 {ADDRESS_MAX}자 이하로 입력하세요.")
     # 현장 이름은 선택이다. 비우면 주소를 이름으로 쓴다(목록·알림에 표시할 이름이 필요).
     name = form.name.strip() or address[:NAME_MAX]
     if len(name) > NAME_MAX:
@@ -167,6 +171,8 @@ def validate(form: SiteForm) -> tuple[SiteInput | None, tuple[str, ...]]:
         SiteInput(
             name=name,
             address=address,
+            road_address=road_address,
+            lot_address=lot_address,
             latitude_deg=latitude,
             longitude_deg=longitude,
             grid_nx=grid.nx,
@@ -237,6 +243,8 @@ def _record(site: Site) -> SiteRecord:
         site_id=site.id,
         name=site.name,
         address=site.address,
+        road_address=site.road_address,
+        lot_address=site.lot_address,
         latitude_deg=site.latitude_deg,
         longitude_deg=site.longitude_deg,
         grid_nx=site.grid_nx,
@@ -252,7 +260,8 @@ def _record(site: Site) -> SiteRecord:
 def _form_from(record: SiteRecord) -> SiteForm:
     return SiteForm(
         name=record.name,
-        address=record.address,
+        road_address=record.road_address,
+        lot_address=record.lot_address,
         latitude=f"{record.latitude_deg:.6g}",
         longitude=f"{record.longitude_deg:.7g}",
         work_start=_hhmm(record.work_start_local),

@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 VALID: dict[str, Any] = {
     "name": "○○현장",
-    "address": "서울특별시",
+    "road_address": "서울 중구 세종대로 110",
     "latitude": "37.5665",
     "longitude": "126.9780",
     "work_start": "07:00",
@@ -40,7 +40,7 @@ def test_new_site_is_saved_with_kma_grid_and_listed(client: TestClient) -> None:
         ({"work_start": "25:00"}, "00:00 형식"),
         ({"work_types": []}, "공종을 하나 이상"),
         ({"work_types": ["토공"]}, "알 수 없는 공종"),
-        ({"address": "  "}, "주소를 1~200자로 입력하세요"),
+        ({"road_address": "  ", "lot_address": ""}, "도로명 주소나 지번 주소 중 하나는"),
         ({"work_start_date": ""}, "작업 기간(시작일·종료일)을 입력하세요"),
         (
             {"work_start_date": "2026-12-31", "work_end_date": "2026-10-01"},
@@ -77,7 +77,7 @@ def test_unknown_site_returns_404(client: TestClient) -> None:
 
 
 def test_blank_site_name_uses_address_as_name(client: TestClient) -> None:
-    location = create(client, name="", address="서울 중구 세종대로 110").headers["location"]
+    location = create(client, name="", road_address="서울 중구 세종대로 110").headers["location"]
 
     assert "<strong>서울 중구 세종대로 110</strong>" in client.get(location).text
 
@@ -87,3 +87,24 @@ def test_new_site_form_starts_with_a_30_day_period_from_today(client: TestClient
 
     assert 'name="work_start_date" value="2026-10-04"' in page
     assert 'name="work_end_date" value="2026-11-03"' in page
+
+
+def test_lot_number_only_site_is_saved_and_both_fields_come_back(client: TestClient) -> None:
+    # 도로명주소가 없는 공사 부지(D-048): 지번만으로 저장하고 이름 대신 지번을 쓴다.
+    lot = "강원 평창군 대관령면 횡계리 1"
+    location = create(client, name="", road_address="", lot_address=lot).headers["location"]
+
+    page = client.get(location).text
+    assert f"<strong>{lot}</strong>" in page
+    assert f'name="lot_address" value="{lot}"' in page
+    assert 'name="road_address" value=""' in page
+
+
+def test_both_addresses_are_kept_and_road_is_the_display_address(client: TestClient) -> None:
+    location = create(
+        client, name="", road_address="서울 중구 세종대로 110", lot_address="서울 중구 태평로1가 31"
+    ).headers["location"]
+
+    page = client.get(location).text
+    assert "<strong>서울 중구 세종대로 110</strong>" in page
+    assert 'name="lot_address" value="서울 중구 태평로1가 31"' in page

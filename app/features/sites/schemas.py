@@ -12,7 +12,9 @@ class SiteRecord:
 
     site_id: int
     name: str
-    address: str
+    address: str  # 대표 주소(도로명 우선, 없으면 지번)
+    road_address: str  # 없으면 빈 문자열
+    lot_address: str
     latitude_deg: float
     longitude_deg: float
     grid_nx: int
@@ -41,7 +43,8 @@ class SiteForm:
     """화면 입력값 그대로(검증 실패 시 다시 보여주기 위해 문자열로 둔다)."""
 
     name: str = ""
-    address: str = ""
+    road_address: str = ""
+    lot_address: str = ""
     latitude: str = ""
     longitude: str = ""
     work_start: str = "07:00"
@@ -54,7 +57,9 @@ class SiteForm:
 @dataclass(frozen=True, slots=True)
 class SiteInput:
     name: str
-    address: str
+    address: str  # 대표 주소(도로명 우선)
+    road_address: str
+    lot_address: str
     latitude_deg: float
     longitude_deg: float
     grid_nx: int

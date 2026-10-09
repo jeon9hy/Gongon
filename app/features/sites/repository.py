@@ -40,6 +40,8 @@ def _columns(data: SiteInput) -> dict[str, object]:
     return {
         "name": data.name,
         "address": data.address,
+        "road_address": data.road_address,
+        "lot_address": data.lot_address,
         "latitude_deg": data.latitude_deg,
         "longitude_deg": data.longitude_deg,
         "grid_nx": data.grid_nx,

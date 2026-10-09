@@ -3,10 +3,10 @@
 {% block title %}현장 설정{% endblock %}
 {% block content %}
 
-<section class="row">
-<div>
-<h1 class="title">현장 설정</h1>
-<p class="subtitle">위치·주요 공종·작업 시간을 한 번 등록하면 대시보드에서 내일 판정을 받습니다.</p>
+<section class="hero" aria-labelledby="sites-title">
+<div class="hero__main">
+<p class="hero__date">{{ icon("site", 15) }} 현장 {{ view.items | length }}곳</p>
+<h1 class="hero__title" id="sites-title">현장 설정</h1>
 </div>
 </section>
 
@@ -34,7 +34,7 @@
 <ul>{% for e in view.errors %}<li>{{ e }}</li>{% endfor %}</ul>
 </div>
 {% elif view.deleted %}
-<div class="alert alert--ok" role="status">{{ icon("check", 16, 2.4) }} 현장을 삭제했습니다. 지난 판정 내역은 판정 내역에 남아 있습니다.</div>
+<div class="alert alert--ok" role="status">{{ icon("check", 16, 2.4) }} 현장을 삭제했습니다.</div>
 {% elif view.saved %}
 <div class="alert alert--ok" role="status">{{ icon("check", 16, 2.4) }} 저장했습니다. 대시보드에서 판정할 수 있습니다.</div>
 {% endif %}
@@ -42,15 +42,25 @@
 <fieldset>
 <legend>{% if view.site_id is none %}새 현장{% else %}위치{% endif %}</legend>
 <div class="place-search">
-<label class="field">주소
-<input id="site-address" type="text" name="address" value="{{ form.address }}" placeholder="주소나 건물 이름을 2글자 이상 입력하면 후보가 나옵니다 (예: 서울시청)" required maxlength="200"
+<div class="address-head">
+<span class="field">주소 <small class="muted">도로명·지번 중 하나는 필수</small></span>
+<button type="button" id="address-find" class="btn btn--ink btn--sm">주소 찾기</button>
+</div>
+<div class="inline">
+<label class="field" style="flex: 1 1 280px;">도로명 주소
+<input id="site-road" type="text" name="road_address" value="{{ form.road_address }}" placeholder="예: 서울 중구 세종대로 110" maxlength="200"
  autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="place-list">
 </label>
-<ul id="place-list" class="place-list" role="listbox" aria-label="장소 후보" hidden></ul>
+<label class="field" style="flex: 1 1 280px;">지번 주소
+<input id="site-lot" type="text" name="lot_address" value="{{ form.lot_address }}" placeholder="예: 경기 화성시 ○○면 ○○리 123" maxlength="200"
+ autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="place-list">
+</label>
 </div>
-<p id="place-status" class="small muted" aria-live="polite"></p>
+<ul id="place-list" class="place-list" role="listbox" aria-label="주소 후보" hidden></ul>
+</div>
+<p id="place-status" class="small muted" aria-live="polite">[주소 찾기]로 고르면 두 칸과 위도·경도가 자동으로 채워집니다. 목록에 없는 공사 부지는 지번 주소 칸에 입력하고 Enter.</p>
 <label class="field">현장 이름 (선택)
-<input id="site-name" type="text" name="name" value="{{ form.name }}" placeholder="○○현장 — 비우면 고른 장소 이름이나 주소로 표시" maxlength="60">
+<input id="site-name" type="text" name="name" value="{{ form.name }}" placeholder="○○현장 — 비우면 건물 이름이나 주소로 표시" maxlength="60">
 </label>
 <div class="inline">
 <label class="field" style="flex: 1 1 180px;">위도
@@ -66,7 +76,7 @@
 <span>기상청 격자 <strong>{{ view.grid_text }}</strong></span>
 <span class="muted">· 격자 대표값이라 현장과 차이가 있을 수 있습니다</span>
 {% else %}
-<span class="muted">주소 칸에서 장소를 고르면 주소·위도·경도가 채워집니다. 후보가 없으면 지도 서비스에서 위도·경도를 확인해 입력하세요. 저장하면 기상청 격자로 바꿉니다.</span>
+<span class="muted">위도·경도는 주소에서 자동으로 채워집니다. 주소로 찾을 수 없을 때만 직접 입력하세요. 저장하면 기상청 격자로 바꿉니다.</span>
 {% endif %}
 </div>
 </fieldset>
@@ -126,39 +136,50 @@
 {% endif %}
 </div>
 </div>
+<script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js" async></script>
 <script>
-// 주소 칸 → 장소 후보(서버 /sites/places, D-022). 결과는 textContent로만 넣는다.
+// 주소 → 위경도(D-047). [주소 찾기]는 다음 우편번호 서비스 창, 고른 주소는 서버 /sites/places(카카오 주소 검색)로 좌표를 얻는다.
+// 우편번호 창에 없는 빈 땅 지번은 직접 입력하고 Enter. 결과는 textContent로만 넣는다.
 (() => {
-  const input = document.getElementById("site-address");
+  const road = document.getElementById("site-road");
+  const lot = document.getElementById("site-lot");
+  const fields = [road, lot];
+  const findButton = document.getElementById("address-find");
   const name = document.getElementById("site-name");
   const list = document.getElementById("place-list");
   const status = document.getElementById("place-status");
   const lat = document.getElementById("site-lat");
   const lon = document.getElementById("site-lon");
-  let timer = null, seq = 0, items = [], active = -1;
+  let seq = 0, items = [], active = -1, owner = road;
 
   function close() {
     list.hidden = true;
-    input.setAttribute("aria-expanded", "false");
-    input.removeAttribute("aria-activedescendant");
+    fields.forEach((f) => { f.setAttribute("aria-expanded", "false"); f.removeAttribute("aria-activedescendant"); });
     active = -1;
   }
   function highlight(i) {
     active = i;
     [...list.children].forEach((li, j) => li.setAttribute("aria-selected", String(j === i)));
     if (i >= 0) {
-      input.setAttribute("aria-activedescendant", "place-" + i);
+      owner.setAttribute("aria-activedescendant", "place-" + i);
       list.children[i].scrollIntoView({ block: "nearest" });
     }
   }
-  function choose(i) {
-    const p = items[i];
-    input.value = p.address;
-    if (!name.value.trim()) name.value = p.name.slice(0, 60);
+  // 검색 결과로 비어 있는 칸만 채운다(우편번호 창에서 고른 값은 그대로 둔다).
+  function fill(p, buildingName) {
+    if (!road.value.trim()) road.value = p.road_address;
+    if (!lot.value.trim()) lot.value = p.lot_address;
+    const building = buildingName || p.name;
+    if (!name.value.trim() && building) name.value = building.slice(0, 60);
     lat.value = p.latitude_deg.toFixed(6);
     lon.value = p.longitude_deg.toFixed(6);
-    status.textContent = `‘${p.name}’ 위치를 채웠습니다 · ${p.address}`;
+    status.textContent = `위치를 채웠습니다 · ${p.road_address || p.lot_address}`;
     close();
+  }
+  function choose(i) {
+    // 목록에서 고른 주소로 두 칸을 함께 바꾼다.
+    road.value = ""; lot.value = "";
+    fill(items[i]);
   }
   function render(places) {
     items = places;
@@ -167,52 +188,78 @@
       li.id = "place-" + i;
       li.setAttribute("role", "option");
       const title = document.createElement("strong");
-      title.textContent = p.name;
+      title.textContent = p.road_address || p.lot_address;
       const detail = document.createElement("span");
-      detail.textContent = p.address + (p.category ? " · " + p.category.split(" > ").pop() : "");
+      detail.textContent = [p.name, p.road_address && p.lot_address ? "지번 " + p.lot_address : ""].filter(Boolean).join(" · ");
       li.append(title, detail);
       li.addEventListener("mousedown", (e) => { e.preventDefault(); choose(i); });
       return li;
     }));
-    list.hidden = places.length === 0;
-    input.setAttribute("aria-expanded", String(!list.hidden));
-    highlight(-1);
+    list.hidden = places.length < 2;
+    owner.setAttribute("aria-expanded", String(!list.hidden));
+    highlight(list.hidden ? -1 : 0);
   }
-  async function search(q) {
+  async function lookup(q) {
+    const response = await fetch("/sites/places?q=" + encodeURIComponent(q));
+    return response.json();
+  }
+  // 주소로 좌표를 찾는다. 앞의 주소로 못 찾으면 다음 주소로, 결과가 여럿이면 목록에서 고르게 한다.
+  async function locate(queries, buildingName) {
     const mine = ++seq;
-    status.textContent = "검색 중…";
+    status.textContent = "위치 찾는 중…";
     try {
-      const response = await fetch("/sites/places?q=" + encodeURIComponent(q));
-      const data = await response.json();
-      if (mine !== seq) return;  // 더 최근 입력의 결과만 보여준다
+      let data = { places: [], message: null };
+      for (const q of queries.filter((q) => q && q.trim().length >= 2)) {
+        data = await lookup(q.trim());
+        if (data.places.length) break;
+      }
+      if (mine !== seq) return;  // 더 최근 요청의 결과만 보여준다
+      if (data.places.length === 1) { fill(data.places[0], buildingName); return; }
       render(data.places);
-      if (data.places.length) highlight(0);
-      status.textContent = data.message || (data.places.length ? "↑↓로 고르고 Enter, 또는 클릭하세요." : "");
+      status.textContent = data.message || (data.places.length ? "후보 중 하나를 고르세요(↑↓ 후 Enter 또는 클릭)." : "주소를 입력하세요.");
     } catch {
-      if (mine === seq) status.textContent = "장소 검색에 연결하지 못했습니다. 위도·경도를 직접 입력하세요.";
+      if (mine === seq) status.textContent = "위치를 찾지 못했습니다(연결 실패). 위도·경도를 직접 입력하세요.";
     }
   }
-  input.addEventListener("input", () => {
-    clearTimeout(timer);
-    const q = input.value.trim();
-    if (q.length < 2) { close(); return; }
-    timer = setTimeout(() => search(q), 300);
-  });
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      // 주소 칸의 Enter는 저장이 아니라 장소 찾기·고르기다(위경도가 비어 있을 때 폼이 제출되지 않게).
-      e.preventDefault();
-      if (!list.hidden && items.length) { choose(active >= 0 ? active : 0); return; }
-      const q = input.value.trim();
-      if (q.length >= 2) { clearTimeout(timer); search(q); }
+  findButton.addEventListener("click", () => {
+    if (!window.daum || !window.daum.Postcode) {
+      status.textContent = "주소 찾기 창을 불러오지 못했습니다. 도로명이나 지번을 입력하고 Enter를 누르세요.";
+      road.focus();
       return;
     }
-    if (list.hidden) return;
-    if (e.key === "ArrowDown") { e.preventDefault(); highlight(Math.min(active + 1, items.length - 1)); }
-    else if (e.key === "ArrowUp") { e.preventDefault(); highlight(Math.max(active - 1, 0)); }
-    else if (e.key === "Escape") { close(); }
+    new window.daum.Postcode({
+      oncomplete(data) {
+        road.value = data.roadAddress || "";
+        lot.value = data.jibunAddress || data.autoJibunAddress || "";
+        const picked = data.userSelectedType === "J" ? [lot.value, road.value] : [road.value, lot.value];
+        locate([...picked, data.address], data.buildingName);
+      },
+    }).open();
   });
-  input.addEventListener("blur", () => setTimeout(close, 150));
+  fields.forEach((field) => {
+    field.addEventListener("input", () => {
+      // 바뀐 주소와 예전 위경도가 섞여 저장되지 않게 비운다.
+      close(); lat.value = ""; lon.value = "";
+      status.textContent = "주소를 바꿨습니다. Enter를 누르면 위치(위도·경도)를 다시 찾습니다.";
+    });
+    field.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        // 주소 칸의 Enter는 저장이 아니라 위치 찾기·고르기다(위경도가 비어 있을 때 폼이 제출되지 않게).
+        e.preventDefault();
+        if (!list.hidden && items.length) { choose(active >= 0 ? active : 0); return; }
+        owner = field;
+        // 입력한 칸으로 찾고, 다른 칸은 검색 결과로 다시 채운다.
+        (field === road ? lot : road).value = "";
+        locate([field.value]);
+        return;
+      }
+      if (list.hidden) return;
+      if (e.key === "ArrowDown") { e.preventDefault(); highlight(Math.min(active + 1, items.length - 1)); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); highlight(Math.max(active - 1, 0)); }
+      else if (e.key === "Escape") { close(); }
+    });
+    field.addEventListener("blur", () => setTimeout(close, 150));
+  });
 })();
 </script>
 {% endblock %}

@@ -10,7 +10,7 @@ from app.features.judgments.models import Judgment
 from app.features.sites.models import Site
 
 SITE: dict[str, Any] = {
-    "address": "서울 중구 세종대로 110",
+    "road_address": "서울 중구 세종대로 110",
     "latitude": "37.5665",
     "longitude": "126.9780",
     "work_start": "07:00",
@@ -56,7 +56,8 @@ def test_deleted_site_leaves_lists_but_its_judgments_stay_in_history(
     assert len(judgment_ids) == session.scalar(
         select(func.count()).select_from(Judgment).where(Judgment.site_id == gone)
     )
-    assert "삭제된 현장" in client.get("/judgments").text
+    # 내역 목록에서는 빠지고(D-054), 판정 상세는 주소로 계속 열린다
+    assert "삭제된 현장" not in client.get("/judgments").text
     assert client.get(f"/judgments/{judgment_ids[0]}").status_code == 200
     # 다른 현장은 그대로
     assert client.get("/dashboard", params={"site_id": kept}).status_code == 200

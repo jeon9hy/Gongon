@@ -1,7 +1,9 @@
-"""현장 위치 찾기(/sites/places). 카카오 API는 가짜 http_get으로 바꾼다.
+"""현장 주소 → 위경도(/sites/places, 카카오 '주소 검색하기', D-047).
 
-응답 본문은 Kakao Developers '키워드로 장소 검색' 문서의 응답 구조(meta, documents[]의
-place_name·address_name·road_address_name·category_name·x·y)를 따르고 값은 테스트용이다.
+카카오 API는 가짜 http_get으로 바꾼다.
+
+기본 문서는 2026-10-08 실제 응답(data/kakao_address_*.json)의 documents[0]이다.
+빈 땅 지번 사례는 그 응답에서 road_address를 null로 바꾼 것이다(문서상 도로명이 없으면 null).
 """
 
 import json
@@ -24,14 +26,11 @@ def kakao_body(*documents: dict[str, Any]) -> bytes:
     return json.dumps({"meta": meta, "documents": list(documents)}, ensure_ascii=False).encode()
 
 
-SEOUL_CITY_HALL = {
-    "place_name": "서울특별시청",
-    "address_name": "서울 중구 태평로1가 31",
-    "road_address_name": "서울 중구 세종대로 110",
-    "category_name": "사회,공공기관 > 행정기관 > 시청",
-    "x": "126.978652258309",
-    "y": "37.566826004661",
-}
+DATA = Path(__file__).parent / "data"
+LOT_RESPONSE = DATA / "kakao_address_lot_seoul_city_hall_2026-10-08.json"
+ROAD_RESPONSE = DATA / "kakao_address_road_seoul_city_hall_2026-10-08.json"
+LOT_DOCUMENTS = json.loads(LOT_RESPONSE.read_text(encoding="utf-8"))["documents"]
+SEOUL_CITY_HALL: dict[str, Any] = LOT_DOCUMENTS[0]
 
 
 class FakeKakao:
@@ -56,30 +55,49 @@ def client_with(fake: FakeKakao, key: str = "kakao-key") -> TestClient:
     return TestClient(app)
 
 
-def test_search_returns_address_and_coordinates_for_the_form() -> None:
-    fake = FakeKakao(kakao_body(SEOUL_CITY_HALL))
+def test_lot_number_returns_road_address_and_coordinates_for_the_form() -> None:
+    fake = FakeKakao(LOT_RESPONSE.read_bytes())
 
-    data = client_with(fake).get("/sites/places", params={"q": "서울시청"}).json()
+    data = client_with(fake).get("/sites/places", params={"q": "서울 중구 태평로1가 31"}).json()
 
     assert data["places"] == [
         {
             "name": "서울특별시청",
-            "address": "서울 중구 세종대로 110",  # 도로명주소 우선
-            "category": "사회,공공기관 > 행정기관 > 시청",
-            "latitude_deg": 37.566826004661,  # y가 위도
-            "longitude_deg": 126.978652258309,  # x가 경도
+            "road_address": "서울 중구 세종대로 110",
+            "lot_address": "서울 중구 태평로1가 31",
+            "latitude_deg": 37.566585446882,  # y가 위도
+            "longitude_deg": 126.978203640984,  # x가 경도
         }
     ]
+    assert data["message"] is None
     params, headers = fake.calls[0]
-    assert params["query"] == "서울시청"
+    assert params["query"] == "서울 중구 태평로1가 31"
     assert headers == {"Authorization": "KakaoAK kakao-key"}
 
 
-def test_lot_number_address_is_used_when_no_road_address() -> None:
-    doc = {**SEOUL_CITY_HALL, "road_address_name": ""}
-    data = client_with(FakeKakao(kakao_body(doc))).get("/sites/places", params={"q": "시청"}).json()
+def test_road_address_response_is_read() -> None:
+    data = (
+        client_with(FakeKakao(ROAD_RESPONSE.read_bytes()))
+        .get("/sites/places", params={"q": "서울 중구 세종대로 110"})
+        .json()
+    )
 
-    assert data["places"][0]["address"] == "서울 중구 태평로1가 31"
+    first = data["places"][0]
+    assert first["road_address"] == "서울 중구 세종대로 110"
+    assert 37.56 < first["latitude_deg"] < 37.57
+    assert 126.97 < first["longitude_deg"] < 126.98
+
+
+def test_vacant_lot_without_road_address_keeps_lot_number_only() -> None:
+    # 건물이 없는 공사 부지는 도로명주소가 없다(road_address null).
+    doc = {**SEOUL_CITY_HALL, "road_address": None}
+    client = client_with(FakeKakao(kakao_body(doc)))
+    data = client.get("/sites/places", params={"q": "태평로1가 31"})
+
+    place = data.json()["places"][0]
+    assert place["road_address"] == ""
+    assert place["lot_address"] == "서울 중구 태평로1가 31"
+    assert place["name"] == ""
 
 
 def test_result_without_coordinates_is_not_offered() -> None:
@@ -120,28 +138,12 @@ def test_kakao_error_reason_is_shown_not_500() -> None:
     assert "cannot find appkey" in response.json()["message"]
 
 
-def test_no_results_suggests_other_name_or_manual_entry() -> None:
-    data = (
-        client_with(FakeKakao(kakao_body())).get("/sites/places", params={"q": "없는현장"}).json()
-    )
+def test_no_results_suggests_lot_number_or_manual_entry() -> None:
+    client = client_with(FakeKakao(kakao_body()))
+    data = client.get("/sites/places", params={"q": "없는 지번 999"}).json()
 
     assert data["places"] == []
     assert "직접 입력" in data["message"]
-
-
-def test_real_kakao_response_is_read() -> None:
-    # 2026-10-04 '서울시청'(size=2) 실제 응답 원문.
-    path = Path(__file__).parent / "data" / "kakao_keyword_seoul_city_hall_2026-10-04.json"
-    fake = FakeKakao(path.read_bytes())
-
-    data = client_with(fake).get("/sites/places", params={"q": "서울시청"}).json()
-
-    first = data["places"][0]
-    assert first["name"] == "서울특별시청"
-    assert first["address"] == "서울 중구 세종대로 110"
-    assert 37.56 < first["latitude_deg"] < 37.57
-    assert 126.97 < first["longitude_deg"] < 126.98
-    assert len(data["places"]) == 2
 
 
 def test_autocomplete_script_is_in_page_body_not_title() -> None:
@@ -156,4 +158,7 @@ def test_autocomplete_script_is_in_page_body_not_title() -> None:
 
     title = html[html.index("<title>") : html.index("</title>")]
     assert "<script" not in title
-    assert html.index('id="site-address"') < html.index("<script>") < html.index("</main>")
+    assert html.index('id="site-road"') < html.index("<script>") < html.index("</main>")
+    # 주소 찾기는 다음 우편번호 서비스 창이고, 이름으로 찾는 장소 목록은 쓰지 않는다(D-047).
+    assert 'id="address-find"' in html and "postcode.v2.js" in html
+    assert 'name="road_address"' in html and 'name="lot_address"' in html

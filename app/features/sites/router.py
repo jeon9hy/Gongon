@@ -26,7 +26,8 @@ class _SiteFormFields:
     def __init__(
         self,
         name: Annotated[str, Form()] = "",
-        address: Annotated[str, Form()] = "",
+        road_address: Annotated[str, Form()] = "",
+        lot_address: Annotated[str, Form()] = "",
         latitude: Annotated[str, Form()] = "",
         longitude: Annotated[str, Form()] = "",
         work_start: Annotated[str, Form()] = "",
@@ -37,7 +38,8 @@ class _SiteFormFields:
     ) -> None:
         self.form = SiteForm(
             name=name,
-            address=address,
+            road_address=road_address,
+            lot_address=lot_address,
             latitude=latitude,
             longitude=longitude,
             work_start=work_start,
@@ -80,20 +82,23 @@ def search_places(
     http_get: Annotated[places.HttpGetWithHeaders, Depends(places.get_place_http_get)],
     q: Annotated[str, Query(max_length=places.QUERY_MAX)] = "",
 ) -> JSONResponse:
-    """현장 이름으로 장소 후보(주소·위경도)를 준다. 실패해도 직접 입력하도록 사유만 돌려준다."""
+    """지번·도로명 주소로 위경도 후보를 준다. 실패해도 직접 입력하도록 사유만 돌려준다."""
     query = q.strip()
     if len(query) < places.QUERY_MIN:
         return JSONResponse({"places": [], "message": None})
     try:
         found = places.search_places(query, settings.kakao_rest_api_key, http_get)
     except places.PlaceSearchError as error:
-        places.logger.warning("장소 검색 실패 q=%r: %s", query, error)
-        return JSONResponse({"places": [], "message": f"장소 검색 실패 · {error}"})
+        places.logger.warning("주소 검색 실패 q=%r: %s", query, error)
+        return JSONResponse({"places": [], "message": f"주소 검색 실패 · {error}"})
     message = None if found else _NO_PLACE_MESSAGE
     return JSONResponse({"places": [p.to_json() for p in found], "message": message})
 
 
-_NO_PLACE_MESSAGE = "검색 결과가 없습니다. 다른 이름으로 찾거나 위도·경도를 직접 입력하세요."
+_NO_PLACE_MESSAGE = (
+    "주소를 찾지 못했습니다. 지번(예: ○○시 ○○면 ○○리 123)이나 도로명을 확인하거나 "
+    "위도·경도를 직접 입력하세요."
+)
 
 
 @router.post("/sites")

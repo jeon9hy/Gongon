@@ -1,0 +1,43 @@
+{
+  "documents": [
+    {
+      "address": {
+        "address_name": "서울 중구 태평로1가 31",
+        "b_code": "1114010300",
+        "h_code": "1114055000",
+        "main_address_no": "31",
+        "mountain_yn": "N",
+        "region_1depth_name": "서울",
+        "region_2depth_name": "중구",
+        "region_3depth_h_name": "명동",
+        "region_3depth_name": "태평로1가",
+        "sub_address_no": "",
+        "x": "126.978203640984",
+        "y": "37.566585446882"
+      },
+      "address_name": "서울 중구 태평로1가 31",
+      "address_type": "REGION_ADDR",
+      "road_address": {
+        "address_name": "서울 중구 세종대로 110",
+        "building_name": "서울특별시청",
+        "main_building_no": "110",
+        "region_1depth_name": "서울",
+        "region_2depth_name": "중구",
+        "region_3depth_name": "태평로1가",
+        "road_name": "세종대로",
+        "sub_building_no": "",
+        "underground_yn": "N",
+        "x": "126.977918351844",
+        "y": "37.566370776634",
+        "zone_no": "04524"
+      },
+      "x": "126.978203640984",
+      "y": "37.566585446882"
+    }
+  ],
+  "meta": {
+    "is_end": true,
+    "pageable_count": 1,
+    "total_count": 1
+  }
+}

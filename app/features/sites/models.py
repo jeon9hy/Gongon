@@ -11,9 +11,11 @@ class Site(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(60))
-    address: Mapped[str] = mapped_column(
-        String(200), default=""
-    )  # 필수 입력. 격자는 위경도로 정한다
+    # 대표 주소: 도로명이 있으면 도로명, 없으면 지번(D-048). 예보구역·이름 대체에 쓴다.
+    # 격자는 위경도로 정한다
+    address: Mapped[str] = mapped_column(String(200), default="")
+    road_address: Mapped[str] = mapped_column(String(200), default="", server_default="")
+    lot_address: Mapped[str] = mapped_column(String(200), default="", server_default="")
     latitude_deg: Mapped[float] = mapped_column(Float)
     longitude_deg: Mapped[float] = mapped_column(Float)
     grid_nx: Mapped[int] = mapped_column(Integer)
