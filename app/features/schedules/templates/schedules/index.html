@@ -244,7 +244,7 @@
 
 <div class="inline">
 <label class="field">작업 위치<input type="text" name="location" maxlength="60" placeholder="예: A구역 3층" value="{{ view.form.location }}"></label>
-<label class="field">실행 업체
+<label class="field"><span class="addform__label">실행 업체 <a class="small" href="/sites/{{ view.site_id }}/members">+ 업체 등록</a></span>
 <select name="performing_participant_id">
 <option value="">미지정</option>
 {% set ns = namespace(g="") %}{% for p in view.participants %}{% if p.group_label != ns.g %}{% if ns.g %}</optgroup>{% endif %}<optgroup label="{{ p.group_label }}">{% set ns.g = p.group_label %}{% endif %}<option value="{{ p.participant_id }}"{% if p.selected %} selected{% endif %}>{{ p.name }}</option>{% endfor %}{% if ns.g %}</optgroup>{% endif %}

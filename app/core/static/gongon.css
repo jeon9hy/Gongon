@@ -1822,3 +1822,10 @@ details.hmore { padding: 0; } /* 판정 내역의 옛 .hmore 여백이 접힌 �
 .modal__form fieldset { gap: 14px; }
 .modal__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 @media (max-width: 560px) { .modal__grid { grid-template-columns: minmax(0, 1fr); } .hero__actions, .hero__actions .btn { width: 100%; } .hero__actions .btn { flex: 1; } }
+.addform__label { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; } .addform__label a { font-weight: 600; color: var(--accent); text-decoration: none; text-indent: 0; }
+/* 모달 공통(개발자 참고 화면 2026-10-16): 머리는 위에 고정, 본문만 스크롤, 아래 버튼 줄도 고정 */
+.modal__box { max-height: calc(100vh - 48px); overflow-y: auto; overscroll-behavior: contain; padding-top: 0; padding-bottom: 0; }
+.modal__head { position: sticky; top: 0; z-index: 2; margin: 0 calc(-1 * var(--card-pad)); padding: 18px var(--card-pad) 14px; background: var(--card); }
+.modal__actions { position: sticky; bottom: 0; z-index: 2; margin: 4px calc(-1 * var(--card-pad)) 0; padding: 14px var(--card-pad); border-top: 1px solid var(--line-soft); background: var(--card); }
+.modal__box > :last-child:not(.modal__actions):not(form) { margin-bottom: var(--card-pad); }
+.roster__tel { display: inline-flex; align-items: center; gap: 4px; }
