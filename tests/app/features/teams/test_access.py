@@ -210,7 +210,8 @@ def test_member_page_hides_emails_and_controls_from_non_coordinators(
     assert "가상건설" in html and "가상골조" in html and "협력업체" in html
     assert DEFAULT_USER["email"] not in html
     assert "권한 회수" not in html and 'name="email"' not in html
-    assert "현장 수정은 조정자만" in framer.get(f"/sites?site_id={site_id}").text
+    site_page = framer.get(f"/sites?site_id={site_id}").text
+    assert "열람 중" in site_page and ">저장</button>" not in site_page
 
 
 def test_coordinator_must_belong_to_prime_company(

@@ -138,6 +138,18 @@ const closeMenus = (except) => document.querySelectorAll(POPOVERS).forEach((box)
   if (box.open && box !== except && !box.contains(except)) box.open = false;
 });
 document.addEventListener("click", (e) => closeMenus(e.target.closest(POPOVERS)));
+// 달 목록은 누른 위치에 따라 작은 화면 오른쪽으로 나갈 수 있다.
+const fitMonthMenu = () => document.querySelectorAll("details.monthpick[open]").forEach((box) => {
+  const panel = box.querySelector(".monthpick__menu");
+  panel.style.marginLeft = "0px";
+  const r = panel.getBoundingClientRect();
+  const right = document.documentElement.clientWidth - 16;
+  panel.style.marginLeft = `${Math.max(16 - r.left, Math.min(0, right - r.right))}px`;
+});
+document.addEventListener("toggle", (e) => {
+  if (e.target.matches("details.monthpick") && e.target.open) fitMonthMenu();
+}, true);
+addEventListener("resize", fitMonthMenu);
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
   const open = [...document.querySelectorAll(POPOVERS)].filter((box) => box.open).pop();

@@ -1485,8 +1485,9 @@ def _notice(
     for card, judgment in zip(cards, judgments, strict=True):
         if card.verdict is None or card.verdict == Verdict.GO.value:
             continue
-        if judgment is None:
-            items.append(NoticeItem(card.work_type, card.verdict, "기준 확인 전"))
+        if judgment is None or judgment.verdict != card.verdict:
+            # 기준 없는 작업에는 폭염 판정이 근거로 붙어도 작업의 '확인 필요'가 남는다.
+            items.append(NoticeItem(card.work_type, card.verdict, card.reason))
             continue
         for w in judgment.windows:
             if w["verdict"] == Verdict.GO.value:

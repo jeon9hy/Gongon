@@ -10,7 +10,7 @@
 </div>
 </section>
 
-<form class="form" method="post" action="/changes">
+<form class="form" method="post" action="/changes" data-change-plan data-today="{{ now.strftime('%Y-%m-%d') }}" data-now="{{ now.strftime('%H:%M') }}" data-keep-date="{{ view.current_date }}" data-keep-start="{{ view.current_start }}">
 {% if view.errors %}
 <div class="alert alert--error" role="alert"><strong>제안하지 못했습니다</strong><ul>{% for e in view.errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
 {% endif %}
@@ -31,9 +31,9 @@
 <fieldset>
 <legend>바뀐 계획</legend>
 <div class="inline">
-<label class="field" style="flex: 1 1 160px;">날짜<input type="date" name="after_work_date" value="{{ f.after_work_date }}" required></label>
+<label class="field" style="flex: 1 1 160px;">날짜<input type="date" name="after_work_date" value="{{ f.after_work_date }}" min="{{ now.strftime('%Y-%m-%d') }}" required></label>
 <label class="field" style="flex: 1 1 120px;">시작<input type="time" name="after_start" value="{{ f.after_start }}" required></label>
-<label class="field" style="flex: 1 1 120px;">종료<input type="time" name="after_end" value="{{ f.after_end }}" required></label>
+<label class="field" style="flex: 1 1 120px;">종료<input type="time" name="after_end" data-after="after_start" value="{{ f.after_end }}" required></label>
 </div>
 <label class="field">작업 위치 (선택)<input type="text" name="after_location" maxlength="60" value="{{ f.after_location }}"></label>
 </fieldset>
@@ -48,7 +48,6 @@
 <label class="field">근거·설명 (선택)<input type="text" name="basis_note" maxlength="500" value="{{ f.basis_note }}" placeholder="예: 레미콘 공급사 출하 지연 통보(10/04 14:20 전화)"></label>
 </fieldset>
 
-<p class="small muted">확정하면 작업 계획이 바뀝니다. 공급사 예약·출역 같은 바깥 일은 자동으로 바뀌지 않으니 후속 조치로 따로 처리합니다.</p>
 <div class="actions">
 <p></p>
 <a class="btn btn--soft" href="/schedule?site_id={{ view.site_id }}">취소</a>
@@ -56,4 +55,18 @@
 <button class="btn btn--accent" type="submit" name="submit" value="review">영향 검토로 보내기</button>
 </div>
 </form>
+<script>
+(() => {
+  const form = document.querySelector('[data-change-plan]');
+  const date = form.elements.after_work_date, start = form.elements.after_start;
+  const update = () => {
+    if (date.value === form.dataset.today) start.dataset.min = form.dataset.now;
+    else delete start.dataset.min;
+    if (date.value === form.dataset.keepDate) start.dataset.keep = form.dataset.keepStart;
+    else delete start.dataset.keep;
+  };
+  date.addEventListener('change', update);
+  update();
+})();
+</script>
 {% endblock %}

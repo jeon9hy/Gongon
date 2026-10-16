@@ -218,7 +218,8 @@ def test_detail_shows_basis_issue_time_and_source_check(
     assert source_note in page
     assert ("원문 대조 필요" in page) is not verified
     assert "풍속 10.0 → 기준 10 m/s 이상에 해당" in page
-    assert "최종 결정은 현장 책임자가 합니다" in page
+    assert "최종 판단은 현장 책임자가 합니다" in page
+    assert "‘진행’도 현장 안전을 보장하지 않으며, 예보는 실제 날씨와 다를 수 있습니다" not in page
 
 
 def test_detail_unknown_id_returns_404(client: TestClient) -> None:

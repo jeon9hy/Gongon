@@ -5,7 +5,7 @@ C01 합성 시나리오를 줄인 가상 상황: 가상건설(원청) 현장의 
 """
 
 import re
-from datetime import date, time
+from datetime import date, time, timedelta
 from typing import Any
 
 import pytest
@@ -14,11 +14,12 @@ from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.clock import now_kst
 from app.features.changes import service as changes_service
 from app.features.changes.models import ChangeCase, ChangeRevision
 from app.features.judgments import service as judgments_service
 from app.features.schedules.models import WorkItem, WorkItemRevision
-from tests.conftest import FIXED_NOW, Browser
+from tests.conftest import DEFAULT_USER, FIXED_NOW, Browser
 from tests.helpers import add_site_with_work
 
 SITE: dict[str, Any] = {
@@ -110,6 +111,73 @@ def item(client: TestClient, session: Session) -> WorkItem:
     return item_of(session)
 
 
+@pytest.mark.parametrize(
+    ("start", "accepted"), [("14:59", False), ("15:00", False), ("15:01", True)]
+)
+def test_today_change_must_start_after_now(
+    client: TestClient, session: Session, item: WorkItem, start: str, accepted: bool
+) -> None:
+    response = propose(client, item, after_work_date="2026-10-04", after_start=start,
+                       after_end="17:00")  # fmt: skip
+
+    assert response.status_code == (303 if accepted else 422)
+    assert len(session.scalars(select(ChangeRevision)).all()) == int(accepted)
+    if not accepted:
+        assert "이후 시작" in response.text
+
+
+def test_confirm_rechecks_start_when_time_has_passed(
+    client: TestClient, session: Session, item: WorkItem
+) -> None:
+    case_id = case_id_from(propose(client, item, after_work_date="2026-10-04",
+                                  after_start="15:01", after_end="17:00"))  # fmt: skip
+    rev_id = revision(session).id
+    client.app.dependency_overrides[now_kst] = lambda: FIXED_NOW + timedelta(minutes=1)  # type: ignore[attr-defined]
+    response = confirm(client, item, case_id, rev_id)
+
+    assert response.status_code == 409 and "이후 시작" in response.text
+    assert item_of(session).plan_version == 1
+    assert revision(session).status == "review"
+    assert session.scalars(select(WorkItemRevision)).all() == []
+
+
+def test_change_keeps_the_start_of_an_already_started_today_item(
+    client: TestClient, session: Session, item: WorkItem
+) -> None:
+    item.work_date, item.start_local = date(2026, 10, 4), time(14, 0)
+    item.end_local = time(16, 0)
+    session.commit()
+    case_id = case_id_from(propose(client, item, after_work_date="2026-10-04",
+                                  after_start="14:00", after_end="18:00"))  # fmt: skip
+
+    assert confirm(client, item, case_id, revision(session).id).status_code == 303
+    assert item_of(session).end_local == time(18, 0)
+
+
+def test_confirm_rejects_a_proposal_that_became_a_past_day(
+    client: TestClient, session: Session, item: WorkItem
+) -> None:
+    case_id = case_id_from(propose(client, item))
+    rev_id = revision(session).id
+    client.app.dependency_overrides[now_kst] = lambda: FIXED_NOW + timedelta(days=3)  # type: ignore[attr-defined]
+    client.post(
+        "/login", data={"email": DEFAULT_USER["email"], "password": DEFAULT_USER["password"]}
+    )
+
+    response = confirm(client, item, case_id, rev_id)
+
+    assert response.status_code == 409 and "지난 날짜" in response.text
+    assert item_of(session).plan_version == 1 and revision(session).status == "review"
+
+
+def test_change_form_exposes_the_same_today_constraints(client: TestClient, item: WorkItem) -> None:
+    page = client.get(f"/changes/new?site_id={item.site_id}&item_id={item.id}").text
+
+    assert 'min="2026-10-04"' in page and 'data-now="15:00"' in page
+    assert 'data-keep-date="2026-10-05"' in page and 'data-after="after_start"' in page
+    assert "확정하면 작업 계획이 바뀝니다. 공급사 예약" not in page
+
+
 def test_confirming_a_reviewed_change_updates_the_plan_once(
     client: TestClient, session: Session, item: WorkItem
 ) -> None:
@@ -130,7 +198,8 @@ def test_confirming_a_reviewed_change_updates_the_plan_once(
     rev = revision(session)
     assert rev.status == "confirmed" and rev.confirmed_at == FIXED_NOW
     page = client.get(f"/changes/{case_id}").text
-    assert "현재 확정 v1" in page and "공급사 예약·출역 변경이 끝났다는 뜻이 아닙니다" in page
+    assert "현재 확정 v1" in page
+    assert "공급사 예약·출역 변경이 끝났다는 뜻" not in page
 
 
 def test_resending_the_same_confirm_does_not_apply_twice(
@@ -221,7 +290,12 @@ def test_invalid_proposals_save_nothing(
 def test_today_is_allowed_for_an_urgent_change(
     client: TestClient, session: Session, item: WorkItem
 ) -> None:
-    assert propose(client, item, after_work_date="2026-10-04").status_code == 303
+    assert (
+        propose(
+            client, item, after_work_date="2026-10-04", after_start="16:00", after_end="18:00"
+        ).status_code
+        == 303
+    )
 
 
 def test_only_one_open_proposal_per_case(
@@ -322,7 +396,9 @@ def test_viewer_can_read_but_not_propose(
     case_id = case_id_from(propose(client, item))
 
     assert viewer.get(f"/changes/{case_id}").status_code == 200
-    assert viewer.get(f"/changes/new?site_id={item.site_id}&item_id={item.id}").status_code == 403
+    denied = viewer.get(f"/changes/new?site_id={item.site_id}&item_id={item.id}")
+    assert denied.status_code == 403 and "이 작업을 할 권한이 없어요" in denied.text
+    assert "조정자만 할 수 있습니다" not in denied.text  # 담당자도 제안할 수 있다
     assert viewer.post("/changes", data=proposal(item)).status_code == 403
     assert "변경 제안" not in viewer.get(f"/schedule?site_id={item.site_id}&day=2026-10-05").text
 

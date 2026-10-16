@@ -44,7 +44,7 @@
 <form class="form" method="post" action="/sites/{{ view.site_id }}/members">
 <fieldset>
 <legend>참여자 추가</legend>
-<p class="small muted">가입한 사람의 이메일로 추가해요. 처음 오는 회사는 협력업체가 돼요.</p>
+
 <label class="field">이메일
 <input type="email" name="email" value="{{ view.email }}" maxlength="200" required>
 </label>
@@ -57,7 +57,7 @@
 <div class="actions"><p></p><button class="btn btn--accent" type="submit">추가</button></div>
 </form>
 {% else %}
-<p class="small muted">참여자 추가·회수는 조정자만 할 수 있습니다.</p>
+<p class="small muted">열람 중</p>
 {% endif %}
 </div>
 {% endblock %}

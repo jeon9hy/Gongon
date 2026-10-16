@@ -415,7 +415,7 @@ a.tag:hover { filter: brightness(0.96); }
 .calcell__link:focus-visible { outline-offset: -3px; }
 .delete-action { position: relative; font-size: 12px; color: var(--muted); }
 .delete-action summary { cursor: pointer; padding: 8px; }
-.delete-action__confirm { position: absolute; z-index: 5; right: 0; width: 240px; padding: 16px; display: grid; gap: 12px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-md); box-shadow: 0 8px 24px #0E1E4514; }
+.delete-action__confirm { width: 240px; max-width: 100%; margin-top: 6px; padding: 16px; display: grid; gap: 12px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-md); box-shadow: 0 8px 24px #0E1E4514; }
 .delete-action__confirm .btn { color: var(--stop-text); border-color: var(--stop-text); }
 .skip-link { position: fixed; top: -100px; left: 16px; z-index: 50; background: var(--ink); color: white; padding: 12px 18px; border-radius: 8px; }
 .skip-link:focus { top: 12px; }
@@ -740,7 +740,7 @@ form.panel > .panel__head > .h2 { padding-left: var(--label-inset); }
 .monthpick__toggle:hover, .monthpick[open] > .monthpick__toggle { background: var(--surface); }
 .monthpick__toggle svg { transition: transform var(--ease); }
 .monthpick[open] > .monthpick__toggle svg { transform: rotate(180deg); }
-.monthpick__menu { position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; width: 300px; max-height: 360px; overflow: auto; padding: 14px; display: grid; gap: 14px; background: var(--card); border: 1px solid var(--line-soft); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); }
+.monthpick__menu { position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; width: 300px; max-width: calc(100vw - 32px); max-height: 360px; overflow: auto; padding: 14px; display: grid; gap: 14px; background: var(--card); border: 1px solid var(--line-soft); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); }
 .monthpick__label { padding-left: 10px; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
 .monthpick__grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
 .monthpick__month { position: relative; display: flex; align-items: center; justify-content: center; min-height: 38px; border-radius: var(--radius-sm); font-size: 14px; color: var(--placeholder); text-decoration: none; }
@@ -785,10 +785,10 @@ select:hover { border-color: var(--placeholder); }
 
 /* D-049 색 줄이기(개발자 피드백 "너무 알록달록"): 넓은 면은 흰색·회색, 파랑은 행동·선택에만,
    판정 색은 점·숫자·왼쪽 띠·배지에만 쓴다. */
-.hero { color: var(--text); background: var(--card); border: 1px solid var(--line-soft); box-shadow: var(--shadow-sm); }
+.hero { overflow: visible; color: var(--text); background: var(--card); border: 1px solid var(--line-soft); box-shadow: var(--shadow-sm); }
 .hero::after { display: none; }
 .hero__date { background: var(--accent-soft); color: var(--accent); }
-.hero__title { color: var(--ink); }
+.hero__title { color: var(--ink); word-break: keep-all; overflow-wrap: anywhere; }
 .hero__lead { color: var(--muted); }
 .hero__facts li { background: var(--surface); color: var(--muted); }
 .hero__button { background: var(--accent); color: var(--accent-fg); box-shadow: none; }
@@ -1035,7 +1035,7 @@ a.wv:hover { text-decoration: underline; }
 .modal__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--line-soft); }
 .modal__close { width: 32px; height: 32px; border: 0; border-radius: 999px; background: transparent; font-size: 22px; line-height: 1; color: var(--muted); cursor: pointer; }
 .modal__close:hover { background: var(--surface); color: var(--ink); }
-.modal__actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; }
+.modal__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding-top: 4px; }
 .modal .alert { margin: 0; }
 
 /* 성공 안내(alert--ok)는 화면 아래 토스트로 띄우고 4초 뒤 사라진다. 오류 안내는 화면에 남는다. */
@@ -1151,7 +1151,7 @@ a.window--link:hover .window__link { color: var(--accent); }
 .pickfield:hover { border-color: var(--ink); }
 .pickfield[aria-expanded="true"], .pickfield:focus-visible { outline: 0; border-color: var(--ink); box-shadow: 0 0 0 3px var(--accent-soft); }
 .pickfield[aria-invalid="true"] { border-color: var(--stop-text); }
-.pickpop { position: fixed; z-index: 1000; width: 296px; max-width: calc(100vw - 16px); padding: 12px; background: var(--card); border: 1px solid var(--line-soft); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); display: flex; flex-direction: column; gap: 8px; text-indent: 0; font-weight: 500; }
+.pickpop { position: fixed; inset: auto; margin: 0; z-index: 1000; width: 296px; max-width: calc(100vw - 16px); overflow-y: auto; padding: 12px; background: var(--card); color: var(--text); border: 1px solid var(--line-soft); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); display: flex; flex-direction: column; gap: 8px; text-indent: 0; font-weight: 500; }
 .pickpop__head { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding-bottom: 6px; border-bottom: 1px solid var(--line-soft); }
 .pickpop__nav, .pickpop__title { min-height: 36px; border: 0; border-radius: var(--radius-sm); background: transparent; font: inherit; color: var(--ink); cursor: pointer; }
 .pickpop__nav { width: 36px; font-size: 20px; line-height: 1; }
@@ -1265,7 +1265,7 @@ span.pickpop__title { cursor: default; display: inline-flex; align-items: center
 /* 작업 추가 모달 */
 .modal--wide { width: min(520px, calc(100vw - 32px)); }
 .addform { gap: 20px; }
-.addform__label { margin: 0 0 10px; font-size: 15px; font-weight: 700; color: var(--ink); }
+.addform__label { margin: 0 0 10px; padding-left: var(--label-inset); font-size: 15px; font-weight: 700; color: var(--ink); }
 .addform__label small { margin-left: 6px; font-size: 12px; font-weight: 500; color: var(--muted); }
 .typegrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .typecard { position: relative; display: block; cursor: pointer; }
@@ -1505,7 +1505,7 @@ span.pickpop__title { cursor: default; display: inline-flex; align-items: center
 .tline__row, .worklist > li, .todaycard, .idxday { animation: rise-in 0.4s cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: calc(var(--i, 0) * 40ms + 80ms); }
 .modal[open] { animation: sheet-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1); }
 .modal[open]::backdrop { animation: fade-in 0.2s ease-out; }
-.pickpop, .menu[open] > .menu__panel, .monthpick[open] .monthpick__menu { animation: pop-in 0.16s ease-out; transform-origin: top; }
+.pickpop, .menu[open] > .menu__panel, .monthpick[open] .monthpick__menu { animation: fade-in 0.16s ease-out; }
 details[open] > :not(summary) { animation: rise-in 0.25s ease-out; }
 .dpick__day[aria-pressed="true"], .typecard input:checked + .typecard__body { transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease; }
 .typecard input:checked + .typecard__body { transform: scale(1.01); }

@@ -3,7 +3,7 @@
 {% block title %}작업 일정{% endblock %}
 {% block content %}
 
-<section class="hero" aria-labelledby="schedule-title">
+<section class="hero" aria-labelledby="schedule-title" data-swap="header">
 <div class="hero__main">
 <p class="hero__date">{{ icon("calendar", 15) }} 작업 일정{% if view.site_name %} · {{ view.site_name }}{% endif %}</p>
 <h1 class="hero__title" id="schedule-title">{{ view.month_title.split(" ")[-1] if view.site_id is not none else "이번 달" }} 작업 일정</h1>
@@ -91,7 +91,6 @@
 {% if no_company %}<li><span class="briefing__tag briefing__tag--warn">업체 미지정</span><span>{{ no_company | length }}건은 누가 할지 정해 주세요</span></li>{% endif %}
 {% if not d.items %}<li><span class="briefing__tag">여유</span><span>오늘은 등록한 작업이 없어요. 내일 일정을 미리 볼까요?</span></li>{% endif %}
 </ol>
-<p class="small muted briefing__rule">진행 중 → 곧 시작 → 빠진 정보 순으로 공온이 골랐어요.</p>
 </section>
 {% endif %}
 <section class="panel daypanel" aria-labelledby="day-title" data-swap="day">
@@ -168,7 +167,7 @@
 </label>
 </div>
 <label class="field">메모<input type="text" name="memo" maxlength="500" value="{{ i.memo }}"></label>
-<p class="small muted">공종은 못 바꿔요. 시간·위치를 바꾸면 판정은 다시 해야 해요.</p>
+
 <div class="modal__actions">
 <details class="delete-action modal__delete">
 <summary>작업 삭제</summary>
@@ -199,7 +198,7 @@
 <input type="hidden" name="date_mode" value="pick">
 
 <fieldset class="addform__group">
-<legend class="addform__label">공종 <small>여러 개 고르면 따로따로 만들어요</small></legend>
+<legend class="addform__label">공종 <small>여러 개 선택</small></legend>
 <div class="typegrid">
 {% for w in view.work_types %}
 <label class="typecard" style="--c: {{ work_color(w.label) }}">
@@ -211,7 +210,7 @@
 </fieldset>
 
 <fieldset class="addform__group">
-<legend class="addform__label">날짜 <small>누르거나 끌어서 여러 날</small></legend>
+<legend class="addform__label">날짜 <small>여러 날 선택</small></legend>
 <div class="dpick" data-dpick data-min="{{ view.today_iso }}" data-start="{{ view.period_start_iso }}" data-end="{{ view.period_end_iso }}" data-initial="{{ (view.form.work_dates or ([view.form.work_date] if view.form.work_date else [])) | join(',') }}">
 <noscript><input type="date" name="work_date" value="{{ view.form.work_date }}" min="{{ view.today_iso }}" data-plain></noscript>
 </div>
@@ -415,7 +414,8 @@
       const res = await fetch(url, { headers: { Accept: "text/html" } });
       if (!res.ok) throw new Error(String(res.status));
       const doc = new DOMParser().parseFromString(await res.text(), "text/html");
-      for (const key of ["calendar", "day"]) {
+      const scroll = { left: scrollX, top: scrollY, behavior: "instant" };
+      for (const key of ["header", "calendar", "day"]) {
         const next = doc.querySelector(`[data-swap="${key}"]`), cur = document.querySelector(`[data-swap="${key}"]`);
         if (!next || !cur) throw new Error("missing");
         cur.replaceWith(next);
@@ -427,10 +427,10 @@
       if (brief) document.querySelector('[data-swap="day"]').before(brief);
       document.querySelectorAll("dialog[data-open]").forEach((d) => d.showModal());
       if (push) history.pushState({ schedule: true }, "", url);
+      window.scrollTo(scroll);
+      // 교체한 패널을 기준으로 브라우저가 스크롤 앵커를 다시 잡은 뒤에도 같은 위치로 둔다.
+      requestAnimationFrame(() => window.scrollTo(scroll));
       return true;
-      if (matchMedia("(max-width: 760px)").matches && new URL(url, location.href).searchParams.get("day")) {
-        document.getElementById("day-detail").scrollIntoView({ behavior: "smooth", block: "start" });
-      }
     } catch {
       location.href = url;
       return false;

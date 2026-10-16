@@ -39,3 +39,5 @@ def test_guide_keeps_the_explanations_moved_out_of_screens(client: TestClient) -
 
     assert "최종 판단은 현장 책임자가 합니다" in page
     assert "지금 이후 시작" in page and "AI 추천이 아니에요" in page
+    assert 'id="gongon-index"' in page and "직전 발표 예보" in page
+    assert "처음 오는 회사는 협력업체" in page

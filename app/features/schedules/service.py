@@ -404,6 +404,23 @@ def delete_item(
     return repository.delete_item(session, site_id, item_id, now)
 
 
+def plan_start_error(
+    work_date: date, start: time, now: datetime, keep: tuple[date, time] | None = None
+) -> str | None:
+    """D-064: 추가·계획 수정·변경 제안/확정에 같은 시작 시각 규칙을 쓴다."""
+    local_now = now.astimezone(KST)
+    today = local_now.date()
+    if work_date < today:
+        return "지난 날짜에는 작업 계획을 바꿀 수 없습니다. 오늘 이후 날짜를 고르세요."
+    if (
+        work_date == today
+        and start <= local_now.time().replace(second=0, microsecond=0)
+        and keep != (today, start)
+    ):
+        return f"오늘 작업은 지금({local_now:%H:%M}) 이후 시작 시각으로 등록하세요."
+    return None
+
+
 def _validate(
     site: SiteRecord,
     form: WorkItemForm,
@@ -441,13 +458,8 @@ def _validate(
         errors.append("작업 시간을 00:00 형식으로 입력하세요.")
     elif start >= end:
         errors.append("작업 종료는 시작보다 늦어야 합니다(같은 날 안에서).")
-    elif (
-        today in days
-        and start <= local_now.time().replace(second=0, microsecond=0)
-        and keep != (today, start)
-    ):
-        # 오늘 작업은 지금 이후에 시작해야 한다(D-064). 같은 분은 이미 시작한 것으로 본다.
-        errors.append(f"오늘 작업은 지금({local_now:%H:%M}) 이후 시작 시각으로 등록하세요.")
+    elif today in days and (start_error := plan_start_error(today, start, now, keep)):
+        errors.append(start_error)
     location, memo = form.location.strip(), form.memo.strip()
     if len(location) > MAX_LOCATION:
         errors.append(f"작업 위치는 {MAX_LOCATION}자 이하로 입력하세요.")

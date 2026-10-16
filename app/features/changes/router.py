@@ -13,6 +13,7 @@ from app.features.auth.service import CurrentUserDep, require_user
 from app.features.changes import service
 from app.features.changes.schemas import ChangeDetailView, ChangeForm, ChangeFormView
 from app.features.teams.service import AccessibleSitesDep
+from engine.kst import KST
 
 register_template_dir(Path(__file__).parent / "templates")
 
@@ -30,9 +31,12 @@ MESSAGES = {
 }
 
 
-def _form_page(request: Request, view: ChangeFormView, status_code: int = 200) -> HTMLResponse:
+def _form_page(
+    request: Request, view: ChangeFormView, now: datetime, status_code: int = 200
+) -> HTMLResponse:
     return templates.TemplateResponse(
-        request, "changes/form.html", {"nav_active": "changes", "view": view},
+        request, "changes/form.html",
+        {"nav_active": "changes", "view": view, "now": now.astimezone(KST)},
         status_code=status_code,
     )  # fmt: skip
 
@@ -65,11 +69,12 @@ def new_change(
     request: Request,
     session: SessionDep,
     user: CurrentUserDep,
+    now: NowDep,
     site_id: int,
     item_id: int,
     case_id: int | None = None,
 ) -> HTMLResponse:
-    return _form_page(request, service.new_form_view(session, user, site_id, item_id, case_id))
+    return _form_page(request, service.new_form_view(session, user, site_id, item_id, case_id), now)
 
 
 @router.post("/changes")
@@ -109,7 +114,7 @@ def propose(
         item_id = int(work_item_id) if work_item_id.isdigit() else 0
         existing = int(case_id) if case_id.isdigit() else None
         view = service.new_form_view(session, user, site_id, item_id, existing, form, errors)
-        return _form_page(request, view, status_code=422)
+        return _form_page(request, view, now, status_code=422)
     return RedirectResponse(f"/changes/{new_case}?done=proposed", status_code=303)
 
 

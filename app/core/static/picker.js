@@ -32,19 +32,29 @@
     if (!openPop) return;
     const { pop, anchor } = openPop;
     const r = anchor.getBoundingClientRect();
-    if (openPop.matchWidth) pop.style.width = `${Math.max(r.width, 180)}px`;
+    const viewport = window.visualViewport;
+    const top = (viewport?.offsetTop || 0) + 8;
+    const bottom = (viewport?.offsetTop || 0) + (viewport?.height || innerHeight) - 8;
+    const right = document.documentElement.clientWidth - 8;
+    if (openPop.matchWidth) pop.style.width = `${Math.min(Math.max(r.width, 180), right - 8)}px`;
+    pop.style.maxHeight = "";
+    const above = Math.max(0, r.top - top - 4), under = Math.max(0, bottom - r.bottom - 4);
+    const below = under >= pop.offsetHeight || under >= above;
+    pop.style.maxHeight = `${Math.min(pop.offsetHeight, below ? under : above)}px`;
     const w = pop.offsetWidth, h = pop.offsetHeight;
-    const left = Math.max(8, Math.min(r.left, innerWidth - w - 8));
-    const below = r.bottom + 6 + h <= innerHeight - 8 || r.top - 6 - h < 8;
+    const left = Math.max(8, Math.min(r.left, right - w));
     pop.style.left = `${left}px`;
-    pop.style.top = `${below ? r.bottom + 4 : r.top - 4 - h}px`;
+    pop.style.top = `${Math.max(top, Math.min(below ? r.bottom + 4 : r.top - 4 - h, bottom - h))}px`;
   };
   const show = (anchor, cls, render, matchWidth = false) => {
     close();
     const pop = el("div", `pickpop ${cls}`);
+    // 모달의 스크롤 경계와 애니메이션 안에서도 잘리지 않게 최상위 레이어에 띄운다.
+    pop.setAttribute("popover", "manual");
     pop.addEventListener("mousedown", (e) => e.preventDefault()); // 입력칸 포커스를 잃지 않게
     pop.addEventListener("click", (e) => e.stopPropagation());
     (anchor.closest("dialog") || document.body).append(pop);
+    pop.showPopover();
     openPop = { pop, anchor, matchWidth };
     anchor.setAttribute("aria-expanded", "true");
     render(pop);
@@ -193,7 +203,7 @@
     };
     const allowed = (m) => {
       const { after, min } = floor();
-      return (after === null || m > after) && (min === null || m > min);
+      return (after === null || m > after) && (min === null || m > min || m === toMin(input.dataset.keep));
     };
     const set = (hm) => {
       input.value = hm;
@@ -276,6 +286,9 @@
   enhance();
 
   document.addEventListener("click", close);
+  document.addEventListener("close", (e) => {
+    if (openPop && e.target.contains(openPop.anchor)) close();
+  }, true);
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape" || !openPop) return;
     e.preventDefault(); // 모달 안에서도 판만 닫고 모달은 남긴다
@@ -285,5 +298,6 @@
     anchor.focus();
   }, true);
   addEventListener("resize", place);
+  window.visualViewport?.addEventListener("resize", place);
   addEventListener("scroll", (e) => { if (!openPop || !openPop.pop.contains(e.target)) place(); }, true);
 })();
