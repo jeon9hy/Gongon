@@ -1798,3 +1798,27 @@ details.hmore { padding: 0; } /* 판정 내역의 옛 .hmore 여백이 접힌 �
 .monthpick__month.is-off { color: var(--line); cursor: not-allowed; }
 .monthpick__month.is-off:hover { background: transparent; color: var(--line); }
 .monthpick__yearbtn:disabled { color: var(--line); cursor: not-allowed; background: transparent; }
+/* 작업 상세: 수정·삭제는 오른쪽 아이콘 버튼 두 개(개발자 요청 2026-10-16) */
+.itemdlg__actions { align-items: center; }
+.itemdlg__tools { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; position: relative; }
+.iconbtn { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; padding: 0 10px; border: 0; border-radius: var(--radius-sm); background: transparent; font: inherit; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; list-style: none; transition: background-color var(--ease), color var(--ease); }
+.iconbtn::-webkit-details-marker { display: none; }
+.iconbtn:hover { background: var(--surface); color: var(--ink); }
+.iconbtn--danger:hover, .itemdlg__delete[open] > .iconbtn--danger { background: var(--stop-soft); color: var(--stop-text); }
+.itemdlg__delete .delete-action__confirm { position: absolute; right: 0; top: calc(100% + 6px); z-index: 5; width: 220px; padding: 12px; display: flex; flex-direction: column; gap: 8px; background: var(--card); border: 1px solid var(--line-soft); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); }
+.itemdlg__edit:not([open]) { border-top: 0; padding-top: 0; }
+/* 하루 작업 더보기 */
+.worklist__more > summary { display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 36px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; list-style: none; }
+.worklist__more > summary::-webkit-details-marker { display: none; }
+.worklist__more > summary:hover { background: var(--surface); color: var(--ink); }
+.worklist__more[open] > summary { order: 2; }
+.worklist__more[open] > summary svg { transform: rotate(180deg); }
+.worklist__more { display: flex; flex-direction: column; gap: 8px; }
+.worklist__more:not([open]) .when-open, .worklist__more[open] .when-closed { display: none; }
+/* 참여 업체 화면: 머리 오른쪽 버튼 두 개, 입력은 모달(개발자 요청 2026-10-16) */
+.hero:has(.hero__actions) { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.hero__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.modal__form { display: flex; flex-direction: column; gap: 16px; }
+.modal__form fieldset { gap: 14px; }
+.modal__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 560px) { .modal__grid { grid-template-columns: minmax(0, 1fr); } .hero__actions, .hero__actions .btn { width: 100%; } .hero__actions .btn { flex: 1; } }

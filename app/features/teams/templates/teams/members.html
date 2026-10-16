@@ -1,5 +1,17 @@
 {% extends "base.html" %}
-{% block title %}참여 업체 · {{ view.site_name }}{% endblock %}
+{% from "_macros.html" import icon %}
+{% block title %}참여 업체 · {{ view.site_name }}<script>
+// 업체 등록·참여자 추가 모달: 버튼으로 열고, 닫기·바깥 누름·Esc로 닫는다
+document.addEventListener("click", (e) => {
+  const opener = e.target.closest("[data-open-dialog]");
+  if (opener) { document.getElementById(opener.dataset.openDialog)?.showModal(); return; }
+  const closer = e.target.closest("dialog [data-close]");
+  if (closer) { closer.closest("dialog").close(); return; }
+  if (e.target.matches("dialog.modal")) e.target.close();
+});
+document.querySelectorAll("dialog[data-open]").forEach((d) => d.showModal());
+</script>
+{% endblock %}
 {% block content %}
 
 <section class="hero" aria-labelledby="members-title">
@@ -7,6 +19,12 @@
 <p class="hero__date"><a href="/sites?site_id={{ view.site_id }}">{{ view.site_name }}</a> · 내 역할 {{ view.my_role_label }}</p>
 <h1 class="hero__title" id="members-title">참여 업체·담당자</h1>
 </div>
+{% if view.can_manage %}
+<div class="hero__actions">
+<button class="btn btn--soft" type="button" data-open-dialog="dlg-participant">{{ icon("site", 16) }} 업체 등록</button>
+<button class="btn btn--accent" type="button" data-open-dialog="dlg-member">{{ icon("plus", 16, 2.2) }} 참여자 추가</button>
+</div>
+{% endif %}
 </section>
 
 <div class="stack">
@@ -132,16 +150,19 @@
 {% endfor %}
 
 {% if view.can_manage %}
-<form class="form" method="post" action="/sites/{{ view.site_id }}/participants">
+{# 입력 폼은 모달로(개발자 요청 2026-10-16). 저장에 실패하면 그 모달을 다시 연다 #}
+<dialog class="modal" id="dlg-participant" aria-labelledby="dlg-participant-title"{% if view.errors and (view.participant_form.organization_name or view.participant_same_name) %} data-open{% endif %}>
+<div class="modal__box">
+<div class="modal__head"><h2 class="h2" id="dlg-participant-title">업체 등록</h2><button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
+<form class="modal__form" method="post" action="/sites/{{ view.site_id }}/participants">
 <fieldset>
-<legend>업체 등록</legend>
-<div class="inline">
+<div class="modal__grid">
 <label class="field">업체 이름<input type="text" name="organization_name" value="{{ view.participant_form.organization_name }}" maxlength="60" required></label>
 <label class="field">구분
 <select name="category">{% for o in view.category_options %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
 </label>
 </div>
-<div class="inline">
+<div class="modal__grid">
 <label class="field">맡은 공종<input type="text" name="trade_note" value="{{ view.participant_form.trade_note }}" maxlength="60" placeholder="예: 철근콘크리트"></label>
 <label class="field">참여 시작일<input type="date" name="joined_on" value="{{ view.participant_form.joined_on }}"></label>
 </div>
@@ -150,13 +171,17 @@
 <label class="row"><input type="checkbox" name="confirm_same_name" value="1"> 이름이 같은 다른 업체예요. 따로 등록</label>
 {% endif %}
 </fieldset>
-<div class="actions"><p></p><button class="btn btn--accent" type="submit">등록</button></div>
+<div class="modal__actions"><button class="btn btn--soft" type="button" data-close>취소</button><button class="btn btn--accent" type="submit">등록</button></div>
 </form>
+</div>
+</dialog>
 
-<form class="form" method="post" action="/sites/{{ view.site_id }}/members">
+<dialog class="modal" id="dlg-member" aria-labelledby="dlg-member-title"{% if view.errors and view.member_form.email %} data-open{% endif %}>
+<div class="modal__box">
+<div class="modal__head"><h2 class="h2" id="dlg-member-title">참여자 추가</h2><button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
+<form class="modal__form" method="post" action="/sites/{{ view.site_id }}/members">
 <fieldset>
-<legend>로그인 참여자 추가</legend>
-<div class="inline">
+<div class="modal__grid">
 <label class="field">휴대폰 번호 또는 이메일
 <input type="text" name="email" value="{{ view.member_form.email }}" placeholder="010-0000-0000" maxlength="200" required>
 </label>
@@ -181,10 +206,23 @@
 </fieldset>
 {% endif %}
 </fieldset>
-<div class="actions"><p></p><button class="btn btn--accent" type="submit">추가</button></div>
+<div class="modal__actions"><button class="btn btn--soft" type="button" data-close>취소</button><button class="btn btn--accent" type="submit">추가</button></div>
 </form>
+</div>
+</dialog>
 {% else %}
 <p class="small muted">열람 중</p>
 {% endif %}
 </div>
+<script>
+// 업체 등록·참여자 추가 모달: 버튼으로 열고, 닫기·바깥 누름·Esc로 닫는다
+document.addEventListener("click", (e) => {
+  const opener = e.target.closest("[data-open-dialog]");
+  if (opener) { document.getElementById(opener.dataset.openDialog)?.showModal(); return; }
+  const closer = e.target.closest("dialog [data-close]");
+  if (closer) { closer.closest("dialog").close(); return; }
+  if (e.target.matches("dialog.modal")) e.target.close();
+});
+document.querySelectorAll("dialog[data-open]").forEach((d) => d.showModal());
+</script>
 {% endblock %}
