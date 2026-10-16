@@ -14,7 +14,9 @@
 <a class="skip-link" href="#main">본문으로 바로 가기</a>
 <header class="appbar">
 <div class="appbar__inner">
+{% set me = request.state.user if request is defined else none %}
 <a class="logo-word" href="/" aria-label="공온 홈"><img class="logo-mark" src="/static/brand/logo.png" alt="" width="32" height="32">공온</a>
+{% if me %}
 <nav class="appnav" aria-label="주 메뉴">
 {% set current_site_id = view.site_id | default(view.selected_site_id | default(none)) if view is defined else none %}
 {% for key, href, label in [("home", "/", "홈"), ("dashboard", "/dashboard", "현장 대시보드"), ("schedule", "/schedule", "작업 일정"), ("history", "/judgments", "판정 내역"), ("sites", "/sites", "현장 설정")] %}
@@ -23,7 +25,11 @@
 </nav>
 <div class="appbar__actions">
 <a class="btn btn--accent btn--sm" href="/sites">{{ icon("plus", 14, 2.4) }} 현장 추가</a>
+<span class="appbar__user">{{ me.display_name }} · {{ me.organization_name }}
+<form method="post" action="/logout"><button class="btn btn--soft btn--sm" type="submit">로그아웃</button></form>
+</span>
 </div>
+{% endif %}
 </div>
 </header>
 

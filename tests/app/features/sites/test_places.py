@@ -17,6 +17,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.core.config import Settings, get_settings
+from app.features.auth.schemas import CurrentUser
+from app.features.auth.service import require_user
 from app.features.sites.places import get_place_http_get
 from app.main import create_app
 
@@ -52,6 +54,8 @@ def client_with(fake: FakeKakao, key: str = "kakao-key") -> TestClient:
     app = create_app()
     app.dependency_overrides[get_settings] = lambda: Settings("", "", kakao_rest_api_key=key)
     app.dependency_overrides[get_place_http_get] = lambda: fake
+    # 주소 검색은 로그인만 필요하고 DB를 읽지 않는다(로그인 검증: tests/app/features/auth).
+    app.dependency_overrides[require_user] = lambda: CurrentUser(1, "a@example.com", "가", 1, "가")
     return TestClient(app)
 
 

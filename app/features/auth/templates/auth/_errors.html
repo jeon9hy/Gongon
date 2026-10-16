@@ -1,0 +1,6 @@
+{% if view.errors %}
+<div class="alert alert--error" role="alert">
+<ul>{% for e in view.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+{% if view.message %}<div class="alert alert--ok" role="status">{{ view.message }}</div>{% endif %}

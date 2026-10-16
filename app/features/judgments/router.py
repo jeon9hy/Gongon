@@ -10,6 +10,7 @@ from app.core.clock import now_kst
 from app.core.config import Settings, get_settings
 from app.core.db import get_session
 from app.core.templating import register_template_dir, templates
+from app.features.auth.service import require_user
 from app.features.forecasts import service as forecasts_service
 from app.features.judgments import service
 from app.features.judgments.schemas import ElementKey, RunResult, VerdictFilter
@@ -17,7 +18,8 @@ from engine.forecast import HttpGet
 
 register_template_dir(Path(__file__).parent / "templates")
 
-router = APIRouter(include_in_schema=False)
+# 모든 화면은 로그인이 필요하다(D-057).
+router = APIRouter(include_in_schema=False, dependencies=[Depends(require_user)])
 
 SessionDep = Annotated[Session, Depends(get_session)]
 NowDep = Annotated[datetime, Depends(now_kst)]

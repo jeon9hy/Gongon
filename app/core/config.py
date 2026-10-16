@@ -18,6 +18,7 @@ class Settings:
     kma_apihub_key: str = ""  # 기상청 API허브 authKey. 있으면 이쪽을 쓴다
     kakao_rest_api_key: str = ""  # 현장 위치 찾기(카카오 로컬 API). 없으면 위경도 직접 입력
     auto_refresh: bool = True  # 매시 15분 전체 현장 자동 판정(D-043). AUTO_REFRESH=0이면 끈다
+    session_cookie_secure: bool = False  # HTTPS 배포에서 SESSION_COOKIE_SECURE=1 (D-057)
 
     def kma_auth(self) -> KmaAuth:
         if self.kma_apihub_key:
@@ -59,4 +60,5 @@ def get_settings() -> Settings:
         kma_apihub_key=value("KMA_APIHUB_KEY"),
         kakao_rest_api_key=value("KAKAO_REST_API_KEY"),
         auto_refresh=value("AUTO_REFRESH") != "0",
+        session_cookie_secure=value("SESSION_COOKIE_SECURE") == "1",
     )

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}가입{% endblock %}
+{% block content %}
+<form class="form auth-form" method="post" action="/signup">
+<h1 class="title title--sm">가입</h1>
+<p class="small muted">현장은 참여자로 추가된 사람만 볼 수 있습니다. 같은 회사여도 자동으로 열리지 않습니다.</p>
+{% include "auth/_errors.html" %}
+<input type="hidden" name="next" value="{{ view.next_path }}">
+<label class="field">이메일
+<input type="email" name="email" value="{{ view.email }}" autocomplete="username" maxlength="200" required>
+</label>
+<label class="field">이름
+<input type="text" name="display_name" value="{{ view.display_name }}" autocomplete="name" maxlength="40" required>
+</label>
+<label class="field">회사 이름
+<input type="text" name="organization_name" value="{{ view.organization_name }}" autocomplete="organization" maxlength="60" required>
+</label>
+<label class="field">비밀번호 <small class="muted">10자 이상</small>
+<input type="password" name="password" autocomplete="new-password" minlength="10" maxlength="128" required>
+</label>
+<button class="btn btn--accent" type="submit">가입하고 시작하기</button>
+<p class="small muted">이미 가입했으면 <a href="/login?next={{ view.next_path | urlencode }}">로그인</a></p>
+</form>
+{% endblock %}

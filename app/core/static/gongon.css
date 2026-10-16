@@ -1084,3 +1084,8 @@ a.window--link:hover .window__link { color: var(--accent); }
 .pager { display: flex; justify-content: center; }
 @media (max-width: 760px) { .filters__count { height: auto; } }
 .modal:focus { outline: none; }
+
+/* 로그인·가입: 좁은 한 열 폼 */
+.auth-form { flex: 0 1 420px; width: 100%; max-width: 420px; margin: 24px auto; gap: 16px; }
+.appbar__user { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.appbar__user form { display: inline; }

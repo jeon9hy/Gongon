@@ -33,7 +33,25 @@ from tests.fakes import FakeKma
 
 # 14:10 이후라 14시 발표를 받고, 판정 대상은 내일(2026-10-05)이다.
 FIXED_NOW = datetime(2026, 10, 4, 15, 0, tzinfo=KST)
-TABLES = ("judgment_runs", "judgments", "work_items", "forecast_runs", "mid_forecast_runs", "sites")
+TABLES = (
+    "judgment_runs",
+    "judgments",
+    "work_items",
+    "forecast_runs",
+    "mid_forecast_runs",
+    "sites",
+    "auth_sessions",
+    "users",
+    "organizations",
+)
+# 쓰기 요청은 같은 출처여야 한다(app/core/security.py). TestClient의 기본 호스트와 맞춘다.
+SAME_ORIGIN = {"Origin": "http://testserver"}
+DEFAULT_USER = {
+    "email": "coordinator@example.com",
+    "display_name": "테스트 조정자",
+    "organization_name": "가상건설",
+    "password": "correct-horse-battery",
+}
 
 
 @pytest.fixture(scope="session")
@@ -78,9 +96,10 @@ def settings() -> Settings:
 
 
 @pytest.fixture
-def client(
+def anonymous_client(
     db_engine: Engine, session: Session, fake_kma: FakeKma, settings: Settings
 ) -> Iterator[TestClient]:
+    """로그인하지 않은 브라우저. 같은 출처 헤더는 보낸다."""
     app = create_app()
 
     def test_session() -> Iterator[Session]:
@@ -91,5 +110,13 @@ def client(
     app.dependency_overrides[now_kst] = lambda: FIXED_NOW
     app.dependency_overrides[get_settings] = lambda: settings
     app.dependency_overrides[get_http_get] = lambda: fake_kma
-    with TestClient(app) as test_client:
+    with TestClient(app, headers=SAME_ORIGIN) as test_client:
         yield test_client
+
+
+@pytest.fixture
+def client(anonymous_client: TestClient) -> TestClient:
+    """가입·로그인한 기본 사용자(DEFAULT_USER)의 브라우저. 기존 화면 테스트가 쓴다."""
+    response = anonymous_client.post("/signup", data=DEFAULT_USER, follow_redirects=False)
+    assert response.status_code == 303, response.text
+    return anonymous_client

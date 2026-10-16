@@ -17,13 +17,14 @@
 | 순수 판정 | `engine/judgment/` | `judge(weather, rule_set, work_start_at, work_end_at) -> JudgmentResult`, `load_rule_set()` | 있음 | S03 |
 | 한국 표준시 | `engine/kst.py` | `KST`(고정 +09:00, D-018) | 있음 | S01 |
 | 공통 기반 | `app/core/` | `config.py`(설정), `db.py`(세션), `rules.py`(기준표·공종 목록), `clock.py`(현재 시각), `errors.py`(DB 오류 화면) | 있음 | S04-1 |
-| 회원·인증 | `app/features/auth/` | `router.py`, 현재 사용자 의존성 | 계획(D-019로 보류) | S04-2 |
+| 회원·인증 | `app/features/auth/` | `/login`·`/signup`·`/logout`, `service.require_user`(모든 기능 라우터의 로그인 의존성), 회사·사용자·세션 | 있음 | C03-1 |
+| 요청 위조 방지 | `app/core/security.py` | `SameOriginMiddleware`(쓰기 요청 Origin/Referer 검사, D-057) | 있음 | C03-1 |
 | 현장 등록·설정 | `app/features/sites/` | `router.py`(등록·수정·삭제 폼), `service.py`(`list_sites`·`get_site` 공개, 삭제한 현장 제외 D-040) | 있음 | S04-3·S05 |
 | 예보 수집 기록 | `app/features/forecasts/` | `service.get_forecast()`(발표 시각·격자 재사용, 실패 기록) | 있음 | S02-2·S04 |
 | 판정 저장·조회·상세 | `app/features/judgments/` | `service.run_for_site()`(engine 호출 + 저장), 대시보드·상세·내역 화면 | 있음 | S04-4·S05 |
 | 알림 | `app/features/notifications/` | 메시지 생성·발송 어댑터(미리보기 어댑터만, 알림톡은 사업자 등록 후 D-015)·발송 이력 | 계획 | S06 |
 | 실행 작업 | `app/jobs/` | `daily_forecast_judgment_notify` | 계획 | S06 |
-| DB 변경 이력 | `migrations/` | Alembic 리비전(`0001`~`0008_site_road_lot_address`) | 있음 | S04-1 |
+| DB 변경 이력 | `migrations/` | Alembic 리비전(`0001`~`0009_auth_users_sessions`) | 있음 | S04-1 |
 | 작업 일정·변경 | `app/features/schedules/` | `service.items_on()`·`items_on_for_sites()`(그날 작업), `/schedule` 화면 | 있음(S08-1) | S08·S09 |
 | 팀·공유·확인 | `app/features/teams/` | — | 계획(첫 확장) | S09 |
 | 실제 작업 기록 | `app/features/work_records/` | — | 계획(첫 확장) | S10 |

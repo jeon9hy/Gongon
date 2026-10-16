@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}로그인{% endblock %}
+{% block content %}
+<form class="form auth-form" method="post" action="/login">
+<h1 class="title title--sm">로그인</h1>
+{% include "auth/_errors.html" %}
+<input type="hidden" name="next" value="{{ view.next_path }}">
+<label class="field">이메일
+<input type="email" name="email" value="{{ view.email }}" autocomplete="username" maxlength="200" required autofocus>
+</label>
+<label class="field">비밀번호
+<input type="password" name="password" autocomplete="current-password" maxlength="128" required>
+</label>
+<button class="btn btn--accent" type="submit">로그인</button>
+<p class="small muted">처음이면 <a href="/signup?next={{ view.next_path | urlencode }}">가입하기</a></p>
+</form>
+{% endblock %}
