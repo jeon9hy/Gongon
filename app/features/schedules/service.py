@@ -4,15 +4,21 @@ from datetime import date, datetime, time, timedelta
 
 from sqlalchemy.orm import Session
 
+from app.features.auth import service as auth_service
 from app.features.auth.schemas import CurrentUser
 from app.features.schedules import repository
-from app.features.schedules.models import WorkItem
+from app.features.schedules.models import WorkItem, WorkItemRevision
 from app.features.schedules.schemas import (
     CalendarDay,
     DayDetail,
     MonthChoice,
+    ParticipantChoice,
+    PlanChangeResult,
+    PlanValues,
+    RevisionView,
     ScheduleView,
     SiteChoice,
+    WorkItemEditForm,
     WorkItemForm,
     WorkItemRecord,
 )
@@ -20,6 +26,7 @@ from app.features.sites import service as sites_service
 from app.features.sites.schemas import SiteRecord, SiteScope
 from app.features.teams import service as teams_service
 from app.features.teams.schemas import MANAGE_ROLES
+from engine.kst import KST
 
 CELL_ITEMS = 3  # 달력 칸에 보이는 작업 수(나머지는 +N)
 MONTH_PICK_SPAN = 6  # 달 고르기 목록에 늘 넣는 보고 있는 달 앞뒤 개월 수
@@ -64,6 +71,8 @@ def build_view(
     message: str | None = None,
     month: str | None = None,
     day: str | None = None,
+    edit_item_id: int | None = None,
+    edit_errors: tuple[str, ...] = (),
 ) -> ScheduleView | None:
     """월 달력 + 고른 날짜 상세. 현장이 없으면 빈 화면, 없거나 범위 밖 site_id면 None.
 
@@ -86,6 +95,8 @@ def build_view(
 
     weeks: tuple[tuple[CalendarDay, ...], ...] = ()
     detail = None
+    labels: dict[int, str] = {}
+    revisions: dict[int, tuple[RevisionView, ...]] = {}
     if site is not None:
         items = [
             _record(i)
@@ -119,6 +130,8 @@ def build_view(
             d += timedelta(days=1)
         weeks = tuple(tuple(cells[i : i + 7]) for i in range(0, len(cells), 7))
         detail = _detail(site, selected, today, tuple(by_day.get(selected, [])))
+        labels = teams_service.participant_labels(session, site.site_id)
+        revisions = _revision_views(session, [i.item_id for i in detail.items], labels)
 
     # 공종·시간은 미리 고르지 않는다(개발자 요청). 날짜만 고른 날로 채운다.
     default_form = WorkItemForm(work_type="", work_date=selected.isoformat(), start="", end="")
@@ -142,6 +155,16 @@ def build_view(
         form=form or default_form,
         errors=errors,
         message=message,
+        participants=tuple(
+            ParticipantChoice(
+                pid, name, str(pid) == (form or default_form).performing_participant_id
+            )
+            for pid, name in labels.items()
+        ),
+        participant_names=labels,
+        revisions=revisions,
+        edit_item_id=edit_item_id,
+        edit_errors=edit_errors,
     )
 
 
@@ -178,11 +201,143 @@ def add_item(
     site = sites_service.get_site(session, site_id, None)
     if site is None:
         return False, ("현장을 찾을 수 없습니다.",)
+    performer, performer_error = _performer(session, site_id, form.performing_participant_id)
     items, errors = _validate(site, form, today)
-    if not items:
+    if performer_error:
+        errors = (*errors, performer_error)
+    if not items or performer_error:
         return False, errors
+    for item in items:
+        item.performing_participant_id = performer
     repository.add_all(session, items)
     return True, ()
+
+
+def update_item(
+    session: Session,
+    user: CurrentUser,
+    site_id: int,
+    item_id: int,
+    form: WorkItemEditForm,
+    today: date,
+    now: datetime,
+) -> tuple[PlanChangeResult, tuple[str, ...]]:
+    """작업 일정 화면의 계획 수정. 조정자만. 화면을 연 뒤 다른 사람이 먼저 바꿨으면 conflict."""
+    teams_service.require_role(session, user, site_id, MANAGE_ROLES)
+    site = sites_service.get_site(session, site_id, None)
+    item = repository.get_active(session, site_id, item_id)
+    if site is None or item is None:
+        return "missing", ()
+    expected = _int(form.plan_version)
+    if expected is None:
+        return "conflict", ()
+    performer, performer_error = _performer(session, site_id, form.performing_participant_id)
+    as_add = WorkItemForm(item.work_type, form.work_date, form.start, form.end, form.location,
+                          form.memo)  # fmt: skip
+    validated, errors = _validate(site, as_add, today)
+    if performer_error:
+        errors = (*errors, performer_error)
+    if not validated or performer_error:
+        return "unchanged", errors
+    new = validated[0]
+    values = PlanValues(new.work_date, new.start_local, new.end_local, new.location, new.memo,
+                        performer)  # fmt: skip
+    result = apply_plan_change(
+        session, item, expected, values, changed_by=user.user_id, now=now, source="edit"
+    )
+    if result == "saved":
+        session.commit()
+    else:
+        session.rollback()
+    return result, ()
+
+
+def apply_plan_change(
+    session: Session,
+    item: WorkItem,
+    expected_version: int,
+    values: PlanValues,
+    *,
+    changed_by: int | None,
+    now: datetime,
+    source: str,
+) -> PlanChangeResult:
+    """계획을 바꾸고 이전 값을 이력으로 남긴다. 커밋하지 않는다(C05 변경 확정과 한 트랜잭션).
+
+    값이 그대로면 버전을 올리지 않는다. 제출 버전이 현재와 다르면(동시 수정) 아무것도 바꾸지 않는다.
+    """
+    if item.plan_version != expected_version:
+        return "conflict"
+    before = PlanValues(item.work_date, item.start_local, item.end_local, item.location,
+                        item.memo, item.performing_participant_id)  # fmt: skip
+    if before == values:
+        return "unchanged"
+    revision = WorkItemRevision(
+        work_item_id=item.id,
+        plan_version=expected_version,
+        work_date=before.work_date,
+        start_local=before.start_local,
+        end_local=before.end_local,
+        location=before.location,
+        memo=before.memo,
+        performing_participant_id=before.performing_participant_id,
+        changed_by_user_id=changed_by,
+        changed_at=now,
+        source=source,
+    )
+    if not repository.update_plan_if_version(session, item, expected_version, values):
+        return "conflict"  # 읽은 뒤 다른 요청이 먼저 저장했다
+    session.add(revision)
+    session.flush()
+    return "saved"
+
+
+def _performer(session: Session, site_id: int, raw: str) -> tuple[int | None, str | None]:
+    """실행 업체 입력 → 참여 업체 ID. 빈 값은 미지정. 다른 현장의 참여 업체는 거부한다."""
+    if not raw.strip():
+        return None, None
+    participant_id = _int(raw)
+    if participant_id is None or participant_id not in teams_service.participant_labels(
+        session, site_id
+    ):
+        return None, "실행 업체는 이 현장의 참여 업체 중에서 고르세요."
+    return participant_id, None
+
+
+def _int(raw: str) -> int | None:
+    try:
+        return int(raw)
+    except ValueError:
+        return None
+
+
+def _revision_views(
+    session: Session, item_ids: list[int], labels: dict[int, str]
+) -> dict[int, tuple[RevisionView, ...]]:
+    """고른 날 작업들의 변경 이력(쿼리: 이력 1회 + 사용자 1회)."""
+    rows = repository.revisions_for(session, item_ids)
+    users = auth_service.describe_users(
+        session, (r.changed_by_user_id for r in rows if r.changed_by_user_id is not None)
+    )
+    by_item: dict[int, list[RevisionView]] = {}
+    for r in rows:
+        place = f" · {r.location}" if r.location else ""
+        performer = (
+            "실행 업체 미지정"
+            if r.performing_participant_id is None
+            else labels.get(r.performing_participant_id, "참여 종료 업체").split(" · ")[0]
+        )
+        who = users.get(r.changed_by_user_id or -1)
+        by_item.setdefault(r.work_item_id, []).append(
+            RevisionView(
+                plan_version=r.plan_version,
+                summary=f"{r.work_date:%m/%d} {r.start_local:%H:%M}–{r.end_local:%H:%M}"
+                f"{place} · {performer}",
+                changed_text=f"{r.changed_at.astimezone(KST):%m/%d %H:%M} "
+                f"{who.display_name if who else '시스템'}",
+            )
+        )
+    return {item_id: tuple(views) for item_id, views in by_item.items()}
 
 
 def delete_item(
@@ -263,6 +418,8 @@ def _record(item: WorkItem) -> WorkItemRecord:
         end_local=item.end_local,
         location=item.location,
         memo=item.memo,
+        performing_participant_id=item.performing_participant_id,
+        plan_version=item.plan_version,
     )
 
 

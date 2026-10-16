@@ -11,7 +11,7 @@ from app.core.db import get_session
 from app.core.templating import register_template_dir, templates
 from app.features.auth.service import CurrentUserDep, require_user
 from app.features.schedules import service
-from app.features.schedules.schemas import ScheduleView, WorkItemForm
+from app.features.schedules.schemas import ScheduleView, WorkItemEditForm, WorkItemForm
 from app.features.teams.service import AccessibleSitesDep, ManagedSitesDep
 
 register_template_dir(Path(__file__).parent / "templates")
@@ -46,8 +46,20 @@ def schedule(
     day: str | None = None,
     saved: bool = False,
     deleted: bool = False,
+    edited: bool = False,
+    unchanged: bool = False,
 ) -> HTMLResponse:
-    message = "작업을 추가했습니다." if saved else "작업을 지웠습니다." if deleted else None
+    message = (
+        "작업을 추가했습니다."
+        if saved
+        else "작업을 지웠습니다."
+        if deleted
+        else "작업 계획을 바꿨습니다. 바뀐 시간·위치로 다시 판정하세요."
+        if edited
+        else "바뀐 내용이 없어 저장하지 않았습니다."
+        if unchanged
+        else None
+    )
     view = service.build_view(
         session, scope, site_id, now.date(), message=message, month=month, day=day
     )
@@ -72,8 +84,12 @@ def add_item(
     location: Annotated[str, Form()] = "",
     memo: Annotated[str, Form()] = "",
     work_dates: Annotated[list[str] | None, Form()] = None,
+    performing_participant_id: Annotated[str, Form()] = "",
 ) -> Response:
-    form = WorkItemForm(work_type, work_date, start, end, location, memo, tuple(work_dates or ()))
+    form = WorkItemForm(
+        work_type, work_date, start, end, location, memo, tuple(work_dates or ()),
+        performing_participant_id,
+    )  # fmt: skip
     ok, errors = service.add_item(session, user, site_id, form, now.date())
     if not ok:
         view = service.build_view(session, scope, site_id, now.date(), form, errors)
@@ -84,6 +100,48 @@ def add_item(
         f"/schedule?site_id={site_id}&day={min(d for d in (*form.work_dates, form.work_date) if d)}"
         "&saved=1",
         status_code=303,
+    )
+
+
+CONFLICT_MESSAGE = "다른 사람이 먼저 이 작업을 바꿨습니다. 최신 내용을 확인한 뒤 다시 저장하세요."
+
+
+@router.post("/schedule/{item_id}/edit")
+def edit_item(
+    request: Request,
+    session: SessionDep,
+    user: CurrentUserDep,
+    scope: AccessibleSitesDep,
+    manageable: ManagedSitesDep,
+    now: NowDep,
+    item_id: int,
+    site_id: Annotated[int, Form()],
+    day: Annotated[str, Form()] = "",
+    work_date: Annotated[str, Form()] = "",
+    start: Annotated[str, Form()] = "",
+    end: Annotated[str, Form()] = "",
+    location: Annotated[str, Form()] = "",
+    memo: Annotated[str, Form()] = "",
+    performing_participant_id: Annotated[str, Form()] = "",
+    plan_version: Annotated[str, Form()] = "",
+) -> Response:
+    form = WorkItemEditForm(
+        work_date, start, end, location, memo, performing_participant_id, plan_version
+    )
+    result, errors = service.update_item(session, user, site_id, item_id, form, now.date(), now)
+    if result == "missing":
+        raise HTTPException(status_code=404, detail="작업을 찾을 수 없습니다")
+    if result == "conflict" or errors:
+        view = service.build_view(
+            session, scope, site_id, now.date(), day=day, edit_item_id=item_id,
+            edit_errors=(CONFLICT_MESSAGE,) if result == "conflict" else errors,
+        )  # fmt: skip
+        if view is None:
+            raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
+        return _render(request, view, manageable, status_code=409 if result == "conflict" else 422)
+    flag = "edited" if result == "saved" else "unchanged"
+    return RedirectResponse(
+        f"/schedule?site_id={site_id}&day={work_date or day}&{flag}=1", status_code=303
     )
 
 

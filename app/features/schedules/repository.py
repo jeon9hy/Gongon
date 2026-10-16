@@ -3,7 +3,8 @@ from datetime import date, datetime
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
-from app.features.schedules.models import WorkItem
+from app.features.schedules.models import WorkItem, WorkItemRevision
+from app.features.schedules.schemas import PlanValues
 
 
 def list_between(session: Session, site_ids: list[int], start: date, end: date) -> list[WorkItem]:
@@ -40,3 +41,50 @@ def delete_item(session: Session, site_id: int, item_id: int, deleted_at: dateti
     ).first()
     session.commit()
     return deleted is not None
+
+
+def get_active(session: Session, site_id: int, item_id: int) -> WorkItem | None:
+    item = session.get(WorkItem, item_id)
+    if item is None or item.site_id != site_id or item.deleted_at is not None:
+        return None
+    return item
+
+
+def update_plan_if_version(
+    session: Session, item: WorkItem, expected_version: int, values: PlanValues
+) -> bool:
+    """제출한 버전이 아직 현재 버전일 때만 계획을 바꾸고 버전을 올린다(낙관적 잠금).
+
+    조건부 UPDATE 한 번이라 두 사람이 같은 버전으로 동시에 저장해도 한 사람만 성공한다.
+    """
+    updated = session.scalars(
+        update(WorkItem)
+        .where(
+            WorkItem.id == item.id,
+            WorkItem.plan_version == expected_version,
+            WorkItem.deleted_at.is_(None),
+        )
+        .values(
+            work_date=values.work_date,
+            start_local=values.start_local,
+            end_local=values.end_local,
+            location=values.location,
+            memo=values.memo,
+            performing_participant_id=values.performing_participant_id,
+            plan_version=WorkItem.plan_version + 1,
+        )
+        .returning(WorkItem.id)
+        .execution_options(synchronize_session="fetch")
+    ).first()
+    return updated is not None
+
+
+def revisions_for(session: Session, item_ids: list[int]) -> list[WorkItemRevision]:
+    if not item_ids:
+        return []
+    query = (
+        select(WorkItemRevision)
+        .where(WorkItemRevision.work_item_id.in_(item_ids))
+        .order_by(WorkItemRevision.work_item_id, WorkItemRevision.plan_version.desc())
+    )
+    return list(session.scalars(query))

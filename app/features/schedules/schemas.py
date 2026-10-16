@@ -1,5 +1,6 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, time
+from typing import Literal
 
 
 @dataclass(frozen=True, slots=True)
@@ -14,6 +15,8 @@ class WorkItemRecord:
     end_local: time
     location: str
     memo: str
+    performing_participant_id: int | None = None  # 실행 업체. None은 미지정
+    plan_version: int = 1
 
     @property
     def label(self) -> str:
@@ -31,6 +34,51 @@ class WorkItemForm:
     location: str = ""
     memo: str = ""
     work_dates: tuple[str, ...] = ()  # 달력에서 고른 날짜들. 날마다 같은 시간으로 작업을 만든다
+    performing_participant_id: str = ""  # 빈 값은 실행 업체 미지정
+
+
+@dataclass(frozen=True, slots=True)
+class WorkItemEditForm:
+    """작업 계획 수정. 공종은 바꾸지 않는다(판정 묶음 기준). plan_version은 화면을 연 때의 버전."""
+
+    work_date: str = ""
+    start: str = ""
+    end: str = ""
+    location: str = ""
+    memo: str = ""
+    performing_participant_id: str = ""
+    plan_version: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class PlanValues:
+    """계획 한 벌(작업 일정 수정과 C05 변경 확정이 같은 저장 함수를 쓴다)."""
+
+    work_date: date
+    start_local: time
+    end_local: time
+    location: str
+    memo: str
+    performing_participant_id: int | None
+
+
+PlanChangeResult = Literal["saved", "unchanged", "conflict", "missing"]
+
+
+@dataclass(frozen=True, slots=True)
+class ParticipantChoice:
+    participant_id: int
+    name: str  # 회사 이름 · 원청/협력업체
+    selected: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class RevisionView:
+    """작업 카드의 변경 이력 한 줄(바뀌기 전 값)."""
+
+    plan_version: int
+    summary: str  # 예: 10/06 08:00-12:00 · A구역 · 가상골조
+    changed_text: str  # "10/04 15:00 테스트 조정자"
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,3 +144,8 @@ class ScheduleView:
     form: WorkItemForm
     errors: tuple[str, ...]
     message: str | None
+    participants: tuple[ParticipantChoice, ...] = ()  # 실행 업체로 고를 수 있는 참여 업체
+    participant_names: dict[int, str] = field(default_factory=dict)
+    revisions: dict[int, tuple[RevisionView, ...]] = field(default_factory=dict)  # 고른 날 작업
+    edit_item_id: int | None = None  # 수정에 실패한 작업(그 카드의 수정 칸을 연다)
+    edit_errors: tuple[str, ...] = ()

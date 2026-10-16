@@ -38,6 +38,7 @@ FIXED_NOW = datetime(2026, 10, 4, 15, 0, tzinfo=KST)
 TABLES = (
     "judgment_runs",
     "judgments",
+    "work_item_revisions",
     "work_items",
     "forecast_runs",
     "mid_forecast_runs",

@@ -83,6 +83,17 @@ def manageable_site_ids(
 ManagedSitesDep = Annotated[frozenset[int], Depends(manageable_site_ids)]
 
 
+def participant_labels(session: Session, site_id: int) -> dict[int, str]:
+    """현장 참여 업체 ID → "회사 이름 · 원청/협력업체"(원청 먼저). 실행 업체 고르기·표시에 쓴다."""
+    participants = repository.participants(session, site_id)
+    names = auth_service.organization_names(session, (p.organization_id for p in participants))
+    return {
+        p.id: f"{names.get(p.organization_id, '이름 없음')} · "
+        f"{KIND_LABELS[cast(ParticipantKind, p.kind)]}"
+        for p in participants
+    }
+
+
 def add_founder(session: Session, site_id: int, user: CurrentUser, now: datetime) -> None:
     """현장을 만든 사람의 회사를 원청, 본인을 조정자로 둔다. 커밋은 호출한 현장 서비스가 한다."""
     participant = ProjectParticipant(

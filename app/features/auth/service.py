@@ -209,3 +209,13 @@ def _user_infos(session: Session, condition: ColumnElement[bool]) -> list[UserIn
         UserInfo(u.id, u.email, u.display_name, u.organization_id, name, u.is_active)
         for u, name in rows
     ]
+
+
+def organization_names(session: Session, organization_ids: Iterable[int]) -> dict[int, str]:
+    ids = set(organization_ids)
+    if not ids:
+        return {}
+    rows = session.execute(
+        select(Organization.id, Organization.name).where(Organization.id.in_(ids))
+    ).all()
+    return {organization_id: name for organization_id, name in rows}

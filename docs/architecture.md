@@ -24,7 +24,7 @@
 | 판정 저장·조회·상세 | `app/features/judgments/` | `service.run_for_site()`(engine 호출 + 저장), 대시보드·상세·내역 화면 | 있음 | S04-4·S05 |
 | 알림 | `app/features/notifications/` | 메시지 생성·발송 어댑터(미리보기 어댑터만, 알림톡은 사업자 등록 후 D-015)·발송 이력 | 계획 | S06 |
 | 실행 작업 | `app/jobs/` | `daily_forecast_judgment_notify` | 계획 | S06 |
-| DB 변경 이력 | `migrations/` | Alembic 리비전(`0001`~`0011_work_item_deleted_at`) | 있음 | S04-1 |
+| DB 변경 이력 | `migrations/` | Alembic 리비전(`0001`~`0012_work_item_plan_versions`) | 있음 | S04-1 |
 | 작업 일정·변경 | `app/features/schedules/` | `service.items_on()`·`items_on_for_sites()`(그날 작업), `/schedule` 화면 | 있음(S08-1) | S08·S09 |
 | 현장 참여·역할 | `app/features/teams/` | `service.site_ids_for`·`require_role`·`AccessibleSitesDep`(모든 현장 조회·쓰기 범위), `/sites/{id}/members` 참여자 화면, `scripts/grant_site.py`(기존 현장 조정자 지정) | 있음 | C03-2 |
 | 실제 작업 기록 | `app/features/work_records/` | — | 계획(첫 확장) | S10 |
@@ -104,7 +104,7 @@ engine/judgment, engine/geo ──> (표준 라이브러리, 전달받은 데이
 | --- | --- | --- |
 | 인증·세션 | app/features/auth | C03-1 있음 |
 | 조직·프로젝트 참여·역할 | app/features/teams | C03-2 있음(위임은 C06), 회사 공통 관리자 없음 |
-| 작업·실행 업체·계획 버전 | app/features/schedules | C04 계획, 기존 일정 기능에 추가 |
+| 작업·실행 업체·계획 버전 | app/features/schedules | C04 있음. 계획 저장은 `apply_plan_change`(커밋 없음, 낙관적 잠금) |
 | 변경 버전·영향 검토·확정·종료 | app/features/changes | C05·C06 계획 |
 | 수행자 응답·막힘·완료·검증 | app/features/actions | C05·C06 계획 |
 | 발송 대기·시도·열람 | app/features/notifications | C07 계획, 실제 알림톡 D-015 유지 |

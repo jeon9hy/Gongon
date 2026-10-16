@@ -99,6 +99,40 @@
 </div>
 <span class="itemrow__meta"><span class="itemrow__time">{{ i.start_local.strftime("%H:%M") }}–{{ i.end_local.strftime("%H:%M") }}</span>{% if i.location %}<span>{{ icon("site", 13) }} {{ i.location }}</span>{% endif %}</span>
 {% if i.memo %}<span class="small itemrow__memo">{{ i.memo }}</span>{% endif %}
+<span class="small muted">실행 업체 {{ view.participant_names.get(i.performing_participant_id, "미지정") if i.performing_participant_id else "미지정" }} · 계획 v{{ i.plan_version }}</span>
+{% set history = view.revisions.get(i.item_id, ()) %}
+{% if history %}
+<details class="item-history">
+<summary class="small">변경 이력 {{ history | length }}건</summary>
+<ul class="small muted">{% for r in history %}<li>v{{ r.plan_version }} {{ r.summary }} · {{ r.changed_text }} 변경</li>{% endfor %}</ul>
+</details>
+{% endif %}
+{% if view.site_id in manageable %}
+<details class="item-edit"{% if view.edit_item_id == i.item_id %} open{% endif %}>
+<summary class="small">계획 수정</summary>
+<form method="post" action="/schedule/{{ i.item_id }}/edit" class="item-edit__form">
+{% if view.edit_item_id == i.item_id and view.edit_errors %}<div class="alert alert--error" role="alert"><ul>{% for e in view.edit_errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+<input type="hidden" name="site_id" value="{{ view.site_id }}">
+<input type="hidden" name="day" value="{{ d.day.isoformat() }}">
+<input type="hidden" name="plan_version" value="{{ i.plan_version }}">
+<label class="field">날짜<input type="date" name="work_date" value="{{ i.work_date.isoformat() }}" required></label>
+<div class="inline">
+<label class="field" style="flex: 1 1 120px;">시작<input type="time" name="start" value="{{ i.start_local.strftime('%H:%M') }}" required></label>
+<label class="field" style="flex: 1 1 120px;">종료<input type="time" name="end" value="{{ i.end_local.strftime('%H:%M') }}" required></label>
+</div>
+<label class="field">작업 위치 (선택)<input type="text" name="location" maxlength="60" value="{{ i.location }}"></label>
+<label class="field">메모 (선택)<input type="text" name="memo" maxlength="500" value="{{ i.memo }}"></label>
+<label class="field">실행 업체
+<select name="performing_participant_id">
+<option value=""{% if not i.performing_participant_id %} selected{% endif %}>미지정</option>
+{% for p in view.participants %}<option value="{{ p.participant_id }}"{% if p.participant_id == i.performing_participant_id %} selected{% endif %}>{{ p.name }}</option>{% endfor %}
+</select>
+</label>
+<p class="small muted">공종은 바꿀 수 없습니다. 다른 공종이면 작업을 새로 추가하세요. 시간·위치를 바꾸면 이전 판정은 기록으로 남고 다시 판정해야 합니다.</p>
+<button class="btn btn--accent btn--sm" type="submit">계획 저장</button>
+</form>
+</details>
+{% endif %}
 </li>
 {% endfor %}
 </ul>
@@ -144,6 +178,12 @@
 </div>
 <label class="field">작업 위치 (선택)<input type="text" name="location" maxlength="60" placeholder="예: A구역 3층" value="{{ view.form.location }}"></label>
 <label class="field">메모 (선택)<input type="text" name="memo" maxlength="500" value="{{ view.form.memo }}"></label>
+<label class="field">실행 업체 (선택)
+<select name="performing_participant_id">
+<option value="">미지정</option>
+{% for p in view.participants %}<option value="{{ p.participant_id }}"{% if p.selected %} selected{% endif %}>{{ p.name }}</option>{% endfor %}
+</select>
+</label>
 <p class="small muted">다른 공종이 필요하면 <a href="/sites?site_id={{ view.site_id }}">현장 설정</a>에서 추가하세요.</p>
 <div class="modal__actions">
 <button class="btn btn--soft" type="button" data-close>취소</button>
