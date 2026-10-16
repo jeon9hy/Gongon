@@ -1,43 +1,63 @@
 from collections.abc import Sequence
 from datetime import date, datetime
 
-from sqlalchemy import Select, func, select
+from sqlalchemy import ColumnElement, Select, func, select
 from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.orm import Session, defer
 
 from app.features.judgments.models import Judgment, JudgmentRun
 
-LATEST_LIMIT = 50
+# 화면이 묶는 작업 단위(service._key와 같음): 작업 일정 판정은 작업 ID, 아니면 공종.
+# 작업 일정의 공종은 바뀌지 않으므로 (공종, 작업 ID)로 나눠도 같은 묶음이다.
+# NULL 작업 ID는 공종별로 한 묶음이다.
+_WORK_KEY = (Judgment.site_id, Judgment.target_date, Judgment.work_type, Judgment.work_item_id)
 
 
 def latest_for_site_date(session: Session, site_id: int, target_date: date) -> list[Judgment]:
-    """한 현장·대상 날짜의 판정을 최신순으로. 공종마다 첫 행이 최신 판정이다."""
-    return list(
-        session.scalars(
-            select(Judgment)
-            .where(Judgment.site_id == site_id, Judgment.target_date == target_date)
-            .order_by(Judgment.judged_at.desc(), Judgment.id.desc())
-            .limit(LATEST_LIMIT)
-        )
+    """한 현장·대상 날짜에서 작업마다 최신 판정 하나. 최신순."""
+    return _latest_per_work(
+        session, Judgment.site_id == site_id, Judgment.target_date == target_date
     )
 
 
 def latest_for_site_between(
     session: Session, site_id: int, start: date, end: date
 ) -> list[Judgment]:
-    """한 현장의 [start, end] 판정을 최신순으로(주간 보기, 쿼리 1회). 시간별 상세는 읽지 않는다."""
-    days = (end - start).days + 1
+    """한 현장의 [start, end] 판정(주간 보기, 쿼리 1회). 시간별 상세는 읽지 않는다.
+
+    날짜·작업마다 최신 예보의 최신 판정과, 그 직전 다른 예보의 최신 판정까지 두 건(공온지수 예보
+    안정성). 최신순이라 같은 묶음의 첫 행이 현재 판정이다.
+    """
+    conditions = (
+        Judgment.site_id == site_id,
+        Judgment.target_date >= start,
+        Judgment.target_date <= end,
+    )
+    per_forecast = (
+        select(Judgment.id, Judgment.judged_at, *_WORK_KEY)
+        .ext(distinct_on(*_WORK_KEY, Judgment.forecast_issued_at))
+        .where(*conditions)
+        .order_by(
+            *_WORK_KEY, Judgment.forecast_issued_at, Judgment.judged_at.desc(), Judgment.id.desc()
+        )
+        .subquery()
+    )
+    rank = (
+        func.row_number()
+        .over(
+            partition_by=[getattr(per_forecast.c, c.key) for c in _WORK_KEY],
+            order_by=[per_forecast.c.judged_at.desc(), per_forecast.c.id.desc()],
+        )
+        .label("rank")
+    )
+    ranked = select(per_forecast.c.id, rank).subquery()
+    ids = select(ranked.c.id).where(ranked.c.rank <= 2)
     return list(
         session.scalars(
             select(Judgment)
             .options(defer(Judgment.windows))
-            .where(
-                Judgment.site_id == site_id,
-                Judgment.target_date >= start,
-                Judgment.target_date <= end,
-            )
+            .where(Judgment.id.in_(ids))
             .order_by(Judgment.judged_at.desc(), Judgment.id.desc())
-            .limit(LATEST_LIMIT * days)
         )
     )
 
@@ -45,15 +65,30 @@ def latest_for_site_between(
 def latest_for_sites_date(
     session: Session, site_ids: list[int], target_date: date
 ) -> list[Judgment]:
-    """여러 현장의 대상 날짜 판정을 한 번에(현장마다 따로 조회하지 않음). 최신순."""
+    """여러 현장의 대상 날짜에서 작업마다 최신 판정 하나(현장마다 따로 조회하지 않음). 최신순."""
     if not site_ids:
         return []
+    return _latest_per_work(
+        session, Judgment.site_id.in_(site_ids), Judgment.target_date == target_date
+    )
+
+
+def _latest_per_work(session: Session, *conditions: ColumnElement[bool]) -> list[Judgment]:
+    """조건 안에서 작업마다 최신 판정 하나를 DB에서 먼저 고른다(C04-1, S08-4-3).
+
+    예전에는 전체를 개수 제한한 뒤 묶어서, 기록이 쌓이면 오래 판정하지 않은 작업이 빠졌다.
+    """
+    ids = (
+        select(Judgment.id)
+        .ext(distinct_on(*_WORK_KEY))
+        .where(*conditions)
+        .order_by(*_WORK_KEY, Judgment.judged_at.desc(), Judgment.id.desc())
+    )
     return list(
         session.scalars(
             select(Judgment)
-            .where(Judgment.site_id.in_(site_ids), Judgment.target_date == target_date)
+            .where(Judgment.id.in_(ids))
             .order_by(Judgment.judged_at.desc(), Judgment.id.desc())
-            .limit(LATEST_LIMIT * len(site_ids))
         )
     )
 
