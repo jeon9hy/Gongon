@@ -189,7 +189,7 @@
 {% if s.working and s.site_id in manageable %}
 <form method="post" action="/judgments/run">
 <input type="hidden" name="site_id" value="{{ s.site_id }}">
-<button class="btn btn--soft btn--sm" type="submit">{{ icon("cloud-sun", 15) }} {% if s.verdict %}다시 판정{% else %}판정하기{% endif %}</button>
+<button class="btn btn--soft btn--sm" type="submit">{{ icon("recheck", 15) }} {% if s.verdict %}다시 판정{% else %}판정하기{% endif %}</button>
 </form>
 {% endif %}
 <a class="siterow__link" href="{{ s.detail_href }}" aria-label="{{ s.name }} 대시보드에서 보기">대시보드에서 보기 {{ icon("arrow-right", 15, 2.2) }}</a>

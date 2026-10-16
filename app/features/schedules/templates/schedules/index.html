@@ -203,6 +203,20 @@
 </section>
 
 {% if view.work_types %}
+<dialog class="modal" id="quick-participant" aria-labelledby="quick-participant-title">
+<div class="modal__box">
+<div class="modal__head"><h2 class="h2" id="quick-participant-title">업체 등록</h2><button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
+<form class="modal__form" method="post" action="/sites/{{ view.site_id }}/participants">
+<input type="hidden" name="return_to" value="/schedule?site_id={{ view.site_id }}&day={{ view.detail.day.isoformat() if view.detail else '' }}">
+<label class="field">업체 이름<input type="text" name="organization_name" maxlength="60" required></label>
+<div class="modal__grid">
+<label class="field">구분<select name="category">{% for value, label in categories.items() %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></label>
+<label class="field">맡은 공종<input type="text" name="trade_note" maxlength="60" placeholder="예: 철근콘크리트"></label>
+</div>
+<div class="modal__actions"><button class="btn btn--soft" type="button" data-close>취소</button><button class="btn btn--accent" type="submit">등록</button></div>
+</form>
+</div>
+</dialog>
 <dialog class="modal modal--wide" id="add-item" aria-labelledby="add-item-title"{% if view.errors %} data-open{% endif %}>
 <form class="modal__box addform" method="post" action="/schedule">
 <div class="modal__head">
@@ -244,7 +258,7 @@
 
 <div class="inline">
 <label class="field">작업 위치<input type="text" name="location" maxlength="60" placeholder="예: A구역 3층" value="{{ view.form.location }}"></label>
-<label class="field">실행 업체
+<label class="field"><span class="addform__label">실행 업체 <button type="button" class="linkbtn" data-open-dialog="quick-participant">{{ icon("building", 14) }} 업체 등록</button></span>
 <select name="performing_participant_id">
 <option value="">미지정</option>
 {% set ns = namespace(g="") %}{% for p in view.participants %}{% if p.group_label != ns.g %}{% if ns.g %}</optgroup>{% endif %}<optgroup label="{{ p.group_label }}">{% set ns.g = p.group_label %}{% endif %}<option value="{{ p.participant_id }}"{% if p.selected %} selected{% endif %}>{{ p.name }}</option>{% endfor %}{% if ns.g %}</optgroup>{% endif %}
@@ -271,6 +285,8 @@
   const parse = (s) => (s ? new Date(s + "T00:00:00") : null);
   const root = document.querySelector("[data-schedule]");
   const addDialog = document.getElementById("add-item");
+  // 업체를 등록하고 돌아오면(add=1) 작업 추가 창을 다시 연다
+  if (addDialog && new URLSearchParams(location.search).has("add")) addDialog.showModal();
 
   // ---- 모달 열고 닫기(바깥·취소·Esc). 화면 일부를 바꿔 끼워도 동작하도록 문서에서 한 번만 받는다 ----
   document.addEventListener("click", (e) => {

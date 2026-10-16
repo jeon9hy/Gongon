@@ -21,8 +21,8 @@ document.querySelectorAll("dialog[data-open]").forEach((d) => d.showModal());
 </div>
 {% if view.can_manage %}
 <div class="hero__actions">
-<button class="btn btn--soft" type="button" data-open-dialog="dlg-participant">{{ icon("site", 16) }} 업체 등록</button>
-<button class="btn btn--accent" type="button" data-open-dialog="dlg-member">{{ icon("plus", 16, 2.2) }} 참여자 추가</button>
+<button class="btn btn--soft" type="button" data-open-dialog="dlg-participant">{{ icon("building", 16) }} 업체 등록</button>
+<button class="btn btn--accent" type="button" data-open-dialog="dlg-member">{{ icon("user-plus", 16) }} 참여자 추가</button>
 </div>
 {% endif %}
 </section>
@@ -51,7 +51,7 @@ document.querySelectorAll("dialog[data-open]").forEach((d) => d.showModal());
 {% for c in p.contacts %}
 <li class="member-row">
 <span><strong>{{ c.name }}</strong>{% if c.job_title %} <span class="tag">{{ c.job_title }}</span>{% endif %}</span>
-{% if c.phone %}<a class="small" href="tel:{{ c.phone }}">{{ c.phone }}</a>{% endif %}
+{% if c.phone %}<a class="small roster__tel" href="tel:{{ c.phone }}">{{ icon("phone", 13) }} {{ c.phone }}</a>{% endif %}
 {% if c.memo %}<span class="small muted">{{ c.memo }}</span>{% endif %}
 <span class="small muted">{{ c.account_text or "계정 없음" }}</span>
 {% if view.can_manage %}
@@ -59,13 +59,16 @@ document.querySelectorAll("dialog[data-open]").forEach((d) => d.showModal());
 {% if c.account_text %}
 <form method="post" action="/sites/{{ view.site_id }}/contacts/{{ c.contact_id }}/unlink"><button class="btn btn--soft btn--sm" type="submit">연결 해제</button></form>
 {% else %}
-<details class="delete-action roster__pop">
-<summary>계정 연결</summary>
-<form method="post" action="/sites/{{ view.site_id }}/contacts/{{ c.contact_id }}/link" class="delete-action__confirm roster__popform">
+<button class="btn btn--soft btn--sm" type="button" data-open-dialog="dlg-link-{{ c.contact_id }}">{{ icon("link", 14) }} 계정 연결</button>
+<dialog class="modal" id="dlg-link-{{ c.contact_id }}" aria-labelledby="dlg-link-title-{{ c.contact_id }}">
+<div class="modal__box">
+<div class="modal__head"><h2 class="h2" id="dlg-link-title-{{ c.contact_id }}">{{ c.name }} · 계정 연결</h2><button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
+<form class="modal__form" method="post" action="/sites/{{ view.site_id }}/contacts/{{ c.contact_id }}/link">
 <label class="field">휴대폰 번호 또는 이메일<input type="text" name="email" placeholder="010-0000-0000" maxlength="200" required></label>
-<button class="btn btn--accent btn--sm" type="submit">연결</button>
+<div class="modal__actions"><button class="btn btn--soft" type="button" data-close>취소</button><button class="btn btn--accent" type="submit">연결</button></div>
 </form>
-</details>
+</div>
+</dialog>
 {% endif %}
 <details class="delete-action">
 <summary>빼기</summary>
@@ -101,36 +104,42 @@ document.querySelectorAll("dialog[data-open]").forEach((d) => d.showModal());
 
 {% if view.can_manage %}
 <div class="roster__tools">
-<details class="roster__more">
-<summary class="btn btn--soft btn--sm">담당자 추가</summary>
-<form class="roster__form" method="post" action="/sites/{{ view.site_id }}/participants/{{ p.participant_id }}/contacts">
-<div class="inline">
+<button class="btn btn--soft btn--sm" type="button" data-open-dialog="dlg-contact-{{ p.participant_id }}">{{ icon("user-plus", 15) }} 담당자 추가</button>
+<button class="btn btn--soft btn--sm" type="button" data-open-dialog="dlg-org-{{ p.participant_id }}">{{ icon("building", 15) }} 업체 정보</button>
+<dialog class="modal" id="dlg-contact-{{ p.participant_id }}" aria-labelledby="dlg-contact-title-{{ p.participant_id }}">
+<div class="modal__box">
+<div class="modal__head"><h2 class="h2" id="dlg-contact-title-{{ p.participant_id }}">{{ p.organization_name }} · 담당자 추가</h2><button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
+<form class="modal__form" method="post" action="/sites/{{ view.site_id }}/participants/{{ p.participant_id }}/contacts">
+<div class="modal__grid">
 <label class="field">이름<input type="text" name="contact_name" maxlength="40" required></label>
 <label class="field">직책<input type="text" name="job_title" maxlength="40" list="job-titles" placeholder="예: 반장"></label>
 </div>
-<div class="inline">
+<div class="modal__grid">
 <label class="field">연락처<input type="tel" name="phone" maxlength="30" placeholder="선택"></label>
 <label class="field">메모<input type="text" name="memo" maxlength="200" placeholder="선택"></label>
 </div>
-<div class="actions"><button class="btn btn--accent btn--sm" type="submit">명부에 넣기</button></div>
+<div class="modal__actions"><button class="btn btn--soft" type="button" data-close>취소</button><button class="btn btn--accent" type="submit">명부에 넣기</button></div>
 </form>
-</details>
-<details class="roster__more">
-<summary class="btn btn--soft btn--sm">업체 정보</summary>
-<form class="roster__form" method="post" action="/sites/{{ view.site_id }}/participants/{{ p.participant_id }}/edit">
+</div>
+</dialog>
+<dialog class="modal" id="dlg-org-{{ p.participant_id }}" aria-labelledby="dlg-org-title-{{ p.participant_id }}">
+<div class="modal__box">
+<div class="modal__head"><h2 class="h2" id="dlg-org-title-{{ p.participant_id }}">{{ p.organization_name }} · 업체 정보</h2><button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
+<form class="modal__form" method="post" action="/sites/{{ view.site_id }}/participants/{{ p.participant_id }}/edit">
 {% if not p.is_prime %}
 <label class="field">구분
 <select name="category">{% for o in view.category_options %}<option value="{{ o.value }}"{% if o.value == p.category %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
 </label>
 {% endif %}
-<div class="inline">
+<div class="modal__grid">
 <label class="field">맡은 공종<input type="text" name="trade_note" maxlength="60" value="{{ p.trade_note }}"></label>
 <label class="field">참여 시작일<input type="date" name="joined_on" value="{{ p.joined_on }}"></label>
 </div>
 <label class="field">사업자번호<input type="text" name="business_no" maxlength="20" value="{{ p.business_no or '' }}" placeholder="선택"></label>
-<div class="actions"><button class="btn btn--accent btn--sm" type="submit">저장</button></div>
+<div class="modal__actions"><button class="btn btn--soft" type="button" data-close>취소</button><button class="btn btn--accent" type="submit">저장</button></div>
 </form>
-</details>
+</div>
+</dialog>
 {% if not p.is_prime %}
 {% if p.is_ended %}
 <form method="post" action="/sites/{{ view.site_id }}/participants/{{ p.participant_id }}/resume"><button class="btn btn--soft btn--sm" type="submit">참여 재개</button></form>

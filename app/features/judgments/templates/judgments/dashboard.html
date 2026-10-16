@@ -38,7 +38,7 @@
 {% if view.can_run and view.site_id in manageable %}
 <form method="post" action="/judgments/run" class="hero__action">
 <input type="hidden" name="site_id" value="{{ view.site_id }}">
-<button class="btn hero__button" type="submit">{{ icon("cloud-sun", 18) }} {% if view.primary %}다시 판정하기{% else %}지금 판정하기{% endif %}</button>
+<button class="btn hero__button" type="submit">{{ icon("recheck", 18) }} {% if view.primary %}다시 판정하기{% else %}지금 판정하기{% endif %}</button>
 </form>
 {% endif %}
 </div>

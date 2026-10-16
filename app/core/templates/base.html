@@ -22,12 +22,13 @@
 {% set current_site_id = view.site_id | default(view.selected_site_id | default(none)) if view is defined else none %}
 {# 주 메뉴는 핵심 4개(D-063). 공온 판정·판정 내역은 작업 일정 안의 하위 메뉴다. #}
 {% set nav_group = {"dashboard": "schedule", "history": "schedule"}.get(nav_active, nav_active) %}
-{% for key, href, label in [("home", "/", "홈"), ("schedule", "/schedule", "작업 일정"), ("changes", "/changes", "변경"), ("sites", "/sites", "현장")] %}
-<a href="{{ href }}{% if key in ('schedule', 'sites') and current_site_id %}?site_id={{ current_site_id }}{% endif %}"{% if nav_group == key %} aria-current="page"{% endif %}>{{ label }}</a>
+{# 현장은 메뉴 대신 '현장 추가' 버튼과 현장마다 설정 아이콘(모달)으로 다룬다(개발자 요청 2026-10-16) #}
+{% for key, href, label in [("home", "/", "홈"), ("schedule", "/schedule", "작업 일정"), ("changes", "/changes", "변경")] %}
+<a href="{{ href }}{% if key == 'schedule' and current_site_id %}?site_id={{ current_site_id }}{% endif %}"{% if nav_group == key %} aria-current="page"{% endif %}>{{ label }}</a>
 {% endfor %}
 </nav>
 <div class="appbar__actions">
-<a class="btn btn--accent btn--sm" href="/sites">{{ icon("plus", 14, 2.4) }} 현장 추가</a>
+<button type="button" class="btn btn--accent btn--sm" data-site-dialog="/sites?embed=1" data-title="현장 추가">{{ icon("plus", 14, 2.4) }} 현장 추가</button>
 <details class="menu usermenu">
 <summary class="usermenu__trigger" aria-label="{{ me.display_name }} 메뉴"><span class="usermenu__avatar" aria-hidden="true">{{ me.display_name[:1] }}</span><span class="usermenu__name">{{ me.display_name }}</span>{{ icon("chevron-down", 14, 2.2) }}</summary>
 <div class="menu__panel usermenu__panel">
@@ -65,7 +66,6 @@
 <a href="/">홈</a>
 <a href="/schedule">작업 일정</a>
 <a href="/changes">변경</a>
-<a href="/sites">현장</a>
 </div>
 <div class="sitefoot__col">
 <p class="sitefoot__head">도움</p>
@@ -90,15 +90,96 @@
 <p class="sitefoot__copy">© 공온 Gongon</p>
 </footer>
 {% endblock %}
+{# 블록 안의 me는 여기서 보이지 않아 다시 읽는다 #}
+{% if request is defined and request.state.user is defined and request.state.user %}
+<dialog class="modal modal--wide sitedlg" id="site-dialog" aria-labelledby="site-dialog-title">
+<div class="sitedlg__box">
+<div class="modal__head"><h2 class="h2" id="site-dialog-title">현장</h2><button class="modal__close" type="button" data-site-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
+<iframe class="sitedlg__frame" title="현장 설정" src="about:blank"></iframe>
+</div>
+</dialog>
+{% endif %}
 <script src="{{ static_url('picker.js') }}"></script>
 <script>
 // 한 번만 보여 줄 안내(토스트)의 표시 값은 주소에서 지운다. 새로 고침해도 다시 뜨지 않게 한다.
-const FLASH_PARAMS = ["done", "ran", "deleted"];
+const FLASH_PARAMS = ["done", "ran", "deleted", "add"];
 const flashUrl = new URL(location.href);
 if (FLASH_PARAMS.some((key) => flashUrl.searchParams.has(key))) {
   FLASH_PARAMS.forEach((key) => flashUrl.searchParams.delete(key));
   history.replaceState(history.state, "", flashUrl.pathname + flashUrl.search + flashUrl.hash);
 }
+// 현장 추가·설정 모달: 현장 폼을 모달 안 화면(embed)으로 연다. 저장·삭제하면 그 화면이 바깥 페이지를 옮긴다.
+(() => {
+  const dlg = document.getElementById("site-dialog");
+  if (dlg) {
+    const frame = dlg.querySelector("iframe");
+    document.addEventListener("click", (e) => {
+      const opener = e.target.closest("[data-site-dialog]");
+      if (opener) {
+        e.preventDefault();
+        opener.closest("details")?.removeAttribute("open");
+        dlg.querySelector("h2").textContent = opener.dataset.title || "현장";
+        frame.src = opener.dataset.siteDialog;
+        dlg.showModal();
+        return;
+      }
+      if (e.target.closest("[data-site-close]") || e.target === dlg) dlg.close();
+    });
+    dlg.addEventListener("close", () => { frame.src = "about:blank"; });
+  }
+  // 모달 안 화면의 취소 버튼은 바깥 모달을 닫는다
+  document.addEventListener("click", (e) => {
+    if (e.target.closest("[data-close-top]")) window.parent.document.getElementById("site-dialog")?.close();
+  });
+})();
+// 필수 입력: 비워 두고 보내면 칸 아래에 빨간 안내를 띄운다(브라우저 기본 말풍선 대신).
+// 문구는 라벨에서 만든다: 받침이 있으면 '을', 없으면 '를'. 고르는 칸은 '골라 주세요'.
+const fieldName = (input) => {
+  const label = input.closest("label");
+  if (!label) return input.getAttribute("placeholder") || "이 칸";
+  const own = [...label.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join(" ").trim();
+  const head = label.querySelector(":scope > span:not(.visually-hidden)");
+  const text = (own || head?.firstChild?.textContent || label.querySelector(".visually-hidden")?.textContent || "").trim();
+  return text.split(/\s{2,}|\n/)[0].trim() || "이 칸";
+};
+const josa = (word) => {
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  return code >= 0 && code <= 11171 && code % 28 ? "을" : "를";
+};
+const invalidText = (input) => {
+  const name = fieldName(input);
+  if (input.validity.valueMissing) {
+    return input.tagName === "SELECT" || input.type === "radio" || input.type === "checkbox"
+      ? `${name}${josa(name)} 골라 주세요.` : `${name}${josa(name)} 입력해 주세요.`;
+  }
+  if (input.validity.typeMismatch) return `${name} 형식을 확인해 주세요.`;
+  if (input.validity.tooShort) return `${name}${josa(name)} ${input.minLength}자 이상 입력해 주세요.`;
+  if (input.validity.rangeUnderflow || input.validity.rangeOverflow) return `${name} 범위를 확인해 주세요.`;
+  return input.validationMessage;
+};
+const clearInvalid = (input) => {
+  input.classList.remove("is-invalid");
+  input.removeAttribute("aria-invalid");
+  const note = input.closest("label")?.querySelector(":scope > .field-error") || input.parentElement.querySelector(":scope > .field-error");
+  note?.remove();
+};
+document.addEventListener("invalid", (e) => {
+  const input = e.target;
+  e.preventDefault();
+  clearInvalid(input);
+  input.classList.add("is-invalid");
+  input.setAttribute("aria-invalid", "true");
+  const note = document.createElement("span");
+  note.className = "field-error";
+  note.setAttribute("role", "alert");
+  note.textContent = invalidText(input);
+  (input.closest("label") || input.parentElement).append(note);
+  const form = input.form;
+  if (form && form.querySelector(".is-invalid") === input) input.focus({ preventScroll: false });
+}, true);
+["input", "change"].forEach((type) => document.addEventListener(type, (e) => {
+  if (e.target.classList?.contains("is-invalid") && e.target.checkValidity()) clearInvalid(e.target);
+}, true));
 // 작은 화면에서는 날짜를 고른 직후 상세가 보이도록 링크에 문서 앵커를 붙인다.
 const calendarMedia = window.matchMedia("(max-width: 760px)");
 const updateCalendarLinks = () => document.querySelectorAll(".calcell__link").forEach((link) => {
