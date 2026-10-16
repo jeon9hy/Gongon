@@ -44,6 +44,7 @@ class RosterPerson:
     """명부의 사람(삭제 안 됨). 조치 담당으로 고를 때 쓴다. user_id가 없으면 계정 미연결."""
 
     contact_id: int
+    site_id: int
     participant_id: int
     name: str
     job_title: str

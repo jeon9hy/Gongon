@@ -9,8 +9,8 @@
 - 담당은 계정(assignee_user_id) 또는 계정 없는 명부의 사람(assignee_contact_id, D-066) 중 하나다.
   명부의 사람이 응답하면 조정자가 전화로 확인해 대신 기록한다. done_criteria는 완료 기준(D-070).
 
-Revision ID: 0016
-Revises: 0015
+Revision ID: 0017
+Revises: 0016
 Create Date: 2026-10-16
 """
 
@@ -19,8 +19,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0016"
-down_revision: str | None = "0015"
+revision: str = "0017"
+down_revision: str | None = "0016"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

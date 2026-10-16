@@ -155,7 +155,15 @@ def roster_people(
     if missing:
         people += repository.contacts_by_ids(session, site_id, missing)
     return tuple(
-        RosterPerson(c.id, c.participant_id, c.name, c.job_title, c.user_id) for c in people
+        RosterPerson(c.id, c.site_id, c.participant_id, c.name, c.job_title, c.user_id) for c in people
+    )
+
+
+def contacts_linked_to(session: Session, user_id: int) -> tuple[RosterPerson, ...]:
+    """이 사용자와 계정이 연결된 명부의 사람(현장마다 하나). 내 조치 목록의 범위에 쓴다."""
+    return tuple(
+        RosterPerson(c.id, c.site_id, c.participant_id, c.name, c.job_title, c.user_id)
+        for c in repository.contacts_linked_to(session, user_id)
     )
 
 

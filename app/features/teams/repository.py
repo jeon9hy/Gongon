@@ -111,6 +111,13 @@ def contacts_by_ids(
     return list(session.scalars(query))
 
 
+def contacts_linked_to(session: Session, user_id: int) -> list[ParticipantContact]:
+    query = select(ParticipantContact).where(
+        ParticipantContact.user_id == user_id, ParticipantContact.removed_at.is_(None)
+    )
+    return list(session.scalars(query))
+
+
 def contact(session: Session, site_id: int, contact_id: int) -> ParticipantContact | None:
     found = session.get(ParticipantContact, contact_id)
     if found is None or found.site_id != site_id or found.removed_at is not None:
