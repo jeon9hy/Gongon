@@ -59,7 +59,7 @@
 {% for week in view.weeks %}
 <tr>
 {% for c in week %}
-<td class="calcell{% if not c.in_month %} is-outside{% endif %}{% if not c.in_period %} is-off{% endif %}{% if c.selected %} is-selected{% endif %}{% if c.is_target %} is-target{% endif %}">
+<td class="calcell{% if c.is_today %} is-today{% endif %}{% if not c.in_month %} is-outside{% endif %}{% if not c.in_period %} is-off{% endif %}{% if c.selected %} is-selected{% endif %}{% if c.is_target %} is-target{% endif %}">
 <a class="calcell__link" href="{{ c.href }}" aria-label="{{ c.day.month }}월 {{ c.day.day }}일, 작업 {{ c.items | length + c.more }}건"{% if c.selected %} aria-current="date"{% endif %}>
 <span class="calcell__day">{{ c.day.day }}{% if c.is_today %}<span class="calcell__flag">오늘</span>{% elif c.is_target %}<span class="calcell__flag calcell__flag--target">판정</span>{% endif %}</span>
 </a>
@@ -451,7 +451,12 @@
     if (!link || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
     e.preventDefault();
     link.closest("details")?.removeAttribute("open");
-    swap(link.href);
+    const toToday = link.classList.contains("today-btn");
+    const done = swap(link.href);
+    // 오늘 버튼: 이번 달로 바꾼 뒤 오늘 칸을 화면 가운데로 옮긴다
+    // (swap이 다음 화면 틀에서 스크롤을 되돌리므로 그 뒤 틀에서 움직인다)
+    const center = () => document.querySelector(".calcell.is-today")?.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    if (toToday) done.then(() => requestAnimationFrame(() => requestAnimationFrame(center)));
   });
   addEventListener("popstate", () => swap(location.href, false));
 })();
