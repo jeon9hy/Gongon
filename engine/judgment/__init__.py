@@ -1,4 +1,4 @@
-from engine.judgment.judge import OPERATOR_TEXT, highest, judge
+from engine.judgment.judge import ESTIMATED_NOTE, OPERATOR_TEXT, highest, judge
 from engine.judgment.mid_reference import MidPart, mid_reference
 from engine.judgment.rule_set import RuleSetError, load_rule_set, parse_rule_set
 from engine.judgment.types import (
@@ -20,6 +20,7 @@ from engine.judgment.types import (
 __all__ = [
     "ELEMENT_LABEL",
     "ELEMENT_UNIT",
+    "ESTIMATED_NOTE",
     "OPERATOR_TEXT",
     "Condition",
     "ConditionResult",

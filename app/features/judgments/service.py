@@ -69,6 +69,7 @@ from engine.forecast import (
 from engine.judgment import (
     ELEMENT_LABEL,
     ELEMENT_UNIT,
+    ESTIMATED_NOTE,
     OPERATOR_TEXT,
     Element,
     JudgmentResult,
@@ -672,8 +673,11 @@ def _targets(site: SiteRecord, items: tuple[WorkItemRecord, ...]) -> list[_Targe
 
 
 _CONFIDENCE_NOTE = {
-    "높음": "1시간 간격 예보로 작업 시간 전체를 판정",
-    "보통": "3시간 간격 예보라 일부 시각만 판정 · 나머지는 판정 불가",
+    "높음": "1시간 간격 예보로 작업 시간 전체를 직접 비교",
+    # D-053: 성긴 날은 같은 날 가까운 예보값으로 추정하고, 추정 시각은 '확인 필요'까지만 낸다.
+    "보통": (
+        "예보 간격이 성겨 일부 시각은 같은 날 가까운 예보값으로 추정 · 추정 시각은 확인 필요까지만"
+    ),
     "낮음": "중기예보 참고(오전·오후 강수확률·날씨만) · 기준과 직접 비교 불가 · 저장하지 않음",
     "예보 없음": "단기·중기예보 모두 없음 · 예보가 나오면 판정",
     "판정 전": "예보는 있으나 아직 판정하지 않음",
@@ -796,7 +800,9 @@ def _confidence(
     has_value = [any(c["raw"] is not None for c in h["conditions"]) for h in hours]
     if not any(has_value):
         return "예보 없음"
-    return "높음" if all(has_value) else "보통"
+    # 추정 시각은 값(가까운 시각의 값)이 있어도 직접 비교가 아니다(C04-1, D-053).
+    estimated = any(ESTIMATED_NOTE in c["reason"] for h in hours for c in h["conditions"])
+    return "높음" if all(has_value) and not estimated else "보통"
 
 
 def _week_cell(card: WorkCard, empty_state: Literal["none", "pending"]) -> WeekCell:

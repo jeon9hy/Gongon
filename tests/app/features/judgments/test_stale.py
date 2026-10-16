@@ -117,3 +117,25 @@ def test_home_and_week_show_the_notice_not_the_old_verdict(
 
     assert steel.verdict is None and steel.reason.startswith("재판정 필요")
     assert row.cells[0].verdict is None and row.cells[0].note.startswith("재판정 필요")
+
+
+def test_week_marks_a_day_judged_from_sparse_forecast_as_estimated(
+    client: TestClient, session: Session, fake_kma: Any
+) -> None:
+    # D-053: 3시간 간격 날은 같은 날 가까운 값으로 추정한다. 직접 비교로 보이면 안 된다.
+    for hour in range(0, 24, 3):
+        fake_kma.set_hour("20261007", hour, PCP="강수없음", WSD="2.0", SNO="적설없음", TMP="20",
+                          REH="50")  # fmt: skip
+    response = client.post("/sites", data=SITE, follow_redirects=False)
+    site_id = int(response.headers["location"].split("site_id=")[1].split("&")[0])
+    item = {"work_type": STEEL, "work_date": "2026-10-07", "start": "08:00", "end": "12:00"}
+    client.post("/schedule", data={"site_id": site_id, **item})
+    client.post("/judgments/run", data={"site_id": site_id})
+
+    view = service.build_dashboard(session, None, site_id, None, None, FIXED_NOW)
+    assert view is not None and view.week is not None
+    by_day = {d.day.isoformat(): d for d in view.week.days}
+
+    assert by_day["2026-10-05"].confidence == "높음"  # 1시간 간격
+    assert by_day["2026-10-07"].confidence == "보통"
+    assert "추정" in by_day["2026-10-07"].confidence_note

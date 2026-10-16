@@ -70,6 +70,19 @@ def accessible_site_ids(
 AccessibleSitesDep = Annotated[frozenset[int], Depends(accessible_site_ids)]
 
 
+def manageable_site_ids(
+    user: auth_service.CurrentUserDep, session: Annotated[Session, Depends(get_session)]
+) -> frozenset[int]:
+    """라우터 의존성: 내가 조정자인 현장. 화면에서 실행·추가·삭제 버튼을 보일지 정한다.
+
+    버튼을 숨기는 것은 안내일 뿐이며 권한은 각 서비스의 require_role이 확인한다.
+    """
+    return managed_site_ids(session, user.user_id)
+
+
+ManagedSitesDep = Annotated[frozenset[int], Depends(manageable_site_ids)]
+
+
 def add_founder(session: Session, site_id: int, user: CurrentUser, now: datetime) -> None:
     """현장을 만든 사람의 회사를 원청, 본인을 조정자로 둔다. 커밋은 호출한 현장 서비스가 한다."""
     participant = ProjectParticipant(

@@ -39,19 +39,20 @@
 {%- endmacro %}
 
 {# 현장 더보기 메뉴(홈·대시보드). 삭제는 메뉴 안에서 한 번 더 펼쳐 확인한다(D-040). #}
-{% macro site_menu(site_id, site_name, show_schedule=True) -%}
+{# can_delete: 조정자만(D-057). 숨김은 안내이고 권한은 서버가 확인한다. #}
+{% macro site_menu(site_id, site_name, show_schedule=True, can_delete=True) -%}
 <details class="menu">
 <summary class="menu__trigger" aria-label="{{ site_name }} 더보기">{{ icon("more", 18) }}</summary>
 <div class="menu__panel">
 {% if show_schedule %}<a class="menu__item" href="/schedule?site_id={{ site_id }}">{{ icon("calendar", 16) }} 작업 일정</a>{% endif %}
 <a class="menu__item" href="/sites?site_id={{ site_id }}">{{ icon("edit", 16) }} 현장 설정</a>
-<details class="menu__danger">
+{% if can_delete %}<details class="menu__danger">
 <summary class="menu__item menu__item--danger">{{ icon("trash", 16) }} 현장 삭제</summary>
 <form class="menu__confirm" method="post" action="/sites/{{ site_id }}/delete">
 <p><strong>{{ site_name }}</strong>을(를) 삭제할까요? 지난 판정 내역은 기록으로 남습니다.</p>
 <button class="btn btn--danger btn--sm" type="submit">삭제</button>
 </form>
-</details>
+</details>{% endif %}
 </div>
 </details>
 {%- endmacro %}

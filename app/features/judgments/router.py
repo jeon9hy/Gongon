@@ -15,7 +15,7 @@ from app.features.forecasts import service as forecasts_service
 from app.features.judgments import service
 from app.features.judgments.schemas import ElementKey, RunResult, VerdictFilter
 from app.features.teams import service as teams_service
-from app.features.teams.service import AccessibleSitesDep
+from app.features.teams.service import AccessibleSitesDep, ManagedSitesDep
 from engine.forecast import HttpGet
 
 register_template_dir(Path(__file__).parent / "templates")
@@ -32,12 +32,15 @@ def home(
     request: Request,
     session: SessionDep,
     scope: AccessibleSitesDep,
+    manageable: ManagedSitesDep,
     now: NowDep,
     ran: RunResult | None = None,
 ) -> HTMLResponse:
     view = service.build_home(session, scope, now, ran)
     return templates.TemplateResponse(
-        request, "judgments/home.html", {"nav_active": "home", "view": view}
+        request,
+        "judgments/home.html",
+        {"nav_active": "home", "view": view, "manageable": manageable},
     )
 
 
@@ -46,6 +49,7 @@ def dashboard(
     request: Request,
     session: SessionDep,
     scope: AccessibleSitesDep,
+    manageable: ManagedSitesDep,
     now: NowDep,
     site_id: int | None = None,
     element: ElementKey | None = None,
@@ -57,7 +61,9 @@ def dashboard(
     if view is None:
         raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
     return templates.TemplateResponse(
-        request, "judgments/dashboard.html", {"nav_active": "dashboard", "view": view}
+        request,
+        "judgments/dashboard.html",
+        {"nav_active": "dashboard", "view": view, "manageable": manageable},
     )
 
 

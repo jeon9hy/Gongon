@@ -99,6 +99,10 @@ def _judge_hour(
     return HourResult(valid_at=slot, verdict=verdict, conditions=tuple(results))
 
 
+# 추정한 시각의 사유 끝에 붙는 표시(D-053). 화면이 추정 여부를 알아보는 데도 쓴다.
+ESTIMATED_NOTE = "예보값으로 추정"
+
+
 def _nearest_same_day(
     at: datetime, forecasts: tuple[HourlyForecast, ...], day_of: datetime
 ) -> HourlyForecast | None:
@@ -121,7 +125,7 @@ def _judge_estimated_hour(
     if nearest is None:
         return _judge_hour(slot, None, None, rule_set)
     judged = _judge_hour(slot, nearest, nearest, rule_set)
-    note = f"{nearest.valid_at:%H}시 예보값으로 추정"
+    note = f"{nearest.valid_at:%H}시 {ESTIMATED_NOTE}"
     conditions = tuple(
         replace(
             c,

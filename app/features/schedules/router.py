@@ -12,7 +12,7 @@ from app.core.templating import register_template_dir, templates
 from app.features.auth.service import CurrentUserDep, require_user
 from app.features.schedules import service
 from app.features.schedules.schemas import ScheduleView, WorkItemForm
-from app.features.teams.service import AccessibleSitesDep
+from app.features.teams.service import AccessibleSitesDep, ManagedSitesDep
 
 register_template_dir(Path(__file__).parent / "templates")
 
@@ -23,11 +23,13 @@ SessionDep = Annotated[Session, Depends(get_session)]
 NowDep = Annotated[datetime, Depends(now_kst)]
 
 
-def _render(request: Request, view: ScheduleView, status_code: int = 200) -> HTMLResponse:
+def _render(
+    request: Request, view: ScheduleView, manageable: frozenset[int], status_code: int = 200
+) -> HTMLResponse:
     return templates.TemplateResponse(
         request,
         "schedules/index.html",
-        {"nav_active": "schedule", "view": view},
+        {"nav_active": "schedule", "view": view, "manageable": manageable},
         status_code=status_code,
     )
 
@@ -37,6 +39,7 @@ def schedule(
     request: Request,
     session: SessionDep,
     scope: AccessibleSitesDep,
+    manageable: ManagedSitesDep,
     now: NowDep,
     site_id: int | None = None,
     month: str | None = None,
@@ -50,7 +53,7 @@ def schedule(
     )
     if view is None:
         raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
-    return _render(request, view)
+    return _render(request, view, manageable)
 
 
 @router.post("/schedule")
@@ -59,6 +62,7 @@ def add_item(
     session: SessionDep,
     user: CurrentUserDep,
     scope: AccessibleSitesDep,
+    manageable: ManagedSitesDep,
     now: NowDep,
     site_id: Annotated[int, Form()],
     work_type: Annotated[str, Form()] = "",
@@ -75,7 +79,7 @@ def add_item(
         view = service.build_view(session, scope, site_id, now.date(), form, errors)
         if view is None:
             raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
-        return _render(request, view, status_code=422)
+        return _render(request, view, manageable, status_code=422)
     return RedirectResponse(
         f"/schedule?site_id={site_id}&day={min(d for d in (*form.work_dates, form.work_date) if d)}"
         "&saved=1",

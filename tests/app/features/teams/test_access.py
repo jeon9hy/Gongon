@@ -376,3 +376,25 @@ def test_refusals_render_the_html_page_not_json(
     assert forbidden.status_code == 403 and "권한이 없습니다" in forbidden.text
     assert missing.status_code == 404 and "찾을 수 없습니다" in missing.text
     assert "text/html" in missing.headers["content-type"]
+
+
+def test_coordinator_only_controls_are_hidden_from_other_roles(
+    client: TestClient, browser: Browser, site_id: int
+) -> None:
+    framer = browser(SUB_USER)
+    add_member(client, site_id, SUB_USER["email"], "assignee")
+    client.post("/schedule", data={"site_id": site_id, **WORK})
+    pages = {
+        "home": "/",
+        "dashboard": f"/dashboard?site_id={site_id}",
+        "schedule": f"/schedule?site_id={site_id}&day={WORK['work_date']}",
+    }
+    controls = ('action="/judgments/run"', 'action="/judgments/run-all"',
+                "type=\"button\" data-open-add", "/delete\"")  # fmt: skip
+
+    def shown(c: TestClient) -> set[str]:
+        html = " ".join(c.get(p).text for p in pages.values())
+        return {control for control in controls if control in html}
+
+    assert shown(client) == set(controls)
+    assert shown(framer) == set()

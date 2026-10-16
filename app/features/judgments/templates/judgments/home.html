@@ -14,9 +14,10 @@
 </ul>
 {% endif %}
 </div>
-{% if view.sites %}
+{% set managed_count = view.sites | selectattr("site_id", "in", manageable) | list | length %}
+{% if managed_count %}
 <form method="post" action="/judgments/run-all" class="hero__action">
-<button class="btn hero__button" type="submit" title="등록한 현장의 내일부터 7일 작업을 예보로 판정합니다">{{ icon("cloud-sun", 18) }} 현장 {{ view.sites | length }}곳 판정하기</button>
+<button class="btn hero__button" type="submit" title="내가 조정자인 현장의 내일부터 7일 작업을 예보로 판정합니다">{{ icon("cloud-sun", 18) }} 현장 {{ managed_count }}곳 판정하기</button>
 </form>
 {% endif %}
 </section>
@@ -79,7 +80,7 @@
 </div>
 <div class="siterow__status">
 {% if s.verdict %}{{ verdict_badge(s.verdict) }}{% elif not s.working %}<span class="badge badge--unknown">작업 없음</span>{% else %}<span class="badge badge--unknown">판정 전</span>{% endif %}
-{{ site_menu(s.site_id, s.name) }}
+{{ site_menu(s.site_id, s.name, can_delete=s.site_id in manageable) }}
 </div>
 </div>
 {% if s.cards %}
@@ -91,7 +92,7 @@
 {% endif %}
 <p class="siterow__reason">{% if s.verdict %}<span class="siterow__reason-label">가장 높은 단계</span>{% endif %}{{ s.reason }}</p>
 <div class="siterow__foot">
-{% if s.working %}
+{% if s.working and s.site_id in manageable %}
 <form method="post" action="/judgments/run">
 <input type="hidden" name="site_id" value="{{ s.site_id }}">
 <button class="btn btn--soft btn--sm" type="submit">{{ icon("cloud-sun", 15) }} {% if s.verdict %}다시 판정{% else %}판정하기{% endif %}</button>
