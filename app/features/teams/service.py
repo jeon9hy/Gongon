@@ -29,6 +29,7 @@ from app.features.teams.schemas import (
     ParticipantView,
     Role,
     RoleOption,
+    SiteMember,
 )
 from engine.kst import KST
 
@@ -103,6 +104,32 @@ def participant_labels(session: Session, site_id: int) -> dict[int, str]:
         f"{KIND_LABELS[cast(ParticipantKind, p.kind)]}"
         for p in participants
     }
+
+
+def site_members(session: Session, site_id: int) -> tuple[SiteMember, ...]:
+    """현장의 활성 참여자(쿼리 2회). 회수한 사람은 빠진다."""
+    return _site_members(session, repository.active_memberships(session, site_id))
+
+
+def memberships_of(session: Session, user_id: int) -> tuple[SiteMember, ...]:
+    """한 사용자의 모든 활성 참여(현장마다 하나). 내 조치 목록의 범위를 정한다."""
+    return _site_members(session, repository.active_memberships_of_user(session, user_id))
+
+
+def _site_members(session: Session, memberships: list[ProjectMembership]) -> tuple[SiteMember, ...]:
+    users = auth_service.describe_users(session, (m.user_id for m in memberships))
+    return tuple(
+        SiteMember(
+            site_id=m.site_id,
+            user_id=m.user_id,
+            display_name=users[m.user_id].display_name,
+            participant_id=m.participant_id,
+            organization_name=users[m.user_id].organization_name,
+            role=cast(Role, m.role),
+        )
+        for m in memberships
+        if m.user_id in users and users[m.user_id].is_active
+    )
 
 
 def add_founder(session: Session, site_id: int, user: CurrentUser, now: datetime) -> None:

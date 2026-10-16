@@ -53,6 +53,13 @@ def active_memberships(session: Session, site_id: int) -> list[ProjectMembership
     return list(session.scalars(query))
 
 
+def active_memberships_of_user(session: Session, user_id: int) -> list[ProjectMembership]:
+    query = select(ProjectMembership).where(
+        ProjectMembership.user_id == user_id, ProjectMembership.revoked_at.is_(None)
+    )
+    return list(session.scalars(query))
+
+
 def lock_active_coordinators(session: Session, site_id: int) -> list[ProjectMembership]:
     """마지막 조정자 회수 검사용. 동시에 서로를 회수해 조정자가 0명이 되지 않게 잠근다."""
     query = (

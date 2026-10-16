@@ -11,6 +11,20 @@ MANAGE_ROLES: tuple[Role, ...] = ("coordinator",)
 ALL_ROLES: tuple[Role, ...] = ("coordinator", "assignee", "viewer")
 # 변경 제안(초안·영향 검토로 보내기). 확정·철회(남의 제안)는 조정자만(D-057 A2, C05).
 PROPOSE_ROLES: tuple[Role, ...] = ("coordinator", "assignee")
+# 후속 조치 수행·검증을 맡을 수 있는 역할(C06). 열람자는 맡지 않는다.
+ACTION_ROLES: tuple[Role, ...] = ("coordinator", "assignee")
+
+
+@dataclass(frozen=True, slots=True)
+class SiteMember:
+    """현장의 활성 참여자 한 명. 조치 담당·검증자 고르기와 권한 확인에 쓴다."""
+
+    site_id: int
+    user_id: int
+    display_name: str
+    participant_id: int
+    organization_name: str
+    role: Role
 
 
 @dataclass(frozen=True, slots=True)
