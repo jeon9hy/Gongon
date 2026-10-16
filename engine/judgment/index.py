@@ -12,6 +12,11 @@ v2 계산(시각마다 점수 → 평균 → 그날 감점·상한):
 - 상한: 그날 나온 단계마다 상한을 두고 가장 낮은 것을 쓴다(확인 필요 70, 중지 검토 30).
   '판정 불가'가 '확인 필요'보다 높은 단계라도 확인 필요 상한은 그대로 적용된다.
 비교한 시각이 하나도 없으면 점수를 내지 않는다.
+
+중기 참고 날(D-069, 단기예보 범위 밖 +6~+7일): 시각별 값이 없어 작업마다 하루 한 점수.
+- 작업 점수 100에서 비·눈 기준이 있는 작업만 그날 오전·오후 중 높은 강수확률로 위와 같이 낮춘다.
+- 평균에서 먼 예보 10점을 빼고, '확인 필요' 작업(강수 현상 예보·기준 확인 전)이 있으면 70까지.
+- 중기예보는 판정 단계를 '확인 필요'보다 높이지 않으므로 중지 검토 상한은 쓰지 않는다.
 """
 
 from collections.abc import Iterable, Sequence
@@ -28,6 +33,8 @@ _MARGIN_STEPS = ((10.0, 70), (20.0, 85))
 # (강수확률 % 이상, 그때 진행 시각 점수 상한)
 _RAIN_STEPS = ((60, 70), (30, 85))
 CHANGED_PENALTY = 10
+# 중기 참고 날은 풍속·강우량·시각별 값 없이 하루 강수확률·날씨 문구만 본다(D-069).
+MID_PENALTY = 10
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,6 +47,14 @@ class HourInput:
 
 
 @dataclass(frozen=True, slots=True)
+class MidWorkInput:
+    """중기 참고 날의 한 작업."""
+
+    verdict: Verdict  # 중기 참고 단계(확인 필요 또는 판정 불가)
+    rain_probability_pct: int | None = None  # 비·눈 기준이 있는 작업만, 그날 가장 높은 값
+
+
+@dataclass(frozen=True, slots=True)
 class GongonIndex:
     score: int  # 0~100
     compared_hours: int  # 점수에 넣은 시각 수(작업별 시각을 모두 센다)
@@ -48,6 +63,7 @@ class GongonIndex:
     near_threshold_hours: int = 0  # 기준 여유 20% 미만으로 낮춘 진행 시각
     rainy_hours: int = 0  # 강수확률 30% 이상으로 낮춘 진행 시각
     changed: bool = False  # 직전 예보와 판정이 바뀐 작업이 있어 감점했다
+    mid_reference: bool = False  # 중기예보 참고 날 점수(D-069). compared_hours는 작업 수
     version: str = GONGON_INDEX_VERSION
 
     @property
@@ -119,4 +135,26 @@ def gongon_index(
         near_threshold_hours=sum(1 for _, near, _ in scored if near),
         rainy_hours=sum(1 for _, _, rainy in scored if rainy),
         changed=changed,
+    )
+
+
+def mid_gongon_index(works: Sequence[MidWorkInput]) -> GongonIndex | None:
+    """중기예보 참고 날의 공온지수(D-069). 작업이 없으면 점수 없음."""
+    if not works:
+        return None
+    scored = [_hour_points(HourInput(Verdict.GO, None, w.rain_probability_pct)) for w in works]
+    points = [p for p, _, _ in scored]
+    score = (sum(points) * 2 + len(points)) // (len(points) * 2)
+    score = max(0, score - MID_PENALTY)
+    capped_by = None
+    cap = _CAP_BY_VERDICT[Verdict.CHECK]
+    if any(w.verdict is Verdict.CHECK for w in works) and score > cap:
+        score, capped_by = cap, Verdict.CHECK
+    return GongonIndex(
+        score=score,
+        compared_hours=len(works),
+        total_hours=len(works),
+        capped_by=capped_by,
+        rainy_hours=sum(1 for _, _, rainy in scored if rainy),
+        mid_reference=True,
     )

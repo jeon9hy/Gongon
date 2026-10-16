@@ -2,7 +2,13 @@
 
 import pytest
 
-from engine.judgment.index import HourInput, gongon_index, margin_pct
+from engine.judgment.index import (
+    HourInput,
+    MidWorkInput,
+    gongon_index,
+    margin_pct,
+    mid_gongon_index,
+)
 from engine.judgment.types import Verdict
 
 GO, CHECK, STOP, NA = Verdict.GO, Verdict.CHECK, Verdict.STOP_REVIEW, Verdict.UNAVAILABLE
@@ -124,3 +130,29 @@ def test_margin_uses_the_conservative_end(
     expected: float | None,
 ) -> None:  # fmt: skip
     assert margin_pct(lower, upper, threshold, operator) == expected
+
+
+# 중기 참고 날(D-069)
+UNAV = Verdict.UNAVAILABLE
+
+
+@pytest.mark.parametrize(("pop", "score"), [(29, 90), (30, 75), (59, 75), (60, 60), (None, 90)])
+def test_mid_day_lowers_rain_sensitive_work_by_pop_and_far_forecast(
+    pop: int | None, score: int
+) -> None:
+    index = mid_gongon_index([MidWorkInput(UNAV, pop)])
+    assert index is not None and index.mid_reference
+    assert index.score == score
+
+
+def test_mid_day_check_work_caps_at_70_but_never_lifts() -> None:
+    capped = mid_gongon_index([MidWorkInput(Verdict.CHECK, None), MidWorkInput(UNAV, None)])
+    assert capped is not None and (capped.score, capped.capped_by) == (70, Verdict.CHECK)
+    lower = mid_gongon_index([MidWorkInput(Verdict.CHECK, 60)])
+    assert lower is not None and (lower.score, lower.capped_by) == (60, None)
+
+
+def test_mid_day_averages_works_and_has_no_score_without_work() -> None:
+    index = mid_gongon_index([MidWorkInput(UNAV, 60), MidWorkInput(UNAV, None)])  # (70+100)/2
+    assert index is not None and index.score == 75 and index.rainy_hours == 1
+    assert mid_gongon_index([]) is None

@@ -93,7 +93,7 @@
 <span class="week__date">{% if d.is_tomorrow %}<em>내일</em>{% endif %}{{ d.label }}</span>
 {% if d.index %}
 <span class="gidx ring ring--{% if d.index.score >= 80 %}high{% elif d.index.score >= 50 %}mid{% else %}low{% endif %}" style="--p: {{ d.index.score }}" title="{{ d.index_note }}" role="img" aria-label="공온지수 {{ d.index.score }}"><b>{{ d.index.score }}</b></span>
-<span class="week__sub"></span>
+<span class="week__sub{% if d.index.mid_reference %} week__sub--mid{% endif %}">{% if d.index.mid_reference %}중기 참고{% endif %}</span>
 {% else %}
 <span class="ring ring--empty" title="{{ d.index_note }}" aria-hidden="true"><b>–</b></span>
 <span class="week__sub week__sub--{{ {'낮음': 'mid', '예보 없음': 'none', '판정 전': 'pending', '수집 실패': 'fail'}.get(d.confidence, 'off') }}">{{ {'낮음': '중기 참고', '높음': '점수 없음', '보통': '점수 없음'}.get(d.confidence, d.confidence) }}</span>

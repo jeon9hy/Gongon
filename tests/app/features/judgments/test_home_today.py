@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.features.schedules.models import WorkItem
 from app.features.teams.models import ProjectParticipant
+from tests.fakes import FakeKma
 
 SITE: dict[str, Any] = {
     "name": "가상A현장",
@@ -135,6 +136,24 @@ def test_week_index_shows_seven_days_from_tomorrow(client: TestClient, session: 
     tomorrow = week.split("</li>")[0]
     assert 'class="ring ring--empty"' in tomorrow  # 판정하기 전에는 점수를 지어내지 않는다
     assert re.search(r'idxday__sub">[^<]+<', tomorrow)  # 점수가 없는 이유를 보인다
+
+
+def test_week_index_scores_mid_forecast_days_as_reference(
+    client: TestClient, session: Session, fake_kma: FakeKma
+) -> None:
+    # 10/8은 단기예보 밖, 중기예보만 있다(D-069). 철골은 비 기준 → 30% → 85 - 먼 예보 10 = 75.
+    fake_kma.mid_item = {"regId": "11B00000", "rnSt4Am": 10, "rnSt4Pm": 30,
+                         "wf4Am": "맑음", "wf4Pm": "구름많음"}  # fmt: skip
+    site_id = make_site(client)
+    put(session, site_id, TOMORROW, time(9, 0), time(10, 0), "철골 작업")
+    put(session, site_id, date(2026, 10, 8), time(9, 0), time(10, 0), "철골 작업")
+    client.post("/judgments/run", data={"site_id": site_id})
+
+    week = client.get("/").text.split('class="idxweek"')[1].split("</ol>")[0]
+    mid_day = week.split("</li>")[3]  # 내일(10/5)부터 네 번째 칸
+
+    assert 'aria-label="공온지수 75"' in mid_day
+    assert '<span class="idxday__sub">중기 참고</span>' in mid_day
 
 
 def test_home_without_any_work_says_so(client: TestClient) -> None:

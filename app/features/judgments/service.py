@@ -85,7 +85,14 @@ from engine.judgment import (
     judge,
     mid_reference,
 )
-from engine.judgment.index import GongonIndex, HourInput, gongon_index, margin_pct
+from engine.judgment.index import (
+    GongonIndex,
+    HourInput,
+    MidWorkInput,
+    gongon_index,
+    margin_pct,
+    mid_gongon_index,
+)
 from engine.kst import KST
 
 logger = logging.getLogger(__name__)
@@ -654,7 +661,10 @@ def _index_days(
                     short=f"{_WEEKDAYS[first.day.weekday()]} {first.day.day}",
                     is_tomorrow=first.is_tomorrow,
                     score=index.score,
-                    sub=site.name if len(weeks) > 1 else "",
+                    sub=" · ".join(
+                        ([site.name] if len(weeks) > 1 else [])
+                        + (["중기 참고"] if index.mid_reference else [])
+                    ),
                     href=dashboard_href(site.site_id),
                 )
             )
@@ -974,9 +984,11 @@ def _week(
         if confidence == "예보 없음" and mid_parts:
             confidence = "낮음"
         day_cells: list[WeekCell] = []
+        mid_works: list[MidWorkInput] = []
         for target, card, _ in folded:
             if confidence == "낮음" and mid_parts:
                 cell = _mid_cell(target, rule_sets, mid_parts)
+                mid_works.append(_mid_work(target, rule_sets, mid_parts, cell))
             else:
                 state: Literal["none", "pending"] = (
                     "pending" if confidence in ("예보 없음", "판정 전") else "none"
@@ -986,15 +998,18 @@ def _week(
             current = by_type.setdefault(target.work_type, {}).get(day)
             if current is None or _rank(cell) > _rank(current):
                 by_type[target.work_type][day] = cell
-        # 공온지수(D-050)는 단기예보로 저장한 판정이 있는 날만.
-        # 중기예보 참고 날은 기준과 직접 비교할 수 없어 내지 않는다.
+        # 공온지수(D-052). 중기예보 참고 날은 하루 강수확률·날씨로 낸 참고 점수(D-069).
         changed = any(
             (old := previous.get((day, t.key))) is not None
             and j is not None
             and old.verdict != j.verdict
             for t, j in pairs
         )
-        index = None if confidence == "낮음" else _day_index(judged, day_cells, changed, pops)
+        index = (
+            mid_gongon_index(mid_works)
+            if confidence == "낮음"
+            else _day_index(judged, day_cells, changed, pops)
+        )
         days.append(WeekDay(day, f"{day:%m/%d}({_WEEKDAYS[day.weekday()]})", day == dates[0],
                             in_period, confidence, _CONFIDENCE_NOTE[confidence],
                             index, _index_note(index, confidence)))  # fmt: skip
@@ -1024,6 +1039,23 @@ def _mid_cell(
         rule_set, [MidPart(p.part, p.rain_probability_pct, p.weather) for p in parts]
     )
     return WeekCell(verdict.value, "reference", None, f"{target.label} · {reason}")
+
+
+def _mid_work(
+    target: "_Target",
+    rule_sets: Mapping[str, RuleSet],
+    parts: tuple[MidHalfDay, ...],
+    cell: WeekCell,
+) -> MidWorkInput:
+    """중기 참고 칸 → 공온지수 입력. 비·눈 기준이 있는 작업만 그날 가장 높은 강수확률을 쓴다."""
+    rule_set = rule_sets.get(target.work_type)
+    elements = set() if rule_set is None else {c.element for c in rule_set.conditions}
+    pops = [p.rain_probability_pct for p in parts if p.rain_probability_pct is not None]
+    rain_sensitive = bool(elements & {Element.PRECIPITATION_MM_PER_H, Element.SNOWFALL_CM_PER_H})
+    return MidWorkInput(
+        verdict=Verdict(cell.verdict) if cell.verdict is not None else Verdict.UNAVAILABLE,
+        rain_probability_pct=max(pops) if rain_sensitive and pops else None,
+    )
 
 
 def _confidence(
@@ -1090,9 +1122,15 @@ def _hour_input(hour: Mapping[str, Any], pop_by_time: Mapping[datetime, int]) ->
 def _index_note(index: GongonIndex | None, confidence: str) -> str:
     detail = _CONFIDENCE_NOTE[confidence]
     if index is None:
-        if confidence == "낮음":
-            return f"공온지수 없음 · 중기예보는 기준과 직접 비교할 수 없음 · {detail}"
         return detail
+    if index.mid_reference:
+        parts = [f"공온지수 {index.score}(중기 참고)", "하루 강수확률·날씨만 봄, 먼 예보 10점 감점"]
+        if index.rainy_hours:
+            parts.append(f"강수확률 30% 이상 작업 {index.rainy_hours}")
+        if index.capped_by is not None:
+            parts.append(f"'{index.capped_by.value}' 작업이 있어 상한 적용")
+        parts.append("단기예보가 나오면 다시 계산")
+        return " · ".join(parts)
     parts = [f"공온지수 {index.score}"]
     if index.partial:
         parts.append(f"예보 값이 있는 {index.compared_hours}/{index.total_hours}시각 기준")
