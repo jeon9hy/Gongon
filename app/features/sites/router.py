@@ -50,9 +50,20 @@ class _SiteFormFields:
 FormDep = Annotated[_SiteFormFields, Depends()]
 
 
-def _render(request: Request, view: SitesView, status_code: int = 200) -> HTMLResponse:
-    return templates.TemplateResponse(
-        request, "sites/index.html", {"nav_active": "sites", "view": view}, status_code=status_code
+def _render(
+    request: Request, view: SitesView, status_code: int = 200, embed: bool = False
+) -> HTMLResponse:
+    """embed: 현장 추가·설정 모달 안 화면(폼만, 앱 메뉴 없음)."""
+    context = {"nav_active": "sites", "view": view, "embed": embed}
+    return templates.TemplateResponse(request, "sites/index.html", context, status_code=status_code)
+
+
+def _moved(url: str, embed: bool) -> Response:
+    """저장·삭제 뒤 이동. 모달 안 화면이면 바깥 페이지를 옮긴다(url은 서버가 만든 앱 안 주소)."""
+    if not embed:
+        return RedirectResponse(url, status_code=303)
+    return HTMLResponse(
+        f'<!doctype html><meta charset="utf-8"><script>window.top.location.href = "{url}";</script>'
     )
 
 
@@ -65,13 +76,14 @@ def sites(
     site_id: int | None = None,
     saved: bool = False,
     deleted: bool = False,
+    embed: bool = False,
 ) -> HTMLResponse:
     view = service.build_sites_view(
         session, user, site_id, saved=saved, today=now.date(), deleted=deleted
     )
     if view is None:
         raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
-    return _render(request, view)
+    return _render(request, view, embed=embed)
 
 
 @router.get("/sites/places")
@@ -99,21 +111,36 @@ _NO_PLACE_MESSAGE = (
 )
 
 
+EmbedDep = Annotated[str, Form()]
+
+
 @router.post("/sites")
 def create_site(
-    request: Request, session: SessionDep, user: CurrentUserDep, now: NowDep, fields: FormDep
+    request: Request,
+    session: SessionDep,
+    user: CurrentUserDep,
+    now: NowDep,
+    fields: FormDep,
+    embed: EmbedDep = "",
 ) -> Response:
     site_id, errors = service.create_site(session, fields.form, user, now)
     if site_id is None:
         view = service.build_sites_view(session, user, None, fields.form, errors)
         assert view is not None
-        return _render(request, view, status_code=422)
+        return _render(request, view, status_code=422, embed=embed == "1")
+    if embed == "1":
+        return _moved(f"/schedule?site_id={site_id}", True)  # 새 현장은 바로 작업 일정으로
     return RedirectResponse(f"/sites?site_id={site_id}&saved=true", status_code=303)
 
 
 @router.post("/sites/{site_id}")
 def update_site(
-    request: Request, session: SessionDep, user: CurrentUserDep, site_id: int, fields: FormDep
+    request: Request,
+    session: SessionDep,
+    user: CurrentUserDep,
+    site_id: int,
+    fields: FormDep,
+    embed: EmbedDep = "",
 ) -> Response:
     found, errors = service.update_site(session, user, site_id, fields.form)
     if not found:
@@ -121,14 +148,18 @@ def update_site(
     if errors:
         view = service.build_sites_view(session, user, site_id, fields.form, errors)
         assert view is not None
-        return _render(request, view, status_code=422)
+        return _render(request, view, status_code=422, embed=embed == "1")
+    if embed == "1":
+        return _moved(f"/schedule?site_id={site_id}", True)
     return RedirectResponse(f"/sites?site_id={site_id}&saved=true", status_code=303)
 
 
 @router.post("/sites/{site_id}/delete")
 def delete_site(
-    session: SessionDep, user: CurrentUserDep, now: NowDep, site_id: int
-) -> RedirectResponse:
+    session: SessionDep, user: CurrentUserDep, now: NowDep, site_id: int, embed: EmbedDep = ""
+) -> Response:
     if not service.delete_site(session, user, site_id, now):
         raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
+    if embed == "1":
+        return _moved("/", True)
     return RedirectResponse("/sites?deleted=true", status_code=303)

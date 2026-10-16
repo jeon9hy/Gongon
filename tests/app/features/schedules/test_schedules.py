@@ -81,9 +81,9 @@ def test_navigation_keeps_the_selected_site_through_judgment_detail(
         response = client.get(path)
         assert response.status_code == 200
         navigation = response.text.split('<nav class="appnav"')[1].split("</nav>")[0]
-        for destination in ("schedule", "sites"):
-            assert f'href="/{destination}?site_id={site_id}"' in navigation
+        assert f'href="/schedule?site_id={site_id}"' in navigation
         assert "/dashboard" not in navigation and "/judgments" not in navigation  # 하위 메뉴로
+        assert "/sites" not in navigation  # 현장은 메뉴 대신 '현장 추가'·설정 아이콘 모달
     for path in (f"/dashboard?site_id={site_id}", f"/schedule?site_id={site_id}"):
         page = client.get(path).text
         subnav = page.split('<nav class="subnav"')[1].split("</nav>")[0]
@@ -463,3 +463,24 @@ def test_started_today_work_can_change_end_but_not_move_start_into_the_past(
     assert edit("14:00", "18:00").status_code == 303  # 시작 그대로, 끝만 늘림
     session.expire_all()
     assert session.scalars(select(WorkItem.end_local)).one() == time(18, 0)
+
+
+def test_site_form_opens_inside_the_modal_and_saving_moves_the_page(client: TestClient) -> None:
+    # 현장 추가·설정 모달은 폼만 보이는 화면(embed)을 띄운다(개발자 요청 2026-10-16)
+    page = client.get("/sites?embed=1").text
+    assert 'class="embedbody"' in page and 'aria-label="주 메뉴"' not in page
+    assert '<input type="hidden" name="embed" value="1">' in page
+
+    created = client.post("/sites", data={**SITE, "embed": "1"}, follow_redirects=False)
+
+    assert created.status_code == 200
+    assert 'window.top.location.href = "/schedule?site_id=' in created.text
+    # 앱의 모든 화면 머리에는 모달로 여는 '현장 추가' 버튼이 있다
+    assert 'data-site-dialog="/sites?embed=1"' in client.get("/").text
+
+
+def test_site_modal_shows_errors_in_place(client: TestClient) -> None:
+    response = client.post("/sites", data={**SITE, "latitude": "", "embed": "1"})
+
+    assert response.status_code == 422
+    assert 'class="embedbody"' in response.text and "저장하지 못했습니다" in response.text

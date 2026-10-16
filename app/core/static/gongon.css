@@ -1839,3 +1839,15 @@ details.hmore { padding: 0; } /* 판정 내역의 옛 .hmore 여백이 접힌 �
 /* 모달 안 라벨은 모두 같은 굵기·크기(통일감) */
 .modal .field, .modal .addform__label { font-size: 14px; font-weight: 500; color: var(--text); }
 .modal legend { font-size: 14px; font-weight: 600; color: var(--ink); }
+
+/* 현장 추가·설정 모달(개발자 요청 2026-10-16): 현장 폼을 모달 안에 띄운다 */
+.sitedlg { width: min(760px, calc(100vw - 32px)); }
+.sitedlg__box { display: flex; flex-direction: column; height: min(820px, calc(100vh - 48px)); }
+.sitedlg .modal__head { position: static; margin: 0; padding: 18px var(--card-pad) 14px; }
+.sitedlg__frame { flex: 1; width: 100%; border: 0; background: var(--card); }
+.embedbody { background: var(--card); min-height: 0; }
+.embed { padding: 0 var(--card-pad) var(--card-pad); }
+.embed .form { border: 0; box-shadow: none; padding: 0; }
+.embed .danger-zone { margin-top: 20px; }
+.sitelinks { display: flex; flex-wrap: wrap; gap: 8px; }
+.site-gear { width: 36px; height: 36px; padding: 0; justify-content: center; }
