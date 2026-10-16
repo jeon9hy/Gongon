@@ -139,6 +139,7 @@ def register_participant(
     business_no: Annotated[str, Form()] = "",
     joined_on: Annotated[str, Form()] = "",
     confirm_same_name: Annotated[str, Form()] = "",
+    return_to: Annotated[str, Form()] = "",
 ) -> Response:
     name = _site_name(session, site_id, scope)
     form = ParticipantForm(organization_name, category, trade_note, business_no, joined_on,
@@ -147,6 +148,9 @@ def register_participant(
     if errors:
         return _failed(request, session, user, site_id, name, errors,
                        participant_form=form, participant_same_name=same_names)  # fmt: skip
+    if return_to.startswith(f"/schedule?site_id={site_id}&") and "//" not in return_to:
+        # 작업 추가 중 업체를 등록했으면 그 화면으로 돌아가 작업 추가 창을 다시 연다
+        return RedirectResponse(f"{return_to}&add=1", status_code=303)
     return _done(site_id, "registered")
 
 

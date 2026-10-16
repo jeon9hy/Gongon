@@ -12,6 +12,7 @@ from app.core.templating import register_template_dir, templates
 from app.features.auth.service import CurrentUserDep, require_user
 from app.features.schedules import service
 from app.features.schedules.schemas import ScheduleView, WorkItemEditForm, WorkItemForm
+from app.features.teams.schemas import CATEGORY_LABELS
 from app.features.teams.service import AccessibleSitesDep, ManagedSitesDep, ProposableSitesDep
 
 register_template_dir(Path(__file__).parent / "templates")
@@ -31,7 +32,7 @@ def _render(
     proposable: frozenset[int] = frozenset(),
 ) -> HTMLResponse:
     context = {"nav_active": "schedule", "view": view, "manageable": manageable,
-               "proposable": proposable or manageable}  # fmt: skip
+               "proposable": proposable or manageable, "categories": CATEGORY_LABELS}  # fmt: skip
     return templates.TemplateResponse(
         request, "schedules/index.html", context, status_code=status_code
     )

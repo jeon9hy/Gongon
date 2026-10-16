@@ -1829,3 +1829,13 @@ details.hmore { padding: 0; } /* 판정 내역의 옛 .hmore 여백이 접힌 �
 .modal__actions { position: sticky; bottom: 0; z-index: 2; margin: 4px calc(-1 * var(--card-pad)) 0; padding: 14px var(--card-pad); border-top: 1px solid var(--line-soft); background: var(--card); }
 .modal__box > :last-child:not(.modal__actions):not(form) { margin-bottom: var(--card-pad); }
 .roster__tel { display: inline-flex; align-items: center; gap: 4px; }
+
+/* 필수 입력 안내(개발자 요청 2026-10-16): 빈 칸은 빨간 테두리와 칸 아래 문구 */
+.field .is-invalid, input.is-invalid, select.is-invalid, textarea.is-invalid { border-color: var(--stop-text) !important; box-shadow: 0 0 0 3px var(--stop-soft) !important; }
+.field-error { display: block; margin-top: 2px; font-size: 12px; font-weight: 600; color: var(--stop-text); text-indent: 0; padding-left: var(--label-inset); }
+/* 글자 버튼(라벨 옆 '업체 등록' 등) */
+.linkbtn { display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; background: none; font: inherit; font-size: 13px; font-weight: 600; color: var(--accent); cursor: pointer; text-indent: 0; }
+.linkbtn:hover { color: var(--accent-strong); text-decoration: underline; text-underline-offset: 3px; }
+/* 모달 안 라벨은 모두 같은 굵기·크기(통일감) */
+.modal .field, .modal .addform__label { font-size: 14px; font-weight: 500; color: var(--text); }
+.modal legend { font-size: 14px; font-weight: 600; color: var(--ink); }
