@@ -1,10 +1,11 @@
 # 현재 작업 인계
 
-- 마지막 수정: Claude Code, 2026-10-16. C00~C05 완료·`main` 병합. 다음은 **C06 후속 조치·검증**(collab-contract §5). 진행 중 브랜치 없음.
+- 마지막 수정: Claude Code, 2026-10-16. C00~C05·C04-4·바닥 영역(푸터) 개편 완료·`main` 병합. 다음은 **C06 후속 조치·검증**(collab-contract §5). 진행 중 브랜치 없음(C06 코드는 아직 없음).
 - 제품 방향(D-055·D-056): 대형 건설사 프로젝트의 작업 변경 → 업체별 후속 조치 → 완료 보고 → 검증. 실제 내부 자료는 선행조건이 아니다. 합성 자료는 `[가상]`, 시장성·현장 효과는 C08.
 - 기준 문서: 계약 [collab-contract.md](collab-contract.md), 조사 [research/C01-public-research.md](research/C01-public-research.md), 결정 D-057~D-060.
 - C03: 로그인·세션(0009), 같은 출처 검사, 참여 업체·역할(0010). `sites.service.list_sites/get_site`는 `SiteScope` 필수(None=매시 자동 판정만). 비참여 404·역할 부족 403(HTML). 버튼 표시는 `ManagedSitesDep`(조정자)·`ProposableSitesDep`(조정자·담당자), 권한은 서비스가 확인.
 - C04: UTC 비교·작업 숨김 삭제(0011)·작업별 최신 판정 DB 선정·"재판정 필요"(C04-1), 실행 업체·계획 버전·변경 이력·낙관적 잠금(0012, C04-2), 현장 주요 공종·기본 시간 제거·작업 있는 날만 판정·폭염을 작업 카드에 합침·작업 추가 편의(0013, C04-3, D-059).
+- C04-4(D-061, 개발자 요청): 오늘 작업 등록·수정 허용(지난 날짜만 거부), 일정 화면 기본 선택 오늘, 오늘 작업은 판정하지 않음(판정은 내일부터 7일 그대로). 모든 date/time 입력은 `app/core/static/picker.js` 고르기 판(일→월→연, 시+5분)으로 바뀜(값 형식·서버 검증 동일, 숨긴 입력의 value를 바꾸면 버튼 글자도 바뀜).
 - C05(0014, D-060): `app/features/changes`. 제안(조정자·담당자)→영향 검토→확정(조정자)·철회(이유). 확정 = `schedules.service.apply_plan_change_by_id`(source='change') + 이전 확정 버전 superseded + 이 버전 confirmed, 한 트랜잭션. confirm_key로 재전송 구분, 제안 뒤 계획 버전이 바뀌면 확정 거부. 메뉴 "변경", 작업 카드 "변경 제안".
 - **C06 시작 지점**: `changes.service._after_confirm(session, revision)`에서 확정 버전의 후속 조치를 같은 트랜잭션으로 만든다. 계약 §5의 action_items·action_events, 상태 requested→accepted/blocked→reported→verified(반려는 accepted), 검증자≠보고자, 대상 버전이 현재가 아니면 거부, 종료 조건(현재 버전 필수 조치 모두 verified/excluded·막힘 없음, 0건이면 이유). 조치 후보 입력은 영향 검토 단계(review)에서 받는다. 위임·텍스트 근거도 C06.
 - 검증: `scripts/check.py` 통과 483 passed·skip 없음, `PGTZ=UTC` 483 passed. 실제 브라우저(로컬 Chromium + 스크래치 playwright-core)로 작업 추가 모달·현장 설정·대시보드·변경 제안→확정 확인(가로 넘침·스크립트 오류 없음). 휴대폰 실기기는 미실시.
@@ -13,4 +14,4 @@
 - 원문 대기: 한중·도장·방수·아스팔트 KCS, 이동식 크레인·고소작업대 수치, 산안법 §64·사업관리 지침·KS F 4009 원문 대조. 알림톡(D-015), 기상청 트래픽 한도 미확인.
 - 테스트 도구: `tests/conftest.py`의 `browser(user)`(여러 회사 사용자), `client`=기본 사용자(가상건설 조정자), `tests/helpers.add_site_with_work`(현장+내일 작업). 다른 요청이 저장한 값을 테스트 세션에서 읽을 때는 `session.expire_all()`.
 - Windows: `uv run python -m pytest|alembic|uvicorn|mypy|ruff`, 한글 출력 `PYTHONUTF8=1`. 한글·따옴표가 많은 편집은 스크래치 파이썬 스크립트로(CRLF 유지), bash heredoc은 깨질 수 있다.
-- 미추적 `output/`·`reports/`·`research_notes/`·중기예보 ZIP은 보존(커밋 안 함).
+- 2026-10-16 개발자 요청으로 미추적 옛 자료(`output/` PDF·`reports/`·`research_notes/`·`tmp/`, 바탕 화면의 같은 PDF 2개)와 도구 캐시를 지웠다. 현재 기준은 총정리·`docs/proposals/` 기획서 v2.1·`docs/research/C01-public-research.md`.
