@@ -77,7 +77,7 @@ def add_item(
     manageable: ManagedSitesDep,
     now: NowDep,
     site_id: Annotated[int, Form()],
-    work_type: Annotated[str, Form()] = "",
+    work_types: Annotated[list[str] | None, Form()] = None,
     work_date: Annotated[str, Form()] = "",
     start: Annotated[str, Form()] = "",
     end: Annotated[str, Form()] = "",
@@ -85,21 +85,33 @@ def add_item(
     memo: Annotated[str, Form()] = "",
     work_dates: Annotated[list[str] | None, Form()] = None,
     performing_participant_id: Annotated[str, Form()] = "",
+    date_mode: Annotated[str, Form()] = "pick",
+    range_start: Annotated[str, Form()] = "",
+    range_end: Annotated[str, Form()] = "",
+    weekdays: Annotated[list[str] | None, Form()] = None,
 ) -> Response:
     form = WorkItemForm(
-        work_type, work_date, start, end, location, memo, tuple(work_dates or ()),
-        performing_participant_id,
-    )  # fmt: skip
-    ok, errors = service.add_item(session, user, site_id, form, now.date())
-    if not ok:
+        work_types=tuple(work_types or ()),
+        work_date=work_date,
+        start=start,
+        end=end,
+        location=location,
+        memo=memo,
+        work_dates=tuple(work_dates or ()),
+        performing_participant_id=performing_participant_id,
+        date_mode=date_mode,
+        range_start=range_start,
+        range_end=range_end,
+        weekdays=tuple(weekdays or ()),
+    )
+    first_day, errors = service.add_item(session, user, site_id, form, now.date())
+    if first_day is None:
         view = service.build_view(session, scope, site_id, now.date(), form, errors)
         if view is None:
             raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
         return _render(request, view, manageable, status_code=422)
     return RedirectResponse(
-        f"/schedule?site_id={site_id}&day={min(d for d in (*form.work_dates, form.work_date) if d)}"
-        "&saved=1",
-        status_code=303,
+        f"/schedule?site_id={site_id}&day={first_day.isoformat()}&saved=1", status_code=303
     )
 
 

@@ -24,7 +24,7 @@ NowDep = Annotated[datetime, Depends(now_kst)]
 
 
 class _SiteFormFields:
-    """HTML 폼 필드 → SiteForm. 체크박스 work_types는 여러 값으로 온다."""
+    """HTML 폼 필드 → SiteForm."""
 
     def __init__(
         self,
@@ -33,11 +33,8 @@ class _SiteFormFields:
         lot_address: Annotated[str, Form()] = "",
         latitude: Annotated[str, Form()] = "",
         longitude: Annotated[str, Form()] = "",
-        work_start: Annotated[str, Form()] = "",
-        work_end: Annotated[str, Form()] = "",
         work_start_date: Annotated[str, Form()] = "",
         work_end_date: Annotated[str, Form()] = "",
-        work_types: Annotated[list[str] | None, Form()] = None,
     ) -> None:
         self.form = SiteForm(
             name=name,
@@ -45,11 +42,8 @@ class _SiteFormFields:
             lot_address=lot_address,
             latitude=latitude,
             longitude=longitude,
-            work_start=work_start,
-            work_end=work_end,
             work_start_date=work_start_date,
             work_end_date=work_end_date,
-            work_types=tuple(work_types or ()),
         )
 
 

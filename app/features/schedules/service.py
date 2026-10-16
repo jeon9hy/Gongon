@@ -4,6 +4,7 @@ from datetime import date, datetime, time, timedelta
 
 from sqlalchemy.orm import Session
 
+from app.core.rules import WORK_TYPE_LABELS, basis_status
 from app.features.auth import service as auth_service
 from app.features.auth.schemas import CurrentUser
 from app.features.schedules import repository
@@ -21,6 +22,7 @@ from app.features.schedules.schemas import (
     WorkItemEditForm,
     WorkItemForm,
     WorkItemRecord,
+    WorkTypeChoice,
 )
 from app.features.sites import service as sites_service
 from app.features.sites.schemas import SiteRecord, SiteScope
@@ -33,6 +35,9 @@ MONTH_PICK_SPAN = 6  # 달 고르기 목록에 늘 넣는 보고 있는 달 앞�
 MONTH_PICK_MAX = 24  # 달 고르기 목록은 보고 있는 달에서 앞뒤 최대 이 개월까지
 MAX_LOCATION = 60
 MAX_DAYS = 31  # 한 번에 추가할 수 있는 날 수
+MAX_ITEMS = 100  # 한 번에 만들 수 있는 작업 수(공종 수 x 날 수)
+MAX_RANGE_DAYS = 92  # 기간 고르기의 최대 길이(시작일~종료일)
+RECENT_TIMES = 3
 MAX_MEMO = 500
 _WEEKDAYS = "월화수목금토일"
 
@@ -134,7 +139,12 @@ def build_view(
         revisions = _revision_views(session, [i.item_id for i in detail.items], labels)
 
     # 공종·시간은 미리 고르지 않는다(개발자 요청). 날짜만 고른 날로 채운다.
-    default_form = WorkItemForm(work_type="", work_date=selected.isoformat(), start="", end="")
+    default_form = WorkItemForm(
+        work_date=selected.isoformat(),
+        range_start=selected.isoformat(),
+        range_end=selected.isoformat(),
+    )
+    shown_form = form or default_form
     base = "" if site is None else f"/schedule?site_id={site.site_id}&month="
     return ScheduleView(
         sites=tuple(
@@ -151,20 +161,24 @@ def build_view(
         month_groups=() if site is None else _month_groups(site, first, tomorrow, base),
         weeks=weeks,
         detail=detail,
-        work_types=() if site is None else site.work_types,
-        form=form or default_form,
+        work_types=() if site is None else _work_type_choices(session, site.site_id, shown_form),
+        form=shown_form,
         errors=errors,
         message=message,
         participants=tuple(
-            ParticipantChoice(
-                pid, name, str(pid) == (form or default_form).performing_participant_id
-            )
+            ParticipantChoice(pid, name, str(pid) == shown_form.performing_participant_id)
             for pid, name in labels.items()
         ),
         participant_names=labels,
         revisions=revisions,
         edit_item_id=edit_item_id,
         edit_errors=edit_errors,
+        recent_times=()
+        if site is None
+        else tuple(
+            f"{s:%H:%M}–{e:%H:%M}"
+            for s, e in repository.recent_times(session, site.site_id, RECENT_TIMES)
+        ),
     )
 
 
@@ -193,24 +207,24 @@ def _detail(
 
 def add_item(
     session: Session, user: CurrentUser, site_id: int, form: WorkItemForm, today: date
-) -> tuple[bool, tuple[str, ...]]:
-    """검증에 통과하면 저장한다. (저장 여부, 오류 목록). 없는 현장이면 (False, ("현장 없음",)).
+) -> tuple[date | None, tuple[str, ...]]:
+    """검증에 통과하면 고른 공종 x 날짜마다 작업을 저장한다. (첫 작업 날짜, 오류 목록).
 
-    비참여 현장은 404, 조정자가 아니면 403(teams)."""
+    하나라도 맞지 않으면 아무것도 저장하지 않는다. 비참여 현장은 404, 조정자가 아니면 403(teams)."""
     teams_service.require_role(session, user, site_id, MANAGE_ROLES)
     site = sites_service.get_site(session, site_id, None)
     if site is None:
-        return False, ("현장을 찾을 수 없습니다.",)
+        return None, ("현장을 찾을 수 없습니다.",)
     performer, performer_error = _performer(session, site_id, form.performing_participant_id)
     items, errors = _validate(site, form, today)
     if performer_error:
         errors = (*errors, performer_error)
     if not items or performer_error:
-        return False, errors
+        return None, errors
     for item in items:
         item.performing_participant_id = performer
     repository.add_all(session, items)
-    return True, ()
+    return min(i.work_date for i in items), ()
 
 
 def update_item(
@@ -232,8 +246,8 @@ def update_item(
     if expected is None:
         return "conflict", ()
     performer, performer_error = _performer(session, site_id, form.performing_participant_id)
-    as_add = WorkItemForm(item.work_type, form.work_date, form.start, form.end, form.location,
-                          form.memo)  # fmt: skip
+    as_add = WorkItemForm((item.work_type,), form.work_date, form.start, form.end,
+                          form.location, form.memo)  # fmt: skip
     validated, errors = _validate(site, as_add, today)
     if performer_error:
         errors = (*errors, performer_error)
@@ -351,28 +365,30 @@ def delete_item(
 def _validate(
     site: SiteRecord, form: WorkItemForm, today: date
 ) -> tuple[list[WorkItem], tuple[str, ...]]:
-    """고른 날짜마다 작업 하나씩(여러 날 한 번에 추가).
+    """고른 공종 x 날짜마다 작업 하나씩(여러 공종·여러 날 한 번에 추가).
 
-    하루라도 맞지 않으면 아무것도 만들지 않는다.
+    하나라도 맞지 않으면 아무것도 만들지 않는다.
     """
     errors: list[str] = []
-    if not form.work_type:
-        errors.append("공종을 고르세요.")
-    elif form.work_type not in site.work_types:
-        errors.append("현장에 등록한 공종 중에서 고르세요. 공종은 현장 설정에서 바꿉니다.")
-    raw_days = [r for r in (*form.work_dates, form.work_date) if r.strip()]
-    parsed = [_date(r) for r in raw_days]
-    days = sorted({d for d in parsed if d is not None})
-    if not raw_days:
-        errors.append("작업 날짜를 고르세요.")
-    elif None in parsed:
-        errors.append("작업 날짜를 날짜 형식으로 입력하세요.")
+    work_types = tuple(dict.fromkeys(w for w in form.work_types if w))
+    if not work_types:
+        errors.append("공종을 하나 이상 고르세요.")
+    elif any(w not in WORK_TYPE_LABELS for w in work_types):
+        errors.append("목록에 있는 공종을 고르세요.")
+    days, date_error = _form_days(form)
+    if date_error:
+        errors.append(date_error)
     elif len(days) > MAX_DAYS:
         errors.append(f"한 번에 {MAX_DAYS}일까지 추가할 수 있습니다.")
     elif any(d <= today for d in days):
         errors.append("작업 날짜는 내일 이후여야 합니다(판정은 다음 날 작업을 봅니다).")
     elif not all(site.works_on(d) for d in days):
         errors.append(f"현장 작업 기간({site.period_text()}) 안의 날짜를 고르세요.")
+    elif len(work_types) * len(days) > MAX_ITEMS:
+        errors.append(
+            f"한 번에 작업 {MAX_ITEMS}건까지 추가할 수 있습니다"
+            f"(공종 {len(work_types)}개 × {len(days)}일 = {len(work_types) * len(days)}건)."
+        )
     start, end = _time(form.start), _time(form.end)
     if start is None or end is None:
         errors.append("작업 시간을 00:00 형식으로 입력하세요.")
@@ -389,7 +405,7 @@ def _validate(
         [
             WorkItem(
                 site_id=site.site_id,
-                work_type=form.work_type,
+                work_type=w,
                 work_date=d,
                 start_local=start,
                 end_local=end,
@@ -397,8 +413,47 @@ def _validate(
                 memo=memo,
             )
             for d in days
+            for w in work_types
         ],
         (),
+    )
+
+
+def _form_days(form: WorkItemForm) -> tuple[list[date], str | None]:
+    """화면에서 고른 날짜들. 기간 고르기면 시작일~종료일 중 고른 요일만."""
+    if form.date_mode == "range":
+        start, end = _date(form.range_start), _date(form.range_end)
+        if start is None or end is None:
+            return [], "기간의 시작일·종료일을 날짜 형식으로 입력하세요."
+        if end < start:
+            return [], "기간의 종료일은 시작일과 같거나 늦어야 합니다."
+        if (end - start).days + 1 > MAX_RANGE_DAYS:
+            return [], f"기간은 {MAX_RANGE_DAYS}일까지 고를 수 있습니다."
+        weekdays = {int(w) for w in form.weekdays if w in {"0", "1", "2", "3", "4", "5", "6"}}
+        if not weekdays:
+            return [], "요일을 하나 이상 고르세요."
+        span = [start + timedelta(days=n) for n in range((end - start).days + 1)]
+        days = [d for d in span if d.weekday() in weekdays]
+        if not days:
+            return [], "고른 기간에 해당 요일이 없습니다."
+        return days, None
+    raw_days = [r for r in (*form.work_dates, form.work_date) if r.strip()]
+    parsed = [_date(r) for r in raw_days]
+    if not raw_days:
+        return [], "작업 날짜를 고르세요."
+    if None in parsed:
+        return [], "작업 날짜를 날짜 형식으로 입력하세요."
+    return sorted({d for d in parsed if d is not None}), None
+
+
+def _work_type_choices(
+    session: Session, site_id: int, form: WorkItemForm
+) -> tuple[WorkTypeChoice, ...]:
+    """고를 수 있는 공종 전체. 이 현장에서 많이 쓴 공종을 앞에, 나머지는 기본 순서."""
+    usage = repository.work_type_usage(session, site_id)
+    order = sorted(WORK_TYPE_LABELS, key=lambda w: (-usage.get(w, 0), WORK_TYPE_LABELS.index(w)))
+    return tuple(
+        WorkTypeChoice(w, basis_status(w), w in form.work_types, usage.get(w, 0)) for w in order
     )
 
 

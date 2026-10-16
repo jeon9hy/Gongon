@@ -14,6 +14,7 @@ from app.core.rules import rule_sets_by_label
 from app.features.forecasts.models import ForecastRun
 from app.features.judgments.models import Judgment
 from tests.fakes import FakeKma
+from tests.helpers import add_site_with_work
 
 SITE: dict[str, Any] = {
     "name": "○○현장",
@@ -29,10 +30,8 @@ SITE: dict[str, Any] = {
 
 
 def add_site(client: TestClient, **changes: Any) -> int:
-    location = client.post("/sites", data={**SITE, **changes}, follow_redirects=False).headers[
-        "location"
-    ]
-    return int(location.split("site_id=")[1].split("&")[0])
+    """현장 + 그 공종·시간의 내일 작업(D-059 이전의 현장 기본 판정 상황)."""
+    return add_site_with_work(client, {**SITE, **changes})
 
 
 def run(client: TestClient, site_id: int) -> str:
@@ -81,7 +80,8 @@ def test_work_type_without_rules_is_shown_as_check_and_never_judged(
 
     assert "판정 기준 확인 전" in page
     work_types = session.scalars(select(Judgment.work_type).order_by(Judgment.id)).all()
-    assert work_types == ["철골 작업", "폭염(공통)"]
+    # 기준 미확인 고소작업대는 판정하지 않는다. 폭염은 작업마다 그 작업 시간으로 판정한다(D-059).
+    assert work_types == ["철골 작업", "폭염(공통)", "폭염(공통)"]
 
 
 def test_site_with_only_unconfirmed_work_types_gets_only_common_heat_judgment(
@@ -119,11 +119,11 @@ def test_heat_is_judged_for_every_site_with_required_action(
 
     page = client.get(run(client, add_site(client))).text
 
-    heat = session.scalars(select(Judgment).where(Judgment.work_type == "폭염(공통)")).one()
-    assert heat.verdict == verdict
-    assert "폭염(공통)" in page
+    heats = session.scalars(select(Judgment).where(Judgment.work_type == "폭염(공통)")).all()
+    assert {h.verdict for h in heats} == {verdict}  # 작업마다(같은 시간이라 결과도 같다)
+    heat = heats[0]
     if reason is not None:
-        assert reason in page
+        assert reason in page  # 작업 카드에 "폭염 · ..."으로 합쳐 보인다
         assert "중지 검토" not in heat.verdict  # 법령은 중지가 아니라 조치·휴식을 요구한다
     detail = client.get(f"/judgments/{heat.id}").text
     assert "기준: 33 °C 이상 / 31 °C 이상" in detail
@@ -143,7 +143,8 @@ def test_same_issue_and_grid_is_fetched_once_and_not_judged_twice(
 
     assert len(fake_kma.calls) == 1
     assert count(session, ForecastRun) == 1
-    assert count(session, Judgment) == 4  # 현장마다 철골·폭염 1건씩, 다시 실행해도 늘지 않음
+    # 현장마다 철골 1건 + 작업 2건의 폭염 2건. 다시 실행해도 늘지 않음
+    assert count(session, Judgment) == 6
 
 
 def test_missing_key_records_unavailable_with_reason_and_retries_later(
@@ -293,7 +294,7 @@ def test_run_all_judges_every_site_and_fetches_shared_grid_once(
     response = client.post("/judgments/run-all", follow_redirects=False)
 
     assert response.headers["location"] == "/?ran=all_done"
-    assert count(session, Judgment) == 4
+    assert count(session, Judgment) == 6
     assert len(fake_kma.calls) == 1
     assert "전체 현장을 판정했습니다" in client.get(response.headers["location"]).text
 
@@ -331,7 +332,7 @@ def test_tomorrow_off_period_judges_only_later_days_with_forecast(
     for day in ("2026-10-06", "2026-10-07"):  # 모레부터는 등록한 작업만 판정한다
         item = {
             "site_id": str(site_id),
-            "work_type": "철골 작업",
+            "work_types": "철골 작업",
             "work_date": day,
             "start": "07:00",
             "end": "17:00",
@@ -350,6 +351,9 @@ def test_work_days_beyond_forecast_are_not_judged(
     client: TestClient, session: Session, fake_kma: FakeKma
 ) -> None:
     site_id = add_site(client, work_start_date="2026-10-08", work_end_date="2026-10-31")
+    item = {"site_id": site_id, "work_types": "철골 작업", "work_date": "2026-10-08",
+            "start": "07:00", "end": "17:00"}  # fmt: skip
+    assert client.post("/schedule", data=item, follow_redirects=False).status_code == 303
 
     assert "ran=beyond_forecast" in run(client, site_id)
     assert count(session, Judgment) == 0  # 예보에 없는 날을 정상값으로 채워 판정하지 않는다
@@ -359,7 +363,7 @@ def test_last_day_of_work_period_is_still_judged(client: TestClient, session: Se
     site_id = add_site(client, work_start_date="2026-09-01", work_end_date="2026-10-05")
 
     assert "ran=done" in run(client, site_id)
-    assert count(session, Judgment) == 2
+    assert count(session, Judgment) == 3
 
 
 def test_run_all_skips_sites_outside_period_and_home_counts_them(
@@ -372,15 +376,15 @@ def test_run_all_skips_sites_outside_period_and_home_counts_them(
     home = client.get(location).text
 
     assert location == "/?ran=all_done"
-    assert count(session, Judgment) == 2
+    assert count(session, Judgment) == 3
     assert "작업 기간이 아닙니다 · 2026-11-01~2026-11-30" in home
     assert "작업 없음" in home
 
 
 def test_history_shows_five_rows_per_site_and_folds_the_rest(client: TestClient) -> None:
-    site_id = add_site(client)
-    for start in ("07:00", "08:00", "09:00", "10:00", "11:00", "12:00"):  # 내일 작업 6건 + 폭염
-        item = {"site_id": str(site_id), "work_type": "철골 작업", "work_date": "2026-10-05",
+    site_id = add_site(client, work_types=[])
+    for start in ("07:00", "08:00", "09:00", "10:00", "11:00", "12:00"):  # 작업 6건 x (철골·폭염)
+        item = {"site_id": str(site_id), "work_types": "철골 작업", "work_date": "2026-10-05",
                 "start": start, "end": "13:00", "location": "", "memo": ""}  # fmt: skip
         assert client.post("/schedule", data=item, follow_redirects=False).status_code == 303
     run(client, site_id)
@@ -390,7 +394,7 @@ def test_history_shows_five_rows_per_site_and_folds_the_rest(client: TestClient)
     group = page.split('class="hsite"')[1]
     shown, folded = group.split('class="hmore"')
     assert shown.count('<li><a class="hrow') == 5
-    assert "2건 더보기" in folded and folded.count('<li><a class="hrow') == 2
+    assert "7건 더보기" in folded and folded.count('<li><a class="hrow') == 7
 
 
 def test_history_lists_only_the_latest_judgment_per_work(

@@ -17,6 +17,7 @@ RunResult = Literal[
     "out_of_period",
     "beyond_forecast",
     "unchanged",
+    "no_work",
 ]
 
 

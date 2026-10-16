@@ -3,6 +3,7 @@
 from collections.abc import Iterable
 from functools import lru_cache
 from types import MappingProxyType
+from typing import Literal
 
 from app.core.config import REPO_ROOT
 from engine.judgment import RuleSet, load_rule_set
@@ -33,6 +34,17 @@ def rule_sets_by_label() -> MappingProxyType[str, RuleSet]:
             raise ValueError(f"{path.name}: 알 수 없는 공종 {rule_set.work_type_label!r}")
         rule_sets[rule_set.work_type_label] = rule_set
     return MappingProxyType(rule_sets)
+
+
+# 기준표가 있으면 판정한다(원문 대조 전이면 그 표시를 함께). 없으면 판정하지 않는다(D-017).
+BasisStatus = Literal["판정 · 원문 대조 필요", "판정 · 원문 확인됨", "기준 미확인"]
+
+
+def basis_status(label: str) -> BasisStatus:
+    rule_set = rule_sets_by_label().get(label)
+    if rule_set is None:
+        return "기준 미확인"
+    return "판정 · 원문 확인됨" if rule_set.source_verified else "판정 · 원문 대조 필요"
 
 
 def judged_labels(work_types: Iterable[str]) -> tuple[str, ...]:

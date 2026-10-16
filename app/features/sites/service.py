@@ -3,23 +3,20 @@
 조회는 항상 SiteScope(참여 현장)로 제한하고, 수정·삭제는 조정자만 한다(teams, D-057).
 """
 
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
-from app.core.rules import WORK_TYPE_LABELS, rule_sets_by_label
 from app.features.auth.schemas import CurrentUser
 from app.features.sites import repository
 from app.features.sites.models import Site
 from app.features.sites.schemas import (
-    BasisStatus,
     SiteForm,
     SiteInput,
     SiteListItem,
     SiteRecord,
     SiteScope,
     SitesView,
-    WorkTypeOption,
 )
 from app.features.teams import service as teams_service
 from app.features.teams.schemas import MANAGE_ROLES
@@ -61,23 +58,17 @@ def build_sites_view(
         SiteListItem(
             href=f"/sites?site_id={r.site_id}",
             name=r.name,
-            hours=f"{_hhmm(r.work_start_local)}–{_hhmm(r.work_end_local)}",
+            address=r.address,
             period=_short_period(r),
-            work_types=r.work_types,
             selected=r.site_id == site_id,
         )
         for r in records
-    )
-    options = tuple(
-        WorkTypeOption(label, basis_status(label), label in form.work_types)
-        for label in WORK_TYPE_LABELS
     )
     return SitesView(
         items=items,
         site_id=site_id,
         form=form,
         grid_text=None if selected is None else f"({selected.grid_nx}, {selected.grid_ny})",
-        work_type_options=options,
         errors=errors,
         saved=saved,
         deleted=deleted,
@@ -127,13 +118,6 @@ def delete_site(session: Session, user: CurrentUser, site_id: int, now: datetime
     return True
 
 
-def basis_status(label: str) -> BasisStatus:
-    rule_set = rule_sets_by_label().get(label)
-    if rule_set is None:
-        return "기준 미확인"
-    return "판정 · 원문 확인됨" if rule_set.source_verified else "판정 · 원문 대조 필요"
-
-
 def validate(form: SiteForm) -> tuple[SiteInput | None, tuple[str, ...]]:
     errors: list[str] = []
     road_address = form.road_address.strip()
@@ -161,13 +145,6 @@ def validate(form: SiteForm) -> tuple[SiteInput | None, tuple[str, ...]]:
         except GridConversionError:
             errors.append("이 위치는 기상청 단기예보 범위 밖입니다. 위도·경도를 확인하세요.")
 
-    start = _time(form.work_start)
-    end = _time(form.work_end)
-    if start is None or end is None:
-        errors.append("작업 시간을 00:00 형식으로 입력하세요.")
-    elif start >= end:
-        errors.append("작업 종료는 시작보다 늦어야 합니다(같은 날 안에서).")
-
     start_date = _date(form.work_start_date)
     end_date = _date(form.work_end_date)
     if start_date is None or end_date is None:
@@ -175,13 +152,7 @@ def validate(form: SiteForm) -> tuple[SiteInput | None, tuple[str, ...]]:
     elif start_date > end_date:
         errors.append("작업 기간의 종료일은 시작일과 같거나 늦어야 합니다.")
 
-    unknown = [w for w in form.work_types if w not in WORK_TYPE_LABELS]
-    if unknown:
-        errors.append(f"알 수 없는 공종: {', '.join(unknown)}")
-    if not form.work_types:
-        errors.append("공종을 하나 이상 고르세요.")
-
-    if errors or grid is None or start is None or end is None:
+    if errors or grid is None:
         return None, tuple(errors)
     assert start_date is not None and end_date is not None
     assert latitude is not None and longitude is not None
@@ -195,9 +166,6 @@ def validate(form: SiteForm) -> tuple[SiteInput | None, tuple[str, ...]]:
             longitude_deg=longitude,
             grid_nx=grid.nx,
             grid_ny=grid.ny,
-            work_start_local=start,
-            work_end_local=end,
-            work_types=tuple(w for w in WORK_TYPE_LABELS if w in form.work_types),
             work_start_date=start_date,
             work_end_date=end_date,
         ),
@@ -211,13 +179,6 @@ def _float(raw: str) -> float | None:
     except ValueError:
         return None
     return value if value == value else None  # NaN 거부
-
-
-def _time(raw: str) -> time | None:
-    try:
-        return time.fromisoformat(raw.strip())
-    except ValueError:
-        return None
 
 
 def _date(raw: str) -> date | None:
@@ -252,10 +213,6 @@ def _short_period(record: SiteRecord) -> str | None:
     return f"{start_text} – {end_text}"
 
 
-def _hhmm(value: time) -> str:
-    return value.strftime("%H:%M")
-
-
 def _record(site: Site) -> SiteRecord:
     return SiteRecord(
         site_id=site.id,
@@ -267,9 +224,6 @@ def _record(site: Site) -> SiteRecord:
         longitude_deg=site.longitude_deg,
         grid_nx=site.grid_nx,
         grid_ny=site.grid_ny,
-        work_start_local=site.work_start_local,
-        work_end_local=site.work_end_local,
-        work_types=tuple(site.work_types),
         work_start_date=site.work_start_date,
         work_end_date=site.work_end_date,
     )
@@ -282,9 +236,6 @@ def _form_from(record: SiteRecord) -> SiteForm:
         lot_address=record.lot_address,
         latitude=f"{record.latitude_deg:.6g}",
         longitude=f"{record.longitude_deg:.7g}",
-        work_start=_hhmm(record.work_start_local),
-        work_end=_hhmm(record.work_end_local),
-        work_types=record.work_types,
         work_start_date=""
         if record.work_start_date is None
         else record.work_start_date.isoformat(),

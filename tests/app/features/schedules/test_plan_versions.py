@@ -31,7 +31,7 @@ SITE: dict[str, Any] = {
     "work_types": ["철골 작업"],
 }
 ITEM = {
-    "work_type": "철골 작업",
+    "work_types": "철골 작업",
     "work_date": "2026-10-05",
     "start": "09:00",
     "end": "12:00",

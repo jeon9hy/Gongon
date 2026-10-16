@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.features.judgments.models import Judgment
 from app.features.sites.models import Site
+from tests.helpers import add_site_with_work
 
 SITE: dict[str, Any] = {
     "road_address": "서울 중구 세종대로 110",
@@ -22,10 +23,7 @@ SITE: dict[str, Any] = {
 
 
 def add_site(client: TestClient, name: str) -> int:
-    location = client.post("/sites", data={**SITE, "name": name}, follow_redirects=False).headers[
-        "location"
-    ]
-    return int(location.split("site_id=")[1].split("&")[0])
+    return add_site_with_work(client, {**SITE, "name": name})
 
 
 def delete(client: TestClient, site_id: int) -> Any:

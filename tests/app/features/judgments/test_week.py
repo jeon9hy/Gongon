@@ -9,7 +9,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.features.judgments.models import Judgment
+from app.features.schedules.models import WorkItem
 from tests.fakes import FakeKma
+from tests.helpers import add_site_with_work
 
 SITE: dict[str, Any] = {
     "name": "○○현장",
@@ -26,16 +28,14 @@ CALM = {"PCP": "강수없음", "WSD": "2.0", "SNO": "적설없음", "TMP": "20",
 
 
 def add_site(client: TestClient, **changes: Any) -> int:
-    location = client.post("/sites", data={**SITE, **changes}, follow_redirects=False).headers[
-        "location"
-    ]
-    return int(location.split("site_id=")[1].split("&")[0])
+    """현장 + 그 공종·시간의 내일 작업(D-059 이전의 현장 기본 판정 상황)."""
+    return add_site_with_work(client, {**SITE, **changes})
 
 
 def add_item(client: TestClient, site_id: int, day: str, work_type: str = "철골 작업") -> None:
     data = {
         "site_id": str(site_id),
-        "work_type": work_type,
+        "work_types": work_type,
         "work_date": day,
         "start": "07:00",
         "end": "17:00",
@@ -103,7 +103,7 @@ def test_week_marks_days_outside_work_period(client: TestClient, fake_kma: FakeK
 
 
 def test_detail_card_defaults_to_highest_verdict_and_can_switch(
-    client: TestClient, fake_kma: FakeKma
+    client: TestClient, fake_kma: FakeKma, session: Session
 ) -> None:
     # 철골만 풍속 기준에 해당(콘크리트는 풍속 기준 없음)
     fake_kma.set_hour("20261005", 10, WSD="12.0")
@@ -111,7 +111,12 @@ def test_detail_card_defaults_to_highest_verdict_and_can_switch(
     client.post("/judgments/run", data={"site_id": site_id})
 
     page = client.get("/dashboard", params={"site_id": site_id}).text
-    switched = client.get("/dashboard", params={"site_id": site_id, "work": "콘크리트 타설"}).text
+    concrete = session.scalars(
+        select(WorkItem.id).where(WorkItem.work_type == "콘크리트 타설")
+    ).one()
+    switched = client.get(
+        "/dashboard", params={"site_id": site_id, "work": f"item:{concrete}"}
+    ).text
 
     # 목록 순서상 콘크리트가 먼저지만 가장 높은 단계(중지 검토)인 철골을 먼저 보여 준다
     assert 'id="work-detail-title">철골 작업 판정</h2>' in page
@@ -119,7 +124,7 @@ def test_detail_card_defaults_to_highest_verdict_and_can_switch(
     # 기본 진입은 모달을 닫아 두고, 작업을 골라 들어오면 연다
     assert 'id="work-detail" autofocus aria-labelledby="work-detail-title" data-open' not in page
     assert 'id="work-detail" autofocus aria-labelledby="work-detail-title" data-open' in switched
-    assert "work=%EC%BD%98" in switched  # 그래프 요소·시각을 바꿔도 고른 작업을 유지
+    assert f"work=item%3A{concrete}" in switched  # 그래프 요소·시각을 바꿔도 고른 작업을 유지
 
 
 def test_days_beyond_short_forecast_show_mid_forecast_reference(

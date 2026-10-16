@@ -43,7 +43,7 @@ OUTSIDER = {
     "organization_name": "무관건설",
     "password": "outsider-password",
 }
-WORK = {"work_type": "철골 작업", "work_date": "2026-10-06", "start": "08:00", "end": "12:00"}
+WORK = {"work_types": "철골 작업", "work_date": "2026-10-06", "start": "08:00", "end": "12:00"}
 
 
 def add_site(client: TestClient, **changes: Any) -> int:
@@ -92,6 +92,8 @@ def site_id(client: TestClient) -> int:
 
 @pytest.fixture
 def judgment_id(client: TestClient, site_id: int, session: Session) -> int:
+    tomorrow = {**WORK, "work_date": "2026-10-05"}
+    client.post("/schedule", data={"site_id": site_id, **tomorrow})
     client.post("/judgments/run", data={"site_id": site_id})
     found = session.scalar(select(Judgment.id).where(Judgment.site_id == site_id).limit(1))
     assert found is not None
@@ -298,6 +300,10 @@ def test_run_all_only_runs_sites_i_coordinate(
     framer = browser(SUB_USER)
     add_member(client, site_id, SUB_USER["email"], "assignee")
     own_site = add_site(framer, name="골조 자체 현장")
+    for target in (site_id, own_site):
+        client_for = client if target == site_id else framer
+        tomorrow = {**WORK, "work_date": "2026-10-05"}
+        client_for.post("/schedule", data={"site_id": target, **tomorrow})
 
     framer.post("/judgments/run-all")
 

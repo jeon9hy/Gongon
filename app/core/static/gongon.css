@@ -1097,3 +1097,19 @@ a.window--link:hover .window__link { color: var(--accent); }
 /* 작업 카드의 변경 이력·계획 수정(C04-2) */
 .item-history ul { margin: 4px 0 0; padding-left: 18px; }
 .item-edit__form { display: flex; flex-direction: column; gap: 10px; padding-top: 8px; }
+
+/* 작업 추가 모달(C04-3): 날짜 고르는 방법, 최근 시간, 만들 건수 */
+.addform__group { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.segmented { display: inline-flex; gap: 4px; padding: 3px; border-radius: 999px; background: var(--surface); align-self: flex-start; }
+.segmented label { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; font-size: 13px; cursor: pointer; }
+.segmented label:has(input:checked) { background: var(--card); color: var(--ink); font-weight: 600; }
+.segmented input { accent-color: var(--accent); }
+.rangepick { display: flex; flex-direction: column; gap: 8px; }
+.toggle-chip--sm span { min-height: 32px; padding: 0 10px; font-size: 13px; }
+.recent-times { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.addform__count { margin: 0 auto 0 0; color: var(--muted); }
+.addform__count.is-over { color: var(--stop-text); font-weight: 600; }
+.item-copy { align-self: flex-start; }
+[data-mode-panel][hidden] { display: none; }
+/* 고르지 않은 칩에는 체크 표시를 숨긴다(고른 것과 헷갈리지 않게) */
+.toggle-chip input:not(:checked) + span > svg { display: none; }

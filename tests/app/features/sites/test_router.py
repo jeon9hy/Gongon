@@ -27,8 +27,9 @@ def test_new_site_is_saved_with_kma_grid_and_listed(client: TestClient) -> None:
     page = client.get(response.headers["location"]).text
     assert "저장했습니다" in page
     assert "(60, 127)" in page  # 서울시청 위경도의 기상청 격자
-    # 목록에 공종이 칩으로 모두 보인다
-    assert '<span class="tag">철골 작업</span><span class="tag">고소작업대</span>' in page
+    # 공종·작업 시간은 현장 설정에 없다(작업 일정에서 작업마다 정한다, D-059)
+    assert 'name="work_types"' not in page and 'name="work_start"' not in page
+    assert "서울 중구 세종대로 110" in page  # 목록에 주소가 보인다
 
 
 @pytest.mark.parametrize(
@@ -36,10 +37,6 @@ def test_new_site_is_saved_with_kma_grid_and_listed(client: TestClient) -> None:
     [
         ({"latitude": "10.0", "longitude": "100.0"}, "기상청 단기예보 범위 밖"),
         ({"latitude": "abc"}, "위도·경도를 숫자로"),
-        ({"work_start": "17:00", "work_end": "17:00"}, "종료는 시작보다 늦어야"),
-        ({"work_start": "25:00"}, "00:00 형식"),
-        ({"work_types": []}, "공종을 하나 이상"),
-        ({"work_types": ["토공"]}, "알 수 없는 공종"),
         ({"road_address": "  ", "lot_address": ""}, "도로명 주소나 지번 주소 중 하나는"),
         ({"work_start_date": ""}, "작업 기간(시작일·종료일)을 입력하세요"),
         (
@@ -59,16 +56,16 @@ def test_invalid_site_is_not_saved_and_input_is_kept(
     assert "○○현장</strong>" not in client.get("/sites").text  # 목록에 저장되지 않음
 
 
-def test_site_update_changes_work_hours(client: TestClient) -> None:
+def test_site_update_changes_work_period(client: TestClient) -> None:
     location = create(client).headers["location"]
     site_id = location.split("site_id=")[1].split("&")[0]
 
     response = client.post(
-        f"/sites/{site_id}", data={**VALID, "work_end": "18:00"}, follow_redirects=False
+        f"/sites/{site_id}", data={**VALID, "work_end_date": "2027-03-31"}, follow_redirects=False
     )
 
     assert response.status_code == 303
-    assert "07:00–18:00" in client.get(f"/sites?site_id={site_id}").text
+    assert 'value="2027-03-31"' in client.get(f"/sites?site_id={site_id}").text
 
 
 def test_unknown_site_returns_404(client: TestClient) -> None:

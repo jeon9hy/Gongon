@@ -11,7 +11,7 @@ from urllib.parse import urlencode
 
 from sqlalchemy.orm import Session
 
-from app.core.rules import judged_labels, rule_sets_by_label
+from app.core.rules import COMMON_LABELS, judged_labels, rule_sets_by_label
 from app.features.auth.schemas import CurrentUser
 from app.features.forecasts import service as forecasts_service
 from app.features.judgments import repository
@@ -134,7 +134,13 @@ def next_forecast_text(now: datetime) -> str:
 RUN_MESSAGES: dict[RunResult, str] = {
     "done": "판정했습니다.",
     "failed": "예보를 받지 못해 ‘판정 불가’로 기록했습니다. 데이터 상태에서 원인을 확인하세요.",
-    "no_rules": "판정 기준이 있는 공종이 없습니다. 현장 설정에서 철골 작업을 고르세요.",
+    "no_rules": (
+        "등록한 작업 중 판정 기준이 있는 공종이 없습니다. "
+        "기준 미확인 공종은 현장에서 직접 판단하세요."
+    ),
+    "no_work": (
+        "앞으로 7일 동안 등록한 작업이 없어 판정하지 않았습니다. 작업 일정에서 작업을 추가하세요."
+    ),
     "all_done": (
         "전체 현장을 판정했습니다. 작업 기간이 아니거나 판정 기준이 없는 현장은 건너뜁니다."
     ),
@@ -172,19 +178,23 @@ def run_for_site(
         return None
     rule_sets = rule_sets_by_label()
     dates = horizon_dates(now)
-    if not any(_targets_for(site, (), rule_sets)):
-        return "no_rules"
     working = [d for d in dates if site.works_on(d)]
     if not working:
         return "out_of_period"  # 작업하지 않는 날은 예보도 받지 않는다
     items_by_day = schedules_service.items_between(session, site.site_id, working[0], working[-1])
+    # 등록한 작업만 판정한다(현장 기본 공종 대체 없음, D-059). 작업이 없으면 예보도 받지 않는다.
+    working = [d for d in working if d in items_by_day]
+    if not working:
+        return "no_work"
+    if not any(_targets_for(items_by_day[d], rule_sets) for d in working):
+        return "no_rules"
     snapshot = forecasts_service.get_forecast(
         session, site.grid_nx, site.grid_ny, now, auth, http_get
     )
     if snapshot.weather is None:
         # 실패는 가장 가까운 작업일에만 남긴다(같은 원인을 날짜마다 반복 기록하지 않음).
         day = working[0]
-        for target in _targets_for(site, items_by_day.get(day, ()), rule_sets):
+        for target in _targets_for(items_by_day.get(day, ()), rule_sets):
             start_at, end_at = _work_range(day, target)
             session.add(
                 _failed_judgment(site, rule_sets[target.work_type], day, start_at, end_at,
@@ -199,9 +209,7 @@ def run_for_site(
     judged_days: list[date] = []
     stored = 0  # 새로 저장한 판정 수. 0이면 같은 예보로 이미 판정한 결과와 같다
     for day in working:
-        if day != dates[0] and day not in items_by_day:
-            continue  # 모레부터는 등록한 작업만 판정한다(현장 기본 공종 대체는 내일만, D-023)
-        for target in _targets_for(site, items_by_day.get(day, ()), rule_sets):
+        for target in _targets_for(items_by_day[day], rule_sets):
             rule_set = rule_sets[target.work_type]
             start_at, end_at = _work_range(day, target)
             if not _has_forecast(forecast_times, start_at, end_at):
@@ -284,10 +292,10 @@ def _has_forecast(times: list[datetime], start_at: datetime, end_at: datetime) -
 
 
 def _targets_for(
-    site: SiteRecord, items: tuple[WorkItemRecord, ...], rule_sets: Mapping[str, RuleSet]
+    items: tuple[WorkItemRecord, ...], rule_sets: Mapping[str, RuleSet]
 ) -> list["_Target"]:
     """판정할 수 있는(기준이 있는) 대상만."""
-    return [t for t in _targets(site, items) if t.work_type in rule_sets]
+    return [t for t in _targets(items) if t.work_type in rule_sets]
 
 
 def _work_range(day: date, target: "_Target") -> tuple[datetime, datetime]:
@@ -334,7 +342,7 @@ def run_all(
         return "all_done"
     if "unchanged" in results:
         return "unchanged"
-    for code in ("beyond_forecast", "out_of_period"):
+    for code in ("beyond_forecast", "out_of_period", "no_work"):
         if code in results:
             return code
     return "no_rules"
@@ -464,19 +472,16 @@ def build_dashboard(
     for j in repository.latest_for_site_date(session, site.site_id, target_date):
         latest.setdefault(_key(j), j)
     rule_sets = rule_sets_by_label()
-    targets = _targets(site, schedules_service.items_on(session, site.site_id, target_date))
-    triples = _current_pairs(site, targets, target_date, latest, rule_sets)
-    paired = tuple((t, j) for t, j, _ in triples)
+    items = schedules_service.items_on(session, site.site_id, target_date)
+    triples = _current_pairs(site, _targets(items), target_date, latest, rule_sets)
+    folded = _folded(triples, rule_sets)
     cards = tuple(
-        _card_for(t, j, stale, rule_sets)
-        if j is None
-        else replace(
-            _card_for(t, j, stale, rule_sets),
-            open_href=dashboard_href(site.site_id, work=t.key),
-        )
-        for t, j, stale in triples
-    )
-    judged = [(t, j) for t, j in paired if j is not None]
+        card if backing is None
+        else replace(card, open_href=dashboard_href(site.site_id, work=t.key))
+        for t, card, backing in folded
+    )  # fmt: skip
+    # 작업 하나에 카드 하나. 상세는 그 카드의 단계를 정한 판정(작업 또는 폭염)을 보인다.
+    judged = [(t, backing) for t, _, backing in folded if backing is not None]
     # 상세 카드: 고른 작업, 없으면 가장 높은 단계(같으면 앞쪽) 작업(D-041 후속).
     chosen = next(((t, j) for t, j in judged if t.key == work), None) or max(
         judged, key=lambda p: (Verdict(p[1].verdict).severity, -judged.index(p)), default=None
@@ -494,7 +499,7 @@ def build_dashboard(
         site_id=site.site_id,
         site_name=site.name,
         target_date=_date_text(target_date),
-        work_hours=f"{site.work_start_local:%H:%M}–{site.work_end_local:%H:%M}",
+        work_hours=_items_span(items),
         cards=cards,
         detail_open=work is not None or element_key is not None or hour is not None,
         primary=None
@@ -509,7 +514,7 @@ def build_dashboard(
         collection_status=_collection_status(primary_j),
         judged_at=None if primary_j is None else _kst_text(primary_j.judged_at),
         grid=f"({site.grid_nx}, {site.grid_ny})",
-        notice=_notice(site, target_date, cards, tuple(j for _, j in paired)),
+        notice=_notice(site, target_date, cards, tuple(b for _, _, b in folded)),
         message=message,
         message_is_error=ran not in (None, "done", "unchanged"),
         off_period_note=None
@@ -603,7 +608,8 @@ def _site_summary(
     target_date: date,
     items: tuple[WorkItemRecord, ...],
 ) -> SiteSummary:
-    working = site.works_on(target_date)
+    in_period = site.works_on(target_date)
+    working = in_period and bool(items)
 
     def summary(
         verdict: str | None, reason: str, judged_at: str | None, cards: tuple[WorkCard, ...] = ()
@@ -611,8 +617,8 @@ def _site_summary(
         return SiteSummary(
             site_id=site.site_id,
             name=site.name,
-            work_hours=f"{site.work_start_local:%H:%M}–{site.work_end_local:%H:%M}",
-            work_types=tuple(site.work_types),
+            work_hours=_items_span(items),
+            work_types=tuple(dict.fromkeys(i.work_type for i in items)),
             verdict=verdict,
             reason=reason,
             detail_href=dashboard_href(site.site_id),
@@ -621,15 +627,19 @@ def _site_summary(
             cards=cards,
         )
 
-    if not working:
+    if not in_period:
         return summary(None, f"작업 기간이 아닙니다 · {site.period_text()}", None)
-    triples = _current_pairs(site, _targets(site, items), target_date, latest, rule_sets)
-    cards = tuple(_card_for(t, j, stale, rule_sets) for t, j, stale in triples)
+    if not items:
+        return summary(
+            None, "내일 등록한 작업이 없습니다 · 작업 일정에서 추가하면 판정합니다", None
+        )
+    triples = _current_pairs(site, _targets(items), target_date, latest, rule_sets)
+    cards = tuple(card for _, card, _ in _folded(triples, rule_sets))
     current = [j for _, j, _ in triples if j is not None]
     if not current:
         stale_reason = next((stale for _, _, stale in triples if stale), None)
         return summary(None, stale_reason or "아직 판정하지 않았습니다", None, cards)
-    # 현장의 단계는 작업·공통 카드 중 가장 높은 단계(기준 미확인 공종의 '확인 필요' 포함).
+    # 현장의 단계는 작업 카드 중 가장 높은 단계(폭염을 합친 단계, 기준 미확인 공종 포함).
     worst = max(
         (c for c in cards if c.verdict is not None), key=lambda c: Verdict(str(c.verdict)).severity
     )
@@ -641,35 +651,80 @@ def _site_summary(
 
 @dataclass(frozen=True, slots=True)
 class _Target:
-    """판정·표시 단위 하나: 등록한 작업(S08-1) 또는 현장 기본 시간의 공종·공통 기준."""
+    """판정 단위 하나: 등록한 작업(S08-1)의 공종, 또는 그 작업 시간의 공통 기준(폭염)."""
 
-    key: str  # 최신 판정을 묶는 키(작업이면 "item:<id>", 아니면 공종 이름)
+    key: str  # 최신 판정을 묶는 키. 작업 "item:<id>", 그 작업의 공통 기준 "item:<id>:<기준>"
     label: str
     work_type: str
     start_local: time
     end_local: time
     item_id: int | None
+    companion_of: str | None = None  # 공통 기준이면 합쳐 보일 작업의 key
 
 
-def _targets(site: SiteRecord, items: tuple[WorkItemRecord, ...]) -> list[_Target]:
-    """그날 작업이 있으면 작업마다, 없으면 현장 공종마다. 공통 기준(폭염)은 현장 기본 시간으로."""
-    if items:
-        main = [
-            _Target(
-                f"item:{i.item_id}", i.label, i.work_type, i.start_local, i.end_local, i.item_id
+def _targets(items: tuple[WorkItemRecord, ...]) -> list[_Target]:
+    """그날 작업마다 공종 판정과, 같은 시간의 공통 기준(폭염) 판정. 작업이 없으면 판정하지 않는다.
+
+    공통 기준은 따로 보이지 않고 그 작업 카드에 합친다(D-059).
+    """
+    targets: list[_Target] = []
+    for i in items:
+        key = f"item:{i.item_id}"
+        targets.append(_Target(key, i.label, i.work_type, i.start_local, i.end_local, i.item_id))
+        targets += [
+            _Target(f"{key}:{c}", i.label, c, i.start_local, i.end_local, i.item_id, key)
+            for c in judged_labels(())
+        ]
+    return targets
+
+
+def _folded(
+    triples: list[tuple[_Target, Judgment | None, str | None]],
+    rule_sets: Mapping[str, RuleSet],
+) -> list[tuple[_Target, WorkCard, Judgment | None]]:
+    """작업마다 (작업 대상, 공통 기준을 합친 카드, 카드 단계를 정한 판정).
+
+    작업 판정이 아직 없거나 재판정이 필요하면 그 상태를 그대로 보인다. 공통 기준이 더 높은 단계면
+    그 단계와 사유('폭염 · …')로 바꾼다. 같은 단계면 작업 쪽을 보인다.
+    """
+    folded: list[tuple[_Target, WorkCard, Judgment | None]] = []
+    for target, judgment, stale in triples:
+        if target.companion_of is not None:
+            continue
+        card = _card_for(target, judgment, stale, rule_sets)
+        backing = judgment
+        if card.verdict is not None:
+            for companion, extra, extra_stale in triples:
+                if companion.companion_of != target.key or extra is None:
+                    continue
+                extra_card = _card_for(companion, extra, extra_stale, rule_sets)
+                if extra_card.verdict is not None and Verdict(extra_card.verdict).severity > (
+                    Verdict(card.verdict).severity
+                ):
+                    name = companion.work_type.removesuffix("(공통)")
+                    card = replace(
+                        card,
+                        verdict=extra_card.verdict,
+                        reason=f"{name} · {extra_card.reason}",
+                        detail_href=extra_card.detail_href,
+                    )
+                    backing = extra
+        if backing is None and card.verdict is not None:
+            # 기준 미확인 공종은 그 작업의 판정이 폭염뿐이다. 상세는 폭염 판정을 연다.
+            backing = next(
+                (e for c, e, _ in triples if c.companion_of == target.key and e is not None), None
             )
-            for i in items
-        ]
-    else:
-        main = [
-            _Target(w, w, w, site.work_start_local, site.work_end_local, None)
-            for w in site.work_types
-        ]
-    common = [
-        _Target(w, w, w, site.work_start_local, site.work_end_local, None)
-        for w in judged_labels(())
-    ]
-    return main + common
+        folded.append((target, card, backing))
+    return folded
+
+
+def _items_span(items: tuple[WorkItemRecord, ...]) -> str:
+    """그날 작업 시간 범위(첫 작업 시작-마지막 작업 끝). 작업이 없으면 빈 문자열."""
+    if not items:
+        return ""
+    start = min(i.start_local for i in items)
+    end = max(i.end_local for i in items)
+    return f"{start:%H:%M}–{end:%H:%M} · 작업 {len(items)}건"
 
 
 _CONFIDENCE_NOTE = {
@@ -714,16 +769,15 @@ def _week(
     by_type: dict[str, dict[date, WeekCell]] = {}
     for day in dates:
         in_period = site.works_on(day)
-        # 등록한 작업만 보여 준다. 작업이 없는 내일만 현장 기본 공종으로 대체한다(D-023).
-        has_work = day in items_by_day or day == dates[0]
+        # 등록한 작업만 보여 준다(현장 기본 공종 대체 없음, D-059).
+        has_work = day in items_by_day
         day_latest = {key: j for (d, key), j in latest.items() if d == day}
         triples = (
-            _current_pairs(site, _targets(site, items_by_day.get(day, ())), day, day_latest,
-                           rule_sets)
+            _current_pairs(site, _targets(items_by_day.get(day, ())), day, day_latest, rule_sets)
             if in_period and has_work else []
         )  # fmt: skip
         pairs = [(t, j) for t, j, _ in triples]
-        stale_by_key = {t.key: stale for t, _, stale in triples}
+        folded = _folded(triples, rule_sets)
         judged = [j for _, j in pairs if j is not None]
         covered = any(_has_forecast(times, *_work_range(day, t)) for t, _ in pairs)
         confidence = (
@@ -733,11 +787,10 @@ def _week(
         if confidence == "예보 없음" and mid_parts:
             confidence = "낮음"
         day_cells: list[WeekCell] = []
-        for target, judgment in pairs:
+        for target, card, _ in folded:
             if confidence == "낮음" and mid_parts:
                 cell = _mid_cell(target, rule_sets, mid_parts)
             else:
-                card = _card_for(target, judgment, stale_by_key[target.key], rule_sets)
                 state: Literal["none", "pending"] = (
                     "pending" if confidence in ("예보 없음", "판정 전") else "none"
                 )
@@ -874,6 +927,8 @@ def _rank(cell: WeekCell) -> int:
 
 def _key(judgment: Judgment) -> str:
     if judgment.work_item_id is not None:
+        if judgment.work_type in COMMON_LABELS:
+            return f"item:{judgment.work_item_id}:{judgment.work_type}"
         return f"item:{judgment.work_item_id}"
     return judgment.work_type
 

@@ -13,7 +13,9 @@ from sqlalchemy.orm import Session
 
 from app.features.judgments import service
 from app.features.judgments.models import Judgment
+from app.features.schedules.models import WorkItem
 from tests.conftest import FIXED_NOW
+from tests.helpers import add_site_with_work
 
 SITE: dict[str, Any] = {
     "name": "가상현장",
@@ -30,10 +32,20 @@ STEEL = "철골 작업"
 
 
 def judged_site(client: TestClient) -> int:
-    response = client.post("/sites", data=SITE, follow_redirects=False)
-    site_id = int(response.headers["location"].split("site_id=")[1].split("&")[0])
+    site_id = add_site_with_work(client, SITE)
     client.post("/judgments/run", data={"site_id": site_id})
     return site_id
+
+
+def edit_work(client: TestClient, session: Session, site_id: int, **changes: str) -> None:
+    """내일 철골 작업의 계획을 바꾼다(작업 시간은 작업마다 정한다, D-059)."""
+    item = session.scalars(select(WorkItem).where(WorkItem.work_type == STEEL)).one()
+    session.refresh(item)
+    data = {"site_id": site_id, "day": "2026-10-05", "work_date": "2026-10-05",
+            "start": f"{item.start_local:%H:%M}", "end": f"{item.end_local:%H:%M}",
+            "plan_version": item.plan_version, **changes}  # fmt: skip
+    response = client.post(f"/schedule/{item.id}/edit", data=data, follow_redirects=False)
+    assert response.status_code == 303, response.text
 
 
 def steel_card(session: Session, site_id: int) -> Any:
@@ -56,20 +68,27 @@ def test_unchanged_inputs_show_the_saved_verdict(client: TestClient, session: Se
 
 
 @pytest.mark.parametrize(
-    ("changes", "expected"),
+    ("work_changes", "site_changes", "expected"),
     [
-        ({"work_start": "08:00"}, "작업 시간"),
-        ({"work_end": "16:59"}, "작업 시간"),
-        ({"latitude": "35.1796", "longitude": "129.0756"}, "현장 위치"),
+        ({"start": "08:00"}, {}, "작업 시간"),
+        ({"end": "16:59"}, {}, "작업 시간"),
+        ({}, {"latitude": "35.1796", "longitude": "129.0756"}, "현장 위치"),
     ],
 )
-def test_site_change_after_judgment_needs_rejudgment(
-    client: TestClient, session: Session, changes: dict[str, str], expected: str
+def test_change_after_judgment_needs_rejudgment(
+    client: TestClient,
+    session: Session,
+    work_changes: dict[str, str],
+    site_changes: dict[str, str],
+    expected: str,
 ) -> None:
     site_id = judged_site(client)
     before = judgment_count(session)
 
-    client.post(f"/sites/{site_id}", data={**SITE, **changes})
+    if work_changes:
+        edit_work(client, session, site_id, **work_changes)
+    if site_changes:
+        client.post(f"/sites/{site_id}", data={**SITE, **site_changes})
     card = steel_card(session, site_id)
 
     assert card.verdict is None  # 예전 단계를 현재 결과로 보이지 않는다
@@ -93,7 +112,7 @@ def test_rule_version_change_needs_rejudgment(client: TestClient, session: Sessi
 
 def test_rejudging_after_change_clears_the_notice(client: TestClient, session: Session) -> None:
     site_id = judged_site(client)
-    client.post(f"/sites/{site_id}", data={**SITE, "work_start": "08:00"})
+    edit_work(client, session, site_id, start="08:00")
 
     client.post("/judgments/run", data={"site_id": site_id})
     card = steel_card(session, site_id)
@@ -106,7 +125,7 @@ def test_home_and_week_show_the_notice_not_the_old_verdict(
     client: TestClient, session: Session
 ) -> None:
     site_id = judged_site(client)
-    client.post(f"/sites/{site_id}", data={**SITE, "work_start": "08:00"})
+    edit_work(client, session, site_id, start="08:00")
 
     home = service.build_home(session, None, FIXED_NOW)
     summary = next(s for s in home.sites if s.site_id == site_id)
@@ -126,9 +145,8 @@ def test_week_marks_a_day_judged_from_sparse_forecast_as_estimated(
     for hour in range(0, 24, 3):
         fake_kma.set_hour("20261007", hour, PCP="강수없음", WSD="2.0", SNO="적설없음", TMP="20",
                           REH="50")  # fmt: skip
-    response = client.post("/sites", data=SITE, follow_redirects=False)
-    site_id = int(response.headers["location"].split("site_id=")[1].split("&")[0])
-    item = {"work_type": STEEL, "work_date": "2026-10-07", "start": "08:00", "end": "12:00"}
+    site_id = add_site_with_work(client, SITE)  # 내일(1시간 간격) 작업 포함
+    item = {"work_types": STEEL, "work_date": "2026-10-07", "start": "08:00", "end": "12:00"}
     client.post("/schedule", data={"site_id": site_id, **item})
     client.post("/judgments/run", data={"site_id": site_id})
 

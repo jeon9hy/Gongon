@@ -1,6 +1,6 @@
-from datetime import date, datetime, time
+from datetime import date, datetime
 
-from sqlalchemy import ARRAY, Date, DateTime, Float, Integer, String, Time, func
+from sqlalchemy import Date, DateTime, Float, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -20,9 +20,8 @@ class Site(Base):
     longitude_deg: Mapped[float] = mapped_column(Float)
     grid_nx: Mapped[int] = mapped_column(Integer)
     grid_ny: Mapped[int] = mapped_column(Integer)
-    work_start_local: Mapped[time] = mapped_column(Time)  # 현장 현지 시각(KST)
-    work_end_local: Mapped[time] = mapped_column(Time)
-    work_types: Mapped[list[str]] = mapped_column(ARRAY(String(40)))
+    # 예전 현장 기본 작업 시간·공종(0013부터 쓰지 않음, D-059) 열은 DB에만 남아 있다.
+    # 공종·시간은 작업 일정(work_items)마다 정한다.
     # 작업 기간(현지 날짜, 양 끝 포함). 비어 있으면 기간 제한 없음(0002 이전에 등록한 현장).
     work_start_date: Mapped[date | None] = mapped_column(Date)
     work_end_date: Mapped[date | None] = mapped_column(Date)

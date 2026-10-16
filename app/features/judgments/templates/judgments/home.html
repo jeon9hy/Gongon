@@ -76,7 +76,7 @@
 <div class="siterow__head">
 <div class="siterow__title">
 <a class="siterow__name" href="{{ s.detail_href }}">{{ s.name }}</a>
-<p class="siterow__meta">{{ icon("history", 13) }} {{ s.work_hours }}<span aria-hidden="true">·</span>{% if s.checked_short %}{{ s.checked_short }}{% else %}판정 기록 없음{% endif %}</p>
+<p class="siterow__meta">{{ icon("history", 13) }} {{ s.work_hours or "내일 작업 없음" }}<span aria-hidden="true">·</span>{% if s.checked_short %}{{ s.checked_short }}{% else %}판정 기록 없음{% endif %}</p>
 </div>
 <div class="siterow__status">
 {% if s.verdict %}{{ verdict_badge(s.verdict) }}{% elif not s.working %}<span class="badge badge--unknown">작업 없음</span>{% else %}<span class="badge badge--unknown">판정 전</span>{% endif %}
@@ -88,7 +88,7 @@
 {% for c in s.cards %}<li class="check check--{{ verdict_class.get(c.verdict, 'unknown') }}"><span class="check__name">{{ c.work_type }}</span><span class="check__verdict">{{ c.verdict or "판정 전" }}</span></li>{% endfor %}
 </ul>
 {% else %}
-<div class="tag-scroll" aria-label="공종">{% for w in s.work_types %}<span class="tag">{{ w }}</span>{% else %}<span class="tag">공종 없음 · 공통 판정만</span>{% endfor %}</div>
+<div class="tag-scroll" aria-label="공종">{% for w in s.work_types %}<span class="tag">{{ w }}</span>{% else %}<span class="tag">등록한 작업 없음</span>{% endfor %}</div>
 {% endif %}
 <p class="siterow__reason">{% if s.verdict %}<span class="siterow__reason-label">가장 높은 단계</span>{% endif %}{{ s.reason }}</p>
 <div class="siterow__foot">

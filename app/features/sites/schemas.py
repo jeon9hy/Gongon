@@ -1,13 +1,9 @@
 from dataclasses import dataclass
-from datetime import date, time
-from typing import Literal
+from datetime import date
 
 # 현장 조회 범위. 로그인 사용자는 teams가 준 참여 현장 ID, None은 시스템 작업(매시 자동 판정)의
 # 전체 현장이다. 기본값을 두지 않아 호출하는 쪽이 반드시 범위를 정하게 한다(D-057).
 SiteScope = frozenset[int] | None
-
-# 기준표가 있으면 판정한다(원문 대조 전이면 그 표시를 함께). 없으면 판정하지 않는다(D-017).
-BasisStatus = Literal["판정 · 원문 대조 필요", "판정 · 원문 확인됨", "기준 미확인"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,9 +19,7 @@ class SiteRecord:
     longitude_deg: float
     grid_nx: int
     grid_ny: int
-    work_start_local: time  # KST
-    work_end_local: time
-    work_types: tuple[str, ...]
+    # 공종·작업 시간은 현장이 아니라 작업 일정마다 정한다(D-059).
     work_start_date: date | None  # 작업 기간(양 끝 포함). None이면 제한 없음
     work_end_date: date | None
 
@@ -51,9 +45,6 @@ class SiteForm:
     lot_address: str = ""
     latitude: str = ""
     longitude: str = ""
-    work_start: str = "07:00"
-    work_end: str = "17:00"
-    work_types: tuple[str, ...] = ("철골 작업",)
     work_start_date: str = ""
     work_end_date: str = ""
 
@@ -68,9 +59,6 @@ class SiteInput:
     longitude_deg: float
     grid_nx: int
     grid_ny: int
-    work_start_local: time
-    work_end_local: time
-    work_types: tuple[str, ...]
     work_start_date: date
     work_end_date: date
 
@@ -79,17 +67,9 @@ class SiteInput:
 class SiteListItem:
     href: str
     name: str
-    hours: str  # 작업 시각 범위(예: 07시~17시)
+    address: str
     period: str | None  # 짧은 작업 기간(예: 26.10.04 ~ 11.03 형식). 기간이 없으면 None
-    work_types: tuple[str, ...]
     selected: bool
-
-
-@dataclass(frozen=True, slots=True)
-class WorkTypeOption:
-    label: str
-    basis: BasisStatus
-    checked: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,7 +78,6 @@ class SitesView:
     site_id: int | None  # None이면 새 현장 등록
     form: SiteForm
     grid_text: str | None
-    work_type_options: tuple[WorkTypeOption, ...]
     errors: tuple[str, ...]
     saved: bool
     deleted: bool = False  # 방금 현장을 삭제하고 돌아왔는가

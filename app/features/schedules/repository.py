@@ -1,6 +1,6 @@
-from datetime import date, datetime
+from datetime import date, datetime, time
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.features.schedules.models import WorkItem, WorkItemRevision
@@ -88,3 +88,25 @@ def revisions_for(session: Session, item_ids: list[int]) -> list[WorkItemRevisio
         .order_by(WorkItemRevision.work_item_id, WorkItemRevision.plan_version.desc())
     )
     return list(session.scalars(query))
+
+
+def work_type_usage(session: Session, site_id: int) -> dict[str, int]:
+    """현장에 등록한(지우지 않은) 작업의 공종별 수. 작업 추가 화면에서 자주 쓴 공종을 앞에 둔다."""
+    rows = session.execute(
+        select(WorkItem.work_type, func.count())
+        .where(WorkItem.site_id == site_id, WorkItem.deleted_at.is_(None))
+        .group_by(WorkItem.work_type)
+    ).all()
+    return {work_type: count for work_type, count in rows}
+
+
+def recent_times(session: Session, site_id: int, limit: int) -> list[tuple[time, time]]:
+    """최근 등록한 작업 시간(겹치지 않게). 화면은 버튼으로만 보이고 미리 채우지 않는다."""
+    rows = session.execute(
+        select(WorkItem.start_local, WorkItem.end_local)
+        .where(WorkItem.site_id == site_id, WorkItem.deleted_at.is_(None))
+        .group_by(WorkItem.start_local, WorkItem.end_local)
+        .order_by(func.max(WorkItem.id).desc())
+        .limit(limit)
+    ).all()
+    return [(start, end) for start, end in rows]

@@ -26,7 +26,7 @@ SITE: dict[str, Any] = {
     "work_types": ["철골 작업", "고소작업대"],
 }
 ITEM: dict[str, str] = {
-    "work_type": "철골 작업",
+    "work_types": "철골 작업",
     "work_date": "2026-10-05",  # 내일(판정 대상)
     "start": "09:00",
     "end": "12:00",
@@ -88,11 +88,8 @@ def test_navigation_keeps_the_selected_site_through_judgment_detail(
 @pytest.mark.parametrize(
     ("changes", "message"),
     [
-        ({"work_type": "고소작업대 아님"}, "현장에 등록한 공종"),
-        (
-            {"work_type": "콘크리트 타설"},
-            "현장에 등록한 공종",
-        ),  # 공종 목록에는 있지만 이 현장에는 없음
+        ({"work_types": "고소작업대 아님"}, "목록에 있는 공종"),
+        ({"work_types": ""}, "공종을 하나 이상"),
         ({"work_date": "2026-10-04"}, "내일 이후"),  # 오늘
         ({"work_date": "2027-01-01"}, "작업 기간"),  # 현장 기간 밖
         ({"start": "12:00", "end": "12:00"}, "종료는 시작보다"),
@@ -150,18 +147,21 @@ def test_items_are_judged_separately_and_rerun_adds_nothing(
     assert "철골 작업 · A구역" in dashboard and "철골 작업 · B구역" in dashboard
 
 
-def test_day_without_items_uses_site_default_hours(client: TestClient, session: Session) -> None:
+def test_day_without_items_is_not_judged(
+    client: TestClient, session: Session, fake_kma: FakeKma
+) -> None:
+    # D-059: 현장 기본 공종·시간으로 대신 판정하지 않는다. 작업이 있는 날만 판정한다.
+    for hour in range(24):
+        fake_kma.set_hour("20261006", hour, PCP="강수없음", WSD="2.0", SNO="적설없음", TMP="20",
+                          REH="50")  # fmt: skip
     site_id = add_site(client)
-    add_item(client, site_id, work_date="2026-10-06")  # 모레 작업은 내일 판정과 무관
+    add_item(client, site_id, work_date="2026-10-06")
 
     run(client, site_id)
 
-    steel = session.scalars(select(Judgment).where(STEEL)).one()
-    assert (steel.work_start_at.astimezone(KST).hour, steel.work_end_at.astimezone(KST).hour) == (
-        7,
-        17,
-    )
-    assert steel.work_item_id is None
+    days = {j.target_date.isoformat() for j in session.scalars(select(Judgment))}
+    assert days == {"2026-10-06"}
+    assert all(j.work_item_id is not None for j in session.scalars(select(Judgment)))
 
 
 def test_deleting_item_keeps_its_saved_judgment(client: TestClient, session: Session) -> None:
@@ -214,10 +214,11 @@ def test_rerun_after_delete_does_not_judge_the_deleted_item(
     add_item(client, site_id)
     item_id = session.scalars(select(WorkItem.id)).one()
     client.post(f"/schedule/{item_id}/delete", data={"site_id": site_id})
-    run(client, site_id)
+    response = client.post("/judgments/run", data={"site_id": site_id}, follow_redirects=False)
 
-    steel = session.scalars(select(Judgment).where(STEEL)).all()
-    assert [j.work_item_id for j in steel] == [None]  # 현장 기본 시간 판정만
+    assert "ran=no_work" in response.headers["location"]  # 남은 작업이 없으면 판정하지 않는다
+    assert session.scalar(select(Judgment.id)) is None
+    assert fake_kma.calls == []  # 예보도 받지 않는다
 
 
 def test_dashboard_opens_when_first_card_has_daily_elements(
@@ -226,7 +227,8 @@ def test_dashboard_opens_when_first_card_has_daily_elements(
     # 회귀: 콘크리트(일평균기온 등 하루 단위 요소)가 대표 판정이면 그래프 탭 만들다 500이 났다.
     for hour in range(24):
         fake_kma.set_hour("20261006", hour, TMP="20", REH="50", PCP="강수없음", WSD="2.0")
-    site_id = add_site(client, work_types=["콘크리트 타설"])
+    site_id = add_site(client)
+    add_item(client, site_id, work_types="콘크리트 타설", start="07:00", end="17:00")
     run(client, site_id)
 
     response = client.get(f"/dashboard?site_id={site_id}")
@@ -317,7 +319,7 @@ def test_month_picker_marks_a_month_with_only_a_few_period_days(client: TestClie
     assert "is-period" not in month_classes(menu, "2027-02")
 
 
-@pytest.mark.parametrize("missing", ["work_type", "start", "end"])
+@pytest.mark.parametrize("missing", ["work_types", "start", "end"])
 def test_item_without_a_required_value_is_not_saved_and_modal_reopens(
     client: TestClient, session: Session, missing: str
 ) -> None:
@@ -335,7 +337,7 @@ def test_add_form_has_no_preselected_work_type_or_times(client: TestClient) -> N
 
     page = client.get(f"/schedule?site_id={site_id}").text
 
-    assert '<option value="" selected disabled>공종 선택</option>' in page
+    assert 'name="work_types"' in page and 'name="work_types" value="철골 작업" checked' not in page
     assert 'name="start" value=""' in page and 'name="end" value=""' in page
 
 

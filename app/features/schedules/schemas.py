@@ -2,6 +2,8 @@ from dataclasses import dataclass, field
 from datetime import date, time
 from typing import Literal
 
+from app.core.rules import BasisStatus
+
 
 @dataclass(frozen=True, slots=True)
 class WorkItemRecord:
@@ -27,14 +29,18 @@ class WorkItemRecord:
 class WorkItemForm:
     """화면 입력값 그대로(검증 실패 시 다시 보여주기 위해 문자열로 둔다)."""
 
-    work_type: str = ""
-    work_date: str = ""  # 시작 날짜
+    work_types: tuple[str, ...] = ()  # 고른 공종들. 공종마다 작업을 따로 만든다(D-059)
+    work_date: str = ""  # 스크립트 없는 화면의 날짜 하나
     start: str = ""
     end: str = ""
     location: str = ""
     memo: str = ""
     work_dates: tuple[str, ...] = ()  # 달력에서 고른 날짜들. 날마다 같은 시간으로 작업을 만든다
     performing_participant_id: str = ""  # 빈 값은 실행 업체 미지정
+    date_mode: str = "pick"  # pick: 날짜를 하나씩 고름, range: 기간 + 요일
+    range_start: str = ""
+    range_end: str = ""
+    weekdays: tuple[str, ...] = ("0", "1", "2", "3", "4")  # 월=0. 기간 고르기의 기본은 평일
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,6 +76,14 @@ class ParticipantChoice:
     participant_id: int
     name: str  # 회사 이름 · 원청/협력업체
     selected: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class WorkTypeChoice:
+    label: str
+    basis: BasisStatus
+    selected: bool
+    used: int  # 이 현장에 등록한 작업 수(많이 쓴 공종을 앞에 둔다)
 
 
 @dataclass(frozen=True, slots=True)
@@ -140,7 +154,7 @@ class ScheduleView:
     month_groups: tuple[tuple[int, tuple[MonthChoice, ...]], ...]  # (연도, 그 해의 달들)
     weeks: tuple[tuple[CalendarDay, ...], ...]  # 월요일 시작 7칸씩
     detail: DayDetail | None
-    work_types: tuple[str, ...]  # 고를 수 있는 공종(현장에 등록한 공종)
+    work_types: tuple[WorkTypeChoice, ...]  # 고를 수 있는 공종(자주 쓴 순)
     form: WorkItemForm
     errors: tuple[str, ...]
     message: str | None
@@ -149,3 +163,4 @@ class ScheduleView:
     revisions: dict[int, tuple[RevisionView, ...]] = field(default_factory=dict)  # 고른 날 작업
     edit_item_id: int | None = None  # 수정에 실패한 작업(그 카드의 수정 칸을 연다)
     edit_errors: tuple[str, ...] = ()
+    recent_times: tuple[str, ...] = ()  # 이 현장에서 최근 쓴 작업 시간 "08:00-17:00"(누르면 채움)

@@ -157,7 +157,7 @@ def test_autocomplete_script_is_in_page_body_not_title() -> None:
     from app.features.sites.schemas import SiteForm, SitesView
 
     view = SitesView(items=(), site_id=None, form=SiteForm(), grid_text=None,
-                     work_type_options=(), errors=(), saved=False)  # fmt: skip
+                     errors=(), saved=False)  # fmt: skip
     html = templates.get_template("sites/index.html").render(nav_active="sites", view=view)
 
     title = html[html.index("<title>") : html.index("</title>")]

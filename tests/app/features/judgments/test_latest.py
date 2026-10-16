@@ -27,7 +27,7 @@ SITE: dict[str, Any] = {
     "work_end_date": "2026-12-31",
     "work_types": ["철골 작업"],
 }
-ITEM = {"work_type": "철골 작업", "work_date": "2026-10-05", "start": "09:00", "end": "12:00"}
+ITEM = {"work_types": "철골 작업", "work_date": "2026-10-05", "start": "09:00", "end": "12:00"}
 NOISE = 120  # 예전 제한(50행, 하루)보다 많다
 
 
@@ -49,6 +49,7 @@ def item_judgment(session: Session, site_id: int, day: date = TOMORROW) -> Judgm
             Judgment.site_id == site_id,
             Judgment.target_date == day,
             Judgment.work_item_id.is_not(None),
+            Judgment.work_type == "철골 작업",  # 그 작업의 폭염 판정은 빼고
         )
     ).one()
 
@@ -139,5 +140,7 @@ def test_week_keeps_latest_and_previous_forecast_per_work_despite_noise(
         session, site_id, TOMORROW, TOMORROW + timedelta(days=6)
     )
 
-    mine = [r.id for r in rows if r.work_item_id == first.work_item_id]
+    mine = [
+        r.id for r in rows if (r.work_item_id, r.work_type) == (first.work_item_id, first.work_type)
+    ]
     assert mine == [third.id, second.id]  # 현재와 직전 다른 예보, 가장 오래된 예보는 빠짐
