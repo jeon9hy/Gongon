@@ -23,8 +23,11 @@ class ActionItem(Base):
     revision_id: Mapped[int] = mapped_column(ForeignKey("change_revisions.id", ondelete="CASCADE"))
     site_id: Mapped[int] = mapped_column(Integer)
     title: Mapped[str] = mapped_column(String(80))
+    done_criteria: Mapped[str] = mapped_column(String(120), default="")  # 완료 기준(D-070)
     performing_participant_id: Mapped[int] = mapped_column(Integer)
     assignee_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    # 계정 없는 명부의 사람(D-066). 응답은 조정자가 전화로 확인해 대신 기록한다
+    assignee_contact_id: Mapped[int | None] = mapped_column(ForeignKey("participant_contacts.id"))
     verifier_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     required: Mapped[bool] = mapped_column(Boolean)
     due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

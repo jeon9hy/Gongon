@@ -1,7 +1,9 @@
+from collections.abc import Iterable
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.features.teams.models import ProjectMembership, ProjectParticipant
+from app.features.teams.models import ParticipantContact, ProjectMembership, ProjectParticipant
 
 
 def active_site_ids(session: Session, user_id: int, roles: tuple[str, ...]) -> frozenset[int]:
@@ -30,6 +32,11 @@ def participants(session: Session, site_id: int) -> list[ProjectParticipant]:
         # 원청을 먼저 보인다
         .order_by(ProjectParticipant.kind, ProjectParticipant.id)
     )
+    return list(session.scalars(query))
+
+
+def participants_for_sites(session: Session, site_ids: list[int]) -> list[ProjectParticipant]:
+    query = select(ProjectParticipant).where(ProjectParticipant.site_id.in_(site_ids))
     return list(session.scalars(query))
 
 
@@ -72,3 +79,47 @@ def lock_active_coordinators(session: Session, site_id: int) -> list[ProjectMemb
         .with_for_update()
     )
     return list(session.scalars(query))
+
+
+def participant(session: Session, site_id: int, participant_id: int) -> ProjectParticipant | None:
+    found = session.get(ProjectParticipant, participant_id)
+    return found if found is not None and found.site_id == site_id else None
+
+
+def organization_has_participants(session: Session, organization_id: int) -> bool:
+    query = select(ProjectParticipant.id).where(
+        ProjectParticipant.organization_id == organization_id
+    )
+    return session.scalar(query.limit(1)) is not None
+
+
+def contacts(session: Session, site_id: int) -> list[ParticipantContact]:
+    query = (
+        select(ParticipantContact)
+        .where(ParticipantContact.site_id == site_id, ParticipantContact.removed_at.is_(None))
+        .order_by(ParticipantContact.participant_id, ParticipantContact.id)
+    )
+    return list(session.scalars(query))
+
+
+def contacts_by_ids(
+    session: Session, site_id: int, contact_ids: Iterable[int]
+) -> list[ParticipantContact]:
+    query = select(ParticipantContact).where(
+        ParticipantContact.site_id == site_id, ParticipantContact.id.in_(list(contact_ids))
+    )
+    return list(session.scalars(query))
+
+
+def contact(session: Session, site_id: int, contact_id: int) -> ParticipantContact | None:
+    found = session.get(ParticipantContact, contact_id)
+    if found is None or found.site_id != site_id or found.removed_at is not None:
+        return None
+    return found
+
+
+def user_has_contact_links(session: Session, user_id: int) -> bool:
+    query = select(ParticipantContact.id).where(
+        ParticipantContact.user_id == user_id, ParticipantContact.removed_at.is_(None)
+    )
+    return session.scalar(query.limit(1)) is not None

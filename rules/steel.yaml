@@ -1,4 +1,4 @@
-# 철골 작업 판정 기준. 형식: 서비스_개발_총정리.md §4.3.
+# 철골 작업 판정 기준. 형식은 app/core/rules.py가 검증한다(조건유형·연산·값·단위·근거·기준 버전).
 # 원문: 국가법령정보센터 Open API 발췌(source_snapshot). quote·값·단위·이상/초과가 발췌와 일치하는지
 # tests/engine/judgment/test_rule_sources.py가 검사한다(D-026). 법령 개정 시 발췌를 새로 받고 다시 대조한다.
 work_type: steel

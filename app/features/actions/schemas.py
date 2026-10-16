@@ -48,8 +48,9 @@ class CandidateForm:
     """
 
     title: str = ""
+    done_criteria: str = ""
     performing_participant_id: str = ""
-    assignee_user_id: str = ""
+    assignee: str = ""  # "" 업체 내 미지정 · "user:<id>" 계정 · "contact:<id>" 계정 없는 명부의 사람
     verifier_user_id: str = ""
     required: bool = True
     due_date: str = ""
@@ -80,11 +81,19 @@ class Option:
 
 
 @dataclass(frozen=True, slots=True)
+class AssigneeOption:
+    value: str  # CandidateForm.assignee 형식
+    label: str  # "이름 · 직책" 또는 "이름 · 계정 없음(전화 확인)"
+    participant_id: int
+    selected: bool
+
+
+@dataclass(frozen=True, slots=True)
 class CandidateEditor:
     """영향 검토 중인 버전의 조치 후보 입력 칸."""
 
     participants: tuple[Option, ...]
-    assignees: tuple[Option, ...]  # "이름 · 회사"
+    assignees: tuple[AssigneeOption, ...]  # 수행 업체별로 묶어 보인다
     verifiers: tuple[Option, ...]
     form: CandidateForm
     title_suggestions: tuple[str, ...]  # 이 현장에서 쓴 조치 이름(재사용)
@@ -96,10 +105,11 @@ class ActionCard:
     action_id: int
     revision_id: int
     title: str
+    done_criteria: str
     status: str
     status_label: str
     required: bool
-    performer_text: str  # "가상펌프 · 펌프 담당" 또는 "가상골조 · 담당 미지정"
+    performer_text: str  # "가상펌프 · 김OO" 또는 "가상골조 · 담당 미지정(업체 담당자 누구나)"
     verifier_text: str
     due_text: str  # "10/19(월) 17:00까지" 또는 "기한 미정 · 사유"
     overdue: bool
@@ -132,7 +142,7 @@ class MyActionItem:
     status_label: str
     due_text: str
     overdue: bool
-    why: str  # "처리" · "검증" · "위임받음"
+    why: str  # "처리" · "검증" · "위임받음" · "대리 기록"
 
 
 @dataclass(frozen=True, slots=True)
@@ -153,7 +163,10 @@ class DelegateChoice:
 
 @dataclass(frozen=True, slots=True)
 class MyActionsView:
-    to_do: tuple[MyActionItem, ...]
+    """내 조치(D-070 R3). 묶음마다 기한 지남 → 가까운 기한 → 기한 미정 순."""
+
+    to_respond: tuple[MyActionItem, ...]  # 요청 대기·수행 중
+    blocked: tuple[MyActionItem, ...]
     to_verify: tuple[MyActionItem, ...]
     delegations: tuple[DelegationRow, ...]
     delegate_choices: tuple[DelegateChoice, ...]

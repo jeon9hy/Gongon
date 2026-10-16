@@ -11,6 +11,10 @@ cp .env.example .env      # 실제 값은 .env에만(커밋 금지)
 ```
 그다음 아래 "DB 준비"와 "기상청 인증키"를 한 번 해 둔다.
 
+## 시연 자료(선택)
+
+- `PYTHONUTF8=1 uv run python scripts/seed_demo.py` — 개발 DB에 [가상] 현장·업체·참여자·일주일 작업을 만든다. 로그인은 `pm@demo.gongon.test` / `gongon-demo-1234`(현장소장, 조정자). 이미 있으면 다시 만들지 않는다. `--viewer 내이메일`로 내 계정을 열람자로 넣을 수 있다.
+
 ## DB 준비 (PostgreSQL 17, 처음 한 번)
 1. 설치: https://www.postgresql.org/download/windows/ → "Download the installer"(EDB) → **17.x Windows x86-64**.
    설치 중 슈퍼유저(`postgres`) 비밀번호를 정하고 포트는 `5432` 그대로 둔다. 마지막 Stack Builder는 건너뛴다.

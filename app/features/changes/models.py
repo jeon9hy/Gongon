@@ -18,6 +18,7 @@ class ChangeCase(Base):
     created_by_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # C06 종료
+    closed_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
 
 
 class ChangeRevision(Base):
@@ -50,3 +51,5 @@ class ChangeRevision(Base):
     withdrawn_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     withdraw_reason: Mapped[str | None] = mapped_column(Text)
     superseded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # 필수 후속 조치 없이 확정할 때의 이유(C06, 계약 §5)
+    no_action_reason: Mapped[str | None] = mapped_column(Text)

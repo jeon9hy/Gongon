@@ -210,7 +210,10 @@ def test_deactivated_user_loses_existing_session(client: TestClient, session: Se
 def test_layout_shows_who_is_signed_in(client: TestClient) -> None:
     html = client.get("/sites").text
 
-    assert "테스트 조정자 · 가상건설" in html and 'action="/logout"' in html
+    # 이름 메뉴(D-064): 이름·회사, 내 정보·공온 가이드·로그아웃
+    menu = html.split('<details class="menu usermenu">')[1].split("</details>")[0]
+    assert "<strong>테스트 조정자</strong><span>가상건설</span>" in menu
+    assert 'href="/me"' in menu and 'href="/guide"' in menu and 'action="/logout"' in menu
 
 
 def test_login_page_has_no_app_menu(anonymous_client: TestClient) -> None:

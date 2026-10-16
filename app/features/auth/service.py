@@ -219,3 +219,37 @@ def organization_names(session: Session, organization_ids: Iterable[int]) -> dic
         select(Organization.id, Organization.name).where(Organization.id.in_(ids))
     ).all()
     return {organization_id: name for organization_id, name in rows}
+
+
+def create_organization(session: Session, name: str) -> int:
+    """사용자 없는 회사를 만든다(참여 업체 명부, D-066). 커밋은 호출한 쪽이 한다."""
+    organization = Organization(name=name.strip())
+    session.add(organization)
+    session.flush()
+    return organization.id
+
+
+def organizations_with_users(session: Session, organization_ids: Iterable[int]) -> frozenset[int]:
+    """사용자가 한 명이라도 있는 회사. 명부로만 만든 회사(사용자 0명)를 가려낸다."""
+    ids = set(organization_ids)
+    if not ids:
+        return frozenset()
+    return frozenset(
+        session.scalars(select(User.organization_id).where(User.organization_id.in_(ids)))
+    )
+
+
+def organization_user_count(session: Session, organization_id: int) -> int:
+    return len(
+        session.scalars(select(User.id).where(User.organization_id == organization_id)).all()
+    )
+
+
+def move_user_to_organization(session: Session, user_id: int, organization_id: int) -> None:
+    """조정자가 '같은 업체에 붙이기'를 고른 경우에만 쓴다(D-066, 자동 병합 없음).
+
+    커밋은 호출한 쪽이 한다."""
+    user = session.get(User, user_id)
+    if user is None:
+        raise ValueError(f"없는 사용자: {user_id}")
+    user.organization_id = organization_id

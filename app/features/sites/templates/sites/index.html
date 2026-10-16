@@ -6,7 +6,7 @@
 <section class="hero" aria-labelledby="sites-title">
 <div class="hero__main">
 <p class="hero__date">{{ icon("site", 15) }} 현장 {{ view.items | length }}곳</p>
-<h1 class="hero__title" id="sites-title">현장 설정</h1>
+<h1 class="hero__title" id="sites-title">내 현장</h1>
 </div>
 </section>
 
@@ -38,7 +38,7 @@
 <div class="alert alert--ok" role="status">{{ icon("check", 16, 2.4) }} 저장했습니다. 대시보드에서 판정할 수 있습니다.</div>
 {% endif %}
 {% if view.site_id is not none %}
-<p class="small"><a href="/sites/{{ view.site_id }}/members">참여 업체·참여자 보기</a>{% if not view.can_edit %} · 현장 수정은 조정자만 할 수 있습니다.{% endif %}</p>
+<p class="small"><a href="/sites/{{ view.site_id }}/members">참여 업체·참여자 보기</a>{% if not view.can_edit %} · 열람 중{% endif %}</p>
 {% endif %}
 
 <fieldset>
@@ -60,7 +60,7 @@
 </div>
 <ul id="place-list" class="place-list" role="listbox" aria-label="주소 후보" hidden></ul>
 </div>
-<p id="place-status" class="small muted" aria-live="polite">[주소 찾기]로 고르면 두 칸과 위도·경도가 자동으로 채워집니다. 목록에 없는 공사 부지는 지번 주소 칸에 입력하고 Enter.</p>
+<p id="place-status" class="small muted" aria-live="polite"></p>
 <label class="field">현장 이름 (선택)
 <input id="site-name" type="text" name="name" value="{{ form.name }}" placeholder="○○현장 — 비우면 건물 이름이나 주소로 표시" maxlength="60">
 </label>
@@ -76,9 +76,9 @@
 {% if view.grid_text %}
 {{ icon("check", 16, 2.4) }}
 <span>기상청 격자 <strong>{{ view.grid_text }}</strong></span>
-<span class="muted">· 격자 대표값이라 현장과 차이가 있을 수 있습니다</span>
+
 {% else %}
-<span class="muted">위도·경도는 주소에서 자동으로 채워집니다. 주소로 찾을 수 없을 때만 직접 입력하세요. 저장하면 기상청 격자로 바꿉니다.</span>
+<span class="muted">위치 미지정</span>
 {% endif %}
 </div>
 </fieldset>
@@ -93,12 +93,7 @@
 <input type="date" name="work_end_date" value="{{ form.work_end_date }}" required>
 </label>
 </div>
-<p class="small muted">기간 안의 날만 판정합니다. 공종·작업 시간은 <a href="/schedule{% if view.site_id is not none %}?site_id={{ view.site_id }}{% endif %}">작업 일정</a>에서 작업마다 정합니다.</p>
-</fieldset>
-
-<fieldset>
-<legend>알림</legend>
-<p class="small muted">카카오톡 발송은 사업자 등록 후 제공 · 지금은 웹 대시보드에서 확인</p>
+<p class="small muted"><a href="/schedule{% if view.site_id is not none %}?site_id={{ view.site_id }}{% endif %}">작업 일정 ›</a></p>
 </fieldset>
 
 <div class="actions">

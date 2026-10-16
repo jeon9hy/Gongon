@@ -13,16 +13,20 @@ from sqlalchemy.orm import Session
 
 from app.core.rules import COMMON_LABELS, judged_labels, rule_sets_by_label
 from app.features.auth.schemas import CurrentUser
+from app.features.changes import service as changes_service
 from app.features.forecasts import service as forecasts_service
 from app.features.judgments import repository
 from app.features.judgments.models import Judgment, JudgmentRun
 from app.features.judgments.schemas import (
     Bar,
+    BoardItem,
     Cell,
     Chart,
+    CheckIssue,
     CountTile,
     CriterionCard,
     DashboardView,
+    DayBoard,
     DetailView,
     ElementKey,
     FilterLink,
@@ -30,6 +34,8 @@ from app.features.judgments.schemas import (
     HistoryRow,
     HistorySite,
     HistoryView,
+    HomeDay,
+    HomeIndexDay,
     HomeView,
     HourRow,
     Notice,
@@ -79,7 +85,14 @@ from engine.judgment import (
     judge,
     mid_reference,
 )
-from engine.judgment.index import GongonIndex, HourInput, gongon_index, margin_pct
+from engine.judgment.index import (
+    GongonIndex,
+    HourInput,
+    MidWorkInput,
+    gongon_index,
+    margin_pct,
+    mid_gongon_index,
+)
 from engine.kst import KST
 
 logger = logging.getLogger(__name__)
@@ -533,7 +546,7 @@ def build_dashboard(
 def build_home(
     session: Session, scope: SiteScope, now: datetime, ran: RunResult | None = None
 ) -> HomeView:
-    """참여 현장의 내일 판정 개요. 현장 수와 관계없이 판정 조회는 한 번만 한다."""
+    """홈: 오늘·내일 공온 점검판(D-065) → 내일 날씨 개요. 판정 조회는 현장 수와 관계없이 한 번."""
     target_date = target_date_for(now)
     sites = sites_service.list_sites(session, scope)
     site_ids = [s.site_id for s in sites]
@@ -585,8 +598,16 @@ def build_home(
     else:
         forecast_status = f"실패 · {run.failure_reason}"
     primary_rules = next(iter(rule_sets.values()), None)
+    boards, week = _check_boards(session, sites, by_site, rule_sets, now)
     return HomeView(
+        boards=boards,
+        week=week,
+        index_days=_index_days(session, sites, rule_sets, now),
+        checked_short=checked_short_text(
+            max(runs.values(), key=lambda r: r.ran_at, default=None), now
+        ),
         target_date=_date_text(target_date),
+        today_date=_date_text(now.astimezone(KST).date()),
         sites=summaries,
         tiles=tiles,
         recent=recent,
@@ -599,6 +620,182 @@ def build_home(
         message_is_error=ran
         in ("failed", "no_rules", "no_sites", "out_of_period", "beyond_forecast"),
     )
+
+
+_PHASE_LABELS = {"now": "진행 중", "before": "예정", "done": "끝남"}
+
+# 공온 점검 항목(D-065). 날씨는 그중 하나다.
+# 모두 등록한 자료로만 확인하는 규칙이며 기준 수치를 새로 정하지 않는다.
+CHECK_LABELS = {
+    "weather": "날씨",
+    "company": "실행 업체",
+    "place": "작업 위치",
+    "overlap": "시간·위치 겹침",
+    "change": "변경 검토 중",
+}
+WEEK_DAYS_HOME = 7
+_WEATHER_OK = {Verdict.GO.value}
+
+
+_NO_SCORE = {"낮음": "중기 참고", "높음": "점수 없음", "보통": "점수 없음"}
+
+
+def _index_days(
+    session: Session, sites: Sequence[SiteRecord], rule_sets: Mapping[str, RuleSet], now: datetime
+) -> tuple[HomeIndexDay, ...]:
+    """내일부터 7일 공온지수. 현장마다 대시보드와 같은 주간 계산을 쓰고 날마다 가장 낮은 점수.
+
+    현장 수만큼 주간 계산(현장당 쿼리 3회)을 한다. 홈에 보이는 현장은 참여 현장뿐이다.
+    """
+    weeks = [(s, _week(session, s, rule_sets, now)) for s in sites]
+    if not weeks:
+        return ()
+    days: list[HomeIndexDay] = []
+    for n, first in enumerate(weeks[0][1].days):
+        scored = [(index, s) for s, w in weeks if (index := w.days[n].index) is not None]
+        if scored:
+            index, site = min(scored, key=lambda pair: pair[0].score)
+            days.append(
+                HomeIndexDay(
+                    label=first.label,
+                    short=f"{_WEEKDAYS[first.day.weekday()]} {first.day.day}",
+                    is_tomorrow=first.is_tomorrow,
+                    score=index.score,
+                    sub=" · ".join(
+                        ([site.name] if len(weeks) > 1 else [])
+                        + (["중기 참고"] if index.mid_reference else [])
+                    ),
+                    href=dashboard_href(site.site_id),
+                )
+            )
+        else:
+            confidence = next((w.days[n].confidence for _, w in weeks if w.days[n].in_period),
+                              first.confidence)  # fmt: skip
+            days.append(HomeIndexDay(
+                label=first.label, short=f"{_WEEKDAYS[first.day.weekday()]} {first.day.day}",
+                is_tomorrow=first.is_tomorrow, score=None,
+                sub=_NO_SCORE.get(confidence, confidence),
+                href=dashboard_href(weeks[0][0].site_id),
+            ))  # fmt: skip
+    return tuple(days)
+
+
+def _check_boards(
+    session: Session,
+    sites: Sequence[SiteRecord],
+    latest_by_site: dict[int, dict[str, Judgment]],
+    rule_sets: Mapping[str, RuleSet],
+    now: datetime,
+) -> tuple[tuple[DayBoard, ...], tuple[HomeDay, ...]]:
+    """오늘·내일 점검판과 오늘부터 7일 미리보기(작업 1회·변경 1회·업체 2회 조회).
+
+    날씨는 내일만 본다(판정 범위 D-041·D-061). 오늘·그 뒤 날은 날씨를 빼고 나머지 항목만 확인한다.
+    """
+    local = now.astimezone(KST)
+    today = local.date()
+    tomorrow = today + timedelta(days=1)
+    last = today + timedelta(days=WEEK_DAYS_HOME - 1)
+    names = {s.site_id: s.name for s in sites}
+    site_by_id = {s.site_id: s for s in sites}
+    items = schedules_service.items_between_for_sites(session, list(names), today, last)
+    open_changes = changes_service.open_change_item_ids(session, [i.item_id for i in items])
+    companies = teams_service.company_names(session, list({i.site_id for i in items}))
+    weather: dict[int, str | None] = {}
+    for site_id in {i.site_id for i in items if i.work_date == tomorrow}:
+        day_items = tuple(i for i in items if i.site_id == site_id and i.work_date == tomorrow)
+        triples = _current_pairs(site_by_id[site_id], _targets(day_items), tomorrow,
+                                 latest_by_site.get(site_id, {}), rule_sets)  # fmt: skip
+        for target, card, _ in _folded(triples, rule_sets):
+            if target.item_id is not None:
+                weather[target.item_id] = card.verdict
+
+    def issues(i: WorkItemRecord) -> tuple[CheckIssue, ...]:
+        found: list[CheckIssue] = []
+        if i.work_date == tomorrow:
+            verdict = weather.get(i.item_id)
+            if verdict is None:
+                found.append(CheckIssue("weather", "날씨 판정 전"))
+            elif verdict not in _WEATHER_OK:
+                found.append(CheckIssue("weather", f"날씨 {verdict}"))
+        if i.performing_participant_id is None:
+            found.append(CheckIssue("company", "실행 업체 미지정"))
+        if not i.location:
+            found.append(CheckIssue("place", "작업 위치 없음"))
+        clash = next(
+            (o for o in items
+             if o.item_id != i.item_id and o.site_id == i.site_id and o.work_date == i.work_date
+             and o.location and o.location == i.location
+             and o.start_local < i.end_local and i.start_local < o.end_local),
+            None,
+        )  # fmt: skip
+        if clash is not None:
+            found.append(CheckIssue("overlap", f"{clash.work_type}와 같은 곳·같은 시간"))
+        if i.item_id in open_changes:
+            found.append(CheckIssue("change", "변경 검토 중"))
+        return tuple(found)
+
+    checked = {i.item_id: issues(i) for i in items}
+
+    def board_item(i: WorkItemRecord) -> BoardItem:
+        phase: Literal["before", "now", "done"] | None = None
+        if i.work_date == today:
+            phase = (
+                "before" if local.time() < i.start_local
+                else "done" if local.time() >= i.end_local
+                else "now"
+            )  # fmt: skip
+        return BoardItem(
+            item_id=i.item_id,
+            site_name=names[i.site_id],
+            work_type=i.work_type,
+            time_text=f"{i.start_local:%H:%M}–{i.end_local:%H:%M}",
+            location=i.location,
+            company=""
+            if i.performing_participant_id is None
+            else companies.get(i.performing_participant_id, ""),
+            href=f"/schedule?site_id={i.site_id}&day={i.work_date.isoformat()}",
+            issues=checked[i.item_id],
+            phase=phase,
+            phase_label="" if phase is None else _PHASE_LABELS[phase],
+            progress_pct=0
+            if phase is None
+            else _progress(local.time(), i.start_local, i.end_local),
+            weather=weather.get(i.item_id) if i.work_date == tomorrow else None,
+        )
+
+    def board(key: Literal["today", "tomorrow"], title: str, day: date) -> DayBoard:
+        day_items = [i for i in items if i.work_date == day]
+        rows = tuple(board_item(i) for i in day_items)
+        criteria = tuple(
+            (label, n)
+            for k, label in CHECK_LABELS.items()
+            if (n := sum(1 for r in rows if any(x.key == k for x in r.issues)))
+        )
+        return DayBoard(key, title, _date_text(day), rows, criteria)
+
+    week = tuple(
+        HomeDay(
+            date_text=f"{d.month}/{d.day}({_WEEKDAYS[d.weekday()]})",
+            short=f"{_WEEKDAYS[d.weekday()]} {d.day}",
+            href=f"/schedule?day={d.isoformat()}",
+            works=sum(1 for i in items if i.work_date == d),
+            issues=sum(1 for i in items if i.work_date == d and checked[i.item_id]),
+            is_today=d == today,
+            is_weekend=d.weekday() >= 5,
+        )
+        for d in (today + timedelta(days=n) for n in range(WEEK_DAYS_HOME))
+    )
+    return (board("today", "오늘", today), board("tomorrow", "내일", tomorrow)), week
+
+
+def _progress(now: time, start: time, end: time) -> int:
+    span = _minutes(end) - _minutes(start)
+    passed = _minutes(now) - _minutes(start)
+    return 0 if span <= 0 else max(0, min(100, round(passed * 100 / span)))
+
+
+def _minutes(at: time) -> int:
+    return at.hour * 60 + at.minute
 
 
 def _site_summary(
@@ -787,9 +984,11 @@ def _week(
         if confidence == "예보 없음" and mid_parts:
             confidence = "낮음"
         day_cells: list[WeekCell] = []
+        mid_works: list[MidWorkInput] = []
         for target, card, _ in folded:
             if confidence == "낮음" and mid_parts:
                 cell = _mid_cell(target, rule_sets, mid_parts)
+                mid_works.append(_mid_work(target, rule_sets, mid_parts, cell))
             else:
                 state: Literal["none", "pending"] = (
                     "pending" if confidence in ("예보 없음", "판정 전") else "none"
@@ -799,15 +998,18 @@ def _week(
             current = by_type.setdefault(target.work_type, {}).get(day)
             if current is None or _rank(cell) > _rank(current):
                 by_type[target.work_type][day] = cell
-        # 공온지수(D-050)는 단기예보로 저장한 판정이 있는 날만.
-        # 중기예보 참고 날은 기준과 직접 비교할 수 없어 내지 않는다.
+        # 공온지수(D-052). 중기예보 참고 날은 하루 강수확률·날씨로 낸 참고 점수(D-069).
         changed = any(
             (old := previous.get((day, t.key))) is not None
             and j is not None
             and old.verdict != j.verdict
             for t, j in pairs
         )
-        index = None if confidence == "낮음" else _day_index(judged, day_cells, changed, pops)
+        index = (
+            mid_gongon_index(mid_works)
+            if confidence == "낮음"
+            else _day_index(judged, day_cells, changed, pops)
+        )
         days.append(WeekDay(day, f"{day:%m/%d}({_WEEKDAYS[day.weekday()]})", day == dates[0],
                             in_period, confidence, _CONFIDENCE_NOTE[confidence],
                             index, _index_note(index, confidence)))  # fmt: skip
@@ -837,6 +1039,23 @@ def _mid_cell(
         rule_set, [MidPart(p.part, p.rain_probability_pct, p.weather) for p in parts]
     )
     return WeekCell(verdict.value, "reference", None, f"{target.label} · {reason}")
+
+
+def _mid_work(
+    target: "_Target",
+    rule_sets: Mapping[str, RuleSet],
+    parts: tuple[MidHalfDay, ...],
+    cell: WeekCell,
+) -> MidWorkInput:
+    """중기 참고 칸 → 공온지수 입력. 비·눈 기준이 있는 작업만 그날 가장 높은 강수확률을 쓴다."""
+    rule_set = rule_sets.get(target.work_type)
+    elements = set() if rule_set is None else {c.element for c in rule_set.conditions}
+    pops = [p.rain_probability_pct for p in parts if p.rain_probability_pct is not None]
+    rain_sensitive = bool(elements & {Element.PRECIPITATION_MM_PER_H, Element.SNOWFALL_CM_PER_H})
+    return MidWorkInput(
+        verdict=Verdict(cell.verdict) if cell.verdict is not None else Verdict.UNAVAILABLE,
+        rain_probability_pct=max(pops) if rain_sensitive and pops else None,
+    )
 
 
 def _confidence(
@@ -903,9 +1122,15 @@ def _hour_input(hour: Mapping[str, Any], pop_by_time: Mapping[datetime, int]) ->
 def _index_note(index: GongonIndex | None, confidence: str) -> str:
     detail = _CONFIDENCE_NOTE[confidence]
     if index is None:
-        if confidence == "낮음":
-            return f"공온지수 없음 · 중기예보는 기준과 직접 비교할 수 없음 · {detail}"
         return detail
+    if index.mid_reference:
+        parts = [f"공온지수 {index.score}(중기 참고)", "하루 강수확률·날씨만 봄, 먼 예보 10점 감점"]
+        if index.rainy_hours:
+            parts.append(f"강수확률 30% 이상 작업 {index.rainy_hours}")
+        if index.capped_by is not None:
+            parts.append(f"'{index.capped_by.value}' 작업이 있어 상한 적용")
+        parts.append("단기예보가 나오면 다시 계산")
+        return " · ".join(parts)
     parts = [f"공온지수 {index.score}"]
     if index.partial:
         parts.append(f"예보 값이 있는 {index.compared_hours}/{index.total_hours}시각 기준")
@@ -1298,8 +1523,9 @@ def _notice(
     for card, judgment in zip(cards, judgments, strict=True):
         if card.verdict is None or card.verdict == Verdict.GO.value:
             continue
-        if judgment is None:
-            items.append(NoticeItem(card.work_type, card.verdict, "기준 확인 전"))
+        if judgment is None or judgment.verdict != card.verdict:
+            # 기준 없는 작업에는 폭염 판정이 근거로 붙어도 작업의 '확인 필요'가 남는다.
+            items.append(NoticeItem(card.work_type, card.verdict, card.reason))
             continue
         for w in judgment.windows:
             if w["verdict"] == Verdict.GO.value:

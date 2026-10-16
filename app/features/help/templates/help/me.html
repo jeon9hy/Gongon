@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}내 정보{% endblock %}
+{% block content %}
+<section class="hero" aria-labelledby="me-title">
+<div class="hero__main">
+<p class="hero__date">{{ icon("site", 15) }} {{ user.organization_name }}</p>
+<h1 class="hero__title" id="me-title">{{ user.display_name }}님</h1>
+</div>
+</section>
+
+<div class="split">
+<section class="panel split__main" aria-labelledby="my-sites">
+<div class="panel__head"><h2 class="h2" id="my-sites">참여 중인 현장</h2></div>
+{% if sites %}
+<ul class="mysites">
+{% for s in sites %}<li><a href="{{ s.href }}"><strong>{{ s.name }}</strong><span class="tag">{{ s.role_label }}</span></a></li>{% endfor %}
+</ul>
+{% else %}
+<p class="small muted" style="padding: 8px 0;">아직 참여한 현장이 없어요. 현장을 만들거나 조정자에게 초대를 부탁하세요.</p>
+{% endif %}
+</section>
+<aside class="stack split__side">
+<section class="panel">
+<div class="panel__head"><h2 class="h2">계정</h2></div>
+<dl class="facts" style="padding: 8px 0;">
+<dt>이름</dt><dd>{{ user.display_name }}</dd>
+<dt>이메일</dt><dd>{{ user.email }}</dd>
+<dt>회사</dt><dd>{{ user.organization_name }}</dd>
+</dl>
+<p class="small muted">이름·회사 바꾸기는 아직 준비 중이에요.</p>
+</section>
+</aside>
+</div>
+{% endblock %}

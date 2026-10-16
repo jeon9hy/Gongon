@@ -19,21 +19,37 @@
 {% if me %}
 <nav class="appnav" aria-label="주 메뉴">
 {% set current_site_id = view.site_id | default(view.selected_site_id | default(none)) if view is defined else none %}
-{% for key, href, label in [("home", "/", "홈"), ("dashboard", "/dashboard", "현장 대시보드"), ("schedule", "/schedule", "작업 일정"), ("changes", "/changes", "변경"), ("history", "/judgments", "판정 내역"), ("sites", "/sites", "현장 설정")] %}
-<a href="{{ href }}{% if key not in ('home', 'history', 'changes') and current_site_id %}?site_id={{ current_site_id }}{% endif %}"{% if nav_active == key %} aria-current="page"{% endif %}>{{ label }}</a>
+{# 주 메뉴는 핵심 4개(D-063). 공온 판정·판정 내역은 작업 일정 안의 하위 메뉴다. #}
+{% set nav_group = {"dashboard": "schedule", "history": "schedule"}.get(nav_active, nav_active) %}
+{% for key, href, label in [("home", "/", "홈"), ("schedule", "/schedule", "작업 일정"), ("changes", "/changes", "변경"), ("sites", "/sites", "현장")] %}
+<a href="{{ href }}{% if key in ('schedule', 'sites') and current_site_id %}?site_id={{ current_site_id }}{% endif %}"{% if nav_group == key %} aria-current="page"{% endif %}>{{ label }}</a>
 {% endfor %}
 </nav>
 <div class="appbar__actions">
 <a class="btn btn--accent btn--sm" href="/sites">{{ icon("plus", 14, 2.4) }} 현장 추가</a>
-<span class="appbar__user">{{ me.display_name }} · {{ me.organization_name }}
-<form method="post" action="/logout"><button class="btn btn--soft btn--sm" type="submit">로그아웃</button></form>
-</span>
+<details class="menu usermenu">
+<summary class="usermenu__trigger" aria-label="{{ me.display_name }} 메뉴"><span class="usermenu__avatar" aria-hidden="true">{{ me.display_name[:1] }}</span><span class="usermenu__name">{{ me.display_name }}</span>{{ icon("chevron-down", 14, 2.2) }}</summary>
+<div class="menu__panel usermenu__panel">
+<p class="usermenu__who"><strong>{{ me.display_name }}</strong><span>{{ me.organization_name }}</span></p>
+<a class="menu__item" href="/me">{{ icon("site", 16) }} 내 정보</a>
+<a class="menu__item" href="/guide">{{ icon("info", 16) }} 공온 가이드</a>
+<form method="post" action="/logout"><button class="menu__item usermenu__logout" type="submit">{{ icon("arrow-right", 16) }} 로그아웃</button></form>
+</div>
+</details>
 </div>
 {% endif %}
 </div>
 </header>
 
 <main class="page page--{{ nav_active }}" id="main" tabindex="-1">
+{% if me and nav_active in ("schedule", "dashboard", "history") %}
+{% set site_q = "?site_id=" ~ current_site_id if current_site_id else "" %}
+<nav class="subnav" aria-label="작업 일정 메뉴">
+{% for key, href, label in [("schedule", "/schedule" ~ site_q, "달력"), ("dashboard", "/dashboard" ~ site_q, "공온 판정"), ("history", "/judgments", "판정 내역")] %}
+<a href="{{ href }}"{% if nav_active == key %} aria-current="page"{% endif %}>{{ label }}</a>
+{% endfor %}
+</nav>
+{% endif %}
 {% block content %}{% endblock %}
 </main>
 
@@ -46,14 +62,14 @@
 <div class="sitefoot__col">
 <p class="sitefoot__head">서비스</p>
 <a href="/">홈</a>
-<a href="/dashboard">현장 대시보드</a>
 <a href="/schedule">작업 일정</a>
 <a href="/changes">변경</a>
+<a href="/sites">현장</a>
 </div>
 <div class="sitefoot__col">
-<p class="sitefoot__head">기록·설정</p>
-<a href="/judgments">판정 내역</a>
-<a href="/sites">현장 설정</a>
+<p class="sitefoot__head">도움</p>
+<a href="/guide">공온 가이드</a>
+<a href="/me">내 정보</a>
 </div>
 {% endif %}
 <div class="sitefoot__col">
@@ -122,6 +138,18 @@ const closeMenus = (except) => document.querySelectorAll(POPOVERS).forEach((box)
   if (box.open && box !== except && !box.contains(except)) box.open = false;
 });
 document.addEventListener("click", (e) => closeMenus(e.target.closest(POPOVERS)));
+// 달 목록은 누른 위치에 따라 작은 화면 오른쪽으로 나갈 수 있다.
+const fitMonthMenu = () => document.querySelectorAll("details.monthpick[open]").forEach((box) => {
+  const panel = box.querySelector(".monthpick__menu");
+  panel.style.marginLeft = "0px";
+  const r = panel.getBoundingClientRect();
+  const right = document.documentElement.clientWidth - 16;
+  panel.style.marginLeft = `${Math.max(16 - r.left, Math.min(0, right - r.right))}px`;
+});
+document.addEventListener("toggle", (e) => {
+  if (e.target.matches("details.monthpick") && e.target.open) fitMonthMenu();
+}, true);
+addEventListener("resize", fitMonthMenu);
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
   const open = [...document.querySelectorAll(POPOVERS)].filter((box) => box.open).pop();

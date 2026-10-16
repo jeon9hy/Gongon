@@ -80,6 +80,8 @@ def new_form_view(
         work_item_id=item.item_id,
         work_label=item.label,
         current_text=_plan_text(item.work_date, item.start_local, item.end_local, item.location),
+        current_date=item.work_date.isoformat(),
+        current_start=f"{item.start_local:%H:%M}",
         plan_version=item.plan_version,
         case_id=case_id,
         form=form,
@@ -127,6 +129,12 @@ def propose(
         errors.append("바뀐 작업 시간을 00:00 형식으로 입력하세요.")
     elif after_start >= after_end:
         errors.append("작업 종료는 시작보다 늦어야 합니다(같은 날 안에서).")
+    elif after_date is not None and after_date >= today:
+        start_error = schedules_service.plan_start_error(
+            after_date, after_start, now, (item.work_date, item.start_local)
+        )
+        if start_error:
+            errors.append(start_error)
     if len(location) > LOCATION_MAX:
         errors.append(f"작업 위치는 {LOCATION_MAX}자 이하로 입력하세요.")
     if _int(form.plan_version) != item.plan_version:
@@ -188,6 +196,22 @@ def propose(
     return case.id, ()
 
 
+def open_change_item_ids(session: Session, item_ids: list[int]) -> set[int]:
+    """진행 중(초안·영향 검토) 변경이 걸린 작업 ID(쿼리 한 번). 홈의 공온 점검이 쓴다."""
+    if not item_ids:
+        return set()
+    return set(
+        session.scalars(
+            select(ChangeCase.work_item_id)
+            .join(ChangeRevision, ChangeRevision.case_id == ChangeCase.id)
+            .where(
+                ChangeCase.work_item_id.in_(item_ids),
+                ChangeRevision.status.in_(OPEN_STATUSES),
+            )
+        )
+    )
+
+
 # ---------- 상태 전이 ----------
 
 Outcome = Literal["ok", "already"]
@@ -237,6 +261,15 @@ def confirm(
     if item is None:
         session.rollback()
         return None, ("작업이 지워져 확정할 수 없습니다.",)
+    start_error = schedules_service.plan_start_error(
+        revision.after_work_date,
+        revision.after_start_local,
+        now,
+        (item.work_date, item.start_local),
+    )
+    if start_error:
+        session.rollback()
+        return None, (start_error,)
     values = PlanValues(
         work_date=revision.after_work_date,
         start_local=revision.after_start_local,

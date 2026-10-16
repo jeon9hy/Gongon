@@ -6,9 +6,11 @@
 - 검증자는 완료 보고자와 다르다(A3). 기한이 없으면 미정 사유가 있어야 한다(A4).
 - 사건(action_events)은 모든 상태 전이와 전화 확인 기록을 남긴다. 실제 처리 시각·기록 시각을 따로 둔다.
 - 위임(action_delegations)은 같은 업체 안에서 기간을 정해 수행을 맡긴다.
+- 담당은 계정(assignee_user_id) 또는 계정 없는 명부의 사람(assignee_contact_id, D-066) 중 하나다.
+  명부의 사람이 응답하면 조정자가 전화로 확인해 대신 기록한다. done_criteria는 완료 기준(D-070).
 
-Revision ID: 0015
-Revises: 0014
+Revision ID: 0016
+Revises: 0015
 Create Date: 2026-10-16
 """
 
@@ -17,8 +19,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0015"
-down_revision: str | None = "0014"
+revision: str = "0016"
+down_revision: str | None = "0015"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -51,8 +53,13 @@ def upgrade() -> None:
         ),
         sa.Column("site_id", sa.Integer, nullable=False),
         sa.Column("title", sa.String(80), nullable=False),
+        sa.Column("done_criteria", sa.String(120), nullable=False, server_default=""),
         sa.Column("performing_participant_id", sa.Integer, nullable=False),
         sa.Column("assignee_user_id", sa.Integer, sa.ForeignKey("users.id"), nullable=True),
+        sa.Column(
+            "assignee_contact_id", sa.Integer, sa.ForeignKey("participant_contacts.id"),
+            nullable=True,
+        ),
         sa.Column("verifier_user_id", sa.Integer, sa.ForeignKey("users.id"), nullable=False),
         sa.Column("required", sa.Boolean, nullable=False),
         sa.Column("due_at", sa.DateTime(timezone=True), nullable=True),
@@ -82,6 +89,10 @@ def upgrade() -> None:
         sa.CheckConstraint(_in("status", STATUSES), name="ck_action_items_status"),
         sa.CheckConstraint(
             "due_at IS NOT NULL OR coalesce(due_note, '') <> ''", name="ck_action_items_due"
+        ),
+        sa.CheckConstraint(
+            "assignee_user_id IS NULL OR assignee_contact_id IS NULL",
+            name="ck_action_items_one_assignee",
         ),
         sa.CheckConstraint(
             "assignee_user_id IS NULL OR assignee_user_id <> verifier_user_id",

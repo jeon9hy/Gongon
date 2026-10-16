@@ -3,23 +3,20 @@
 {% block title %}홈{% endblock %}
 {% block content %}
 
-<section class="hero" aria-labelledby="home-title">
-<div class="hero__main">
-<p class="hero__date">{{ icon("calendar", 15) }} {{ view.target_date }} · 전체 현장</p>
-<h1 class="hero__title" id="home-title">내일 공사 ON?</h1>
-{% if view.forecast_issued or view.rule_version %}
-<ul class="hero__facts">
-{% if view.forecast_issued %}<li>{{ icon("cloud-sun", 15) }}<span>예보 {{ view.forecast_issued }} 발표</span></li><li>{{ icon("history", 15) }}<span>{{ view.next_forecast }}</span></li>{% endif %}
-{% if view.rule_version %}<li>{{ icon("info", 15) }}<span>기준 {{ view.rule_version }}{% if not view.rule_verified %} · 원문 대조 필요{% endif %}</span></li>{% endif %}
-</ul>
-{% endif %}
-</div>
+{% set today_board, tomorrow_board = view.boards %}
 {% set managed_count = view.sites | selectattr("site_id", "in", manageable) | list | length %}
 {% if managed_count %}
-<form method="post" action="/judgments/run-all" class="hero__action">
-<button class="btn hero__button" type="submit" title="내가 조정자인 현장의 내일부터 7일 작업을 예보로 판정합니다">{{ icon("cloud-sun", 18) }} 현장 {{ managed_count }}곳 판정하기</button>
-</form>
+{# 점검 새로 하기: 휴대폰은 화면을 아래로 당겨서, 큰 화면은 날짜 옆 작은 버튼으로(D-065) #}
+<div class="ptr" aria-hidden="true"><span class="ptr__spin"></span><span class="ptr__text">당겨서 새로 점검</span></div>
 {% endif %}
+<section class="homebar" aria-labelledby="home-title">
+<div>
+<div class="homebar__date"><span>{{ view.today_date }}</span>
+{% if managed_count %}<form method="post" action="/judgments/run-all" class="refresh" data-refresh><button type="submit" class="refresh__btn" title="새 예보로 다시 점검" aria-label="새로 점검">{{ icon("history", 14, 2.2) }}<span>{{ view.checked_short or "아직 점검 전" }}</span></button></form>{% endif %}
+</div>
+<h1 class="homebar__title" id="home-title">{% if today_board.items %}오늘 작업 {{ today_board.items | length }}건, 차근차근 가 볼까요?{% else %}오늘은 쉬어 가는 날{% endif %}</h1>
+</div>
+{% if view.sites and not managed_count %}<a class="btn btn--accent btn--sm" href="/schedule">{{ icon("calendar", 15) }} 일정 보기</a>{% endif %}
 </section>
 
 {% if view.message %}
@@ -56,19 +53,88 @@
 </section>
 {% else %}
 
-<section class="stats stats--home" aria-label="내일 판정 요약">
-{% for t in view.tiles %}
-<div class="stat stat--{{ verdict_class.get(t.badge, 'unknown') }}{% if not t.count %} is-zero{% endif %}">
-{% if t.badge %}{{ verdict_badge(t.badge) }}{% else %}<span class="badge badge--unknown">{{ t.label }}</span>{% endif %}
-<span class="stat__value">{{ t.count }}<small>곳</small></span>
+{% set now_items = today_board.items | selectattr("phase", "equalto", "now") | list %}
+{% set next_items = today_board.items | selectattr("phase", "equalto", "before") | list %}
+<section class="hsec hsec--today reveal" aria-labelledby="today-title">
+<div class="hsec__head">
+<h2 class="hsec__title" id="today-title">오늘 <span>{{ today_board.date_text }}</span></h2>
+<a class="small" href="/schedule">일정 ›</a>
 </div>
+{% if today_board.items %}
+<div class="today2">
+<ol class="tline">
+{% for w in today_board.items %}
+<li class="tline__row tline__row--{{ w.phase }}" style="--c: {{ work_color(w.work_type) }}; --i: {{ loop.index0 }}">
+<a href="{{ w.href }}">
+<span class="tline__time">{{ w.time_text }}</span>
+<span class="tline__what"><span class="dot"></span><strong>{{ w.work_type }}</strong>{% if w.location %}<span class="muted"> · {{ w.location }}</span>{% endif %}</span>
+<span class="tline__who">{{ w.company or w.site_name }}</span>
+<span class="tline__phase">{% if w.issues %}<span class="tline__warn" title="{{ w.issues | map(attribute='label') | join(', ') }}" aria-label="확인할 것 {{ w.issues | length }}개">!</span>{% endif %}{{ w.phase_label }}</span>
+{% if w.phase == "now" %}<span class="tline__bar"><span style="width: {{ w.progress_pct }}%"></span></span>{% endif %}
+</a>
+</li>
 {% endfor %}
+</ol>
+<aside class="prio" aria-labelledby="prio-title">
+<h3 class="prio__title" id="prio-title">먼저 챙길 것</h3>
+<ol class="prio__list">
+{% for w in now_items %}<li><span class="prio__tag prio__tag--now">진행 중</span><a href="{{ w.href }}">{{ w.work_type }}{% if w.location %} · {{ w.location }}{% endif %}</a></li>{% endfor %}
+{% for w in next_items[:2] %}<li><span class="prio__tag">{{ w.time_text[:5] }}</span><a href="{{ w.href }}">{{ w.work_type }}{% if w.location %} · {{ w.location }}{% endif %}</a></li>{% endfor %}
+{% set short = {"weather": "날씨", "company": "업체 미지정", "place": "위치 없음", "overlap": "겹침", "change": "변경 중"} %}
+{% for w in today_board.items if w.phase != "done" %}{% for x in w.issues %}<li title="{{ x.label }}"><span class="prio__tag prio__tag--warn">{{ short.get(x.key, x.label) }}</span><a href="{{ w.href }}">{{ w.time_text[:5] }} {{ w.work_type }}</a></li>{% endfor %}{% endfor %}
+{% if not now_items and not next_items and not (today_board.items | selectattr("issues") | rejectattr("phase", "equalto", "done") | list) %}<li><span class="prio__tag prio__tag--ok">끝</span><span>오늘 일정은 다 지나갔어요. 수고했어요!</span></li>{% endif %}
+</ol>
+</aside>
+</div>
+{% else %}
+<p class="hsec__empty">오늘 등록한 작업이 없어요. 내일 준비를 봐 둘까요?</p>
+{% endif %}
 </section>
 
+<section class="hsec hsec--tomorrow reveal" aria-labelledby="tomorrow-title" style="--i: 1">
+<div class="hsec__head">
+<h2 class="hsec__title" id="tomorrow-title">내일 <span>{{ tomorrow_board.date_text }}</span></h2>
+<a class="small" href="{{ view.week[1].href if view.week | length > 1 else '/schedule' }}">일정 ›</a>
+</div>
+{% if tomorrow_board.items %}
+{% set first = tomorrow_board.items[0] %}
+<ul class="brief">
+<li><span class="brief__k">첫 작업</span><span>{{ first.time_text[:5] }} {{ first.work_type }}{% if first.location %} · {{ first.location }}{% endif %} <span class="muted">외 {{ tomorrow_board.items | length - 1 }}건</span></span></li>
+<li><span class="brief__k">준비</span><span><strong class="brief__ready{% if tomorrow_board.ready == tomorrow_board.items | length %} is-all{% endif %}">{{ tomorrow_board.ready }}/{{ tomorrow_board.items | length }}</strong>{% for label, n in tomorrow_board.criteria %}<span class="crit">{{ label }} <strong>{{ n }}</strong></span>{% endfor %}</span></li>
+{% set judged = tomorrow_board.items | selectattr("weather") | list %}
+<li><span class="brief__k">날씨</span><span>{% if not judged %}아직 판정 전이에요. ‘공온 점검’을 눌러 볼까요?{% else %}{% for v in ("중지 검토", "확인 필요", "판정 불가", "진행") %}{% set n = judged | selectattr("weather", "equalto", v) | list | length %}{% if n %}{{ verdict_badge(v) }} <span class="muted">{{ n }}건</span> {% endif %}{% endfor %}{% set waiting = tomorrow_board.items | length - judged | length %}{% if waiting %}<span class="badge badge--unknown">판정 전</span> <span class="muted">{{ waiting }}건</span>{% endif %}{% endif %}</span></li>
+</ul>
+{% else %}
+<p class="hsec__empty">내일 일정이 비어 있어요. 미리 올려 둘까요?</p>
+{% endif %}
+</section>
+
+{% if view.index_days %}
+<section class="hsec hsec--week reveal" aria-labelledby="week-title" style="--i: 2">
+<div class="hsec__head">
+<h2 class="hsec__title" id="week-title">이번 주 공온지수</h2>
+<a class="small" href="/guide#judge">공온지수란?</a>
+</div>
+<ol class="idxweek">
+{% for d in view.index_days %}
+<li><a href="{{ d.href }}" class="idxday{% if d.is_tomorrow %} is-tomorrow{% endif %}">
+<span class="idxday__label">{% if d.is_tomorrow %}내일{% else %}<span class="idxday__long">{{ d.label }}</span><span class="idxday__short">{{ d.short }}</span>{% endif %}</span>
+{% if d.score is not none %}<span class="ring ring--{% if d.score >= 80 %}high{% elif d.score >= 50 %}mid{% else %}low{% endif %}" style="--p: {{ d.score }}" role="img" aria-label="공온지수 {{ d.score }}"><b>{{ d.score }}</b></span>
+{% else %}<span class="ring ring--empty" aria-hidden="true"><b>–</b></span>{% endif %}
+<span class="idxday__sub">{{ d.sub }}</span>
+</a></li>
+{% endfor %}
+</ol>
+</section>
+{% endif %}
+
+<details class="hmore reveal" style="--i: 3">
+<summary>현장별 날씨 자세히 {{ icon("chevron-down", 16, 2.2) }}</summary>
+<div class="hmore__body">
 <div class="split">
 <section class="panel split__main" aria-labelledby="sites-title">
 <div class="panel__head">
-<h2 class="h2" id="sites-title">현장별 내일 판정</h2>
+<h2 class="h2" id="sites-title">현장별 날씨 · 내일</h2>
 </div>
 <ul class="sitelist">
 {% for s in view.sites %}
@@ -137,11 +203,39 @@
 <div class="panel__body">
 <dl class="facts" style="padding: 8px 0;">
 <dt>최근 예보 수집</dt><dd>{{ view.forecast_status }}</dd>
+{% if view.forecast_issued %}<dt>예보 발표</dt><dd>{{ view.forecast_issued }}</dd>{% endif %}
 <dt>자료 유형</dt><dd>예보 (관측 아님)</dd>
 </dl>
 </div>
 </section>
 </aside>
 </div>
+</div>
+</details>
 {% endif %}
+<script>
+// 당겨서 새로 점검(휴대폰): 맨 위에서 아래로 당겼다 놓으면 점검(판정 실행)을 다시 한다.
+(() => {
+  const form = document.querySelector("[data-refresh]");
+  const bar = document.querySelector(".ptr");
+  if (!form || !bar) return;
+  const TRIGGER = 72;
+  let startY = null, pulled = 0;
+  const reset = () => { bar.style.setProperty("--pull", "0px"); bar.style.setProperty("--o", "0"); bar.classList.remove("is-ready"); startY = null; pulled = 0; };
+  addEventListener("touchstart", (e) => { if (scrollY <= 0 && e.touches.length === 1) startY = e.touches[0].clientY; }, { passive: true });
+  addEventListener("touchmove", (e) => {
+    if (startY === null) return;
+    pulled = Math.max(0, Math.min(120, (e.touches[0].clientY - startY) * 0.6));
+    bar.style.setProperty("--pull", `${pulled}px`);
+    bar.style.setProperty("--o", String(Math.min(1, pulled / 40)));
+    bar.classList.toggle("is-ready", pulled >= TRIGGER);
+    bar.querySelector(".ptr__text").textContent = pulled >= TRIGGER ? "놓으면 점검해요" : "당겨서 새로 점검";
+  }, { passive: true });
+  addEventListener("touchend", () => {
+    if (pulled >= TRIGGER) { bar.classList.add("is-loading"); bar.querySelector(".ptr__text").textContent = "점검하는 중…"; form.submit(); return; }
+    reset();
+  });
+  form.addEventListener("submit", () => form.classList.add("is-loading"));
+})();
+</script>
 {% endblock %}

@@ -3,10 +3,10 @@
 {% block title %}작업 일정{% endblock %}
 {% block content %}
 
-<section class="hero" aria-labelledby="schedule-title">
+<section class="hero" aria-labelledby="schedule-title" data-swap="header">
 <div class="hero__main">
 <p class="hero__date">{{ icon("calendar", 15) }} 작업 일정{% if view.site_name %} · {{ view.site_name }}{% endif %}</p>
-<h1 class="hero__title" id="schedule-title">{{ view.month_title.split(" ")[-1] if view.site_id is not none else "이번 달" }} 공사 ON?</h1>
+<h1 class="hero__title" id="schedule-title">{{ view.month_title.split(" ")[-1] if view.site_id is not none else "이번 달" }} 작업 일정</h1>
 </div>
 {% if view.sites %}
 <form method="get" action="/schedule" class="hero__action">
@@ -23,16 +23,16 @@
 
 {% if view.site_id is none %}
 <section class="card">
-<h2 class="h2">먼저 현장을 등록하세요</h2>
-<p class="small muted">현장 작업 기간 안에서 공종·시간을 정해 작업을 등록합니다.</p>
+<h2 class="h2">현장부터 만들어 볼까요?</h2>
+<p class="small muted">현장이 있어야 작업을 올릴 수 있어요.</p>
 <a class="btn btn--accent" style="align-self: flex-start;" href="/sites">{{ icon("plus", 16, 2.2) }} 현장 등록</a>
 </section>
 {% else %}
-<div class="split">
-<section class="panel split__main calendar-panel" aria-labelledby="month-title">
+<div class="split" data-schedule>
+<section class="panel split__main calendar-panel" aria-labelledby="month-title" data-swap="calendar">
 <div class="calhead">
 <div class="calhead__nav">
-<a class="btn btn--sm" href="{{ view.prev_href }}" aria-label="이전 달">{{ icon("arrow-left", 14, 2.2) }}</a>
+<a class="btn btn--sm" href="{{ view.prev_href }}" aria-label="이전 달" data-nav>{{ icon("arrow-left", 14, 2.2) }}</a>
 <details class="monthpick">
 <summary class="monthpick__toggle" aria-label="{{ view.month_title }} · 다른 달 고르기"><h2 class="h2" id="month-title">{{ view.month_title }}</h2>{{ icon("chevron-down", 16, 2.2) }}</summary>
 <div class="monthpick__menu">
@@ -40,275 +40,421 @@
 <div class="monthpick__year">
 <p class="monthpick__label">{{ year }}년</p>
 <div class="monthpick__grid">
-{% for m in months %}<a class="monthpick__month{% if m.in_period %} is-period{% endif %}{% if m.is_target %} is-target{% endif %}" href="{{ m.href }}"{% if m.selected %} aria-current="true"{% endif %}>{{ m.label }}</a>{% endfor %}
+{% for m in months %}<a class="monthpick__month{% if m.in_period %} is-period{% endif %}{% if m.is_target %} is-target{% endif %}" href="{{ m.href }}" data-nav{% if m.selected %} aria-current="true"{% endif %}>{{ m.label }}</a>{% endfor %}
 </div>
 </div>
 {% endfor %}
 </div>
 </details>
-<a class="btn btn--sm" href="{{ view.next_href }}" aria-label="다음 달">{{ icon("arrow-right", 14, 2.2) }}</a>
-<a class="today-btn" href="{{ view.this_month_href }}" title="오늘 날짜로 이동" aria-label="오늘 날짜로 이동">{{ icon("calendar", 18) }}<span>오늘</span></a>
+<a class="btn btn--sm" href="{{ view.next_href }}" aria-label="다음 달" data-nav>{{ icon("arrow-right", 14, 2.2) }}</a>
+<a class="today-btn" href="{{ view.this_month_href }}" aria-label="오늘로 이동" data-nav>{{ icon("calendar", 18) }}<span>오늘</span></a>
 </div>
 {% if view.period_text %}<span class="small muted">작업 기간 {{ view.period_text }}</span>{% endif %}
 </div>
 
 <table class="calendar">
-<thead><tr>{% for w in "월화수목금토일" %}<th scope="col"{% if loop.index > 5 %} class="is-weekend"{% endif %}>{{ w }}</th>{% endfor %}</tr></thead>
+<thead><tr>{% for w in "일월화수목금토" %}<th scope="col"{% if loop.first or loop.last %} class="is-weekend"{% endif %}>{{ w }}</th>{% endfor %}</tr></thead>
 <tbody>
+{% set legend = namespace(types=[]) %}
 {% for week in view.weeks %}
 <tr>
 {% for c in week %}
 <td class="calcell{% if not c.in_month %} is-outside{% endif %}{% if not c.in_period %} is-off{% endif %}{% if c.selected %} is-selected{% endif %}{% if c.is_target %} is-target{% endif %}">
 <a class="calcell__link" href="{{ c.href }}" aria-label="{{ c.day.month }}월 {{ c.day.day }}일, 작업 {{ c.items | length + c.more }}건"{% if c.selected %} aria-current="date"{% endif %}>
 <span class="calcell__day">{{ c.day.day }}{% if c.is_today %}<span class="calcell__flag">오늘</span>{% elif c.is_target %}<span class="calcell__flag calcell__flag--target">판정</span>{% endif %}</span>
-{% if c.items %}<span class="calcell__count">{{ c.items | length + c.more }}건</span>{% endif %}
-{% for i in c.items %}<span class="calitem"><span class="calitem__time">{{ i.start_local.strftime("%H:%M") }}</span> {{ i.work_type }}</span>{% endfor %}
-{% if c.more %}<span class="calitem calitem--more">+{{ c.more }}건</span>{% endif %}
 </a>
+{% if c.items %}<span class="caldots">{% for i in c.items %}{% if i.work_type not in legend.types %}{% set legend.types = legend.types + [i.work_type] %}{% endif %}<button type="button" class="dot dot--btn" style="--c: {{ work_color(i.work_type) }}" data-item="{{ i.item_id }}" data-href="{{ c.href }}" aria-label="{{ c.day.month }}/{{ c.day.day }} {{ i.start_local.strftime('%H:%M') }} {{ i.work_type }} 상세" title="{{ i.start_local.strftime('%H:%M') }} {{ i.work_type }}"></button>{% endfor %}{% if c.more %}<a class="caldots__more" href="{{ c.href }}">+{{ c.more }}</a>{% endif %}</span>{% endif %}
 </td>
 {% endfor %}
 </tr>
 {% endfor %}
 </tbody>
 </table>
+{% if legend.types %}
+<ul class="legend" aria-label="공종 색">{% for t in legend.types %}<li><span class="dot" style="--c: {{ work_color(t) }}"></span>{{ t }}</li>{% endfor %}</ul>
+{% endif %}
 </section>
 
 <aside class="stack split__side" id="day-detail">
 {% set d = view.detail %}
-<section class="panel" aria-labelledby="day-title">
-<div class="panel__head">
+{% if d.day.isoformat() == view.today_iso %}
+{% set cheers = ["오늘도 무사고가 최고의 공정이에요.", "안전모 턱끈까지 딱! 오늘도 화이팅.", "물 한 잔, 그늘 한 번. 오늘도 수고 많아요.", "오늘 일은 오늘 끝내고, 내일은 공온이 챙길게요.", "현장은 계획대로, 변경은 공온으로.", "작은 확인 하나가 큰 하루를 지켜요.", "점심은 든든히, 작업은 차분히."] %}
+<section class="panel briefing" aria-labelledby="briefing-title" data-swap="briefing">
+<p class="briefing__cheer">{{ cheers[d.day.toordinal() % cheers | length] }}</p>
+<h2 class="h2" id="briefing-title">오늘 먼저 챙길 것</h2>
+{% set now_items = d.items | selectattr("start_local", "le", view.now_hm | as_time) | selectattr("end_local", "gt", view.now_hm | as_time) | list %}
+{% set next_items = d.items | selectattr("start_local", "gt", view.now_hm | as_time) | sort(attribute="start_local") | list %}
+{% set no_company = d.items | rejectattr("performing_participant_id") | list %}
+<ol class="briefing__list">
+{% for i in now_items %}<li><span class="briefing__tag briefing__tag--now">진행 중</span><button type="button" class="briefing__link" data-open-dialog="item-{{ i.item_id }}">{{ i.work_type }}{% if i.location %} · {{ i.location }}{% endif %}</button><span class="small muted">~{{ i.end_local.strftime("%H:%M") }}</span></li>{% endfor %}
+{% for i in next_items[:2] %}<li><span class="briefing__tag">{{ i.start_local.strftime("%H:%M") }} 시작</span><button type="button" class="briefing__link" data-open-dialog="item-{{ i.item_id }}">{{ i.work_type }}{% if i.location %} · {{ i.location }}{% endif %}</button></li>{% endfor %}
+{% if no_company %}<li><span class="briefing__tag briefing__tag--warn">업체 미지정</span><span>{{ no_company | length }}건은 누가 할지 정해 주세요</span></li>{% endif %}
+{% if not d.items %}<li><span class="briefing__tag">여유</span><span>오늘은 등록한 작업이 없어요. 내일 일정을 미리 볼까요?</span></li>{% endif %}
+</ol>
+</section>
+{% endif %}
+<section class="panel daypanel" aria-labelledby="day-title" data-swap="day">
+<div class="daypanel__head">
+<div>
 <h2 class="h2" id="day-title">{{ d.day_text }}</h2>
-{% if d.is_target %}<span class="tag tag--go">판정 대상(내일)</span>{% endif %}
+<p class="small muted">{% if d.items %}작업 {{ d.items | length }}건{% elif d.can_add %}아직 비어 있어요{% else %}{{ d.note }}{% endif %}</p>
 </div>
-<div class="panel__body">
+{% if d.is_target %}<a class="tag tag--go" href="/dashboard?site_id={{ view.site_id }}">판정 보기 ›</a>{% endif %}
+</div>
 {% if d.items %}
-<ul class="itemlist" style="padding-top: 8px;">
+<ul class="worklist">
 {% for i in d.items %}
-<li class="itemrow itemrow--stack">
-<div class="itemrow__top">
-<strong class="itemrow__name">{{ i.work_type }}</strong>
-{% if view.site_id in manageable %}<details class="delete-action">
-<summary aria-label="{{ d.day_text }} {{ i.work_type }} 삭제 확인">삭제</summary>
-<form method="post" action="/schedule/{{ i.item_id }}/delete" class="delete-action__confirm">
-<p class="small">{{ i.work_type }} 작업을 삭제할까요? 삭제한 일정은 되돌릴 수 없습니다.</p>
-<input type="hidden" name="site_id" value="{{ view.site_id }}">
-<input type="hidden" name="day" value="{{ d.day.isoformat() }}">
-<button class="btn btn--sm" type="submit" aria-label="{{ d.day_text }} {{ i.work_type }} 작업 지우기">작업 삭제</button>
-</form>
-</details>{% endif %}
-</div>
-<span class="itemrow__meta"><span class="itemrow__time">{{ i.start_local.strftime("%H:%M") }}–{{ i.end_local.strftime("%H:%M") }}</span>{% if i.location %}<span>{{ icon("site", 13) }} {{ i.location }}</span>{% endif %}</span>
-{% if i.memo %}<span class="small itemrow__memo">{{ i.memo }}</span>{% endif %}
-<span class="small muted">실행 업체 {{ view.participant_names.get(i.performing_participant_id, "미지정") if i.performing_participant_id else "미지정" }} · 계획 v{{ i.plan_version }}</span>
 {% set history = view.revisions.get(i.item_id, ()) %}
+<li><button type="button" class="workcard" style="--c: {{ work_color(i.work_type) }}" data-open-dialog="item-{{ i.item_id }}">
+<span class="workcard__time">{{ i.start_local.strftime("%H:%M") }}<span>–</span>{{ i.end_local.strftime("%H:%M") }}</span>
+<span class="workcard__title"><span class="dot"></span>{{ i.work_type }}{% if i.location %}<span class="workcard__place"> · {{ i.location }}</span>{% endif %}</span>
+<span class="workcard__meta">{{ view.participant_names.get(i.performing_participant_id, "업체 미지정").split(" · ")[0] if i.performing_participant_id else "업체 미지정" }} · v{{ i.plan_version }}{% if history %} · 변경 {{ history | length }}번{% endif %}</span>
+</button></li>
+{% endfor %}
+</ul>
+{% else %}
+<div class="empty-art empty-art--sm"><img class="mascot" src="/static/brand/mascot-schedule.png" alt="" width="120" height="95"><p>{% if d.can_add %}이날은 한가해요. 작업을 올려 볼까요?{% else %}{{ d.note or "이날은 작업이 없어요." }}{% endif %}</p></div>
+{% endif %}
+{% if d.can_add and view.site_id in manageable %}<button class="btn btn--accent daypanel__add" type="button" data-open-add data-day="{{ d.day.isoformat() }}">{{ icon("plus", 16, 2.2) }} 작업 추가</button>{% endif %}
+
+{% for i in d.items %}
+{% set history = view.revisions.get(i.item_id, ()) %}
+{% set company = view.participant_names.get(i.performing_participant_id, "미지정").split(" · ")[0] if i.performing_participant_id else "미지정" %}
+<dialog class="modal" id="item-{{ i.item_id }}" aria-labelledby="item-title-{{ i.item_id }}"{% if view.edit_item_id == i.item_id %} data-open{% endif %}>
+<div class="modal__box">
+<div class="modal__head">
+<h2 class="h2 itemdlg__title" id="item-title-{{ i.item_id }}"><span class="dot" style="--c: {{ work_color(i.work_type) }}"></span>{{ i.work_type }}</h2>
+<button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button>
+</div>
+<p class="itemdlg__time">{{ d.day_text }} {{ i.start_local.strftime("%H:%M") }}–{{ i.end_local.strftime("%H:%M") }}</p>
+<dl class="itemdlg__facts">
+<div><dt>위치</dt><dd>{{ i.location or "—" }}</dd></div>
+<div><dt>실행 업체</dt><dd>{{ company }}</dd></div>
+<div><dt>계획</dt><dd>v{{ i.plan_version }}{% if history %} · 변경 {{ history | length }}번{% endif %}</dd></div>
+{% if i.memo %}<div><dt>메모</dt><dd>{{ i.memo }}</dd></div>{% endif %}
+</dl>
 {% if history %}
 <details class="item-history">
-<summary class="small">변경 이력 {{ history | length }}건</summary>
+<summary class="small">변경 이력 보기</summary>
 <ul class="small muted">{% for r in history %}<li>v{{ r.plan_version }} {{ r.summary }} · {{ r.changed_text }} 변경</li>{% endfor %}</ul>
 </details>
 {% endif %}
-{% if view.site_id in proposable %}
-<a class="btn btn--soft btn--sm item-copy" href="/changes/new?site_id={{ view.site_id }}&item_id={{ i.item_id }}">변경 제안</a>
-{% endif %}
+<div class="itemdlg__actions">
+{% if view.site_id in proposable %}<a class="btn btn--soft btn--sm" href="/changes/new?site_id={{ view.site_id }}&item_id={{ i.item_id }}">{{ icon("history", 15) }} 변경 제안</a>{% endif %}
+{% if view.site_id in manageable %}<button type="button" class="btn btn--soft btn--sm" data-copy='{{ {"workType": i.work_type, "start": i.start_local.strftime("%H:%M"), "end": i.end_local.strftime("%H:%M"), "location": i.location, "memo": i.memo, "performer": (i.performing_participant_id or "") | string} | tojson }}'>{{ icon("plus", 15, 2.2) }} 다른 날에도</button>{% endif %}
+</div>
 {% if view.site_id in manageable %}
-<button type="button" class="btn btn--soft btn--sm item-copy" data-copy='{{ {"workType": i.work_type, "start": i.start_local.strftime("%H:%M"), "end": i.end_local.strftime("%H:%M"), "location": i.location, "memo": i.memo, "performer": (i.performing_participant_id or "") | string} | tojson }}'>{{ icon("plus", 14, 2.2) }} 다른 날에도 추가</button>
-<details class="item-edit"{% if view.edit_item_id == i.item_id %} open{% endif %}>
-<summary class="small">계획 수정</summary>
-<form method="post" action="/schedule/{{ i.item_id }}/edit" class="item-edit__form">
+<details class="itemdlg__edit"{% if view.edit_item_id == i.item_id %} open{% endif %}>
+<summary>{{ icon("edit", 15) }} 계획 수정·삭제</summary>
+<form method="post" action="/schedule/{{ i.item_id }}/edit" class="itemdlg__form">
 {% if view.edit_item_id == i.item_id and view.edit_errors %}<div class="alert alert--error" role="alert"><ul>{% for e in view.edit_errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
 <input type="hidden" name="site_id" value="{{ view.site_id }}">
 <input type="hidden" name="day" value="{{ d.day.isoformat() }}">
 <input type="hidden" name="plan_version" value="{{ i.plan_version }}">
-<label class="field">날짜<input type="date" name="work_date" value="{{ i.work_date.isoformat() }}" required></label>
-<div class="inline">
-<label class="field" style="flex: 1 1 120px;">시작<input type="time" name="start" value="{{ i.start_local.strftime('%H:%M') }}" required></label>
-<label class="field" style="flex: 1 1 120px;">종료<input type="time" name="end" value="{{ i.end_local.strftime('%H:%M') }}" required></label>
+<label class="field">날짜<input type="date" name="work_date" value="{{ i.work_date.isoformat() }}" min="{{ view.today_iso }}" required></label>
+<div class="timepair">
+<label class="field">시작<input type="time" name="start" value="{{ i.start_local.strftime('%H:%M') }}" required></label>
+<span class="timepair__dash" aria-hidden="true">–</span>
+<label class="field">종료<input type="time" name="end" value="{{ i.end_local.strftime('%H:%M') }}" data-after="start" required></label>
 </div>
-<label class="field">작업 위치 (선택)<input type="text" name="location" maxlength="60" value="{{ i.location }}"></label>
-<label class="field">메모 (선택)<input type="text" name="memo" maxlength="500" value="{{ i.memo }}"></label>
+<div class="inline">
+<label class="field">작업 위치<input type="text" name="location" maxlength="60" value="{{ i.location }}" placeholder="예: A구역 3층"></label>
 <label class="field">실행 업체
 <select name="performing_participant_id">
 <option value=""{% if not i.performing_participant_id %} selected{% endif %}>미지정</option>
-{% for p in view.participants %}<option value="{{ p.participant_id }}"{% if p.participant_id == i.performing_participant_id %} selected{% endif %}>{{ p.name }}</option>{% endfor %}
+{% set ns = namespace(g="", found=false) %}{% for p in view.participants %}{% if p.group_label != ns.g %}{% if ns.g %}</optgroup>{% endif %}<optgroup label="{{ p.group_label }}">{% set ns.g = p.group_label %}{% endif %}<option value="{{ p.participant_id }}"{% if p.participant_id == i.performing_participant_id %}{% set ns.found = true %} selected{% endif %}>{{ p.name }}</option>{% endfor %}{% if ns.g %}</optgroup>{% endif %}
+{% if i.performing_participant_id and not ns.found %}<option value="{{ i.performing_participant_id }}" selected>{{ view.participant_names.get(i.performing_participant_id, "").split(" · ")[0] }} (참여 종료)</option>{% endif %}
 </select>
 </label>
-<p class="small muted">공종은 바꿀 수 없습니다. 다른 공종이면 작업을 새로 추가하세요. 시간·위치를 바꾸면 이전 판정은 기록으로 남고 다시 판정해야 합니다.</p>
-<button class="btn btn--accent btn--sm" type="submit">계획 저장</button>
+</div>
+<label class="field">메모<input type="text" name="memo" maxlength="500" value="{{ i.memo }}"></label>
+
+<div class="modal__actions">
+<details class="delete-action modal__delete">
+<summary>작업 삭제</summary>
+<div class="delete-action__confirm">
+<p class="small">정말 지울까요? 되돌릴 수 없어요.</p>
+<button class="btn btn--sm" type="submit" formaction="/schedule/{{ i.item_id }}/delete" formnovalidate>삭제</button>
+</div>
+</details>
+<button class="btn btn--accent" type="submit">저장</button>
+</div>
 </form>
 </details>
 {% endif %}
-</li>
+</div>
+</dialog>
 {% endfor %}
-</ul>
-{% endif %}
-{% if not d.items %}<div class="empty-art empty-art--sm"><img class="mascot" src="/static/brand/mascot-schedule.png" alt="" width="120" height="95"><p>{{ d.note or "이날 등록한 작업이 없습니다." }}</p></div>
-{% elif d.note %}<p class="small muted" style="padding: 8px 0 0;">{{ d.note }}</p>{% endif %}
-<div class="day-actions">
-{% if d.can_add and view.site_id in manageable %}<button class="btn btn--accent btn--sm" type="button" data-open-add>{{ icon("plus", 15, 2.2) }} 작업 추가</button>{% endif %}
-{% if d.is_target %}<a class="btn btn--ink btn--sm day-judge-link" href="/dashboard?site_id={{ view.site_id }}">{{ icon("dashboard", 15) }} 내일 판정 보기 {{ icon("arrow-right", 14, 2.2) }}</a>{% endif %}
-</div>
-</div>
 </section>
 
 {% if view.work_types %}
-<dialog class="modal" id="add-item" autofocus aria-labelledby="add-item-title"{% if view.errors %} data-open{% endif %}>
-<form class="modal__box" method="post" action="/schedule">
+<dialog class="modal modal--wide" id="add-item" aria-labelledby="add-item-title"{% if view.errors %} data-open{% endif %}>
+<form class="modal__box addform" method="post" action="/schedule">
 <div class="modal__head">
 <h2 class="h2" id="add-item-title">작업 추가</h2>
 <button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button>
 </div>
 {% if view.errors %}<div class="alert alert--error" role="alert"><ul>{% for e in view.errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
 <input type="hidden" name="site_id" value="{{ view.site_id }}">
+<input type="hidden" name="date_mode" value="pick">
+
 <fieldset class="addform__group">
-<legend class="field">공종 <small class="muted">여러 개 고르면 공종마다 작업이 따로 생깁니다</small></legend>
-<div class="chips" data-types>
+<legend class="addform__label">공종 <small>여러 개 선택</small></legend>
+<div class="typegrid">
 {% for w in view.work_types %}
-<label class="toggle-chip">
+<label class="typecard" style="--c: {{ work_color(w.label) }}">
 <input type="checkbox" name="work_types" value="{{ w.label }}"{% if w.selected %} checked{% endif %}>
-<span>{{ icon("check", 16, 2.4) }} {{ w.label }}{% if w.basis == "기준 미확인" %} <small class="toggle-chip__note">기준 미확인</small>{% endif %}</span>
+<span class="typecard__body"><span class="dot"></span><span class="typecard__name">{{ w.label }}</span>{% if w.basis == "기준 미확인" %}<small class="typecard__note">판정 기준 준비 중</small>{% endif %}</span>
 </label>
 {% endfor %}
 </div>
-<p class="small muted">이 현장에서 자주 쓴 공종이 앞에 옵니다. 기준 미확인 공종은 판정하지 않고 ‘확인 필요’로만 보입니다. 폭염(체감온도)은 모든 작업에 함께 판정해 그 작업 결과에 합칩니다.</p>
 </fieldset>
 
 <fieldset class="addform__group">
-<legend class="field">작업 날짜</legend>
-<div class="segmented" role="radiogroup" aria-label="날짜 고르는 방법">
-<label><input type="radio" name="date_mode" value="pick"{% if view.form.date_mode != "range" %} checked{% endif %}> 하나씩 누르기</label>
-<label><input type="radio" name="date_mode" value="range"{% if view.form.date_mode == "range" %} checked{% endif %}> 기간 + 요일</label>
-</div>
-<div class="datepick" data-datepick data-mode-panel="pick">
-<p class="datepick__month">{{ view.month_title }}</p>
-<div class="datepick__grid" role="group" aria-label="작업 날짜 고르기">
-{% for w in "월화수목금토일" %}<span class="datepick__dow">{{ w }}</span>{% endfor %}
-{% for week in view.weeks %}{% for c in week %}<button type="button" class="datepick__day{% if not c.in_month %} is-outside{% endif %}" data-date="{{ c.day.isoformat() }}"{% if not c.addable or not c.in_month %} disabled{% endif %} aria-pressed="{{ 'true' if c.day.isoformat() in view.form.work_dates or (not view.form.work_dates and c.day.isoformat() == view.form.work_date and c.addable) else 'false' }}">{{ c.day.day }}</button>{% endfor %}{% endfor %}
-</div>
-<div class="datepick__chips" aria-live="polite"></div>
-<div class="datepick__inputs">{% for dte in view.form.work_dates %}<input type="hidden" name="work_dates" value="{{ dte }}">{% endfor %}</div>
-<noscript><input type="date" name="work_date" value="{{ view.form.work_date }}"></noscript>
-</div>
-<div class="rangepick" data-mode-panel="range">
-<div class="inline">
-<label class="field" style="flex: 1 1 140px;">시작일<input type="date" name="range_start" value="{{ view.form.range_start }}"></label>
-<label class="field" style="flex: 1 1 140px;">종료일<input type="date" name="range_end" value="{{ view.form.range_end }}"></label>
-</div>
-<div class="chips" role="group" aria-label="요일">
-{% for w in "월화수목금토일" %}<label class="toggle-chip toggle-chip--sm"><input type="checkbox" name="weekdays" value="{{ loop.index0 }}"{% if loop.index0 | string in view.form.weekdays %} checked{% endif %}><span>{{ w }}</span></label>{% endfor %}
-</div>
-<p class="small muted">기간 안에서 고른 요일마다 작업을 만듭니다. 작업 기간 밖이거나 오늘 이전 날짜가 섞이면 저장하지 않습니다.</p>
+<legend class="addform__label">날짜 <small>여러 날 선택</small></legend>
+<div class="dpick" data-dpick data-min="{{ view.today_iso }}" data-start="{{ view.period_start_iso }}" data-end="{{ view.period_end_iso }}" data-initial="{{ (view.form.work_dates or ([view.form.work_date] if view.form.work_date else [])) | join(',') }}">
+<noscript><input type="date" name="work_date" value="{{ view.form.work_date }}" min="{{ view.today_iso }}" data-plain></noscript>
 </div>
 </fieldset>
 
-<div class="inline">
-<label class="field" style="flex: 1 1 120px;">시작<input type="time" name="start" value="{{ view.form.start }}" required></label>
-<label class="field" style="flex: 1 1 120px;">종료<input type="time" name="end" value="{{ view.form.end }}" required></label>
+<fieldset class="addform__group">
+<legend class="addform__label">시간</legend>
+<div class="timepair">
+<label class="field"><span class="visually-hidden">시작</span><input type="time" name="start" value="{{ view.form.start }}" data-now="{{ view.now_hm }}" placeholder="시작" required></label>
+<span class="timepair__dash" aria-hidden="true">–</span>
+<label class="field"><span class="visually-hidden">종료</span><input type="time" name="end" value="{{ view.form.end }}" data-after="start" placeholder="종료" required></label>
 </div>
-{% if view.recent_times %}
-<div class="recent-times"><span class="small muted">최근 쓴 시간</span>{% for t in view.recent_times %}<button type="button" class="btn btn--soft btn--sm" data-time="{{ t }}">{{ t }}</button>{% endfor %}</div>
-{% endif %}
-<label class="field">작업 위치 (선택)<input type="text" name="location" maxlength="60" placeholder="예: A구역 3층" value="{{ view.form.location }}"></label>
-<label class="field">메모 (선택)<input type="text" name="memo" maxlength="500" value="{{ view.form.memo }}"></label>
-<label class="field">실행 업체 (선택)
+<p class="small addform__hint" data-today-hint hidden>오늘 작업은 지금({{ view.now_hm }}) 뒤로만 잡을 수 있어요.</p>
+</fieldset>
+
+<div class="inline">
+<label class="field">작업 위치<input type="text" name="location" maxlength="60" placeholder="예: A구역 3층" value="{{ view.form.location }}"></label>
+<label class="field">실행 업체
 <select name="performing_participant_id">
 <option value="">미지정</option>
-{% for p in view.participants %}<option value="{{ p.participant_id }}"{% if p.selected %} selected{% endif %}>{{ p.name }}</option>{% endfor %}
+{% set ns = namespace(g="") %}{% for p in view.participants %}{% if p.group_label != ns.g %}{% if ns.g %}</optgroup>{% endif %}<optgroup label="{{ p.group_label }}">{% set ns.g = p.group_label %}{% endif %}<option value="{{ p.participant_id }}"{% if p.selected %} selected{% endif %}>{{ p.name }}</option>{% endfor %}{% if ns.g %}</optgroup>{% endif %}
 </select>
 </label>
-<div class="modal__actions">
+</div>
+<label class="field">메모<input type="text" name="memo" maxlength="500" value="{{ view.form.memo }}" placeholder="선택"></label>
+<div class="modal__actions addform__foot">
 <p class="small addform__count" data-count aria-live="polite"></p>
 <button class="btn btn--soft" type="button" data-close>취소</button>
-<button class="btn btn--accent" type="submit">{{ icon("plus", 16, 2.2) }} 작업 추가</button>
+<button class="btn btn--accent" type="submit">{{ icon("plus", 16, 2.2) }} 추가</button>
 </div>
 </form>
 </dialog>
-<script>
-// 작업 추가 모달: 버튼으로 열고, 바깥(배경)·취소·Esc로 닫는다. 저장 실패로 돌아오면 바로 연다.
-(() => {
-  const MAX_ITEMS = 100;
-  const dialog = document.getElementById("add-item");
-  const form = dialog.querySelector("form");
-  const count = dialog.querySelector("[data-count]");
-  dialog.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => dialog.close()));
-  dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
-  // 날짜 고르기: 누를 때마다 켜고 끄며, 고른 날짜를 칩과 숨은 입력(work_dates)으로 둔다.
-  const pick = dialog.querySelector("[data-datepick]");
-  const chips = pick.querySelector(".datepick__chips");
-  const inputs = pick.querySelector(".datepick__inputs");
-  const days = [...pick.querySelectorAll(".datepick__day")];
-  const mode = () => form.querySelector("input[name=date_mode]:checked").value;
-  const rangeDays = () => {
-    const s = form.range_start.value, e = form.range_end.value;
-    const wanted = [...form.querySelectorAll("input[name=weekdays]:checked")].map((b) => Number(b.value));
-    if (!s || !e || e < s) return 0;
-    let n = 0;
-    for (let d = new Date(s + "T00:00:00"); d <= new Date(e + "T00:00:00"); d.setDate(d.getDate() + 1)) {
-      if (wanted.includes((d.getDay() + 6) % 7)) n += 1;  // 월=0
-    }
-    return n;
-  };
-  // 저장 전에 몇 건이 생기는지 보인다(공종 수 × 날 수).
-  const update = () => {
-    form.querySelectorAll("[data-mode-panel]").forEach((p) => { p.hidden = p.dataset.modePanel !== mode(); });
-    const types = form.querySelectorAll("input[name=work_types]:checked").length;
-    const dayCount = mode() === "range" ? rangeDays() : inputs.children.length;
-    const total = types * dayCount;
-    count.textContent = total ? `공종 ${types}개 × ${dayCount}일 = 작업 ${total}건 추가` : "공종과 날짜를 고르세요";
-    count.classList.toggle("is-over", total > MAX_ITEMS);
-    if (total > MAX_ITEMS) count.textContent += ` · 한 번에 ${MAX_ITEMS}건까지`;
-  };
-  const sync = () => {
-    const chosen = days.filter((b) => b.getAttribute("aria-pressed") === "true");
-    inputs.replaceChildren(...chosen.map((b) => Object.assign(document.createElement("input"), { type: "hidden", name: "work_dates", value: b.dataset.date })));
-    chips.replaceChildren(...chosen.map((b) => {
-      const chip = document.createElement("button");
-      chip.type = "button";
-      chip.className = "datepick__chip";
-      const d = new Date(b.dataset.date + "T00:00:00");
-      chip.textContent = `${d.getMonth() + 1}/${d.getDate()}(${"일월화수목금토"[d.getDay()]}) ×`;
-      chip.setAttribute("aria-label", `${chip.textContent.slice(0, -2)} 빼기`);
-      chip.addEventListener("click", () => { b.setAttribute("aria-pressed", "false"); sync(); });
-      return chip;
-    }));
-    if (!chosen.length) chips.textContent = "고른 날짜 없음";
-    update();
-  };
-  days.forEach((b) => b.addEventListener("click", () => {
-    b.setAttribute("aria-pressed", String(b.getAttribute("aria-pressed") !== "true"));
-    sync();
-  }));
-  form.addEventListener("change", update);
-  form.addEventListener("input", update);
-  // 최근 쓴 시간: 누를 때만 시작·종료를 채운다(미리 채우지 않음).
-  form.querySelectorAll("[data-time]").forEach((b) => b.addEventListener("click", () => {
-    [form.start.value, form.end.value] = b.dataset.time.split("–");
-    update();
-  }));
-  // 작업 복사: 같은 공종·시간·위치·메모·실행 업체로 채우고 날짜만 새로 고르게 한다.
-  const open = (copy) => {
-    if (copy) {
-      form.querySelectorAll("input[name=work_types]").forEach((b) => { b.checked = b.value === copy.workType; });
-      form.start.value = copy.start;
-      form.end.value = copy.end;
-      form.location.value = copy.location;
-      form.memo.value = copy.memo;
-      form.performing_participant_id.value = copy.performer;
-      days.forEach((b) => b.setAttribute("aria-pressed", "false"));
-      sync();
-    }
-    dialog.showModal();
-  };
-  document.querySelectorAll("[data-open-add]").forEach((b) => b.addEventListener("click", () => open(null)));
-  document.querySelectorAll("[data-copy]").forEach((b) => b.addEventListener("click", () => open(JSON.parse(b.dataset.copy))));
-  sync();
-  form.addEventListener("submit", (e) => {
-    if (mode() === "pick" && !inputs.children.length) { e.preventDefault(); chips.textContent = "작업 날짜를 하나 이상 고르세요."; }
-  });
-  if (dialog.hasAttribute("data-open")) dialog.showModal();
-})();
-</script>
 {% endif %}
 </aside>
 </div>
+<script>
+(() => {
+  const MAX_ITEMS = 100;
+  const DOW = "일월화수목금토";
+  const pad = (n) => String(n).padStart(2, "0");
+  const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const parse = (s) => (s ? new Date(s + "T00:00:00") : null);
+  const root = document.querySelector("[data-schedule]");
+  const addDialog = document.getElementById("add-item");
+
+  // ---- 모달 열고 닫기(바깥·취소·Esc). 화면 일부를 바꿔 끼워도 동작하도록 문서에서 한 번만 받는다 ----
+  document.addEventListener("click", (e) => {
+    const closeBtn = e.target.closest("dialog [data-close]");
+    if (closeBtn) { closeBtn.closest("dialog").close(); return; }
+    if (e.target.tagName === "DIALOG") { e.target.close(); return; }
+    const opener = e.target.closest("[data-open-dialog]");
+    if (opener) { e.target.closest("details")?.removeAttribute("open"); document.getElementById(opener.dataset.openDialog)?.showModal(); return; }
+    const add = e.target.closest("[data-open-add]");
+    if (add && addDialog) { picker?.reset(add.dataset.day ? [add.dataset.day] : []); addDialog.showModal(); return; }
+    const copy = e.target.closest("[data-copy]");
+    if (copy && addDialog) { e.target.closest("details")?.removeAttribute("open"); fillCopy(JSON.parse(copy.dataset.copy)); }
+  });
+  document.querySelectorAll("dialog[data-open]").forEach((d) => d.showModal());
+
+  // ---- 날짜 고르기: 한 달 달력에서 누르면 켜고 끄고, 끌면 그 사이를 모두 고른다 ----
+  const makePicker = (box) => {
+    const min = parse(box.dataset.min), start = parse(box.dataset.start), end = parse(box.dataset.end);
+    const form = box.closest("form");
+    let chosen = new Set((box.dataset.initial || "").split(",").filter(Boolean));
+    let cursor = new Date((parse([...chosen][0]) || min || new Date()).getTime()); cursor.setDate(1);
+    const ok = (d) => (!min || d >= min) && (!start || d >= start) && (!end || d <= end);
+    let drag = null;
+    const head = document.createElement("div"); head.className = "dpick__head";
+    const presets = document.createElement("div"); presets.className = "dpick__presets";
+    const grid = document.createElement("div"); grid.className = "dpick__grid";
+    const summary = document.createElement("div"); summary.className = "dpick__summary"; summary.setAttribute("aria-live", "polite");
+    const inputs = document.createElement("div"); inputs.hidden = true;
+    box.append(presets, head, grid, summary, inputs);
+    const preset = (label, days) => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "chipbtn"; b.textContent = label;
+      b.addEventListener("click", () => { const list = days().filter(ok).map(iso); chosen = new Set(list); if (list[0]) { cursor = parse(list[0]); cursor.setDate(1); } draw(); });
+      presets.append(b);
+    };
+    const base = min || new Date();
+    const weekdaysFrom = (monday) => [0, 1, 2, 3, 4].map((i) => new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i));
+    const thisMonday = new Date(base.getFullYear(), base.getMonth(), base.getDate() - ((base.getDay() + 6) % 7));
+    preset("오늘", () => [new Date(base)]);
+    preset("내일", () => [new Date(base.getFullYear(), base.getMonth(), base.getDate() + 1)]);
+    preset("이번 주 평일", () => weekdaysFrom(thisMonday));
+    preset("다음 주 평일", () => weekdaysFrom(new Date(thisMonday.getFullYear(), thisMonday.getMonth(), thisMonday.getDate() + 7)));
+    const draw = () => {
+      const y = cursor.getFullYear(), m = cursor.getMonth();
+      head.innerHTML = "";
+      const nav = (txt, label, delta) => { const b = document.createElement("button"); b.type = "button"; b.className = "dpick__nav"; b.textContent = txt; b.setAttribute("aria-label", label); b.addEventListener("click", () => { cursor = new Date(y, m + delta, 1); draw(); }); return b; };
+      const title = document.createElement("strong"); title.textContent = `${y}년 ${m + 1}월`;
+      head.append(nav("‹", "이전 달", -1), title, nav("›", "다음 달", 1));
+      grid.innerHTML = "";
+      for (const w of "일월화수목금토") { const s = document.createElement("span"); s.className = "dpick__dow"; s.textContent = w; grid.append(s); }
+      const first = new Date(y, m, 1), lead = first.getDay();  // 일요일부터
+      for (let i = 0; i < lead; i += 1) grid.append(document.createElement("span"));
+      for (let day = 1; day <= new Date(y, m + 1, 0).getDate(); day += 1) {
+        const d = new Date(y, m, day), key = iso(d);
+        const b = document.createElement("button"); b.type = "button"; b.className = "dpick__day"; b.textContent = day; b.dataset.date = key;
+        b.disabled = !ok(d);
+        if (min && key === iso(min)) b.classList.add("is-today");
+        b.setAttribute("aria-pressed", String(chosen.has(key)));
+        b.setAttribute("aria-label", `${m + 1}월 ${day}일`);
+        grid.append(b);
+      }
+      sync();
+    };
+    // 누른 날에서 시작해 끌면 지나간 날을 모두 같은 상태(켜기/끄기)로 맞춘다
+    grid.addEventListener("pointerdown", (e) => {
+      const b = e.target.closest(".dpick__day:not(:disabled)"); if (!b) return;
+      e.preventDefault();
+      drag = { on: !chosen.has(b.dataset.date), from: b.dataset.date };
+      apply(b.dataset.date, b.dataset.date);
+      grid.setPointerCapture(e.pointerId);
+    });
+    grid.addEventListener("pointermove", (e) => {
+      if (!drag) return;
+      const b = document.elementFromPoint(e.clientX, e.clientY)?.closest(".dpick__day:not(:disabled)");
+      if (b) apply(drag.from, b.dataset.date);
+    });
+    const stop = () => { drag = null; };
+    grid.addEventListener("pointerup", stop); grid.addEventListener("pointercancel", stop);
+    grid.addEventListener("keydown", (e) => {
+      const b = e.target.closest(".dpick__day"); if (!b || (e.key !== "Enter" && e.key !== " ")) return;
+      e.preventDefault(); drag = { on: !chosen.has(b.dataset.date), from: b.dataset.date }; apply(b.dataset.date, b.dataset.date); drag = null;
+    });
+    const apply = (a, b) => {
+      const [lo, hi] = a < b ? [a, b] : [b, a];
+      grid.querySelectorAll(".dpick__day:not(:disabled)").forEach((btn) => {
+        const k = btn.dataset.date;
+        if (k >= lo && k <= hi) { if (drag.on) chosen.add(k); else chosen.delete(k); btn.setAttribute("aria-pressed", String(drag.on)); }
+      });
+      sync();
+    };
+    const sync = () => {
+      const list = [...chosen].sort();
+      inputs.replaceChildren(...list.map((v) => Object.assign(document.createElement("input"), { type: "hidden", name: "work_dates", value: v })));
+      summary.innerHTML = "";
+      if (!list.length) { summary.textContent = "날짜를 골라 주세요"; summary.classList.add("is-empty"); }
+      else {
+        summary.classList.remove("is-empty");
+        const label = (v) => { const d = parse(v); return `${d.getMonth() + 1}/${d.getDate()}(${DOW[d.getDay()]})`; };
+        const text = document.createElement("span");
+        text.textContent = list.length <= 3 ? list.map(label).join(", ") : `${label(list[0])} 외 ${list.length - 1}일`;
+        const clear = document.createElement("button"); clear.type = "button"; clear.className = "dpick__clear"; clear.textContent = "지우기";
+        clear.addEventListener("click", () => { chosen.clear(); draw(); });
+        summary.append(Object.assign(document.createElement("strong"), { textContent: `${list.length}일` }), text, clear);
+      }
+      form.dispatchEvent(new Event("dates", { bubbles: true }));
+    };
+    draw();
+    return {
+      count: () => chosen.size,
+      has: (v) => chosen.has(v),
+      reset: (days) => { chosen = new Set(days.filter((v) => ok(parse(v)))); if (days[0]) { cursor = parse(days[0]); cursor.setDate(1); } draw(); },
+    };
+  };
+  const dbox = addDialog?.querySelector("[data-dpick]");
+  const picker = dbox ? makePicker(dbox) : null;
+
+  // ---- 작업 추가 폼: 건수 미리보기, 오늘이 끼면 지금 이후 시작만 ----
+  const form = addDialog?.querySelector("form");
+  if (form) {
+    const count = form.querySelector("[data-count]");
+    const hint = form.querySelector("[data-today-hint]");
+    const startInput = form.elements.start;
+    const update = () => {
+      const types = form.querySelectorAll("input[name=work_types]:checked").length;
+      const days = picker ? picker.count() : 1;
+      const total = types * days;
+      count.textContent = total ? `작업 ${total}건 추가` + (types > 1 && days > 1 ? ` (공종 ${types} × ${days}일)` : "") : "공종과 날짜를 골라 주세요";
+      count.classList.toggle("is-over", total > MAX_ITEMS);
+      if (total > MAX_ITEMS) count.textContent += ` · 한 번에 ${MAX_ITEMS}건까지`;
+      const today = picker && picker.has(dbox.dataset.min);
+      if (today) startInput.dataset.min = startInput.dataset.now; else delete startInput.dataset.min;
+      hint.hidden = !today;
+    };
+    form.addEventListener("change", update);
+    form.addEventListener("input", update);
+    form.addEventListener("dates", update);
+    form.addEventListener("submit", (e) => {
+      if (picker && !picker.count()) { e.preventDefault(); dbox.querySelector(".dpick__summary").textContent = "날짜를 하나 이상 골라 주세요"; return; }
+      const s = startInput.value, min = startInput.dataset.min;
+      if (min && s && s <= min) { e.preventDefault(); startInput.setAttribute("aria-invalid", "true"); hint.hidden = false; startInput.focus(); }
+    });
+    update();
+  }
+  // 작업 복사: 같은 공종·시간·위치·메모·실행 업체로 채우고 날짜만 새로 고르게 한다.
+  const fillCopy = (c) => {
+    form.querySelectorAll("input[name=work_types]").forEach((b) => { b.checked = b.value === c.workType; });
+    form.elements.start.value = c.start; form.elements.end.value = c.end;
+    form.elements.location.value = c.location; form.elements.memo.value = c.memo;
+    form.elements.performing_participant_id.value = c.performer;
+    picker?.reset([]);
+    form.dispatchEvent(new Event("change"));
+    addDialog.showModal();
+  };
+
+  // ---- 날짜·달을 눌러도 화면을 새로 띄우지 않고 달력·상세만 바꾼다(스크롤 유지) ----
+  const swap = async (url, push = true) => {
+    try {
+      const res = await fetch(url, { headers: { Accept: "text/html" } });
+      if (!res.ok) throw new Error(String(res.status));
+      const doc = new DOMParser().parseFromString(await res.text(), "text/html");
+      const scroll = { left: scrollX, top: scrollY, behavior: "instant" };
+      for (const key of ["header", "calendar", "day"]) {
+        const next = doc.querySelector(`[data-swap="${key}"]`), cur = document.querySelector(`[data-swap="${key}"]`);
+        if (!next || !cur) throw new Error("missing");
+        cur.replaceWith(next);
+        window.gongonPick?.enhance(next);
+      }
+      // 오늘 브리핑은 오늘을 고른 때만 있다
+      const brief = doc.querySelector('[data-swap="briefing"]'), curBrief = document.querySelector('[data-swap="briefing"]');
+      if (curBrief) curBrief.remove();
+      if (brief) document.querySelector('[data-swap="day"]').before(brief);
+      document.querySelectorAll("dialog[data-open]").forEach((d) => d.showModal());
+      if (push) history.pushState({ schedule: true }, "", url);
+      window.scrollTo(scroll);
+      // 교체한 패널을 기준으로 브라우저가 스크롤 앵커를 다시 잡은 뒤에도 같은 위치로 둔다.
+      requestAnimationFrame(() => window.scrollTo(scroll));
+      return true;
+    } catch {
+      location.href = url;
+      return false;
+    }
+  };
+  root?.addEventListener("click", async (e) => {
+    // 달력의 점: 그날로 바꾸고 그 작업 상세를 연다
+    const dot = e.target.closest(".dot--btn");
+    if (dot) {
+      e.preventDefault();
+      const open = () => document.getElementById(`item-${dot.dataset.item}`)?.showModal();
+      if (document.getElementById(`item-${dot.dataset.item}`)) open();
+      else if (await swap(dot.dataset.href)) open();
+      return;
+    }
+    const link = e.target.closest(".calcell__link, .caldots__more, [data-nav]");
+    if (!link || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+    e.preventDefault();
+    link.closest("details")?.removeAttribute("open");
+    swap(link.href);
+  });
+  addEventListener("popstate", () => swap(location.href, false));
+})();
+</script>
 {% endif %}
 {% endblock %}

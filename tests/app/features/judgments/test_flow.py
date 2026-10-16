@@ -218,7 +218,8 @@ def test_detail_shows_basis_issue_time_and_source_check(
     assert source_note in page
     assert ("원문 대조 필요" in page) is not verified
     assert "풍속 10.0 → 기준 10 m/s 이상에 해당" in page
-    assert "최종 결정은 현장 책임자가 합니다" in page
+    assert "최종 판단은 현장 책임자가 합니다" in page
+    assert "‘진행’도 현장 안전을 보장하지 않으며, 예보는 실제 날씨와 다를 수 있습니다" not in page
 
 
 def test_detail_unknown_id_returns_404(client: TestClient) -> None:
@@ -263,8 +264,10 @@ def test_home_is_separate_from_site_dashboard_in_menu(client: TestClient) -> Non
     dashboard = client.get("/dashboard").text
 
     assert '<a href="/" aria-current="page">홈</a>' in home
-    assert '<a href="/dashboard" aria-current="page">현장 대시보드</a>' not in home
-    assert '<a href="/dashboard" aria-current="page">현장 대시보드</a>' in dashboard
+    assert '<nav class="subnav"' not in home
+    # 공온 판정은 작업 일정의 하위 메뉴다(D-063)
+    assert '<a href="/schedule" aria-current="page">작업 일정</a>' in dashboard
+    assert '<a href="/dashboard" aria-current="page">공온 판정</a>' in dashboard
 
 
 def test_home_summarizes_each_site_and_links_to_its_dashboard(

@@ -1,17 +1,25 @@
 # 현재 작업 인계
 
-- 마지막 수정: Claude Code, 2026-10-16. C00~C05·C04-4·바닥 영역(푸터) 개편 완료·`main` 병합. 다음은 **C06 후속 조치·검증**(collab-contract §5). 진행 중 브랜치 없음(C06 코드는 아직 없음).
-- 제품 방향(D-055·D-056): 대형 건설사 프로젝트의 작업 변경 → 업체별 후속 조치 → 완료 보고 → 검증. 실제 내부 자료는 선행조건이 아니다. 합성 자료는 `[가상]`, 시장성·현장 효과는 C08.
-- 기준 문서: 계약 [collab-contract.md](collab-contract.md), 조사 [research/C01-public-research.md](research/C01-public-research.md), 결정 D-057~D-060.
-- C03: 로그인·세션(0009), 같은 출처 검사, 참여 업체·역할(0010). `sites.service.list_sites/get_site`는 `SiteScope` 필수(None=매시 자동 판정만). 비참여 404·역할 부족 403(HTML). 버튼 표시는 `ManagedSitesDep`(조정자)·`ProposableSitesDep`(조정자·담당자), 권한은 서비스가 확인.
-- C04: UTC 비교·작업 숨김 삭제(0011)·작업별 최신 판정 DB 선정·"재판정 필요"(C04-1), 실행 업체·계획 버전·변경 이력·낙관적 잠금(0012, C04-2), 현장 주요 공종·기본 시간 제거·작업 있는 날만 판정·폭염을 작업 카드에 합침·작업 추가 편의(0013, C04-3, D-059).
-- C04-4(D-061, 개발자 요청): 오늘 작업 등록·수정 허용(지난 날짜만 거부), 일정 화면 기본 선택 오늘, 오늘 작업은 판정하지 않음(판정은 내일부터 7일 그대로). 모든 date/time 입력은 `app/core/static/picker.js` 고르기 판(일→월→연, 시+5분)으로 바뀜(값 형식·서버 검증 동일, 숨긴 입력의 value를 바꾸면 버튼 글자도 바뀜).
-- C05(0014, D-060): `app/features/changes`. 제안(조정자·담당자)→영향 검토→확정(조정자)·철회(이유). 확정 = `schedules.service.apply_plan_change_by_id`(source='change') + 이전 확정 버전 superseded + 이 버전 confirmed, 한 트랜잭션. confirm_key로 재전송 구분, 제안 뒤 계획 버전이 바뀌면 확정 거부. 메뉴 "변경", 작업 카드 "변경 제안".
-- **C06 시작 지점**: `changes.service._after_confirm(session, revision)`에서 확정 버전의 후속 조치를 같은 트랜잭션으로 만든다. 계약 §5의 action_items·action_events, 상태 requested→accepted/blocked→reported→verified(반려는 accepted), 검증자≠보고자, 대상 버전이 현재가 아니면 거부, 종료 조건(현재 버전 필수 조치 모두 verified/excluded·막힘 없음, 0건이면 이유). 조치 후보 입력은 영향 검토 단계(review)에서 받는다. 위임·텍스트 근거도 C06.
-- 검증: `scripts/check.py` 통과 483 passed·skip 없음, `PGTZ=UTC` 483 passed. 실제 브라우저(로컬 Chromium + 스크래치 playwright-core)로 작업 추가 모달·현장 설정·대시보드·변경 제안→확정 확인(가로 넘침·스크립트 오류 없음). 휴대폰 실기기는 미실시.
-- **개발자 할 일**: 개발 DB 기존 현장 3곳은 소유자 미지정이라 안 보인다. 가입 후 `PYTHONUTF8=1 uv run python scripts/grant_site.py --email <내 이메일> --all-unassigned`. 그 현장들의 예전 "주요 공종"은 더 쓰지 않으므로 작업 일정에서 작업을 등록해야 판정된다. 확인용 가입자(smoke·prime·sub·edit·pw·pg·ch…@example.com)와 그 현장(대부분 삭제 처리)이 남아 있으며 지워도 된다.
-- 남은 위험: 로그인 시도 횟수 제한 없음, 가입 개방(D-014 시연 범위), 초대 메일 없음(D-015), 다중 프로세스 자동 판정 중복 제어 미검증, 변경 목록 50건 상한.
-- 원문 대기: 한중·도장·방수·아스팔트 KCS, 이동식 크레인·고소작업대 수치, 산안법 §64·사업관리 지침·KS F 4009 원문 대조. 알림톡(D-015), 기상청 트래픽 한도 미확인.
-- 테스트 도구: `tests/conftest.py`의 `browser(user)`(여러 회사 사용자), `client`=기본 사용자(가상건설 조정자), `tests/helpers.add_site_with_work`(현장+내일 작업). 다른 요청이 저장한 값을 테스트 세션에서 읽을 때는 `session.expire_all()`.
-- Windows: `uv run python -m pytest|alembic|uvicorn|mypy|ruff`, 한글 출력 `PYTHONUTF8=1`. 한글·따옴표가 많은 편집은 스크래치 파이썬 스크립트로(CRLF 유지), bash heredoc은 깨질 수 있다.
-- 2026-10-16 개발자 요청으로 미추적 옛 자료(`output/` PDF·`reports/`·`research_notes/`·`tmp/`, 바탕 화면의 같은 PDF 2개)와 도구 캐시를 지웠다. 현재 기준은 총정리·`docs/proposals/` 기획서 v2.1·`docs/research/C01-public-research.md`.
+- 마지막 수정: Claude Code, 2026-10-16. **C04-9 참여 업체·담당자 명부** 구현·check.py 525 passed, main 반영. 실제 브라우저 화면 확인 전이라 `review`. 같은 날 D-070(콘업 제언서 검토: R1 완료 기준·R3 내 조치 정렬은 C06, 시연은 C07 수용 시나리오, 메신저는 D-071로 현장 대화방 C12). 남기는 작업 브랜치는 `feature/C06-actions` 하나.
+- C04-9: teams 서비스 `register_participant`·`edit_participant`·`end/resume_participant`·`add/remove/link/unlink_contact`, `participant_choices`(참여 중만, 구분 순). 같은 이름 업체 붙이기 `_attach`(명부 업체는 회사 교체, 사용자 있는 업체는 새 가입자만 이동). 계약 §2-1 구현 세부.
+- 다음 순서: C06(WIP 이어받기, 마이그레이션 0016으로 번호 변경, D-070의 done_criteria·내 조치 정렬 포함) → C07 → C12 현장 대화방(D-071) → C11. C04-10·C04-11·C04-9는 실기기/브라우저 화면 확인 남음.
+- 개발자 요청 대기(2026-10-16): 로그인 화면 세련되게·구글/깃허브/카카오/네이버 가입, 바탕화면 아이콘(PWA 설치). 소셜 로그인은 각 개발자 콘솔 앱 등록·키가 필요.
+- C04-10 상세 증거: [qa/C04-10.md](qa/C04-10.md). 제품 기능·판정 기준·DB·의존성 변경 없음.
+- 수정: 더보기 메뉴 카드 잘림, 모달 날짜·시간 목록 최상위 popover, 휴대폰 달 목록 경계, 철회·삭제 확인 폼 펼침, 날짜 이동 스크롤 복원·달 제목 갱신, 제목 단어 줄바꿈.
+- 수정: D-064 공통 시작 검증(`schedules.service.plan_start_error`)을 변경 제안·확정에도 적용. 확정 시점에 지난 시각·날짜면 저장하지 않음. 이미 시작한 오늘 작업의 시작 유지 예외는 그대로.
+- 수정: 기준 없는 작업에 폭염 '진행' 기록이 붙어도 알림의 작업 '확인 필요' 유지. 긴 설명은 가이드로, 403 안내는 역할 중립 문구, 추가 모달 라벨 중간 정렬.
+- 자동 검증: 수정 전 신규 회귀 4건 실패 재현. **scripts/check.py 전체 503 passed·skip 없음, ruff·format·mypy 모두 ok**. UTC 세션 관련 80 passed, 마지막 문구·화면 관련 재검사 77 passed.
+- 실제 브라우저: Chromium 1440×900·390×844, 주요 10화면 가로 넘침 없음. 추가→초안→검토→확정→재변경→철회→재변경 확정, 원청·담당자·열람자 버튼/직접 URL, 메뉴·모달 Esc/바깥 누름 확인.
+- **미검증**: 휴대폰 실제 터치로 당겨서 새로 점검, 화면 키보드, 실제 iOS Safari·Android Chrome. 브라우저 제어에 터치 입력 API가 없다. 동일 실행 경로의 확인 버튼은 실제 실행. 통과로 세지 않음.
+- QA 서버는 setup 방식으로 8001에 실행. 기존 8000 서버와 분리. QA 작업 223은 숨김 삭제, 변경 건 3의 v1 확정·v2 철회·v3 확정 기록과 판정은 보존. 시연 자료 재생성 안 함.
+- 제품 방향: D-055·D-056, 주 사용자 원청 공사·공무(D-066), 날씨는 점검 5항목 중 하나(D-065), 게시 화면은 D-067.
+- 요구사항: product.md + decisions.md + collab-contract.md·contract.md(D-068). 화면 문구는 brand.md, 설명은 /guide.
+- 화면 구조: 홈·작업 일정·변경·현장, 일정 하위 달력·공온 판정·판정 내역. 이름 메뉴에 /me·/guide·로그아웃.
+- 홈 점검 5항목: judgments.service `_check_boards`·`CHECK_LABELS`. 공온지수는 기존 D-052 그대로. 휴대폰 당기기는 홈 touch 이벤트에서 run-all.
+- 권한: sites.service.list_sites/get_site는 SiteScope 필수. 비참여 404·역할 부족 403, 서비스가 확인. 버튼은 ManagedSitesDep·ProposableSitesDep.
+- 시연 자료는 개발 DB 현장 38, `pm@demo.gongon.test` / `gongon-demo-1234`. 담당자 frame@…·감리 cm@… 같은 비밀번호. 현재 회사 이름 합치기 SQL은 C04-9에서 명부로 대체.
+- 개발 DB 기존 현장 3곳 소유자 미지정: 가입 후 scripts/grant_site.py --email <내 이메일> --all-unassigned. 확인용 가입자와 현장은 지워도 됨.
+- 남은 위험: 로그인 제한 없음·가입 개방(D-014), 초대 메일 없음(D-015), 다중 프로세스 자동 판정 중복 제어 미검증, 변경 목록 50건 상한, 명부 연락처 보관·동의(D-066).
+- 원문 대기: 한중·도장·방수·아스팔트 KCS, 이동식 크레인·고소작업대 수치, 산안법 §64·사업관리 지침·KS F 4009. 알림톡(D-015)·기상청 트래픽 한도.
+- 테스트: tests/conftest.py browser(user)·client(가상건설 조정자, 지금=2026-10-04 15:00), tests/helpers.add_site_with_work. 지난 오늘 작업은 DB 직접 삽입. 다른 요청 저장 뒤 session.expire_all().
+- Windows: uv run python -m pytest|alembic|uvicorn|mypy|ruff. 한글은 PYTHONUTF8=1. 커밋 직후 작업 브랜치 origin push, 검증한 변경만 main fast-forward·push 후 작업 브랜치 삭제.

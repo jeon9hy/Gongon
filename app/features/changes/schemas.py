@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Literal
 
-# 변경 원인(총정리 §1.1). 여러 원인이면 복수로 고른다. 기상은 그중 하나다.
+# 변경 원인(product.md §1). 여러 원인이면 복수로 고른다. 기상은 그중 하나다.
 REASON_LABELS: dict[str, str] = {
     "schedule": "공정·선행 작업",
     "labor": "인력",
@@ -58,6 +58,8 @@ class ChangeFormView:
     work_item_id: int
     work_label: str
     current_text: str  # 지금 계획 "10/05(월) 09:00-12:00 · A구역"
+    current_date: str
+    current_start: str
     plan_version: int
     case_id: int | None
     form: ChangeForm

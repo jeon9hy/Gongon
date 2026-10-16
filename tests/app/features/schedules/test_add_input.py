@@ -152,15 +152,13 @@ def test_frequently_used_work_types_come_first_without_site_setting(
     assert sorted(after) == sorted(before)  # 전체 공종을 늘 고를 수 있다
 
 
-def test_recent_times_are_offered_as_buttons_but_not_prefilled(
-    client: TestClient, site_id: int
-) -> None:
+def test_add_form_times_are_not_prefilled(client: TestClient, site_id: int) -> None:
     post(client, site_id, work_types=["철골 작업"], work_dates=days(1), start="07:30",
          end="11:00")  # fmt: skip
 
     page = client.get(f"/schedule?site_id={site_id}&day=2026-10-05").text
 
-    assert 'data-time="07:30–11:00"' in page
+    assert "data-time=" not in page  # 시간 바로가기 칩은 없앴다(D-065)
     assert 'name="start" value=""' in page and 'name="end" value=""' in page
 
 

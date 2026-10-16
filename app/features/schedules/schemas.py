@@ -74,8 +74,9 @@ PlanChangeResult = Literal["saved", "unchanged", "conflict", "missing"]
 @dataclass(frozen=True, slots=True)
 class ParticipantChoice:
     participant_id: int
-    name: str  # 회사 이름 · 원청/협력업체
+    name: str  # 회사 이름
     selected: bool = False
+    group_label: str = ""  # 원청·협력업체·자재 공급·장비 임대·감리·CM(선택 목록 묶음)
 
 
 @dataclass(frozen=True, slots=True)
@@ -159,8 +160,11 @@ class ScheduleView:
     errors: tuple[str, ...]
     message: str | None
     participants: tuple[ParticipantChoice, ...] = ()  # 실행 업체로 고를 수 있는 참여 업체
+    today_iso: str = ""  # 작업 추가 달력의 첫 날(지난 날은 고를 수 없다)
+    now_hm: str = ""  # 오늘 작업은 이 시각 뒤에 시작해야 한다(D-064)
+    period_start_iso: str = ""  # 현장 작업 기간(빈 값은 제한 없음)
+    period_end_iso: str = ""
     participant_names: dict[int, str] = field(default_factory=dict)
     revisions: dict[int, tuple[RevisionView, ...]] = field(default_factory=dict)  # 고른 날 작업
     edit_item_id: int | None = None  # 수정에 실패한 작업(그 카드의 수정 칸을 연다)
     edit_errors: tuple[str, ...] = ()
-    recent_times: tuple[str, ...] = ()  # 이 현장에서 최근 쓴 작업 시간 "08:00-17:00"(누르면 채움)
