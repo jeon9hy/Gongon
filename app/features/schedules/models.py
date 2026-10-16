@@ -7,7 +7,7 @@ from app.core.db import Base
 
 
 class WorkItem(Base):
-    """예정된 작업 한 건(현장·공종·날짜·시간). 예보로 자동 변경하지 않는다(총정리 §1 원칙)."""
+    """예정된 작업 한 건(현장·공종·날짜·시간). 예보로 자동 변경하지 않는다(product.md §4)."""
 
     __tablename__ = "work_items"
     __table_args__ = (Index("ix_work_items_site_date", "site_id", "work_date"),)

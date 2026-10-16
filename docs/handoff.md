@@ -4,7 +4,7 @@
 - **다음 작업: C04-9 참여 업체·담당자 명부**(D-066, 계약 §2-1, plan의 C04-9 분해). `main`에서 `feature/C04-9-participant-roster` 브랜치로 시작한다. 마이그레이션 번호는 0015.
 - 그다음 **C06 이어받기**: plan의 'C06 이어받기' 절을 그대로 따른다(main 합치기 → 마이그레이션 0016으로 번호 변경 → changes 연결·라우터·화면·테스트). 그 뒤 C07, C11 현장 게시 화면(D-067).
 - 제품 방향(D-055·D-056): 작업 변경 → 업체별 후속 조치 → 완료 보고 → 검증. 날씨는 공온 점검 5항목 중 하나(D-065). 주 사용자는 원청 공사·공무 담당자(D-066). 작업자는 별도 서비스가 아니라 게시 화면(D-067, 공개 링크 금지 유지).
-- 기준 문서: 계약 [collab-contract.md](collab-contract.md), 조사 [research/C01-public-research.md](research/C01-public-research.md), 결정 D-057~D-067, 화면 문구 [brand.md](brand.md)('공온 말투': 화면엔 설명문 없이 짧고 재치 있게, 설명은 /guide).
+- 요구사항: [product.md](product.md) + 결정 + 계약(D-068, 총정리·기획서는 삭제). 기준 문서: 계약 [collab-contract.md](collab-contract.md), 조사 [research/C01-public-research.md](research/C01-public-research.md), 결정 D-057~D-067, 화면 문구 [brand.md](brand.md)('공온 말투': 화면엔 설명문 없이 짧고 재치 있게, 설명은 /guide).
 - 화면 구조: 주 메뉴 홈·작업 일정·변경·현장(가운데 정렬), 작업 일정 하위 메뉴 달력·공온 판정·판정 내역. 이름 메뉴에 내 정보(/me)·공온 가이드(/guide)·로그아웃(app/features/help).
 - 홈(D-065): 오늘(시간표·먼저 챙길 것)/내일(브리핑 3줄)/이번 주 공온지수, 공온 점검은 judgments.service `_check_boards`·`CHECK_LABELS`, 새로 점검은 날짜 옆 버튼·휴대폰 당기기(run-all).
 - 작업 일정(D-064): 공종 색(`app/core/templating.WORK_TYPE_COLORS`) 점 달력·점 누르면 작업 상세 모달, 날짜 이동은 fetch로 달력·상세만 교체, 오늘 작업은 지금 이후 시작만(수정 시 시작 그대로면 예외), 일요일 시작. 날짜·시간 입력은 `app/core/static/picker.js`(시간은 30분 목록+직접 입력, `data-after`·`data-min`).

@@ -60,7 +60,7 @@ C01 [공개 조사](research/C01-public-research.md)의 설계 가정 A1~A7과 �
 
 ## 4. C05 변경 건·버전 (구현 완료 2026-10-16, D-060)
 
-변경 건 `change_cases`: site_id, work_item_id, title, created_by, created_at. 버전 `change_revisions`: case_id, number(1..), status, reasons(text[] — 총정리 §1.1 요인 코드), before/after 계획 값(work_date·start·end·location), note, based_on_plan_version, proposed_by/at, confirmed_by/at, withdrawn_by/at, withdraw_reason.
+변경 건 `change_cases`: site_id, work_item_id, title, created_by, created_at. 버전 `change_revisions`: case_id, number(1..), status, reasons(text[] — product.md §1 요인 코드), before/after 계획 값(work_date·start·end·location), note, based_on_plan_version, proposed_by/at, confirmed_by/at, withdrawn_by/at, withdraw_reason.
 
 | 버전 상태 | 뜻 | 다음 |
 | --- | --- | --- |
