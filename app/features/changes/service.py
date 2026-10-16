@@ -7,6 +7,10 @@
 - 같은 확정 요청을 다시 보내면(confirm_key) 같은 결과를 돌려주고 두 번 저장하지 않는다.
 - 제안 뒤 작업 계획이 바뀌었으면(다른 변경 확정·작업 수정) 확정하지 않는다.
   새 버전으로 다시 제안한다.
+- 후속 조치(C06): 초안·영향 검토 버전에 후보를 붙이고, 확정과 같은 트랜잭션에서 요청으로 바꾼다.
+  필수 조치가 없으면 확정 때 이유가 필요하다. 이전 확정 버전의 미수행 조치는 대체됨으로 둔다.
+- 잠금 순서: 변경 건 → 버전 → 조치. 확정·조치 처리·종료가 서로 엇갈리지 않게 늘 같은 순서로 잠근다.
+- 변경 건 종료: 현재 확정 버전의 필수 조치가 모두 검증 완료·제외이고 막힘이 없을 때만.
 """
 
 import secrets
@@ -18,6 +22,8 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.features.actions import service as actions_service
+from app.features.actions.schemas import ActionForm, CandidateForm
 from app.features.auth import service as auth_service
 from app.features.auth.schemas import CurrentUser, UserInfo
 from app.features.changes.models import ChangeCase, ChangeRevision
@@ -105,6 +111,8 @@ def propose(
     case = None if case_id is None else _case_in_site(session, case_id, site_id)
     if case is not None and case.work_item_id != item.item_id:
         raise HTTPException(status_code=404, detail="변경 건을 찾을 수 없습니다")
+    if case is not None and case.closed_at is not None:
+        return None, ("종료한 변경 건에는 재변경을 제안할 수 없습니다. 새 변경 건으로 제안하세요.",)
 
     errors: list[str] = []
     title = form.title.strip()
@@ -242,12 +250,14 @@ def confirm(
     revision_id: int,
     confirm_key: str,
     now: datetime,
+    no_action_reason: str = "",
 ) -> tuple[Outcome | None, tuple[str, ...]]:
-    """영향 검토 → 확정. 조정자만. 계획 갱신과 이전 확정 버전 대체를 한 트랜잭션으로."""
+    """영향 검토 → 확정. 조정자만. 계획 갱신·이전 버전 대체·후속 조치 요청을 한 트랜잭션으로."""
     teams_service.require_role(session, user, site_id, MANAGE_ROLES)
     key = confirm_key.strip()[:64]
     if not key:
         return None, ("확정 요청을 확인할 수 없습니다. 화면을 새로 열고 다시 확정하세요.",)
+    case = _locked_case(session, site_id, case_id)
     revision = _locked_revision(session, site_id, case_id, revision_id)
     if revision.status in ("confirmed", "superseded") and revision.confirm_key == key:
         session.rollback()
@@ -255,8 +265,9 @@ def confirm(
     if revision.status != "review":
         session.rollback()
         return None, (f"{STATUS_LABELS[revision.status]} 상태라 확정할 수 없습니다.",)
-    case = session.get(ChangeCase, case_id)
-    assert case is not None
+    if case.closed_at is not None:
+        session.rollback()
+        return None, ("종료한 변경 건이라 확정할 수 없습니다.",)
     item = schedules_service.get_item(session, site_id, case.work_item_id)
     if item is None:
         session.rollback()
@@ -302,7 +313,12 @@ def confirm(
         revision.confirmed_by_user_id = user.user_id
         revision.confirmed_at = now
         revision.confirm_key = key
-        _after_confirm(session, revision)
+        errors = _after_confirm(
+            session, site_id, revision, [old.id for old in previous], user, now, no_action_reason
+        )
+        if errors:
+            session.rollback()
+            return None, errors
         session.commit()
     except IntegrityError:
         session.rollback()
@@ -310,9 +326,146 @@ def confirm(
     return "ok", ()
 
 
-def _after_confirm(session: Session, revision: ChangeRevision) -> None:
-    """확정과 같은 트랜잭션에서 할 일. C06에서 후속 조치 생성, C07에서 발송 대기를 더한다."""
+def _after_confirm(
+    session: Session,
+    site_id: int,
+    revision: ChangeRevision,
+    previous_ids: list[int],
+    user: CurrentUser,
+    now: datetime,
+    no_action_reason: str,
+) -> tuple[str, ...]:
+    """확정과 같은 트랜잭션: 후보 → 요청, 필수 0건이면 이유 확인, 이전 버전 미수행 조치 대체.
+
+    발송 대기(C07)도 여기에 더한다. 오류가 있으면 호출한 쪽이 전부 되돌린다.
+    """
+    required, errors = actions_service.activate(session, site_id, revision.id, user.user_id, now)
+    if errors:
+        return errors
+    if required == 0:
+        reason = no_action_reason.strip()
+        if not reason:
+            return ("필수 후속 조치가 없습니다. 조치 없이 확정하는 이유를 입력하세요.",)
+        revision.no_action_reason = reason[:500]
+    actions_service.replace_unstarted(session, previous_ids, user.user_id, now)
     session.flush()
+    return ()
+
+
+# ---------- 후속 조치(C06) ----------
+
+
+def add_action_candidate(
+    session: Session,
+    user: CurrentUser,
+    site_id: int,
+    case_id: int,
+    revision_id: int,
+    form: CandidateForm,
+    now: datetime,
+) -> tuple[str, ...]:
+    """초안·영향 검토 버전에 조치 후보를 더한다. 조정자 또는 그 버전의 제안자."""
+    revision = _editable_revision(session, user, site_id, case_id, revision_id)
+    if isinstance(revision, tuple):
+        return revision
+    errors = actions_service.add_candidate(session, user, site_id, case_id, revision.id, form, now)
+    if errors:
+        session.rollback()
+        return errors
+    session.commit()
+    return ()
+
+
+def remove_action_candidate(
+    session: Session,
+    user: CurrentUser,
+    site_id: int,
+    case_id: int,
+    revision_id: int,
+    action_id: int,
+) -> tuple[str, ...]:
+    revision = _editable_revision(session, user, site_id, case_id, revision_id)
+    if isinstance(revision, tuple):
+        return revision
+    if not actions_service.remove_candidate(session, revision.id, action_id):
+        session.rollback()
+        raise HTTPException(status_code=404, detail="조치 후보를 찾을 수 없습니다")
+    session.commit()
+    return ()
+
+
+def act_on_action(
+    session: Session,
+    user: CurrentUser,
+    site_id: int,
+    case_id: int,
+    action_id: int,
+    kind: str,
+    form: ActionForm,
+    now: datetime,
+) -> tuple[str, ...]:
+    """조치 하나를 처리한다(수락·막힘·완료 보고·검증·반려·제외·전화 기록).
+
+    권한·상태 전이는 조치 서비스가 확인한다. 종료한 건의 조치는 처리하지 않는다.
+    """
+    teams_service.require_role(session, user, site_id, ALL_ROLES)
+    case = _locked_case(session, site_id, case_id)
+    if case.closed_at is not None:
+        session.rollback()
+        return ("종료한 변경 건이라 조치를 처리할 수 없습니다.",)
+    errors = actions_service.act(session, user, site_id, case_id, action_id, kind, form, now)
+    if errors:
+        session.rollback()
+        return errors
+    session.commit()
+    return ()
+
+
+def close_case(
+    session: Session, user: CurrentUser, site_id: int, case_id: int, now: datetime
+) -> tuple[str, ...]:
+    """변경 건 종료(조정자). 현재 확정 버전의 종료 조건을 잠근 채 확인한다(계약 §5)."""
+    teams_service.require_role(session, user, site_id, MANAGE_ROLES)
+    case = _locked_case(session, site_id, case_id)
+    if case.closed_at is not None:
+        session.rollback()
+        return ("이미 종료한 변경 건입니다.",)
+    revisions = list(
+        session.scalars(
+            select(ChangeRevision).where(ChangeRevision.case_id == case_id).with_for_update()
+        )
+    )
+    if any(r.status in OPEN_STATUSES for r in revisions):
+        session.rollback()
+        return ("진행 중인 제안이 있어 종료할 수 없습니다. 확정하거나 철회한 뒤 종료하세요.",)
+    current = next((r for r in revisions if r.status == "confirmed"), None)
+    if current is None:
+        session.rollback()
+        return ("확정한 버전이 없어 종료할 수 없습니다.",)
+    _, problems = actions_service.closure_problems(session, current.id)
+    if problems:
+        session.rollback()
+        return problems
+    case.closed_at = now
+    case.closed_by_user_id = user.user_id
+    session.commit()
+    return ()
+
+
+def _editable_revision(
+    session: Session, user: CurrentUser, site_id: int, case_id: int, revision_id: int
+) -> ChangeRevision | tuple[str, ...]:
+    """조치 후보를 고칠 수 있는 버전(잠금). 아니면 오류 문구, 권한이 없으면 403."""
+    role = teams_service.require_role(session, user, site_id, PROPOSE_ROLES)
+    case = _locked_case(session, site_id, case_id)
+    revision = _locked_revision(session, site_id, case_id, revision_id)
+    if case.closed_at is not None or revision.status not in OPEN_STATUSES:
+        session.rollback()
+        return ("확정 전(초안·영향 검토) 버전에만 조치 후보를 고칠 수 있습니다.",)
+    if role not in MANAGE_ROLES and revision.proposed_by_user_id != user.user_id:
+        session.rollback()
+        raise HTTPException(status_code=403, detail=teams_service.FORBIDDEN)
+    return revision
 
 
 def withdraw(
@@ -513,6 +666,19 @@ def _site_and_item(
 def _case_in_site(session: Session, case_id: int, site_id: int) -> ChangeCase:
     case = session.get(ChangeCase, case_id)
     if case is None or case.site_id != site_id:
+        raise HTTPException(status_code=404, detail="변경 건을 찾을 수 없습니다")
+    return case
+
+
+def _locked_case(session: Session, site_id: int, case_id: int) -> ChangeCase:
+    """변경 건 행 잠금(확정·조치 처리·종료가 엇갈리지 않게). 다른 현장이면 404."""
+    case = session.scalar(
+        select(ChangeCase)
+        .where(ChangeCase.id == case_id, ChangeCase.site_id == site_id)
+        .with_for_update()
+    )
+    if case is None:
+        session.rollback()
         raise HTTPException(status_code=404, detail="변경 건을 찾을 수 없습니다")
     return case
 

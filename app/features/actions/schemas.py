@@ -50,7 +50,8 @@ class CandidateForm:
     title: str = ""
     done_criteria: str = ""
     performing_participant_id: str = ""
-    assignee: str = ""  # "" 업체 내 미지정 · "user:<id>" 계정 · "contact:<id>" 계정 없는 명부의 사람
+    # "" 업체 내 미지정 · "user:<id>" 계정 · "contact:<id>" 계정 없는 명부의 사람
+    assignee: str = ""
     verifier_user_id: str = ""
     required: bool = True
     due_date: str = ""
@@ -116,6 +117,7 @@ class ActionCard:
     late_text: str | None  # 기한 뒤 처리
     blocked_text: str | None
     report_text: str | None
+    exclude_text: str | None
     history: tuple[str, ...]
     allowed: frozenset[str]  # 지금 사용자가 누를 수 있는 처리(ACTION_KINDS)와 "remove"(후보 빼기)
     behalf: bool  # 조정자가 수행자 대신 기록하는 경우: 연락 상대·시각 필수
@@ -128,6 +130,8 @@ class RevisionActions:
     required_done: int
     blocked: int
     editor: CandidateEditor | None
+    candidates: int = 0  # 확정 전 후보 수
+    required_candidates: int = 0  # 그중 필수(0이면 확정 때 이유 필요)
 
     @property
     def remaining(self) -> int:

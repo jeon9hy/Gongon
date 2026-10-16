@@ -26,6 +26,7 @@ from app.features.actions.schemas import (
     UNSTARTED_STATUSES,
     ActionCard,
     ActionForm,
+    AssigneeOption,
     CandidateEditor,
     CandidateForm,
     DelegateChoice,
@@ -40,10 +41,11 @@ from app.features.auth import service as auth_service
 from app.features.auth.schemas import CurrentUser
 from app.features.sites import service as sites_service
 from app.features.teams import service as teams_service
-from app.features.teams.schemas import ACTION_ROLES, MANAGE_ROLES, SiteMember
+from app.features.teams.schemas import ACTION_ROLES, MANAGE_ROLES, RosterPerson, SiteMember
 from engine.kst import KST
 
 TITLE_MAX = 80
+CRITERIA_MAX = 120  # 완료 기준(D-070)
 TEXT_MAX = 1000
 SHORT_MAX = 100
 RESOLVER_MAX = 60
@@ -67,21 +69,40 @@ def add_candidate(
 ) -> tuple[str, ...]:
     """조치 후보를 더한다. 버전이 열려 있는지와 편집 권한은 changes가 먼저 확인한다."""
     members = {m.user_id: m for m in teams_service.site_members(session, site_id)}
-    participants = teams_service.participant_labels(session, site_id)
+    active = {o.participant_id for o in teams_service.participant_choices(session, site_id)}
+    roster = {c.contact_id: c for c in teams_service.roster_people(session, site_id)}
     errors: list[str] = []
     title = form.title.strip()
     if not 1 <= len(title) <= TITLE_MAX:
         errors.append(f"조치 이름을 1~{TITLE_MAX}자로 입력하세요.")
+    criteria = form.done_criteria.strip()
+    if len(criteria) > CRITERIA_MAX:
+        errors.append(f"완료 기준은 {CRITERIA_MAX}자 이하로 입력하세요.")
     participant_id = _int(form.performing_participant_id)
-    if participant_id not in participants:
-        errors.append("수행 업체를 이 현장의 참여 업체 중에서 고르세요.")
-    assignee_id = _int(form.assignee_user_id) if form.assignee_user_id else None
-    if assignee_id is not None:
-        assignee = members.get(assignee_id)
+    if participant_id not in active:
+        errors.append("수행 업체를 이 현장의 참여 중인 업체에서 고르세요.")
+    assignee_id: int | None = None
+    contact_id: int | None = None
+    kind, _, raw_id = form.assignee.partition(":")
+    if kind == "user":
+        assignee_id = _int(raw_id)
+        assignee = members.get(assignee_id or -1)
         if assignee is None or assignee.role not in ACTION_ROLES:
             errors.append("담당자는 이 현장의 조정자·담당자 중에서 고르세요.")
         elif assignee.participant_id != participant_id:
             errors.append("담당자는 수행 업체 소속이어야 합니다.")
+    elif kind == "contact":
+        contact_id = _int(raw_id)
+        person = roster.get(contact_id or -1)
+        if person is None:
+            errors.append("담당자를 이 현장 명부에서 고르세요.")
+        elif person.participant_id != participant_id:
+            errors.append("담당자는 수행 업체 소속이어야 합니다.")
+        elif person.user_id is not None:
+            # 계정이 연결된 사람은 계정으로 맡긴다(로그인해 직접 응답)
+            assignee_id, contact_id = person.user_id, None
+    elif form.assignee:
+        errors.append("담당자를 다시 고르세요.")
     verifier_id = _int(form.verifier_user_id)
     verifier = members.get(verifier_id or -1)
     if verifier is None or verifier.role not in ACTION_ROLES:
@@ -104,8 +125,10 @@ def add_candidate(
             revision_id=revision_id,
             site_id=site_id,
             title=title,
+            done_criteria=criteria,
             performing_participant_id=participant_id,
             assignee_user_id=assignee_id,
+            assignee_contact_id=contact_id,
             verifier_user_id=verifier_id,
             required=form.required,
             due_at=due_at,
@@ -145,8 +168,11 @@ def activate(
         )
     )
     members = {m.user_id: m for m in teams_service.site_members(session, site_id)}
+    roster = {c.contact_id for c in teams_service.roster_people(session, site_id)}
     errors: list[str] = []
     for a in candidates:
+        if a.assignee_contact_id is not None and a.assignee_contact_id not in roster:
+            errors.append(f"‘{a.title}’ 담당자가 명부에서 빠졌습니다.")
         assignee = members.get(a.assignee_user_id or -1)
         verifier = members.get(a.verifier_user_id)
         if a.assignee_user_id is not None and (
@@ -224,7 +250,8 @@ def act(
     if me is None:
         raise HTTPException(status_code=404, detail="조치를 찾을 수 없습니다")
     delegators = _delegators(session, site_id, user.user_id, now)
-    mode = _performer_mode(action, me, delegators)
+    linked = _contact_users(session, site_id, [action])
+    mode = _performer_mode(action, me, delegators, linked)
     allowed = _allowed(action, me, mode)
     if kind not in allowed:
         if not _possible(action.status, kind):
@@ -438,9 +465,9 @@ def revision_actions(
     candidate_errors: tuple[str, ...] = (),
     candidate_revision_id: int | None = None,
 ) -> dict[int, RevisionActions]:
-    """변경 건 화면의 버전별 조치(조치 1회·사건 1회·사람 2회 조회).
+    """변경 건 화면의 버전별 조치(조치·사건·사람·명부 조회 몇 번, 조치 수와 무관).
 
-    editable[revision_id]가 참이면 그 버전에 후보 입력 칸을 붙인다(영향 검토 중·편집 권한).
+    editable[revision_id]가 참이면 그 버전에 후보 입력 칸을 붙인다(초안·영향 검토·편집 권한).
     """
     actions = (
         list(
@@ -463,9 +490,14 @@ def revision_actions(
             events.setdefault(e.action_id, []).append(e)
     members = teams_service.site_members(session, site_id)
     me = next((m for m in members if m.user_id == user.user_id), None)
+    contact_ids = {a.assignee_contact_id for a in actions if a.assignee_contact_id is not None}
+    roster = teams_service.roster_people(session, site_id, contact_ids)
+    linked = {c.contact_id: c.user_id for c in roster}
+    contact_names = {c.contact_id: _person_label(c) for c in roster}
     people_ids = {m.user_id for m in members}
     for a in actions:
         people_ids |= {i for i in (a.assignee_user_id, a.verifier_user_id) if i is not None}
+        people_ids |= {i for i in (a.reported_by_user_id, a.verified_by_user_id) if i is not None}
     for evs in events.values():
         people_ids |= {e.actor_user_id for e in evs}
         people_ids |= {e.delegated_from_user_id for e in evs if e.delegated_from_user_id}
@@ -474,8 +506,10 @@ def revision_actions(
     }
     participants = teams_service.participant_labels(session, site_id)
     delegators = _delegators(session, site_id, user.user_id, now)
+    editor_needed = any(editable.get(r, False) for r in revision_ids)
     suggestions: tuple[str, ...] = ()
-    if any(editable.values()):
+    choices: tuple[Option, ...] = ()
+    if editor_needed:
         suggestions = tuple(
             session.scalars(
                 select(ActionItem.title)
@@ -485,25 +519,33 @@ def revision_actions(
                 .limit(SUGGESTIONS)
             )
         )
+        choices = tuple(
+            Option(o.participant_id, f"{o.name} · {o.group_label}", False)
+            for o in teams_service.participant_choices(session, site_id)
+        )
+        roster = teams_service.roster_people(session, site_id)
     result: dict[int, RevisionActions] = {}
     for revision_id in revision_ids:
         mine = [a for a in actions if a.revision_id == revision_id]
+        can_edit = editable.get(revision_id, False)
         cards = tuple(
             _card(
                 a,
                 events.get(a.id, []),
                 me,
                 delegators,
+                linked,
                 names,
+                contact_names,
                 participants,
                 now,
-                removable=editable.get(revision_id, False),
+                removable=can_edit,
             )
             for a in mine
         )
         live = [a for a in mine if a.required and a.status not in ("candidate", "replaced")]
         editor = None
-        if editable.get(revision_id, False):
+        if can_edit:
             form = (
                 candidate_form
                 if candidate_form is not None and candidate_revision_id == revision_id
@@ -515,7 +557,8 @@ def revision_actions(
             )
             editor = _editor(
                 members,
-                participants,
+                roster,
+                choices,
                 form,
                 suggestions,
                 candidate_errors if candidate_revision_id == revision_id else (),
@@ -526,6 +569,8 @@ def revision_actions(
             required_done=sum(1 for a in live if a.status in ("verified", "excluded")),
             blocked=sum(1 for a in mine if a.status == "blocked"),
             editor=editor,
+            candidates=sum(1 for a in mine if a.status == "candidate"),
+            required_candidates=sum(1 for a in mine if a.status == "candidate" and a.required),
         )
     return result
 
@@ -537,7 +582,11 @@ def build_my_actions(
     errors: tuple[str, ...] = (),
     message: str | None = None,
 ) -> MyActionsView:
-    """내가 처리하거나 검증할 열린 조치(참여 중인 현장만)와 내 위임."""
+    """내가 처리·검증할 열린 조치(참여 중인 현장만)와 내 위임.
+
+    묶음: 내 응답 대기(요청·수행 중) · 막힘 · 검증 대기. 묶음마다 기한 지남 → 가까운 기한
+    → 기한 미정(D-070). 조정자에게는 계정 없는 명부 담당자의 조치도 '대리 기록'으로 보인다.
+    """
     memberships = teams_service.memberships_of(session, user.user_id)
     site_ids = [m.site_id for m in memberships]
     sites = {s.site_id: s.name for s in sites_service.list_sites(session, frozenset(site_ids))}
@@ -568,10 +617,18 @@ def build_my_actions(
     performer_participants = [
         (m.site_id, m.participant_id) for m in memberships if m.role in ACTION_ROLES
     ]
+    managed = [m.site_id for m in memberships if m.role in MANAGE_ROLES]
+    my_contacts = [c.contact_id for c in teams_service.contacts_linked_to(session, user.user_id)]
     conditions = [
         ActionItem.assignee_user_id == user.user_id,
         ActionItem.verifier_user_id == user.user_id,
     ]
+    if my_contacts:
+        conditions.append(ActionItem.assignee_contact_id.in_(my_contacts))
+    if managed:
+        conditions.append(
+            ActionItem.site_id.in_(managed) & ActionItem.assignee_contact_id.is_not(None)
+        )
     conditions += [
         (ActionItem.site_id == s) & (ActionItem.assignee_user_id == f) for s, f in delegated_from
     ]
@@ -579,6 +636,7 @@ def build_my_actions(
         (ActionItem.site_id == s)
         & (ActionItem.performing_participant_id == p)
         & ActionItem.assignee_user_id.is_(None)
+        & ActionItem.assignee_contact_id.is_(None)
         for s, p in performer_participants
     ]
     actions = (
@@ -590,6 +648,7 @@ def build_my_actions(
                     ActionItem.status.in_(OPEN_STATUSES),
                     or_(*conditions),
                 )
+                # 기한 지남·가까운 기한이 먼저, 기한 미정은 끝(D-070 R3)
                 .order_by(ActionItem.due_at.asc().nulls_last(), ActionItem.id)
                 .limit(MY_LIST_LIMIT)
             )
@@ -597,29 +656,26 @@ def build_my_actions(
         if site_ids
         else []
     )
-    to_do: list[MyActionItem] = []
+    linked_contacts = set(my_contacts)
+    to_respond: list[MyActionItem] = []
+    blocked: list[MyActionItem] = []
     to_verify: list[MyActionItem] = []
     for a in actions:
         due_text, overdue = _due_text(a, now)
-
-        def item(
-            why: str, a: ActionItem = a, due_text: str = due_text, overdue: bool = overdue
-        ) -> MyActionItem:
-            return MyActionItem(
-                href=f"/changes/{a.case_id}#action-{a.id}",
-                title=a.title,
-                site_name=sites.get(a.site_id, ""),
-                status_label=STATUS_LABELS[a.status],
-                due_text=due_text,
-                overdue=overdue,
-                why=why,
-            )
-
-        if a.status == "reported" and a.verifier_user_id == user.user_id:
-            to_verify.append(item("검증"))
-        elif a.status in UNSTARTED_STATUSES and a.verifier_user_id != user.user_id:
-            delegated = a.assignee_user_id not in (None, user.user_id)
-            to_do.append(item("위임받음" if delegated else "처리"))
+        if a.status == "reported":
+            if a.verifier_user_id == user.user_id and a.reported_by_user_id != user.user_id:
+                to_verify.append(_my_item(a, sites, "검증", due_text, overdue))
+            continue
+        if a.verifier_user_id == user.user_id and a.assignee_user_id != user.user_id:
+            continue  # 검증만 맡은 조치는 완료 보고 뒤에 보인다
+        if a.assignee_contact_id is not None and a.assignee_contact_id not in linked_contacts:
+            why = "대리 기록"
+        elif a.assignee_user_id not in (None, user.user_id):
+            why = "위임받음"
+        else:
+            why = "처리"
+        item = _my_item(a, sites, why, due_text, overdue)
+        (blocked if a.status == "blocked" else to_respond).append(item)
     people_ids = {d.from_user_id for d in delegations} | {d.to_user_id for d in delegations}
     choices: list[DelegateChoice] = []
     for site_id in site_ids:
@@ -633,17 +689,15 @@ def build_my_actions(
                 and m.participant_id == me.participant_id
                 and m.role in ACTION_ROLES
             ):
-                choices.append(
-                    DelegateChoice(
-                        f"{site_id}:{m.user_id}", f"{sites.get(site_id, '')} · {m.display_name}"
-                    )
-                )
+                label = f"{sites.get(site_id, '')} · {m.display_name}"
+                choices.append(DelegateChoice(f"{site_id}:{m.user_id}", label))
     names = {
         u.user_id: u.display_name for u in auth_service.describe_users(session, people_ids).values()
     }
-    manage = {m.site_id for m in memberships if m.role in MANAGE_ROLES}
+    manage = set(managed)
     return MyActionsView(
-        to_do=tuple(to_do),
+        to_respond=tuple(to_respond),
+        blocked=tuple(blocked),
         to_verify=tuple(to_verify),
         delegations=tuple(
             DelegationRow(
@@ -662,16 +716,42 @@ def build_my_actions(
     )
 
 
+def open_action_count(session: Session, user: CurrentUser, now: datetime) -> int:
+    """홈의 '내 조치' 건수(목록과 같은 기준)."""
+    view = build_my_actions(session, user, now)
+    return len(view.to_respond) + len(view.blocked) + len(view.to_verify)
+
+
+def _my_item(
+    a: ActionItem, sites: dict[int, str], why: str, due_text: str, overdue: bool
+) -> MyActionItem:
+    return MyActionItem(
+        href=f"/changes/{a.case_id}#action-{a.id}",
+        title=a.title,
+        site_name=sites.get(a.site_id, ""),
+        status_label=STATUS_LABELS[a.status],
+        due_text=due_text,
+        overdue=overdue,
+        why=why,
+    )
+
+
 # ---------- 내부 ----------
 
 
 def _performer_mode(
-    action: ActionItem, me: SiteMember, delegators: set[int]
+    action: ActionItem, me: SiteMember, delegators: set[int], linked: dict[int, int | None]
 ) -> PerformerMode | None:
+    """linked: 명부 담당 ID → 지금 연결된 계정(없으면 None). 나중에 연결돼도 본인이 응답한다."""
+    contact_user = (
+        None if action.assignee_contact_id is None else linked.get(action.assignee_contact_id)
+    )
     if me.role in ACTION_ROLES and (
         action.assignee_user_id == me.user_id
+        or contact_user == me.user_id
         or (
             action.assignee_user_id is None
+            and action.assignee_contact_id is None
             and me.participant_id == action.performing_participant_id
         )
     ):
@@ -721,6 +801,19 @@ def _allowed(
     return frozenset(allowed)
 
 
+def _contact_users(
+    session: Session, site_id: int, actions: Iterable[ActionItem]
+) -> dict[int, int | None]:
+    ids = {a.assignee_contact_id for a in actions if a.assignee_contact_id is not None}
+    if not ids:
+        return {}
+    return {
+        c.contact_id: c.user_id
+        for c in teams_service.roster_people(session, site_id, ids)
+        if c.contact_id in ids
+    }
+
+
 def _delegators(session: Session, site_id: int, user_id: int, now: datetime) -> set[int]:
     """지금 나에게 수행을 맡긴 사람들(기간 안·회수 안 됨)."""
     return set(
@@ -741,7 +834,9 @@ def _card(
     events: list[ActionEvent],
     me: SiteMember | None,
     delegators: set[int],
+    linked: dict[int, int | None],
     names: dict[int, str],
+    contact_names: dict[int, str],
     participants: dict[int, str],
     now: datetime,
     removable: bool,
@@ -750,7 +845,7 @@ def _card(
         return names.get(user_id or -1, "알 수 없음")
 
     company = participants.get(a.performing_participant_id, "알 수 없는 업체").split(" · ")[0]
-    mode = None if me is None else _performer_mode(a, me, delegators)
+    mode = None if me is None else _performer_mode(a, me, delegators, linked)
     allowed = set(_allowed(a, me, mode))
     if removable and a.status == "candidate":
         allowed.add("remove")
@@ -763,19 +858,23 @@ def _card(
         last = next((e for e in reversed(events) if e.kind == "reported"), None)
         detail = "" if last is None else f" · {last.body}"
         report = f"{_when(a.performed_at)} 처리 · {name(a.reported_by_user_id)} 보고{detail}"
+    if a.assignee_contact_id is not None:
+        who = contact_names.get(a.assignee_contact_id, "명부의 사람")
+        if linked.get(a.assignee_contact_id) is None:
+            who += " · 계정 없음(전화 확인)"
+    elif a.assignee_user_id is not None:
+        who = name(a.assignee_user_id)
+    else:
+        who = "담당 미지정(업체 담당자 누구나)"
     return ActionCard(
         action_id=a.id,
         revision_id=a.revision_id,
         title=a.title,
+        done_criteria=a.done_criteria,
         status=a.status,
         status_label=STATUS_LABELS[a.status],
         required=a.required,
-        performer_text=f"{company} · "
-        + (
-            "담당 미지정(업체 담당자 누구나)"
-            if a.assignee_user_id is None
-            else name(a.assignee_user_id)
-        ),
+        performer_text=f"{company} · {who}",
         verifier_text=name(a.verifier_user_id),
         due_text=due_text,
         overdue=overdue,
@@ -784,6 +883,7 @@ def _card(
         if a.status != "blocked"
         else f"{a.blocked_reason} · 해결 담당 {a.blocked_resolver}",
         report_text=report,
+        exclude_text=None if a.status != "excluded" else a.exclude_reason,
         history=tuple(_event_text(e, name) for e in events),
         allowed=frozenset(allowed),
         behalf=mode == "behalf",
@@ -809,25 +909,39 @@ def _event_text(e: ActionEvent, who: Callable[[int | None], str]) -> str:
 
 def _editor(
     members: tuple[SiteMember, ...],
-    participants: dict[int, str],
+    roster: tuple[RosterPerson, ...],
+    participants: tuple[Option, ...],
     form: CandidateForm,
     suggestions: tuple[str, ...],
     errors: tuple[str, ...],
 ) -> CandidateEditor:
+    """후보 입력 칸. 담당은 계정 있는 조정자·담당자와 계정 없는 명부의 사람(업체별)."""
     workers = [m for m in members if m.role in ACTION_ROLES]
+    assignees = [
+        AssigneeOption(
+            f"user:{m.user_id}",
+            m.display_name,
+            m.participant_id,
+            form.assignee == f"user:{m.user_id}",
+        )
+        for m in workers
+    ]
+    assignees += [
+        AssigneeOption(
+            f"contact:{c.contact_id}",
+            f"{_person_label(c)} · 계정 없음",
+            c.participant_id,
+            form.assignee == f"contact:{c.contact_id}",
+        )
+        for c in roster
+        if c.user_id is None  # 계정이 연결된 사람은 계정 쪽에 이미 있다
+    ]
     return CandidateEditor(
         participants=tuple(
-            Option(pid, label, str(pid) == form.performing_participant_id)
-            for pid, label in participants.items()
+            Option(o.value, o.label, str(o.value) == form.performing_participant_id)
+            for o in participants
         ),
-        assignees=tuple(
-            Option(
-                m.user_id,
-                f"{m.display_name} · {m.organization_name}",
-                str(m.user_id) == form.assignee_user_id,
-            )
-            for m in workers
-        ),
+        assignees=tuple(assignees),
         verifiers=tuple(
             Option(
                 m.user_id,
@@ -840,6 +954,10 @@ def _editor(
         title_suggestions=suggestions,
         errors=errors,
     )
+
+
+def _person_label(c: RosterPerson) -> str:
+    return f"{c.name} {c.job_title}".strip()
 
 
 def _event(a: ActionItem, kind: str, actor_id: int, now: datetime) -> ActionEvent:
