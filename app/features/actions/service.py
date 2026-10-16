@@ -364,7 +364,7 @@ def add_delegation(
     end_time: str,
     now: datetime,
 ) -> tuple[str, ...]:
-    """내 조치를 같은 업체 사람에게 기간을 정해 맡긴다. 조정자는 자기 현장에서 남의 위임도 만들 수 있다."""
+    """내 조치를 같은 현장·같은 업체의 다른 조정자·담당자에게 기간을 정해 맡긴다."""
     site_part, _, to_part = choice.partition(":")
     site_id, to_user_id = _int(site_part), _int(to_part)
     if site_id is None or to_user_id is None:

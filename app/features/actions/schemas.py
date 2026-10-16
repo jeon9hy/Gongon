@@ -26,7 +26,8 @@ EVENT_LABELS: dict[str, str] = {
     "replaced": "재변경으로 대체",
     "phone_record": "전화 확인 기록",
 }
-# 확정 뒤 아직 끝나지 않은 상태. 재변경 때 requested·accepted·blocked는 대체된다(C07에서 새 조치와 연결).
+# 확정 뒤 아직 끝나지 않은 상태. 재변경 때 requested·accepted·blocked는 대체된다
+# (새 조치와의 연결은 C07).
 OPEN_STATUSES: tuple[str, ...] = ("requested", "accepted", "blocked", "reported")
 UNSTARTED_STATUSES: tuple[str, ...] = ("requested", "accepted", "blocked")
 # 화면에서 누를 수 있는 처리. kind는 폼 action 경로의 마지막 부분이다.
@@ -34,13 +35,17 @@ ActionKind = Literal["accept", "resume", "block", "report", "verify", "reject", 
 ACTION_KINDS: tuple[str, ...] = (
     "accept", "resume", "block", "report", "verify", "reject", "exclude", "phone"
 )  # fmt: skip
-# 수행자 자격: self(지정 담당·실행 업체 담당자) · delegate(위임받음) · behalf(조정자가 전화로 대신 기록)
+# 수행자 자격: self(지정 담당·실행 업체 담당자) · delegate(위임받음)
+# · behalf(조정자가 전화로 확인해 대신 기록)
 PerformerMode = Literal["self", "delegate", "behalf"]
 
 
 @dataclass(frozen=True, slots=True)
 class CandidateForm:
-    """조치 후보 입력(문자열 그대로). 기한은 날짜·시각을 같이 넣거나 둘 다 비우고 미정 사유를 쓴다."""
+    """조치 후보 입력(문자열 그대로).
+
+    기한은 날짜·시각을 같이 넣거나, 둘 다 비우고 미정 사유를 쓴다.
+    """
 
     title: str = ""
     performing_participant_id: str = ""
