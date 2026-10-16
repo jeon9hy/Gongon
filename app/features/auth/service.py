@@ -5,6 +5,7 @@
 
 import hashlib
 import hmac
+import re
 import secrets
 from collections.abc import Iterable
 from datetime import datetime, timedelta
@@ -14,6 +15,7 @@ from urllib.parse import quote
 
 from fastapi import Depends, HTTPException, Request
 from sqlalchemy import ColumnElement, delete, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.clock import now_kst
@@ -26,6 +28,7 @@ SESSION_TTL = timedelta(hours=12)
 PASSWORD_MIN = 10
 PASSWORD_MAX = 128
 EMAIL_MAX = 200
+_PHONE = re.compile(r"010[0-9]{8}|01[16789][0-9]{7,8}")  # 010은 11자리, 옛 번호는 10~11자리
 NAME_MAX = 40
 ORGANIZATION_MAX = 60
 
@@ -66,6 +69,24 @@ def normalize_email(email: str) -> str:
     return email.strip().lower()
 
 
+def normalize_phone(raw: str) -> str | None:
+    """휴대폰 번호를 숫자만으로 맞춘다(010-1234-5678, +82 10 1234 5678 → 01012345678).
+
+    휴대폰 형식이 아니면 None. 실제 가입 여부·소유는 확인하지 않는다(문자 인증 전, D-073)."""
+    digits = "".join(ch for ch in raw if ch.isdigit())
+    if raw.strip().startswith("+82") or (digits.startswith("82") and 11 <= len(digits) <= 13):
+        rest = digits[2:]
+        digits = rest if rest.startswith("0") else "0" + rest
+    return digits if _PHONE.fullmatch(digits) else None
+
+
+def format_phone(phone: str | None) -> str:
+    """표시용 010-1234-5678. 번호가 없으면 빈 문자열."""
+    if not phone:
+        return ""
+    return f"{phone[:3]}-{phone[3:-4]}-{phone[-4:]}"
+
+
 def validate_signup(session: Session, form: SignupForm) -> tuple[str, ...]:
     errors: list[str] = []
     email = normalize_email(form.email)
@@ -74,6 +95,11 @@ def validate_signup(session: Session, form: SignupForm) -> tuple[str, ...]:
         errors.append("이메일 형식을 확인하세요.")
     elif session.scalar(select(User.id).where(User.email == email)) is not None:
         errors.append("이미 가입한 이메일입니다. 로그인하세요.")
+    phone = normalize_phone(form.phone)
+    if phone is None:
+        errors.append("휴대폰 번호를 010-0000-0000 형식으로 입력하세요.")
+    elif session.scalar(select(User.id).where(User.phone == phone)) is not None:
+        errors.append("이미 가입한 휴대폰 번호입니다. 로그인하세요.")
     if not 1 <= len(form.display_name.strip()) <= NAME_MAX:
         errors.append(f"이름을 1~{NAME_MAX}자로 입력하세요.")
     if not 1 <= len(form.organization_name.strip()) <= ORGANIZATION_MAX:
@@ -96,9 +122,15 @@ def signup(session: Session, form: SignupForm) -> tuple[int | None, tuple[str, .
         display_name=form.display_name.strip(),
         password_hash=hash_password(form.password),
         organization_id=organization.id,
+        phone=normalize_phone(form.phone),
     )
     session.add(user)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        # 같은 이메일·번호로 동시에 가입한 경우(uq_users_phone, users.email 고유)
+        session.rollback()
+        return None, ("이미 가입한 이메일 또는 휴대폰 번호입니다. 로그인하세요.",)
     return user.id, ()
 
 
@@ -194,6 +226,36 @@ def find_user_by_email(session: Session, email: str) -> UserInfo | None:
     return next(iter(_user_infos(session, User.email == normalize_email(email))), None)
 
 
+def find_user(session: Session, email_or_phone: str) -> UserInfo | None:
+    """조정자가 사람을 찾을 때: '@'가 있으면 이메일, 없으면 휴대폰 번호로 찾는다(D-073)."""
+    if "@" in email_or_phone:
+        return find_user_by_email(session, email_or_phone)
+    phone = normalize_phone(email_or_phone)
+    if phone is None:
+        return None
+    return next(iter(_user_infos(session, User.phone == phone)), None)
+
+
+def set_phone(session: Session, user_id: int, raw: str) -> tuple[str, ...]:
+    """내 휴대폰 번호를 등록·변경한다. 바꾸면 인증 시각도 지운다(새 번호는 인증 전)."""
+    phone = normalize_phone(raw)
+    if phone is None:
+        return ("휴대폰 번호를 010-0000-0000 형식으로 입력하세요.",)
+    user = session.get(User, user_id)
+    if user is None:
+        return ("사용자를 찾을 수 없습니다.",)
+    if user.phone == phone:
+        return ()
+    user.phone = phone
+    user.phone_verified_at = None
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        return ("다른 사용자가 이미 쓰는 번호입니다.",)
+    return ()
+
+
 def describe_users(session: Session, user_ids: Iterable[int]) -> dict[int, UserInfo]:
     """여러 사용자를 쿼리 한 번으로 읽는다(목록 화면의 반복 조회 방지)."""
     ids = set(user_ids)
@@ -209,7 +271,7 @@ def _user_infos(session: Session, condition: ColumnElement[bool]) -> list[UserIn
         .where(condition)
     ).all()
     return [
-        UserInfo(u.id, u.email, u.display_name, u.organization_id, name, u.is_active)
+        UserInfo(u.id, u.email, u.display_name, u.organization_id, name, u.is_active, u.phone)
         for u, name in rows
     ]
 

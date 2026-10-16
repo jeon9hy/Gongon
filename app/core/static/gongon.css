@@ -1671,3 +1671,4 @@ details[open] > :not(summary) { animation: rise-in 0.25s ease-out; }
   .auth__flow li, .auth__mascot, .auth__card, .welcome__copy, .welcome__title em, .welcome__orb, .welcome__ring,
   .welcome__mascot, .welcome__chip, .welcome__dot--wait, .welcome__step { animation: none; }
 }
+.phone-form { display: flex; flex-direction: column; gap: 10px; padding-top: 12px; border-top: 1px solid var(--line-soft); }

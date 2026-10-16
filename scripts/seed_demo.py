@@ -42,6 +42,23 @@ SITE = SiteForm(
 )
 
 
+def demo_phone(index: int) -> str:
+    """시연 계정의 가상 번호 010-0000-0001부터(실제 번호가 아님, D-073)."""
+    return f"0100000{index + 1:04d}"
+
+
+def _fill_demo_phones(session: Session) -> int:
+    """C04-13 전에 만든 시연 계정에 가상 번호를 넣는다. 번호가 있으면 그대로 둔다."""
+    added = 0
+    for index, p in enumerate(PEOPLE):
+        info = auth_service.find_user_by_email(session, f"{p.key}@{DOMAIN}")
+        if info is None or info.phone:
+            continue
+        if not auth_service.set_phone(session, info.user_id, demo_phone(index)):
+            added += 1
+    return added
+
+
 @dataclass(frozen=True)
 class Person:
     key: str  # 이메일 앞부분
@@ -111,15 +128,19 @@ def main() -> int:
     now = now_kst()
     with Session(get_engine(), expire_on_commit=False) as session:
         if auth_service.find_user_by_email(session, f"pm@{DOMAIN}") is not None:
+            added = _fill_demo_phones(session)
             print("이미 시연 자료가 있습니다(pm@demo.gongon.test). 새로 만들지 않았습니다.")
+            if added:
+                print(f"번호 없는 시연 계정 {added}명에 가상 번호를 넣었습니다.")
             return 0
         users: dict[str, CurrentUser] = {}
-        for p in PEOPLE:
+        for index, p in enumerate(PEOPLE):
             # 가입은 사람마다 회사를 새로 만든다. 현장에 붙일 때 같은 이름 업체에 붙인다(D-066).
             user_id, errors = auth_service.signup(
                 session,
                 SignupForm(email=f"{p.key}@{DOMAIN}", display_name=p.name,
-                           organization_name=p.company, password=PASSWORD),
+                           organization_name=p.company, password=PASSWORD,
+                           phone=demo_phone(index)),
             )  # fmt: skip
             if user_id is None:
                 print(f"가입 실패 {p.key}: {errors}")

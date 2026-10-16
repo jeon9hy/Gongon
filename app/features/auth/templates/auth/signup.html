@@ -11,6 +11,9 @@
 <label class="field">이메일
 <input type="email" name="email" value="{{ view.email }}" placeholder="name@company.com" autocomplete="username" maxlength="200" required>
 </label>
+<label class="field">휴대폰 번호
+<input type="tel" name="phone" value="{{ view.phone }}" placeholder="010-0000-0000" autocomplete="tel" inputmode="tel" maxlength="20" required>
+</label>
 <div class="auth-form__row">
 <label class="field">이름
 <input type="text" name="display_name" value="{{ view.display_name }}" autocomplete="name" maxlength="40" required>

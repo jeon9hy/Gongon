@@ -27,7 +27,16 @@
 <dt>이름</dt><dd>{{ user.display_name }}</dd>
 <dt>이메일</dt><dd>{{ user.email }}</dd>
 <dt>회사</dt><dd>{{ user.organization_name }}</dd>
+<dt>휴대폰</dt><dd>{{ phone or "등록 안 함" }}{% if phone %} <span class="tag">인증 전</span>{% endif %}</dd>
 </dl>
+{% if errors %}<div class="alert alert--error" role="alert"><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+{% if message %}<div class="alert alert--ok" role="status">{{ message }}</div>{% endif %}
+<form class="phone-form" method="post" action="/me/phone">
+<label class="field">휴대폰 번호
+<input type="tel" name="phone" value="{{ phone_input }}" placeholder="010-0000-0000" autocomplete="tel" inputmode="tel" maxlength="20" required>
+</label>
+<button class="btn btn--soft" type="submit">{{ "번호 바꾸기" if phone else "번호 등록" }}</button>
+</form>
 <p class="small muted">이름·회사 바꾸기는 아직 준비 중이에요.</p>
 </section>
 </aside>

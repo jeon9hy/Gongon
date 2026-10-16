@@ -7,6 +7,7 @@ TEST_DATABASE_URL이 없으면 DB 테스트는 건너뛴다(건너뜀은 통과�
 
 import contextlib
 import os
+import zlib
 from collections.abc import Callable, Iterator
 from datetime import datetime
 
@@ -59,6 +60,7 @@ DEFAULT_USER = {
     "display_name": "테스트 조정자",
     "organization_name": "가상건설",
     "password": "correct-horse-battery",
+    "phone": "010-1234-5678",
 }
 
 
@@ -131,6 +133,9 @@ def browser(app: FastAPI) -> Iterator[Browser]:
         def make(user: dict[str, str] | None = None) -> TestClient:
             test_client = stack.enter_context(TestClient(app, headers=SAME_ORIGIN))
             if user is not None:
+                # 휴대폰 번호가 없는 사용자 자료는 이메일로 정한 가상 번호를 붙인다(사람마다 다르게)
+                phone = f"010{zlib.crc32(user['email'].encode()) % 10**8:08d}"
+                user = {"phone": phone, **user}
                 response = test_client.post("/signup", data=user, follow_redirects=False)
                 assert response.status_code == 303, response.text
             return test_client

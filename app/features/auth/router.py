@@ -90,9 +90,10 @@ def signup(
     display_name: Annotated[str, Form()] = "",
     organization_name: Annotated[str, Form()] = "",
     password: Annotated[str, Form()] = "",
+    phone: Annotated[str, Form()] = "",
     next: Annotated[str, Form()] = "/",
 ) -> Response:
-    form = SignupForm(email, display_name, organization_name, password)
+    form = SignupForm(email, display_name, organization_name, password, phone)
     user_id, errors = service.signup(session, form)
     if user_id is None:
         view = AuthView(
@@ -100,6 +101,7 @@ def signup(
             email=email.strip(),
             display_name=display_name.strip(),
             organization_name=organization_name.strip(),
+            phone=phone.strip(),
             errors=errors,
         )
         return _render(request, "signup", view, status_code=422)

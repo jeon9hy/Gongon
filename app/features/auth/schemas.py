@@ -18,6 +18,7 @@ class SignupForm:
     display_name: str = ""
     organization_name: str = ""
     password: str = ""
+    phone: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,6 +27,7 @@ class AuthView:
 
     next_path: str
     email: str = ""
+    phone: str = ""
     display_name: str = ""
     organization_name: str = ""
     errors: tuple[str, ...] = ()
@@ -42,3 +44,4 @@ class UserInfo:
     organization_id: int
     organization_name: str
     is_active: bool
+    phone: str | None = None  # 숫자만, 인증 전(D-073)
