@@ -43,6 +43,8 @@ from app.features.judgments.schemas import (
     SiteSummary,
     Tab,
     Tile,
+    TodaySite,
+    TodayWork,
     VerdictFilter,
     WeekCell,
     WeekDay,
@@ -533,10 +535,11 @@ def build_dashboard(
 def build_home(
     session: Session, scope: SiteScope, now: datetime, ran: RunResult | None = None
 ) -> HomeView:
-    """참여 현장의 내일 판정 개요. 현장 수와 관계없이 판정 조회는 한 번만 한다."""
+    """홈: 오늘 작업(C04-5) → 내일 판정 개요. 현장 수와 관계없이 판정 조회는 한 번만 한다."""
     target_date = target_date_for(now)
     sites = sites_service.list_sites(session, scope)
     site_ids = [s.site_id for s in sites]
+    today_sites = _today_sites(session, sites, now)
     by_site: dict[int, dict[str, Judgment]] = {}
     for j in repository.latest_for_sites_date(session, site_ids, target_date):
         by_site.setdefault(j.site_id, {}).setdefault(_key(j), j)
@@ -585,8 +588,16 @@ def build_home(
     else:
         forecast_status = f"실패 · {run.failure_reason}"
     primary_rules = next(iter(rule_sets.values()), None)
+    phases: list[str] = [w.phase for t in today_sites for w in t.items]
     return HomeView(
         target_date=_date_text(target_date),
+        today_date=_date_text(now.astimezone(KST).date()),
+        today_sites=today_sites,
+        today_counts=tuple(
+            (label, phases.count(phase))
+            for phase, label in _PHASE_LABELS.items()
+            if phases.count(phase)
+        ),
         sites=summaries,
         tiles=tiles,
         recent=recent,
@@ -599,6 +610,55 @@ def build_home(
         message_is_error=ran
         in ("failed", "no_rules", "no_sites", "out_of_period", "beyond_forecast"),
     )
+
+
+_PHASE_LABELS = {"now": "진행 중", "before": "예정", "done": "끝남"}
+
+
+def _today_sites(
+    session: Session, sites: Sequence[SiteRecord], now: datetime
+) -> tuple[TodaySite, ...]:
+    """오늘 작업이 있는 현장과 그 작업(작업 1회·업체 2회 조회). 시작 시각 순."""
+    local = now.astimezone(KST)
+    today = local.date()
+    site_ids = [s.site_id for s in sites]
+    items_by_site = schedules_service.items_on_for_sites(session, site_ids, today)
+    companies = teams_service.company_names(session, list(items_by_site))
+    result = []
+    for site in sites:
+        items = sorted(
+            items_by_site.get(site.site_id, ()), key=lambda i: (i.start_local, i.end_local)
+        )
+        if not items:
+            continue
+        works = []
+        for i in items:
+            phase: Literal["before", "now", "done"] = (
+                "before" if local.time() < i.start_local
+                else "done" if local.time() >= i.end_local
+                else "now"
+            )  # fmt: skip
+            works.append(
+                TodayWork(
+                    time_text=f"{i.start_local:%H:%M}–{i.end_local:%H:%M}",
+                    work_type=i.work_type,
+                    location=i.location,
+                    company=""
+                    if i.performing_participant_id is None
+                    else companies.get(i.performing_participant_id, ""),
+                    phase=phase,
+                    phase_label=_PHASE_LABELS[phase],
+                )
+            )
+        result.append(
+            TodaySite(
+                site_id=site.site_id,
+                name=site.name,
+                href=f"/schedule?site_id={site.site_id}&day={today.isoformat()}",
+                items=tuple(works),
+            )
+        )
+    return tuple(result)
 
 
 def _site_summary(

@@ -137,6 +137,26 @@ class DashboardView:
 
 
 @dataclass(frozen=True, slots=True)
+class TodayWork:
+    """홈의 오늘 작업 한 줄. phase는 지금 시각 기준(before 예정 · now 진행 중 · done 끝남)."""
+
+    time_text: str
+    work_type: str
+    location: str
+    company: str
+    phase: Literal["before", "now", "done"]
+    phase_label: str
+
+
+@dataclass(frozen=True, slots=True)
+class TodaySite:
+    site_id: int
+    name: str
+    href: str  # 작업 일정의 오늘
+    items: tuple[TodayWork, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class SiteSummary:
     """홈의 현장 카드 한 장. 판정이 없으면 verdict는 None(판정 전)."""
 
@@ -183,6 +203,9 @@ class RecentRun:
 @dataclass(frozen=True, slots=True)
 class HomeView:
     target_date: str
+    today_date: str
+    today_sites: tuple[TodaySite, ...]  # 오늘 작업이 있는 현장만
+    today_counts: tuple[tuple[str, int], ...]  # (진행 중·예정·끝남, 건수)
     sites: tuple[SiteSummary, ...]
     tiles: tuple[CountTile, ...]
     recent: tuple[RecentRun, ...]

@@ -105,6 +105,15 @@ def participant_labels(session: Session, site_id: int) -> dict[int, str]:
     }
 
 
+def company_names(session: Session, site_ids: list[int]) -> dict[int, str]:
+    """여러 현장의 참여 업체 ID → 회사 이름(쿼리 2회). 홈의 오늘 작업 목록에 쓴다."""
+    if not site_ids:
+        return {}
+    participants = repository.participants_for_sites(session, site_ids)
+    names = auth_service.organization_names(session, (p.organization_id for p in participants))
+    return {p.id: names.get(p.organization_id, "이름 없음") for p in participants}
+
+
 def add_founder(session: Session, site_id: int, user: CurrentUser, now: datetime) -> None:
     """현장을 만든 사람의 회사를 원청, 본인을 조정자로 둔다. 커밋은 호출한 현장 서비스가 한다."""
     participant = ProjectParticipant(

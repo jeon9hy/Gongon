@@ -33,6 +33,11 @@ def participants(session: Session, site_id: int) -> list[ProjectParticipant]:
     return list(session.scalars(query))
 
 
+def participants_for_sites(session: Session, site_ids: list[int]) -> list[ProjectParticipant]:
+    query = select(ProjectParticipant).where(ProjectParticipant.site_id.in_(site_ids))
+    return list(session.scalars(query))
+
+
 def participant_of(
     session: Session, site_id: int, organization_id: int
 ) -> ProjectParticipant | None:
