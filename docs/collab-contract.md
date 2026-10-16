@@ -76,7 +76,7 @@ C01 [공개 조사](research/C01-public-research.md)의 설계 가정 A1~A7과 �
 
 ## 5. C06 후속 조치·검증
 
-`action_items`: revision_id, site_id, title, performing_participant_id, assignee_user_id(NULL = 업체 내 미지정), verifier_user_id, required(bool), due_at/due_note, status, replaced_by_id, excluded_by/at/reason.
+`action_items`: revision_id, site_id, title, done_criteria(완료 기준 120자, 선택 — 무엇을 확인하면 끝나는지, D-070), performing_participant_id, assignee_user_id(NULL = 업체 내 미지정), verifier_user_id, required(bool), due_at/due_note, status, replaced_by_id, excluded_by/at/reason.
 
 | 조치 상태 | 뜻 | 허용 전이(행위자) |
 | --- | --- | --- |
