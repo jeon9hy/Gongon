@@ -41,10 +41,24 @@ def _signed_in(token: str, next_path: str, settings: Settings) -> RedirectRespon
     return response
 
 
-@router.get("/login", response_class=HTMLResponse)
-def login_page(request: Request, next: str = "/", signed_out: bool = False) -> HTMLResponse:
-    message = "로그아웃했습니다." if signed_out else None
-    return _render(request, "login", AuthView(next_path=service.safe_next(next), message=message))
+def _signed_in_already(request: Request, session: Session, now: datetime) -> bool:
+    return service.resolve(session, request.cookies.get(service.SESSION_COOKIE), now) is not None
+
+
+@router.get("/welcome", response_model=None)
+def welcome(request: Request, session: SessionDep, now: NowDep) -> Response:
+    """처음 들어온 사람의 첫 화면. 이미 로그인했으면 홈으로 보낸다."""
+    if _signed_in_already(request, session, now):
+        return RedirectResponse("/", status_code=303)
+    return templates.TemplateResponse(request, "auth/welcome.html", {"nav_active": ""})
+
+
+@router.get("/login", response_model=None)
+def login_page(request: Request, session: SessionDep, now: NowDep, next: str = "/") -> Response:
+    # 로그인한 뒤 뒤로 가기로 다시 와도 로그인 화면을 보이지 않는다
+    if _signed_in_already(request, session, now):
+        return RedirectResponse(service.safe_next(next), status_code=303)
+    return _render(request, "login", AuthView(next_path=service.safe_next(next)))
 
 
 @router.post("/login")
@@ -68,8 +82,10 @@ def login(
     return _signed_in(service.start_session(session, user_id, now), next, settings)
 
 
-@router.get("/signup", response_class=HTMLResponse)
-def signup_page(request: Request, next: str = "/") -> HTMLResponse:
+@router.get("/signup", response_model=None)
+def signup_page(request: Request, session: SessionDep, now: NowDep, next: str = "/") -> Response:
+    if _signed_in_already(request, session, now):
+        return RedirectResponse(service.safe_next(next), status_code=303)
     return _render(request, "signup", AuthView(next_path=service.safe_next(next)))
 
 
@@ -83,9 +99,10 @@ def signup(
     display_name: Annotated[str, Form()] = "",
     organization_name: Annotated[str, Form()] = "",
     password: Annotated[str, Form()] = "",
+    phone: Annotated[str, Form()] = "",
     next: Annotated[str, Form()] = "/",
 ) -> Response:
-    form = SignupForm(email, display_name, organization_name, password)
+    form = SignupForm(email, display_name, organization_name, password, phone)
     user_id, errors = service.signup(session, form)
     if user_id is None:
         view = AuthView(
@@ -93,6 +110,7 @@ def signup(
             email=email.strip(),
             display_name=display_name.strip(),
             organization_name=organization_name.strip(),
+            phone=phone.strip(),
             errors=errors,
         )
         return _render(request, "signup", view, status_code=422)
@@ -104,6 +122,6 @@ def logout(request: Request, session: SessionDep) -> RedirectResponse:
     token = request.cookies.get(service.SESSION_COOKIE)
     if token:
         service.end_session(session, token)
-    response = RedirectResponse("/login?signed_out=true", status_code=303)
+    response = RedirectResponse("/welcome", status_code=303)
     response.delete_cookie(service.SESSION_COOKIE)
     return response

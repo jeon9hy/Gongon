@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.core.config import get_settings
 from app.core.errors import install_error_handlers
-from app.core.security import SameOriginMiddleware
+from app.core.security import NoStoreHtmlMiddleware, SameOriginMiddleware
 from app.core.templating import STATIC_DIR
 from app.features.auth.router import router as auth_router
 from app.features.changes.router import router as changes_router
@@ -36,6 +36,7 @@ def create_app(auto_refresh: bool = False) -> FastAPI:
     app = FastAPI(title="gongon", lifespan=lifespan)
     install_error_handlers(app)
     app.add_middleware(SameOriginMiddleware)
+    app.add_middleware(NoStoreHtmlMiddleware)
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     app.include_router(auth_router)
     app.include_router(judgments_router)

@@ -13,7 +13,7 @@ cp .env.example .env      # 실제 값은 .env에만(커밋 금지)
 
 ## 시연 자료(선택)
 
-- `PYTHONUTF8=1 uv run python scripts/seed_demo.py` — 개발 DB에 [가상] 현장·업체·참여자·일주일 작업을 만든다. 로그인은 `pm@demo.gongon.test` / `gongon-demo-1234`(현장소장, 조정자). 이미 있으면 다시 만들지 않는다. `--viewer 내이메일`로 내 계정을 열람자로 넣을 수 있다.
+- `PYTHONUTF8=1 uv run python scripts/seed_demo.py` — 개발 DB에 [가상] 현장·업체·참여자·일주일 작업을 만든다. 로그인은 `pm@demo.gongon.test` / `gongon-demo-1234`(현장소장, 조정자). 이미 있으면 다시 만들지 않고, 번호 없는 시연 계정에만 가상 번호(010-0000-0001부터 PEOPLE 순서)를 넣는다. `--viewer 내이메일`로 내 계정을 열람자로 넣을 수 있다.
 
 ## DB 준비 (PostgreSQL 17, 처음 한 번)
 1. 설치: https://www.postgresql.org/download/windows/ → "Download the installer"(EDB) → **17.x Windows x86-64**.
@@ -80,7 +80,7 @@ uv run python -m pytest tests/<경로> -q  # 작업 중 빠른 확인: 관련 �
 ```bash
 uv run python -m alembic upgrade head
 uv run python -m uvicorn app.main:app --reload
-# http://127.0.0.1:8000 → 가입(이메일·이름·회사) → 현장 설정에서 현장 등록 → 대시보드에서 "지금 판정하기"
+# http://127.0.0.1:8000 → 가입(이메일·휴대폰·이름·회사) → 현장 설정에서 현장 등록 → 대시보드에서 "지금 판정하기"
 ```
 - 모든 화면은 로그인이 필요하다(D-057). 쓰기 요청은 같은 출처(Origin/Referer)만 받으므로 다른 도구로 POST할 때 `Origin: http://127.0.0.1:8000` 헤더를 붙인다. HTTPS 배포에서는 `.env`에 `SESSION_COOKIE_SECURE=1`.
 - 0010 이전에 만든 현장은 참여 업체가 없어 아무도 볼 수 없다(소유자를 추정하지 않음). 화면에서 가입한 뒤 `PYTHONUTF8=1 uv run python scripts/grant_site.py --email <내 이메일> --all-unassigned`(또는 `--site-id N`)로 조정자를 지정한다.

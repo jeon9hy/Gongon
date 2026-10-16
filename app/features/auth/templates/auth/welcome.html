@@ -1,0 +1,39 @@
+{# 처음 들어온 사람의 첫 화면(로그인 전). 가입·로그인으로만 넘어간다. #}
+{% extends "base.html" %}
+{% block title %}환영해요{% endblock %}
+{% block body_class %} class="authbody"{% endblock %}
+{% block page %}
+<div class="welcome">
+<header class="welcome__bar">
+<a class="auth__logo" href="/welcome"><img src="/static/brand/logo.png" alt="" width="32" height="32">공온</a>
+<a class="btn btn--soft btn--sm" href="/login">로그인</a>
+</header>
+<main class="welcome__hero" id="main" tabindex="-1">
+<div class="welcome__copy">
+<p class="auth__eyebrow">공사 + ON</p>
+<h1 class="welcome__title">변경 뒤 남은 조치는<br><em>무엇인가요?</em></h1>
+<p class="welcome__lead">공사 변경 뒤 필요한 일을 연결하고,<br>처리 결과까지 확인해요.</p>
+<div class="welcome__actions">
+<a class="btn btn--accent btn--lg" href="/signup">가입하고 시작하기</a>
+<a class="btn btn--soft btn--lg" href="/login">이미 계정이 있어요</a>
+</div>
+</div>
+<div class="welcome__art" aria-hidden="true">
+<div class="welcome__orb welcome__orb--1"></div>
+<div class="welcome__orb welcome__orb--2"></div>
+<div class="welcome__orb welcome__orb--3"></div>
+<div class="welcome__ring"></div>
+<img class="welcome__mascot" src="/static/brand/mascot-3d.png" alt="" width="420" height="340">
+<div class="welcome__chip welcome__chip--a"><span class="welcome__dot welcome__dot--go"></span>펌프카 예약 변경 · 검증 완료</div>
+<div class="welcome__chip welcome__chip--b"><span class="welcome__dot welcome__dot--check"></span>변경 v2 · 필수 조치 2건 남음</div>
+<div class="welcome__chip welcome__chip--c"><span class="welcome__dot welcome__dot--wait"></span>가상골조 · 완료 보고 대기</div>
+</div>
+</main>
+<section class="welcome__steps" aria-label="공온 흐름">
+<article class="welcome__step"><img src="/static/brand/icon-schedule.png" alt="" width="40" height="40"><h2>변경을 확정하면</h2><p>바뀐 날짜·시간이 버전으로 남아요.</p></article>
+<article class="welcome__step"><img src="/static/brand/icon-alert.png" alt="" width="40" height="40"><h2>업체별로 조치를 나누고</h2><p>누가, 언제까지, 무엇을 할지 정해요.</p></article>
+<article class="welcome__step"><img src="/static/brand/icon-record.png" alt="" width="40" height="40"><h2>완료 보고를 검증해요</h2><p>보고한 사람과 확인한 사람을 따로 남겨요.</p></article>
+</section>
+<p class="welcome__foot">최종 판단은 현장 책임자가 합니다. · © 공온 Gongon</p>
+</div>
+{% endblock %}

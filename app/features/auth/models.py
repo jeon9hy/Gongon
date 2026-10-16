@@ -23,6 +23,10 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(200), unique=True)  # 소문자
     display_name: Mapped[str] = mapped_column(String(40))
     password_hash: Mapped[str] = mapped_column(String(300))
+    phone: Mapped[str | None] = mapped_column(String(20))  # 숫자만. 기존 사용자는 없을 수 있다
+    phone_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )  # 문자 인증 전 NULL
     organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

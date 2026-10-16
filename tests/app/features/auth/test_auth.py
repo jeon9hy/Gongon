@@ -12,7 +12,7 @@ from app.features.auth import service
 from app.features.auth.models import User
 from tests.conftest import DEFAULT_USER, FIXED_NOW
 
-PROTECTED_PAGES = ("/", "/dashboard", "/schedule", "/judgments", "/sites", "/judgments/1")
+PROTECTED_PAGES = ("/dashboard", "/schedule", "/judgments", "/sites", "/judgments/1")
 SITE = {
     "name": "가상현장",
     "lot_address": "서울 중구 태평로1가 31",
@@ -46,6 +46,23 @@ def test_pages_send_anonymous_visitor_to_login_with_return_path(
     assert response.headers["location"] == "/login?next=" + f"{path}?site_id=3".replace(
         "/", "%2F"
     ).replace("?", "%3F").replace("=", "%3D")
+
+
+def test_anonymous_home_visit_lands_on_welcome(anonymous_client: TestClient) -> None:
+    response = anonymous_client.get("/", follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/welcome"
+    html = anonymous_client.get("/welcome").text
+    assert 'href="/signup"' in html and 'href="/login"' in html
+    assert 'aria-label="주 메뉴"' not in html
+
+
+def test_welcome_sends_signed_in_user_home(client: TestClient) -> None:
+    response = client.get("/welcome", follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/"
 
 
 def test_anonymous_write_is_not_executed(anonymous_client: TestClient, session: Session) -> None:
@@ -196,7 +213,7 @@ def test_logout_invalidates_the_token_on_the_server(client: TestClient) -> None:
     response = client.post("/logout", follow_redirects=False)
     client.cookies.set(service.SESSION_COOKIE, token)  # 쿠키를 지우지 않고 다시 보내는 경우
 
-    assert response.headers["location"] == "/login?signed_out=true"
+    assert response.headers["location"] == "/welcome"
     assert client.get("/sites", follow_redirects=False).status_code == 303
 
 
@@ -220,3 +237,20 @@ def test_login_page_has_no_app_menu(anonymous_client: TestClient) -> None:
     html = anonymous_client.get("/login").text
 
     assert 'aria-label="주 메뉴"' not in html and 'action="/login"' in html
+
+
+@pytest.mark.parametrize("path", ["/login", "/signup", "/welcome"])
+def test_signed_in_user_going_back_to_auth_pages_is_sent_home(
+    client: TestClient, path: str
+) -> None:
+    response = client.get(path, follow_redirects=False)
+
+    assert response.status_code == 303 and response.headers["location"] == "/"
+
+
+def test_html_pages_are_not_stored_so_back_rechecks_the_session(
+    client: TestClient, anonymous_client: TestClient
+) -> None:
+    assert client.get("/sites").headers["cache-control"] == "no-store"
+    assert anonymous_client.get("/login").headers["cache-control"] == "no-store"
+    assert "no-store" not in client.get("/static/gongon.css").headers.get("cache-control", "")

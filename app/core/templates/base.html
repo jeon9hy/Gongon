@@ -10,8 +10,9 @@
 <link rel="apple-touch-icon" href="/static/brand/logo.png">
 <link rel="stylesheet" href="{{ static_url('gongon.css') }}">
 </head>
-<body>
+<body{% block body_class %}{% endblock %}>
 <a class="skip-link" href="#main">본문으로 바로 가기</a>
+{% block page %}
 <header class="appbar">
 <div class="appbar__inner">
 {% set me = request.state.user if request is defined else none %}
@@ -88,8 +89,16 @@
 <p class="sitefoot__mark" aria-hidden="true">Gongon ON</p>
 <p class="sitefoot__copy">© 공온 Gongon</p>
 </footer>
+{% endblock %}
 <script src="{{ static_url('picker.js') }}"></script>
 <script>
+// 한 번만 보여 줄 안내(토스트)의 표시 값은 주소에서 지운다. 새로 고침해도 다시 뜨지 않게 한다.
+const FLASH_PARAMS = ["done", "ran", "deleted"];
+const flashUrl = new URL(location.href);
+if (FLASH_PARAMS.some((key) => flashUrl.searchParams.has(key))) {
+  FLASH_PARAMS.forEach((key) => flashUrl.searchParams.delete(key));
+  history.replaceState(history.state, "", flashUrl.pathname + flashUrl.search + flashUrl.hash);
+}
 // 작은 화면에서는 날짜를 고른 직후 상세가 보이도록 링크에 문서 앵커를 붙인다.
 const calendarMedia = window.matchMedia("(max-width: 760px)");
 const updateCalendarLinks = () => document.querySelectorAll(".calcell__link").forEach((link) => {

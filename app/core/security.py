@@ -6,9 +6,9 @@
 
 from urllib.parse import urlsplit
 
-from starlette.datastructures import Headers
+from starlette.datastructures import Headers, MutableHeaders
 from starlette.responses import PlainTextResponse
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 UNSAFE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 
@@ -34,3 +34,27 @@ class SameOriginMiddleware:
             await response(scope, receive, send)
             return
         await self.app(scope, receive, send)
+
+
+class NoStoreHtmlMiddleware:
+    """화면(HTML)은 브라우저가 저장하지 않게 한다.
+
+    뒤로 가기 때 저장본 대신 서버에 다시 물어서, 로그인 뒤의 로그인 화면은 홈으로,
+    로그아웃 뒤의 앱 화면은 로그인으로 보낸다(로그인 상태와 다른 화면을 보여 주지 않음)."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        async def send_with_header(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                headers = MutableHeaders(scope=message)
+                if headers.get("content-type", "").startswith("text/html"):
+                    headers["cache-control"] = "no-store"
+            await send(message)
+
+        await self.app(scope, receive, send_with_header)

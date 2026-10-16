@@ -210,9 +210,12 @@ def add_member(
     if role_raw not in ALL_ROLES:
         return ("역할을 고르세요.",)
     role: Role = role_raw
-    target = auth_service.find_user_by_email(session, email)
+    target = auth_service.find_user(session, email)
     if target is None or not target.is_active:
-        return ("가입한 사용자의 이메일을 입력하세요. 초대 메일은 아직 보내지 않습니다.",)
+        return (
+            "가입한 사용자의 휴대폰 번호나 이메일을 입력하세요. "
+            "초대 문자·메일은 아직 보내지 않습니다.",
+        )
     if repository.active_membership(session, target.user_id, site_id) is not None:
         return ("이미 이 현장에 참여 중입니다. 역할을 바꾸려면 회수한 뒤 다시 추가하세요.",)
     participant = repository.participant_of(session, site_id, target.organization_id)
@@ -431,9 +434,9 @@ def link_contact(
     contact = _contact_or_404(session, site_id, contact_id)
     if contact.user_id is not None:
         return ("이미 계정이 연결돼 있습니다. 먼저 연결을 해제하세요.",)
-    target = auth_service.find_user_by_email(session, email)
+    target = auth_service.find_user(session, email)
     if target is None or not target.is_active:
-        return ("가입한 사용자의 이메일을 입력하세요.",)
+        return ("가입한 사용자의 휴대폰 번호나 이메일을 입력하세요.",)
     participant = repository.participant(session, site_id, contact.participant_id)
     if participant is None or participant.organization_id != target.organization_id:
         return ("이 업체 소속 사용자만 연결할 수 있습니다. 먼저 참여자로 추가해 업체를 맞추세요.",)

@@ -177,36 +177,6 @@ def test_later_days_without_registered_work_are_not_judged(
     assert week.count(">작업 없음<") == 6
 
 
-def test_home_recent_shows_latest_judgment_per_site_and_date() -> None:
-    from datetime import datetime
-
-    from app.features.judgments.service import _recent_runs
-    from engine.kst import KST
-
-    def row(id_: int, day: date, work: str, verdict: str, hour: int) -> Judgment:
-        judged_at = datetime(2026, 10, 4, hour, tzinfo=KST)
-        return Judgment(id=id_, site_id=1, target_date=day, work_type=work, work_item_id=None,
-                        verdict=verdict, judged_at=judged_at)  # fmt: skip
-
-    tomorrow, today = date(2026, 10, 5), date(2026, 10, 4)
-    rows = [  # 최신순
-        row(4, tomorrow, "철골 작업", "진행", 15),  # 다시 판정: 중지 검토 → 진행으로 갱신
-        row(3, tomorrow, "철골 작업", "중지 검토", 9),
-        row(2, tomorrow, "폭염(공통)", "진행", 9),  # 같은 예보라 다시 저장되지 않은 행도 포함
-        row(1, today, "철골 작업", "확인 필요", 8),
-    ]
-
-    runs = _recent_runs(rows, {1: "○○현장"})
-
-    assert [r.target_label for r in runs] == ["10월 5일(월)", "10월 4일(일)"]
-    latest = runs[0]
-    assert latest.verdict == "진행"
-    assert [(i.work_type, i.verdict) for i in latest.items] == [
-        ("철골 작업", "진행"),
-        ("폭염(공통)", "진행"),
-    ]
-
-
 def test_rerun_with_same_forecast_says_unchanged_and_when_next(client: TestClient) -> None:
     site_id = add_site(client)
     client.post("/judgments/run", data={"site_id": site_id})

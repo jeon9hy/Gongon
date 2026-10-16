@@ -1,0 +1,25 @@
+{# 로그인·가입 공통 틀: 왼쪽 브랜드 면 + 오른쪽 입력. 앱 메뉴·바닥 영역 없이 한 화면에 담는다. #}
+{% extends "base.html" %}
+{% block body_class %} class="authbody"{% endblock %}
+{% block page %}
+<main class="auth" id="main" tabindex="-1">
+<aside class="auth__brand" aria-label="공온 소개">
+<a class="auth__logo" href="/welcome"><img src="/static/brand/logo.png" alt="" width="32" height="32">공온</a>
+<div class="auth__pitch">
+<p class="auth__eyebrow">공사 + ON</p>
+<p class="auth__headline">변경 뒤 남은 조치,<br>공온이 끝까지 챙겨요.</p>
+<ol class="auth__flow">
+<li><span>1</span>변경 확정</li>
+<li><span>2</span>업체별 후속 조치</li>
+<li><span>3</span>완료 보고 · 검증</li>
+</ol>
+</div>
+<img class="auth__mascot" src="/static/brand/mascot-3d.png" alt="" width="260" height="210">
+</aside>
+<section class="auth__panel">
+<div class="auth__card">
+{% block content %}{% endblock %}
+</div>
+</section>
+</main>
+{% endblock %}

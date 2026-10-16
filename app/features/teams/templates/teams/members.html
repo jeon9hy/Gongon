@@ -44,7 +44,7 @@
 <details class="delete-action roster__pop">
 <summary>계정 연결</summary>
 <form method="post" action="/sites/{{ view.site_id }}/contacts/{{ c.contact_id }}/link" class="delete-action__confirm roster__popform">
-<label class="field">가입한 이메일<input type="email" name="email" maxlength="200" required></label>
+<label class="field">휴대폰 번호 또는 이메일<input type="text" name="email" placeholder="010-0000-0000" maxlength="200" required></label>
 <button class="btn btn--accent btn--sm" type="submit">연결</button>
 </form>
 </details>
@@ -157,8 +157,8 @@
 <fieldset>
 <legend>로그인 참여자 추가</legend>
 <div class="inline">
-<label class="field">이메일
-<input type="email" name="email" value="{{ view.member_form.email }}" maxlength="200" required>
+<label class="field">휴대폰 번호 또는 이메일
+<input type="text" name="email" value="{{ view.member_form.email }}" placeholder="010-0000-0000" maxlength="200" required>
 </label>
 <label class="field">역할
 <select name="role">
