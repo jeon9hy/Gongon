@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}참여자 · {{ view.site_name }}{% endblock %}
+{% block content %}
+
+<section class="hero" aria-labelledby="members-title">
+<div class="hero__main">
+<p class="hero__date"><a href="/sites?site_id={{ view.site_id }}">{{ view.site_name }}</a> · 내 역할 {{ view.my_role_label }}</p>
+<h1 class="hero__title" id="members-title">참여 업체·참여자</h1>
+</div>
+</section>
+
+<div class="stack">
+{% if view.errors %}
+<div class="alert alert--error" role="alert">
+<ul>{% for e in view.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+</div>
+{% elif view.message %}
+<div class="alert alert--ok" role="status">{{ view.message }}</div>
+{% endif %}
+
+{% for p in view.participants %}
+<section class="card card--tight" aria-label="{{ p.organization_name }}">
+<h2 class="h2">{{ p.organization_name }} <span class="tag">{{ p.kind_label }}</span></h2>
+<ul class="member-list">
+{% for m in p.members %}
+<li class="member-row">
+<span><strong>{{ m.display_name }}</strong>{% if m.is_me %} (나){% endif %}{% if m.email %} <span class="small muted">{{ m.email }}</span>{% endif %}</span>
+<span class="tag">{{ m.role_label }}</span>
+<span class="small muted">추가 {{ m.granted_text }}</span>
+{% if view.can_manage %}
+<form method="post" action="/sites/{{ view.site_id }}/members/{{ m.membership_id }}/revoke">
+<button class="btn btn--danger-line btn--sm" type="submit">권한 회수</button>
+</form>
+{% endif %}
+</li>
+{% else %}
+<li class="small muted">활성 참여자가 없습니다.</li>
+{% endfor %}
+</ul>
+</section>
+{% endfor %}
+
+{% if view.can_manage %}
+<form class="form" method="post" action="/sites/{{ view.site_id }}/members">
+<fieldset>
+<legend>참여자 추가</legend>
+<p class="small muted">가입한 사람의 이메일로 추가합니다. 그 회사가 처음이면 협력업체로 참여합니다. 조정자는 원청 소속만 될 수 있습니다. 초대 메일은 보내지 않습니다.</p>
+<label class="field">이메일
+<input type="email" name="email" value="{{ view.email }}" maxlength="200" required>
+</label>
+<label class="field">역할
+<select name="role">
+{% for o in view.role_options %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}
+</select>
+</label>
+</fieldset>
+<div class="actions"><p></p><button class="btn btn--accent" type="submit">추가</button></div>
+</form>
+{% else %}
+<p class="small muted">참여자 추가·회수는 조정자만 할 수 있습니다.</p>
+{% endif %}
+</div>
+{% endblock %}

@@ -37,6 +37,7 @@ def run_once() -> str:
     with factory() as session:
         return service.run_all(
             session,
+            None,  # 시스템 작업: 삭제하지 않은 모든 현장(D-057)
             now_kst(),
             settings.kma_auth(),
             forecasts_service.get_http_get(),

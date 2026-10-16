@@ -30,3 +30,15 @@ class AuthView:
     organization_name: str = ""
     errors: tuple[str, ...] = ()
     message: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class UserInfo:
+    """다른 기능이 표시·권한 확인에 쓰는 사용자 정보."""
+
+    user_id: int
+    email: str
+    display_name: str
+    organization_id: int
+    organization_name: str
+    is_active: bool

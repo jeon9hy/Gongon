@@ -4,6 +4,7 @@ from datetime import date, time, timedelta
 
 from sqlalchemy.orm import Session
 
+from app.features.auth.schemas import CurrentUser
 from app.features.schedules import repository
 from app.features.schedules.models import WorkItem
 from app.features.schedules.schemas import (
@@ -16,7 +17,9 @@ from app.features.schedules.schemas import (
     WorkItemRecord,
 )
 from app.features.sites import service as sites_service
-from app.features.sites.schemas import SiteRecord
+from app.features.sites.schemas import SiteRecord, SiteScope
+from app.features.teams import service as teams_service
+from app.features.teams.schemas import MANAGE_ROLES
 
 CELL_ITEMS = 3  # 달력 칸에 보이는 작업 수(나머지는 +N)
 MONTH_PICK_SPAN = 6  # 달 고르기 목록에 늘 넣는 보고 있는 달 앞뒤 개월 수
@@ -53,6 +56,7 @@ def items_on_for_sites(
 
 def build_view(
     session: Session,
+    scope: SiteScope,
     site_id: int | None,
     today: date,
     form: WorkItemForm | None = None,
@@ -61,14 +65,14 @@ def build_view(
     month: str | None = None,
     day: str | None = None,
 ) -> ScheduleView | None:
-    """월 달력 + 고른 날짜 상세. 현장이 없으면 빈 화면, 없는 site_id면 None.
+    """월 달력 + 고른 날짜 상세. 현장이 없으면 빈 화면, 없거나 범위 밖 site_id면 None.
 
     month(YYYY-MM)·day(YYYY-MM-DD)가 형식에 맞지 않으면 무시하고 기본값(내일이 든 달·내일)을 쓴다.
     """
-    sites = sites_service.list_sites(session)
+    sites = sites_service.list_sites(session, scope)
     site = _pick(sites, site_id)
-    if sites and site is None:
-        return None
+    if site_id is not None and site is None:
+        return None  # 없거나 참여하지 않은 현장(D-057)
     tomorrow = today + timedelta(days=1)
     selected = _date(day or "") or (_date(form.work_date) if form else None) or tomorrow
     first = _month(month or "") or selected.replace(day=1)
@@ -165,10 +169,13 @@ def _detail(
 
 
 def add_item(
-    session: Session, site_id: int, form: WorkItemForm, today: date
+    session: Session, user: CurrentUser, site_id: int, form: WorkItemForm, today: date
 ) -> tuple[bool, tuple[str, ...]]:
-    """검증에 통과하면 저장한다. (저장 여부, 오류 목록). 없는 현장이면 (False, ("현장 없음",))."""
-    site = sites_service.get_site(session, site_id)
+    """검증에 통과하면 저장한다. (저장 여부, 오류 목록). 없는 현장이면 (False, ("현장 없음",)).
+
+    비참여 현장은 404, 조정자가 아니면 403(teams)."""
+    teams_service.require_role(session, user, site_id, MANAGE_ROLES)
+    site = sites_service.get_site(session, site_id, None)
     if site is None:
         return False, ("현장을 찾을 수 없습니다.",)
     items, errors = _validate(site, form, today)
@@ -178,7 +185,8 @@ def add_item(
     return True, ()
 
 
-def delete_item(session: Session, site_id: int, item_id: int) -> bool:
+def delete_item(session: Session, user: CurrentUser, site_id: int, item_id: int) -> bool:
+    teams_service.require_role(session, user, site_id, MANAGE_ROLES)
     return repository.delete_item(session, site_id, item_id)
 
 

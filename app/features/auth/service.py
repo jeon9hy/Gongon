@@ -6,19 +6,20 @@
 import hashlib
 import hmac
 import secrets
+from collections.abc import Iterable
 from datetime import datetime, timedelta
 from functools import lru_cache
 from typing import Annotated
 from urllib.parse import quote
 
 from fastapi import Depends, HTTPException, Request
-from sqlalchemy import delete, select
+from sqlalchemy import ColumnElement, delete, select
 from sqlalchemy.orm import Session
 
 from app.core.clock import now_kst
 from app.core.db import get_session
 from app.features.auth.models import AuthSession, Organization, User
-from app.features.auth.schemas import CurrentUser, SignupForm
+from app.features.auth.schemas import CurrentUser, SignupForm, UserInfo
 
 SESSION_COOKIE = "gongon_session"
 SESSION_TTL = timedelta(hours=12)
@@ -184,3 +185,27 @@ def require_user(
 
 
 CurrentUserDep = Annotated[CurrentUser, Depends(require_user)]
+
+
+def find_user_by_email(session: Session, email: str) -> UserInfo | None:
+    return next(iter(_user_infos(session, User.email == normalize_email(email))), None)
+
+
+def describe_users(session: Session, user_ids: Iterable[int]) -> dict[int, UserInfo]:
+    """여러 사용자를 쿼리 한 번으로 읽는다(목록 화면의 반복 조회 방지)."""
+    ids = set(user_ids)
+    if not ids:
+        return {}
+    return {u.user_id: u for u in _user_infos(session, User.id.in_(ids))}
+
+
+def _user_infos(session: Session, condition: ColumnElement[bool]) -> list[UserInfo]:
+    rows = session.execute(
+        select(User, Organization.name)
+        .join(Organization, Organization.id == User.organization_id)
+        .where(condition)
+    ).all()
+    return [
+        UserInfo(u.id, u.email, u.display_name, u.organization_id, name, u.is_active)
+        for u, name in rows
+    ]

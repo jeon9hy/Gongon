@@ -1,10 +1,14 @@
-"""현장 등록·수정·삭제·조회. 다른 기능은 list_sites·get_site로 읽는다(삭제한 현장은 빠진다)."""
+"""현장 등록·수정·삭제·조회. 다른 기능은 list_sites·get_site로 읽는다(삭제한 현장은 빠진다).
+
+조회는 항상 SiteScope(참여 현장)로 제한하고, 수정·삭제는 조정자만 한다(teams, D-057).
+"""
 
 from datetime import date, datetime, time, timedelta
 
 from sqlalchemy.orm import Session
 
 from app.core.rules import WORK_TYPE_LABELS, rule_sets_by_label
+from app.features.auth.schemas import CurrentUser
 from app.features.sites import repository
 from app.features.sites.models import Site
 from app.features.sites.schemas import (
@@ -13,26 +17,30 @@ from app.features.sites.schemas import (
     SiteInput,
     SiteListItem,
     SiteRecord,
+    SiteScope,
     SitesView,
     WorkTypeOption,
 )
+from app.features.teams import service as teams_service
+from app.features.teams.schemas import MANAGE_ROLES
 from engine.geo import GridConversionError, latlon_to_kma_grid
 
 NAME_MAX = 60
 ADDRESS_MAX = 200
 
 
-def list_sites(session: Session) -> tuple[SiteRecord, ...]:
-    return tuple(_record(s) for s in repository.list_sites(session))
+def list_sites(session: Session, scope: SiteScope) -> tuple[SiteRecord, ...]:
+    return tuple(_record(s) for s in repository.list_sites(session, scope))
 
 
-def get_site(session: Session, site_id: int) -> SiteRecord | None:
-    site = repository.get_site(session, site_id)
+def get_site(session: Session, site_id: int, scope: SiteScope) -> SiteRecord | None:
+    site = repository.get_site(session, site_id, scope)
     return None if site is None else _record(site)
 
 
 def build_sites_view(
     session: Session,
+    user: CurrentUser,
     site_id: int | None,
     form: SiteForm | None = None,
     errors: tuple[str, ...] = (),
@@ -41,7 +49,7 @@ def build_sites_view(
     deleted: bool = False,
 ) -> SitesView | None:
     """site_id가 없으면 새 현장 등록 화면, 없는 현장이면 None. today는 새 현장 기본 작업 기간용."""
-    records = list_sites(session)
+    records = list_sites(session, teams_service.site_ids_for(session, user.user_id))
     selected = None
     if site_id is not None:
         selected = next((r for r in records if r.site_id == site_id), None)
@@ -73,21 +81,30 @@ def build_sites_view(
         errors=errors,
         saved=saved,
         deleted=deleted,
+        can_edit=selected is None
+        or teams_service.role_on(session, user.user_id, selected.site_id) in MANAGE_ROLES,
     )
 
 
-def create_site(session: Session, form: SiteForm) -> tuple[int | None, tuple[str, ...]]:
+def create_site(
+    session: Session, form: SiteForm, founder: CurrentUser, now: datetime
+) -> tuple[int | None, tuple[str, ...]]:
+    """만든 사람의 회사가 원청, 본인이 조정자가 된다. 현장과 참여 기록은 한 번에 저장한다."""
     data, errors = validate(form)
     if data is None:
         return None, errors
     site = repository.add_site(session, data)
+    teams_service.add_founder(session, site.id, founder, now)
     session.commit()
     return site.id, ()
 
 
-def update_site(session: Session, site_id: int, form: SiteForm) -> tuple[bool, tuple[str, ...]]:
-    """(현장 존재 여부, 검증 오류)."""
-    site = repository.get_site(session, site_id)
+def update_site(
+    session: Session, user: CurrentUser, site_id: int, form: SiteForm
+) -> tuple[bool, tuple[str, ...]]:
+    """(현장 존재 여부, 검증 오류). 비참여는 404, 조정자가 아니면 403(teams)."""
+    teams_service.require_role(session, user, site_id, MANAGE_ROLES)
+    site = repository.get_site(session, site_id, None)
     if site is None:
         return False, ()
     data, errors = validate(form)
@@ -98,10 +115,11 @@ def update_site(session: Session, site_id: int, form: SiteForm) -> tuple[bool, t
     return True, ()
 
 
-def delete_site(session: Session, site_id: int, now: datetime) -> bool:
+def delete_site(session: Session, user: CurrentUser, site_id: int, now: datetime) -> bool:
     """현장을 목록·판정 대상에서 뺀다. 판정 내역·작업 일정 행은 기록으로 남긴다(D-040).
-    없거나 이미 삭제한 현장이면 False."""
-    site = repository.get_site(session, site_id)
+    없거나 이미 삭제한 현장이면 False. 조정자만 삭제한다."""
+    teams_service.require_role(session, user, site_id, MANAGE_ROLES)
+    site = repository.get_site(session, site_id, None)
     if site is None:
         return False
     repository.mark_deleted(site, now)

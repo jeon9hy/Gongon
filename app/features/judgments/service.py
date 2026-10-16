@@ -12,6 +12,7 @@ from urllib.parse import urlencode
 from sqlalchemy.orm import Session
 
 from app.core.rules import judged_labels, rule_sets_by_label
+from app.features.auth.schemas import CurrentUser
 from app.features.forecasts import service as forecasts_service
 from app.features.judgments import repository
 from app.features.judgments.models import Judgment, JudgmentRun
@@ -54,7 +55,9 @@ from app.features.judgments.schemas import (
 from app.features.schedules import service as schedules_service
 from app.features.schedules.schemas import WorkItemRecord
 from app.features.sites import service as sites_service
-from app.features.sites.schemas import SiteRecord
+from app.features.sites.schemas import SiteRecord, SiteScope
+from app.features.teams import service as teams_service
+from app.features.teams.schemas import MANAGE_ROLES
 from engine.forecast import (
     HttpGet,
     KmaAuth,
@@ -163,7 +166,7 @@ def run_for_site(
 
     예보를 한 번 받아 그 예보에 값이 있는 날만 판정한다. 예보 범위 밖인 날은 저장하지 않는다.
     """
-    site = sites_service.get_site(session, site_id)
+    site = sites_service.get_site(session, site_id, None)
     if site is None:
         return None
     rule_sets = rule_sets_by_label()
@@ -293,13 +296,34 @@ def _work_range(day: date, target: "_Target") -> tuple[datetime, datetime]:
     )
 
 
+def run_for_user_site(
+    session: Session,
+    user: CurrentUser,
+    site_id: int,
+    now: datetime,
+    auth: KmaAuth,
+    http_get: HttpGet,
+    mid_service_key: str = "",
+) -> RunResult | None:
+    """화면의 "지금 판정하기". 비참여 현장은 404, 조정자가 아니면 403(teams)."""
+    teams_service.require_role(session, user, site_id, MANAGE_ROLES)
+    return run_for_site(session, site_id, now, auth, http_get, mid_service_key)
+
+
 def run_all(
-    session: Session, now: datetime, auth: KmaAuth, http_get: HttpGet, mid_service_key: str = ""
+    session: Session,
+    scope: SiteScope,
+    now: datetime,
+    auth: KmaAuth,
+    http_get: HttpGet,
+    mid_service_key: str = "",
 ) -> RunResult:
-    """모든 현장의 7일 판정. 같은 격자는 예보를 한 번만 받는다(forecasts 재사용)."""
+    """범위 안 모든 현장의 7일 판정. 같은 격자는 예보를 한 번만 받는다(forecasts 재사용).
+
+    scope None은 매시 자동 판정(시스템 작업)의 전체 현장이다."""
     results = [
         run_for_site(session, s.site_id, now, auth, http_get, mid_service_key)
-        for s in sites_service.list_sites(session)
+        for s in sites_service.list_sites(session, scope)
     ]
     if not results:
         return "no_sites"
@@ -416,6 +440,7 @@ def _failed_judgment(
 
 def build_dashboard(
     session: Session,
+    scope: SiteScope,
     site_id: int | None,
     element_key: ElementKey | None,
     hour: int | None,
@@ -425,10 +450,11 @@ def build_dashboard(
 ) -> DashboardView | None:
     """현장이 없으면 빈 대시보드, 없는 site_id면 None."""
     message = None if ran is None else run_message(ran, now)
-    sites = sites_service.list_sites(session)
+    sites = sites_service.list_sites(session, scope)
     target_date = target_date_for(now)
     if not sites:
-        return _empty_dashboard(target_date)
+        # 없거나 참여하지 않은 현장을 직접 열면 빈 화면이 아니라 404(D-057)
+        return None if site_id is not None else _empty_dashboard(target_date)
     site = sites[0] if site_id is None else next((s for s in sites if s.site_id == site_id), None)
     if site is None:
         return None
@@ -497,10 +523,12 @@ def build_dashboard(
     )
 
 
-def build_home(session: Session, now: datetime, ran: RunResult | None = None) -> HomeView:
-    """전체 현장의 내일 판정 개요. 현장 수와 관계없이 판정 조회는 한 번만 한다."""
+def build_home(
+    session: Session, scope: SiteScope, now: datetime, ran: RunResult | None = None
+) -> HomeView:
+    """참여 현장의 내일 판정 개요. 현장 수와 관계없이 판정 조회는 한 번만 한다."""
     target_date = target_date_for(now)
-    sites = sites_service.list_sites(session)
+    sites = sites_service.list_sites(session, scope)
     site_ids = [s.site_id for s in sites]
     by_site: dict[int, dict[str, Judgment]] = {}
     for j in repository.latest_for_sites_date(session, site_ids, target_date):
@@ -1223,11 +1251,12 @@ def serialize_judgment(judgment: Judgment) -> dict[str, Any]:
     }
 
 
-def get_detail(session: Session, judgment_id: int) -> DetailView | None:
+def get_detail(session: Session, scope: SiteScope, judgment_id: int) -> DetailView | None:
+    """참여하지 않은 현장의 판정은 없는 것과 같다. 삭제한 현장의 판정은 참여자에게 보인다(D-054)."""
     judgment = repository.get(session, judgment_id)
-    if judgment is None:
+    if judgment is None or (scope is not None and judgment.site_id not in scope):
         return None
-    site = sites_service.get_site(session, judgment.site_id)
+    site = sites_service.get_site(session, judgment.site_id, scope)
     elements = _elements(judgment)
     chips = ["자료 유형: 예보 (현장 관측 아님)"]
     if judgment.forecast_issued_at is not None:
@@ -1335,10 +1364,15 @@ def _history_days(rows: Sequence[Judgment], names: Mapping[int, str]) -> tuple[H
 
 
 def build_history(
-    session: Session, verdict: VerdictFilter, site_id: int | None, page: int, size: int
+    session: Session,
+    scope: SiteScope,
+    verdict: VerdictFilter,
+    site_id: int | None,
+    page: int,
+    size: int,
 ) -> HistoryView:
-    """size는 HISTORY_PAGE_SIZES 중 하나(라우터가 검증)."""
-    sites = sites_service.list_sites(session)
+    """size는 HISTORY_PAGE_SIZES 중 하나(라우터가 검증). 범위 밖 site_id는 빈 목록이다."""
+    sites = sites_service.list_sites(session, scope)
     names = {s.site_id: s.name for s in sites}
     # 삭제한 현장의 판정은 기록으로 남기되 내역 목록에는 내지 않는다(D-054).
     # 상세 주소로는 열 수 있다.

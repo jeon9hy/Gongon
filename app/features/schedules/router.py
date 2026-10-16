@@ -9,9 +9,10 @@ from sqlalchemy.orm import Session
 from app.core.clock import now_kst
 from app.core.db import get_session
 from app.core.templating import register_template_dir, templates
-from app.features.auth.service import require_user
+from app.features.auth.service import CurrentUserDep, require_user
 from app.features.schedules import service
 from app.features.schedules.schemas import ScheduleView, WorkItemForm
+from app.features.teams.service import AccessibleSitesDep
 
 register_template_dir(Path(__file__).parent / "templates")
 
@@ -35,6 +36,7 @@ def _render(request: Request, view: ScheduleView, status_code: int = 200) -> HTM
 def schedule(
     request: Request,
     session: SessionDep,
+    scope: AccessibleSitesDep,
     now: NowDep,
     site_id: int | None = None,
     month: str | None = None,
@@ -43,7 +45,9 @@ def schedule(
     deleted: bool = False,
 ) -> HTMLResponse:
     message = "작업을 추가했습니다." if saved else "작업을 지웠습니다." if deleted else None
-    view = service.build_view(session, site_id, now.date(), message=message, month=month, day=day)
+    view = service.build_view(
+        session, scope, site_id, now.date(), message=message, month=month, day=day
+    )
     if view is None:
         raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
     return _render(request, view)
@@ -53,6 +57,8 @@ def schedule(
 def add_item(
     request: Request,
     session: SessionDep,
+    user: CurrentUserDep,
+    scope: AccessibleSitesDep,
     now: NowDep,
     site_id: Annotated[int, Form()],
     work_type: Annotated[str, Form()] = "",
@@ -64,9 +70,9 @@ def add_item(
     work_dates: Annotated[list[str] | None, Form()] = None,
 ) -> Response:
     form = WorkItemForm(work_type, work_date, start, end, location, memo, tuple(work_dates or ()))
-    ok, errors = service.add_item(session, site_id, form, now.date())
+    ok, errors = service.add_item(session, user, site_id, form, now.date())
     if not ok:
-        view = service.build_view(session, site_id, now.date(), form, errors)
+        view = service.build_view(session, scope, site_id, now.date(), form, errors)
         if view is None:
             raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
         return _render(request, view, status_code=422)
@@ -80,10 +86,11 @@ def add_item(
 @router.post("/schedule/{item_id}/delete")
 def delete_item(
     session: SessionDep,
+    user: CurrentUserDep,
     item_id: int,
     site_id: Annotated[int, Form()],
     day: Annotated[str, Form()] = "",
 ) -> RedirectResponse:
-    if not service.delete_item(session, site_id, item_id):
+    if not service.delete_item(session, user, site_id, item_id):
         raise HTTPException(status_code=404, detail="작업을 찾을 수 없습니다")
     return RedirectResponse(f"/schedule?site_id={site_id}&day={day}&deleted=1", status_code=303)

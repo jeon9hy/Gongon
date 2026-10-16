@@ -5,13 +5,15 @@ TEST_DATABASE_URL이 없으면 DB 테스트는 건너뛴다(건너뜀은 통과�
 외부 API는 가짜 http_get(tests/fakes.py)으로 바꾸고, 현재 시각은 고정한다.
 """
 
+import contextlib
 import os
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from datetime import datetime
 
 import pytest
 from alembic import command
 from alembic.config import Config
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine, create_engine, make_url, text
 from sqlalchemy.orm import Session
@@ -40,6 +42,8 @@ TABLES = (
     "forecast_runs",
     "mid_forecast_runs",
     "sites",
+    "project_memberships",
+    "project_participants",
     "auth_sessions",
     "users",
     "organizations",
@@ -96,10 +100,7 @@ def settings() -> Settings:
 
 
 @pytest.fixture
-def anonymous_client(
-    db_engine: Engine, session: Session, fake_kma: FakeKma, settings: Settings
-) -> Iterator[TestClient]:
-    """로그인하지 않은 브라우저. 같은 출처 헤더는 보낸다."""
+def app(db_engine: Engine, session: Session, fake_kma: FakeKma, settings: Settings) -> FastAPI:
     app = create_app()
 
     def test_session() -> Iterator[Session]:
@@ -110,13 +111,36 @@ def anonymous_client(
     app.dependency_overrides[now_kst] = lambda: FIXED_NOW
     app.dependency_overrides[get_settings] = lambda: settings
     app.dependency_overrides[get_http_get] = lambda: fake_kma
-    with TestClient(app, headers=SAME_ORIGIN) as test_client:
-        yield test_client
+    return app
+
+
+Browser = Callable[[dict[str, str] | None], TestClient]
 
 
 @pytest.fixture
-def client(anonymous_client: TestClient) -> TestClient:
-    """가입·로그인한 기본 사용자(DEFAULT_USER)의 브라우저. 기존 화면 테스트가 쓴다."""
-    response = anonymous_client.post("/signup", data=DEFAULT_USER, follow_redirects=False)
-    assert response.status_code == 303, response.text
-    return anonymous_client
+def browser(app: FastAPI) -> Iterator[Browser]:
+    """브라우저(쿠키가 따로인 TestClient)를 만든다. 사용자 정보를 주면 그 사용자로 가입·로그인한다.
+
+    같은 출처 헤더는 항상 보낸다. 여러 회사 사용자가 같은 현장에 접근하는 검사에 쓴다."""
+    with contextlib.ExitStack() as stack:
+
+        def make(user: dict[str, str] | None = None) -> TestClient:
+            test_client = stack.enter_context(TestClient(app, headers=SAME_ORIGIN))
+            if user is not None:
+                response = test_client.post("/signup", data=user, follow_redirects=False)
+                assert response.status_code == 303, response.text
+            return test_client
+
+        yield make
+
+
+@pytest.fixture
+def anonymous_client(browser: Browser) -> TestClient:
+    """로그인하지 않은 브라우저."""
+    return browser(None)
+
+
+@pytest.fixture
+def client(browser: Browser) -> TestClient:
+    """가입·로그인한 기본 사용자(DEFAULT_USER, 가상건설)의 브라우저. 기존 화면 테스트가 쓴다."""
+    return browser(DEFAULT_USER)

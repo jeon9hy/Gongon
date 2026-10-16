@@ -4,18 +4,22 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.features.sites.models import Site
-from app.features.sites.schemas import SiteInput
+from app.features.sites.schemas import SiteInput, SiteScope
 
 MAX_SITES = 200  # 1인 사용 범위의 상한. 넘으면 페이지 처리를 추가한다.
 
 
-def list_sites(session: Session) -> list[Site]:
-    query = select(Site).where(Site.deleted_at.is_(None)).order_by(Site.id).limit(MAX_SITES)
-    return list(session.scalars(query))
+def list_sites(session: Session, scope: SiteScope) -> list[Site]:
+    query = select(Site).where(Site.deleted_at.is_(None))
+    if scope is not None:
+        query = query.where(Site.id.in_(scope))
+    return list(session.scalars(query.order_by(Site.id).limit(MAX_SITES)))
 
 
-def get_site(session: Session, site_id: int) -> Site | None:
-    """삭제한 현장은 없는 현장과 같게 본다."""
+def get_site(session: Session, site_id: int, scope: SiteScope) -> Site | None:
+    """삭제한 현장·범위 밖 현장은 없는 현장과 같게 본다."""
+    if scope is not None and site_id not in scope:
+        return None
     site = session.get(Site, site_id)
     return None if site is None or site.deleted_at is not None else site
 

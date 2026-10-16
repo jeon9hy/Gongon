@@ -2,6 +2,10 @@ from dataclasses import dataclass
 from datetime import date, time
 from typing import Literal
 
+# 현장 조회 범위. 로그인 사용자는 teams가 준 참여 현장 ID, None은 시스템 작업(매시 자동 판정)의
+# 전체 현장이다. 기본값을 두지 않아 호출하는 쪽이 반드시 범위를 정하게 한다(D-057).
+SiteScope = frozenset[int] | None
+
 # 기준표가 있으면 판정한다(원문 대조 전이면 그 표시를 함께). 없으면 판정하지 않는다(D-017).
 BasisStatus = Literal["판정 · 원문 대조 필요", "판정 · 원문 확인됨", "기준 미확인"]
 
@@ -98,3 +102,4 @@ class SitesView:
     errors: tuple[str, ...]
     saved: bool
     deleted: bool = False  # 방금 현장을 삭제하고 돌아왔는가
+    can_edit: bool = True  # 새 현장 등록이거나 이 현장의 조정자

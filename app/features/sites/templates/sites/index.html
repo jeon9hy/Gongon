@@ -38,6 +38,9 @@
 {% elif view.saved %}
 <div class="alert alert--ok" role="status">{{ icon("check", 16, 2.4) }} 저장했습니다. 대시보드에서 판정할 수 있습니다.</div>
 {% endif %}
+{% if view.site_id is not none %}
+<p class="small"><a href="/sites/{{ view.site_id }}/members">참여 업체·참여자 보기</a>{% if not view.can_edit %} · 현장 수정은 조정자만 할 수 있습니다.{% endif %}</p>
+{% endif %}
 
 <fieldset>
 <legend>{% if view.site_id is none %}새 현장{% else %}위치{% endif %}</legend>
@@ -127,10 +130,10 @@
 <div class="actions">
 <p></p>
 {% if view.site_id is not none %}<a class="btn btn--soft" href="/sites?site_id={{ view.site_id }}">되돌리기</a>{% endif %}
-<button class="btn btn--accent" type="submit">{% if view.site_id is none %}등록{% else %}저장{% endif %}</button>
+{% if view.can_edit %}<button class="btn btn--accent" type="submit">{% if view.site_id is none %}등록{% else %}저장{% endif %}</button>{% endif %}
 </div>
 </form>
-{% if view.site_id is not none %}
+{% if view.site_id is not none and view.can_edit %}
 {% set current = view.items | selectattr("selected") | first %}
 {{ site_danger_zone(view.site_id, current.name) }}
 {% endif %}

@@ -10,7 +10,7 @@ from app.core.clock import now_kst
 from app.core.config import Settings, get_settings
 from app.core.db import get_session
 from app.core.templating import register_template_dir, templates
-from app.features.auth.service import require_user
+from app.features.auth.service import CurrentUserDep, require_user
 from app.features.sites import places, service
 from app.features.sites.schemas import SiteForm, SitesView
 
@@ -20,6 +20,7 @@ register_template_dir(Path(__file__).parent / "templates")
 router = APIRouter(include_in_schema=False, dependencies=[Depends(require_user)])
 
 SessionDep = Annotated[Session, Depends(get_session)]
+NowDep = Annotated[datetime, Depends(now_kst)]
 
 
 class _SiteFormFields:
@@ -65,13 +66,14 @@ def _render(request: Request, view: SitesView, status_code: int = 200) -> HTMLRe
 def sites(
     request: Request,
     session: SessionDep,
-    now: Annotated[datetime, Depends(now_kst)],
+    user: CurrentUserDep,
+    now: NowDep,
     site_id: int | None = None,
     saved: bool = False,
     deleted: bool = False,
 ) -> HTMLResponse:
     view = service.build_sites_view(
-        session, site_id, saved=saved, today=now.date(), deleted=deleted
+        session, user, site_id, saved=saved, today=now.date(), deleted=deleted
     )
     if view is None:
         raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
@@ -104,22 +106,26 @@ _NO_PLACE_MESSAGE = (
 
 
 @router.post("/sites")
-def create_site(request: Request, session: SessionDep, fields: FormDep) -> Response:
-    site_id, errors = service.create_site(session, fields.form)
+def create_site(
+    request: Request, session: SessionDep, user: CurrentUserDep, now: NowDep, fields: FormDep
+) -> Response:
+    site_id, errors = service.create_site(session, fields.form, user, now)
     if site_id is None:
-        view = service.build_sites_view(session, None, fields.form, errors)
+        view = service.build_sites_view(session, user, None, fields.form, errors)
         assert view is not None
         return _render(request, view, status_code=422)
     return RedirectResponse(f"/sites?site_id={site_id}&saved=true", status_code=303)
 
 
 @router.post("/sites/{site_id}")
-def update_site(request: Request, session: SessionDep, site_id: int, fields: FormDep) -> Response:
-    found, errors = service.update_site(session, site_id, fields.form)
+def update_site(
+    request: Request, session: SessionDep, user: CurrentUserDep, site_id: int, fields: FormDep
+) -> Response:
+    found, errors = service.update_site(session, user, site_id, fields.form)
     if not found:
         raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
     if errors:
-        view = service.build_sites_view(session, site_id, fields.form, errors)
+        view = service.build_sites_view(session, user, site_id, fields.form, errors)
         assert view is not None
         return _render(request, view, status_code=422)
     return RedirectResponse(f"/sites?site_id={site_id}&saved=true", status_code=303)
@@ -127,8 +133,8 @@ def update_site(request: Request, session: SessionDep, site_id: int, fields: For
 
 @router.post("/sites/{site_id}/delete")
 def delete_site(
-    session: SessionDep, now: Annotated[datetime, Depends(now_kst)], site_id: int
+    session: SessionDep, user: CurrentUserDep, now: NowDep, site_id: int
 ) -> RedirectResponse:
-    if not service.delete_site(session, site_id, now):
+    if not service.delete_site(session, user, site_id, now):
         raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
     return RedirectResponse("/sites?deleted=true", status_code=303)

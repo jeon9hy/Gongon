@@ -78,6 +78,7 @@ uv run python -m uvicorn app.main:app --reload
 # http://127.0.0.1:8000 → 가입(이메일·이름·회사) → 현장 설정에서 현장 등록 → 대시보드에서 "지금 판정하기"
 ```
 - 모든 화면은 로그인이 필요하다(D-057). 쓰기 요청은 같은 출처(Origin/Referer)만 받으므로 다른 도구로 POST할 때 `Origin: http://127.0.0.1:8000` 헤더를 붙인다. HTTPS 배포에서는 `.env`에 `SESSION_COOKIE_SECURE=1`.
+- 0010 이전에 만든 현장은 참여 업체가 없어 아무도 볼 수 없다(소유자를 추정하지 않음). 화면에서 가입한 뒤 `PYTHONUTF8=1 uv run python scripts/grant_site.py --email <내 이메일> --all-unassigned`(또는 `--site-id N`)로 조정자를 지정한다.
 - 폴더의 `공온 실행.lnk`(또는 `scripts/start.bat`)가 PostgreSQL 확인·시작 → 마이그레이션 적용 → 서버 실행 → 브라우저 열기를 한다.
   - PostgreSQL 서비스가 꺼져 있으면 `scripts/ensure_postgres.bat`이 켠다. 서비스 시작에는 관리자 권한이 필요해 그때만 UAC 확인 창이 뜬다. 로컬 PostgreSQL 서비스가 없으면(원격 DB) 건너뛴다.
   - 설치 기본값은 윈도우 시작 시 자동 실행이라 보통은 이미 켜져 있다(개발자 PC는 PostgreSQL 18, D-014는 17 — 이 프로젝트에 차이 없음).

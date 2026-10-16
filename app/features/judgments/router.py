@@ -10,10 +10,12 @@ from app.core.clock import now_kst
 from app.core.config import Settings, get_settings
 from app.core.db import get_session
 from app.core.templating import register_template_dir, templates
-from app.features.auth.service import require_user
+from app.features.auth.service import CurrentUserDep, require_user
 from app.features.forecasts import service as forecasts_service
 from app.features.judgments import service
 from app.features.judgments.schemas import ElementKey, RunResult, VerdictFilter
+from app.features.teams import service as teams_service
+from app.features.teams.service import AccessibleSitesDep
 from engine.forecast import HttpGet
 
 register_template_dir(Path(__file__).parent / "templates")
@@ -27,9 +29,13 @@ NowDep = Annotated[datetime, Depends(now_kst)]
 
 @router.get("/", response_class=HTMLResponse)
 def home(
-    request: Request, session: SessionDep, now: NowDep, ran: RunResult | None = None
+    request: Request,
+    session: SessionDep,
+    scope: AccessibleSitesDep,
+    now: NowDep,
+    ran: RunResult | None = None,
 ) -> HTMLResponse:
-    view = service.build_home(session, now, ran)
+    view = service.build_home(session, scope, now, ran)
     return templates.TemplateResponse(
         request, "judgments/home.html", {"nav_active": "home", "view": view}
     )
@@ -39,6 +45,7 @@ def home(
 def dashboard(
     request: Request,
     session: SessionDep,
+    scope: AccessibleSitesDep,
     now: NowDep,
     site_id: int | None = None,
     element: ElementKey | None = None,
@@ -46,7 +53,7 @@ def dashboard(
     ran: RunResult | None = None,
     work: Annotated[str | None, Query(max_length=60)] = None,
 ) -> HTMLResponse:
-    view = service.build_dashboard(session, site_id, element, hour, now, ran, work)
+    view = service.build_dashboard(session, scope, site_id, element, hour, now, ran, work)
     if view is None:
         raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
     return templates.TemplateResponse(
@@ -57,13 +64,14 @@ def dashboard(
 @router.post("/judgments/run")
 def run(
     session: SessionDep,
+    user: CurrentUserDep,
     now: NowDep,
     settings: Annotated[Settings, Depends(get_settings)],
     http_get: Annotated[HttpGet, Depends(forecasts_service.get_http_get)],
     site_id: Annotated[int, Form()],
 ) -> RedirectResponse:
-    result = service.run_for_site(
-        session, site_id, now, settings.kma_auth(), http_get, settings.kma_service_key
+    result = service.run_for_user_site(
+        session, user, site_id, now, settings.kma_auth(), http_get, settings.kma_service_key
     )
     if result is None:
         raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
@@ -74,11 +82,16 @@ def run(
 @router.post("/judgments/run-all")
 def run_all(
     session: SessionDep,
+    user: CurrentUserDep,
     now: NowDep,
     settings: Annotated[Settings, Depends(get_settings)],
     http_get: Annotated[HttpGet, Depends(forecasts_service.get_http_get)],
 ) -> RedirectResponse:
-    result = service.run_all(session, now, settings.kma_auth(), http_get, settings.kma_service_key)
+    # 화면의 전체 판정은 내가 조정자인 현장만 한다(D-057).
+    scope = teams_service.managed_site_ids(session, user.user_id)
+    result = service.run_all(
+        session, scope, now, settings.kma_auth(), http_get, settings.kma_service_key
+    )
     return RedirectResponse(f"/?ran={result}", status_code=303)
 
 
@@ -86,6 +99,7 @@ def run_all(
 def history(
     request: Request,
     session: SessionDep,
+    scope: AccessibleSitesDep,
     verdict: VerdictFilter = "전체",
     site_id: int | None = None,
     page: Annotated[int, Query(ge=1, le=1000)] = 1,
@@ -93,15 +107,17 @@ def history(
 ) -> HTMLResponse:
     if size not in service.HISTORY_PAGE_SIZES:
         raise HTTPException(status_code=422, detail=f"size는 {service.HISTORY_PAGE_SIZES} 중 하나")
-    view = service.build_history(session, verdict, site_id, page, size)
+    view = service.build_history(session, scope, verdict, site_id, page, size)
     return templates.TemplateResponse(
         request, "judgments/history.html", {"nav_active": "history", "view": view}
     )
 
 
 @router.get("/judgments/{judgment_id}", response_class=HTMLResponse)
-def detail(request: Request, session: SessionDep, judgment_id: int) -> HTMLResponse:
-    view = service.get_detail(session, judgment_id)
+def detail(
+    request: Request, session: SessionDep, scope: AccessibleSitesDep, judgment_id: int
+) -> HTMLResponse:
+    view = service.get_detail(session, scope, judgment_id)
     if view is None:
         raise HTTPException(status_code=404, detail="판정 내역을 찾을 수 없습니다")
     return templates.TemplateResponse(
