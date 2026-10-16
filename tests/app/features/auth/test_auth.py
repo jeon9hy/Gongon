@@ -237,3 +237,20 @@ def test_login_page_has_no_app_menu(anonymous_client: TestClient) -> None:
     html = anonymous_client.get("/login").text
 
     assert 'aria-label="주 메뉴"' not in html and 'action="/login"' in html
+
+
+@pytest.mark.parametrize("path", ["/login", "/signup", "/welcome"])
+def test_signed_in_user_going_back_to_auth_pages_is_sent_home(
+    client: TestClient, path: str
+) -> None:
+    response = client.get(path, follow_redirects=False)
+
+    assert response.status_code == 303 and response.headers["location"] == "/"
+
+
+def test_html_pages_are_not_stored_so_back_rechecks_the_session(
+    client: TestClient, anonymous_client: TestClient
+) -> None:
+    assert client.get("/sites").headers["cache-control"] == "no-store"
+    assert anonymous_client.get("/login").headers["cache-control"] == "no-store"
+    assert "no-store" not in client.get("/static/gongon.css").headers.get("cache-control", "")
