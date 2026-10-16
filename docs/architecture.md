@@ -24,7 +24,7 @@
 | 판정 저장·조회·상세 | `app/features/judgments/` | `service.run_for_site()`(engine 호출 + 저장), 대시보드·상세·내역 화면 | 있음 | S04-4·S05 |
 | 알림 | `app/features/notifications/` | 메시지 생성·발송 어댑터(미리보기 어댑터만, 알림톡은 사업자 등록 후 D-015)·발송 이력 | 계획 | S06 |
 | 실행 작업 | `app/jobs/` | `daily_forecast_judgment_notify` | 계획 | S06 |
-| DB 변경 이력 | `migrations/` | Alembic 리비전(`0001`~`0010_project_participants`) | 있음 | S04-1 |
+| DB 변경 이력 | `migrations/` | Alembic 리비전(`0001`~`0011_work_item_deleted_at`) | 있음 | S04-1 |
 | 작업 일정·변경 | `app/features/schedules/` | `service.items_on()`·`items_on_for_sites()`(그날 작업), `/schedule` 화면 | 있음(S08-1) | S08·S09 |
 | 현장 참여·역할 | `app/features/teams/` | `service.site_ids_for`·`require_role`·`AccessibleSitesDep`(모든 현장 조회·쓰기 범위), `/sites/{id}/members` 참여자 화면, `scripts/grant_site.py`(기존 현장 조정자 지정) | 있음 | C03-2 |
 | 실제 작업 기록 | `app/features/work_records/` | — | 계획(첫 확장) | S10 |

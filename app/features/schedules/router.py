@@ -87,10 +87,11 @@ def add_item(
 def delete_item(
     session: SessionDep,
     user: CurrentUserDep,
+    now: NowDep,
     item_id: int,
     site_id: Annotated[int, Form()],
     day: Annotated[str, Form()] = "",
 ) -> RedirectResponse:
-    if not service.delete_item(session, user, site_id, item_id):
+    if not service.delete_item(session, user, site_id, item_id, now):
         raise HTTPException(status_code=404, detail="작업을 찾을 수 없습니다")
     return RedirectResponse(f"/schedule?site_id={site_id}&day={day}&deleted=1", status_code=303)

@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.features.judgments.models import Judgment
 from app.features.schedules.models import WorkItem
 from engine.kst import KST
+from tests.conftest import FIXED_NOW
 from tests.fakes import FakeKma
 
 SITE: dict[str, Any] = {
@@ -118,7 +119,7 @@ def test_item_of_another_site_cannot_be_deleted(client: TestClient, session: Ses
     response = client.post(f"/schedule/{item_id}/delete", data={"site_id": other})
 
     assert response.status_code == 404
-    assert session.scalars(select(WorkItem.id)).one() == item_id
+    assert session.scalars(select(WorkItem.deleted_at)).one() is None
 
 
 def test_items_are_judged_separately_and_rerun_adds_nothing(
@@ -175,7 +176,48 @@ def test_deleting_item_keeps_its_saved_judgment(client: TestClient, session: Ses
     assert response.status_code == 303
     session.expire_all()
     steel = session.scalars(select(Judgment).where(STEEL)).one()
-    assert steel.work_item_id is None  # 연결만 끊기고 판정 기록은 남는다
+    assert steel.work_item_id == item_id  # 판정과 당시 작업의 연결이 남는다(숨김 삭제, C04-1)
+    assert session.get(WorkItem, item_id).deleted_at == FIXED_NOW  # type: ignore[union-attr]
+    assert "09:00–12:00" not in client.get(f"/schedule?site_id={site_id}&day=2026-10-05").text
+
+
+def test_deleting_two_identical_judged_items_does_not_collide(
+    client: TestClient, session: Session
+) -> None:
+    # S08-4-2 재현: 같은 공종·시간 작업 둘을 판정한 뒤 지우면 두 번째 삭제가 고유 키 위반(500).
+    site_id = add_site(client)
+    add_item(client, site_id)
+    add_item(client, site_id)
+    run(client, site_id)
+    item_ids = list(session.scalars(select(WorkItem.id).order_by(WorkItem.id)))
+    assert len(item_ids) == 2
+
+    statuses = [
+        client.post(
+            f"/schedule/{i}/delete", data={"site_id": site_id}, follow_redirects=False
+        ).status_code
+        for i in item_ids
+    ]
+    again = client.post(f"/schedule/{item_ids[0]}/delete", data={"site_id": site_id})
+
+    assert statuses == [303, 303]
+    assert again.status_code == 404  # 이미 지운 작업
+    session.expire_all()
+    linked = session.scalars(select(Judgment.work_item_id).where(STEEL)).all()
+    assert sorted(i for i in linked if i is not None) == item_ids and None not in linked
+
+
+def test_rerun_after_delete_does_not_judge_the_deleted_item(
+    client: TestClient, session: Session, fake_kma: FakeKma
+) -> None:
+    site_id = add_site(client)
+    add_item(client, site_id)
+    item_id = session.scalars(select(WorkItem.id)).one()
+    client.post(f"/schedule/{item_id}/delete", data={"site_id": site_id})
+    run(client, site_id)
+
+    steel = session.scalars(select(Judgment).where(STEEL)).all()
+    assert [j.work_item_id for j in steel] == [None]  # 현장 기본 시간 판정만
 
 
 def test_dashboard_opens_when_first_card_has_daily_elements(

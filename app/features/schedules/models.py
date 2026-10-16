@@ -20,4 +20,6 @@ class WorkItem(Base):
     end_local: Mapped[time] = mapped_column(Time)
     location: Mapped[str] = mapped_column(String(60), default="")  # 작업 위치(예: A구역). 선택
     memo: Mapped[str] = mapped_column(Text, default="")
+    # 지운 작업(C04-1). 판정과 당시 작업의 연결을 보존하려고 행은 남기고 목록·판정에서만 뺀다.
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

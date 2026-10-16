@@ -1,6 +1,6 @@
 """작업 일정(S08-1). 판정 기능은 items_on·items_on_for_sites·items_between으로 작업을 읽는다."""
 
-from datetime import date, time, timedelta
+from datetime import date, datetime, time, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -185,9 +185,12 @@ def add_item(
     return True, ()
 
 
-def delete_item(session: Session, user: CurrentUser, site_id: int, item_id: int) -> bool:
+def delete_item(
+    session: Session, user: CurrentUser, site_id: int, item_id: int, now: datetime
+) -> bool:
+    """목록·판정에서 뺀다. 그 작업으로 낸 판정은 작업 연결과 함께 기록으로 남는다."""
     teams_service.require_role(session, user, site_id, MANAGE_ROLES)
-    return repository.delete_item(session, site_id, item_id)
+    return repository.delete_item(session, site_id, item_id, now)
 
 
 def _validate(
