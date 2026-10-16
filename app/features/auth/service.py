@@ -176,6 +176,9 @@ def require_user(
     """로그인이 필요한 화면의 의존성. 없으면 로그인 화면으로 보낸다(303)."""
     user = resolve(session, request.cookies.get(SESSION_COOKIE), now)
     if user is None:
+        if request.url.path == "/":
+            # 처음 들어온 사람은 환영 화면에서 가입·로그인을 고른다
+            raise HTTPException(status_code=303, headers={"Location": "/welcome"})
         target = request.url.path + (f"?{request.url.query}" if request.url.query else "")
         raise HTTPException(
             status_code=303, headers={"Location": f"/login?next={quote(target, safe='')}"}

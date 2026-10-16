@@ -41,10 +41,17 @@ def _signed_in(token: str, next_path: str, settings: Settings) -> RedirectRespon
     return response
 
 
+@router.get("/welcome", response_model=None)
+def welcome(request: Request, session: SessionDep, now: NowDep) -> Response:
+    """처음 들어온 사람의 첫 화면. 이미 로그인했으면 홈으로 보낸다."""
+    if service.resolve(session, request.cookies.get(service.SESSION_COOKIE), now) is not None:
+        return RedirectResponse("/", status_code=303)
+    return templates.TemplateResponse(request, "auth/welcome.html", {"nav_active": ""})
+
+
 @router.get("/login", response_class=HTMLResponse)
-def login_page(request: Request, next: str = "/", signed_out: bool = False) -> HTMLResponse:
-    message = "로그아웃했습니다." if signed_out else None
-    return _render(request, "login", AuthView(next_path=service.safe_next(next), message=message))
+def login_page(request: Request, next: str = "/") -> HTMLResponse:
+    return _render(request, "login", AuthView(next_path=service.safe_next(next)))
 
 
 @router.post("/login")
@@ -104,6 +111,6 @@ def logout(request: Request, session: SessionDep) -> RedirectResponse:
     token = request.cookies.get(service.SESSION_COOKIE)
     if token:
         service.end_session(session, token)
-    response = RedirectResponse("/login?signed_out=true", status_code=303)
+    response = RedirectResponse("/welcome", status_code=303)
     response.delete_cookie(service.SESSION_COOKIE)
     return response
