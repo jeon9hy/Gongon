@@ -149,8 +149,8 @@ class ScheduleView:
     site_name: str
     period_text: str | None
     month_title: str  # "2026년 10월"
-    prev_href: str
-    next_href: str
+    prev_href: str | None  # 작업 기간 밖이면 None
+    next_href: str | None
     this_month_href: str
     month_groups: tuple[tuple[int, tuple[MonthChoice, ...]], ...]  # (연도, 그 해의 달들)
     weeks: tuple[tuple[CalendarDay, ...], ...]  # 월요일 시작 7칸씩

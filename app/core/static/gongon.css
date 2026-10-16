@@ -1776,3 +1776,25 @@ details.hmore { padding: 0; } /* 판정 내역의 옛 .hmore 여백이 접힌 �
   .caldots { top: 30px; bottom: 8px; transform: none; flex-wrap: wrap; align-content: center; }
   .caldots__more { position: absolute; right: 0; bottom: 0; margin-left: 0; }
 }
+/* 달 고르기(개발자 요청 2026-10-16): 한 해의 달 3줄×4칸, 연도를 누르면 연도 4줄×3칸 */
+.monthpick__menu:has([data-pick-head]:not([hidden])) { max-height: none; overflow: visible; gap: 8px; }
+.monthpick__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.monthpick__head[hidden], .monthpick__years[hidden], .monthpick__year[hidden] { display: none; }
+.monthpick__head ~ .monthpick__year .monthpick__label { display: none; }
+.monthpick__yeartoggle { flex: 1; min-height: 36px; border: 0; border-radius: var(--radius-sm); background: transparent; font-size: 15px; font-weight: 700; color: var(--ink); cursor: pointer; }
+.monthpick__yeartoggle:hover, .monthpick__yeartoggle[aria-expanded="true"] { background: var(--surface); }
+.monthpick__step { width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--ink); cursor: pointer; }
+.monthpick__step:hover:not(:disabled) { background: var(--surface); }
+.monthpick__step:disabled { color: var(--line); cursor: default; }
+.monthpick__years { display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 44px; gap: 4px; }
+.monthpick__yearbtn { border: 0; border-radius: var(--radius-sm); background: transparent; font-size: 14px; font-weight: 600; color: var(--ink); cursor: pointer; }
+.monthpick__yearbtn:hover { background: var(--surface); }
+.monthpick__yearbtn.is-current { background: var(--accent); color: var(--accent-fg); }
+.monthpick__grid { grid-auto-rows: 44px; }
+/* 작업 기간 밖은 막는다(개발자 요청 2026-10-16): 날짜·달·연도·이전/다음 버튼 */
+.btn.is-disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+.calcell.is-off .calcell__link { cursor: not-allowed; }
+.calcell.is-off .calcell__link:hover { background: transparent; }
+.monthpick__month.is-off { color: var(--line); cursor: not-allowed; }
+.monthpick__month.is-off:hover { background: transparent; color: var(--line); }
+.monthpick__yearbtn:disabled { color: var(--line); cursor: not-allowed; background: transparent; }

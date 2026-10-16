@@ -254,14 +254,26 @@ def test_month_grid_starts_on_sunday_and_selects_today(client: TestClient) -> No
     assert "2026년 10월" in page
     # 10월 1일은 목요일 → 달력은 9월 27일(일)부터, 10월 31일(토)까지 5주(D-065 일요일 시작)
     assert page.count('<td class="calcell') == 35
-    assert 'day=2026-09-27"' in page and 'day=2026-10-31"' in page
-    assert 'day=2026-09-26"' not in page and 'day=2026-11-01"' not in page
+    assert 'day=2026-10-01"' in page and 'day=2026-10-31"' in page
+    # 작업 기간(10/1~) 밖의 9월 칸은 보이지만 누를 수 없다(개발자 요청 2026-10-16)
+    assert 'day=2026-09-27"' not in page and 'aria-label="9월 27일, 작업 기간 밖"' in page
     selected = (
         f'href="/schedule?site_id={site_id}&amp;month=2026-10&amp;day=2026-10-04" '
         'aria-label="10월 4일, 작업 0건" aria-current="date"'
     )
     assert selected in page  # 오늘이 기본 선택(C04-4)
-    assert "month=2026-09" in page and "month=2026-11" in page  # 이전·다음 달
+    assert "month=2026-11" in page  # 다음 달
+    assert 'aria-label="이전 달(작업 기간 밖)"' in page  # 9월은 기간 밖이라 막힘
+
+
+def test_month_outside_work_period_opens_the_nearest_period_month(client: TestClient) -> None:
+    site_id = add_site(client)  # 작업 기간 2026-10-01~2026-12-31
+
+    before = client.get(f"/schedule?site_id={site_id}&month=2026-05").text
+    after = client.get(f"/schedule?site_id={site_id}&month=2027-03").text
+
+    assert "2026년 10월" in before
+    assert "2026년 12월" in after and 'aria-label="다음 달(작업 기간 밖)"' in after
 
 
 def test_cell_shows_five_dots_and_counts_the_rest(client: TestClient) -> None:
@@ -309,14 +321,14 @@ def test_month_picker_spans_six_months_each_way_and_marks_the_work_period(
 
     menu = month_menu(client.get(f"/schedule?site_id={site_id}").text)
 
-    assert "month=2026-03" not in menu and "month=2027-05" not in menu
-    assert "month=2026-04" in menu and "month=2027-04" in menu
+    # 한 해를 3줄×4칸으로 보이므로 2026·2027년 열두 달을 모두 두고, 기간 밖 달은 링크 없이 막는다
     assert "2026년" in menu and "2027년" in menu
+    assert menu.count('class="monthpick__month') == 24
     assert 'aria-current="true">10월</a>' in menu
     for month in ("2026-10", "2026-11", "2026-12"):
         assert "is-period" in month_classes(menu, month)
     for month in ("2026-09", "2027-01"):  # 기간 바로 앞뒤 달
-        assert "is-period" not in month_classes(menu, month)
+        assert f"month={month}" not in menu
 
 
 def test_month_picker_marks_a_month_with_only_a_few_period_days(client: TestClient) -> None:
@@ -325,7 +337,7 @@ def test_month_picker_marks_a_month_with_only_a_few_period_days(client: TestClie
     menu = month_menu(client.get(f"/schedule?site_id={site_id}").text)
 
     assert "is-period" in month_classes(menu, "2027-01")
-    assert "is-period" not in month_classes(menu, "2027-02")
+    assert "month=2027-02" not in menu
 
 
 @pytest.mark.parametrize("missing", ["work_types", "start", "end"])
