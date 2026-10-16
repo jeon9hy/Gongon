@@ -37,7 +37,6 @@ MAX_LOCATION = 60
 MAX_DAYS = 31  # 한 번에 추가할 수 있는 날 수
 MAX_ITEMS = 100  # 한 번에 만들 수 있는 작업 수(공종 수 x 날 수)
 MAX_RANGE_DAYS = 92  # 기간 고르기의 최대 길이(시작일~종료일)
-RECENT_TIMES = 3
 MAX_MEMO = 500
 _WEEKDAYS = "월화수목금토일"
 
@@ -54,6 +53,13 @@ def items_between(
     for item in repository.list_between(session, [site_id], start, end):
         by_day.setdefault(item.work_date, []).append(_record(item))
     return {day: tuple(items) for day, items in by_day.items()}
+
+
+def items_between_for_sites(
+    session: Session, site_ids: list[int], start: date, end: date
+) -> list[WorkItemRecord]:
+    """여러 현장의 [start, end] 작업(쿼리 한 번, 날짜·시작 순). 홈의 공온 점검이 쓴다."""
+    return [_record(i) for i in repository.list_between(session, site_ids, start, end)]
 
 
 def items_on_for_sites(
@@ -95,9 +101,10 @@ def build_view(
         # 달만 바꿔 왔으면 그 달에 오늘이 있으면 오늘, 없으면 1일을 고른다.
         in_month = (today.year, today.month) == (first.year, first.month)
         selected = today if in_month else first
-    grid_start = first - timedelta(days=first.weekday())
+    # 달력은 일요일부터(개발자, D-065). weekday()는 월=0이라 일요일까지 하루 더 당긴다.
+    grid_start = first - timedelta(days=(first.weekday() + 1) % 7)
     last = _month_end(first)
-    grid_end = last + timedelta(days=6 - last.weekday())
+    grid_end = last + timedelta(days=(5 - last.weekday()) % 7)
 
     weeks: tuple[tuple[CalendarDay, ...], ...] = ()
     detail = None
@@ -182,12 +189,6 @@ def build_view(
         period_end_iso=""
         if site is None or site.work_end_date is None
         else site.work_end_date.isoformat(),
-        recent_times=()
-        if site is None
-        else tuple(
-            f"{s:%H:%M}–{e:%H:%M}"
-            for s, e in repository.recent_times(session, site.site_id, RECENT_TIMES)
-        ),
     )
 
 

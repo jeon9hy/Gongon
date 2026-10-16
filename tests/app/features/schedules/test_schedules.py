@@ -248,13 +248,14 @@ def test_dashboard_opens_when_first_card_has_daily_elements(
 # ---------- 월 달력 ----------
 
 
-def test_month_grid_starts_on_monday_and_selects_today(client: TestClient) -> None:
+def test_month_grid_starts_on_sunday_and_selects_today(client: TestClient) -> None:
     site_id = add_site(client)
     page = client.get(f"/schedule?site_id={site_id}").text  # 지금 10/4 → 오늘이 든 10월
     assert "2026년 10월" in page
-    # 10월 1일은 목요일 → 달력은 9월 28일(월)부터, 11월 1일(일)까지 5주
+    # 10월 1일은 목요일 → 달력은 9월 27일(일)부터, 10월 31일(토)까지 5주(D-065 일요일 시작)
     assert page.count('<td class="calcell') == 35
-    assert 'day=2026-09-28"' in page and 'day=2026-11-01"' in page
+    assert 'day=2026-09-27"' in page and 'day=2026-10-31"' in page
+    assert 'day=2026-09-26"' not in page and 'day=2026-11-01"' not in page
     selected = (
         f'href="/schedule?site_id={site_id}&amp;month=2026-10&amp;day=2026-10-04" '
         'aria-label="10월 4일, 작업 0건" aria-current="date"'

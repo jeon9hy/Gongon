@@ -167,4 +167,3 @@ class ScheduleView:
     revisions: dict[int, tuple[RevisionView, ...]] = field(default_factory=dict)  # 고른 날 작업
     edit_item_id: int | None = None  # 수정에 실패한 작업(그 카드의 수정 칸을 연다)
     edit_errors: tuple[str, ...] = ()
-    recent_times: tuple[str, ...] = ()  # 이 현장에서 최근 쓴 작업 시간 "08:00-17:00"(누르면 채움)

@@ -88,8 +88,8 @@
       pop.replaceChildren(head(`${y}년 ${m + 1}월`, () => { cursor = new Date(y, m - 1, 1); days(); },
         () => { cursor = new Date(y, m + 1, 1); days(); }, months));
       const grid = el("div", "pickpop__grid pickpop__grid--days");
-      for (const w of DOW) grid.append(el("span", "pickpop__dow", w));
-      const start = new Date(y, m, 1 - ((new Date(y, m, 1).getDay() + 6) % 7));
+      for (const w of "일월화수목금토") grid.append(el("span", "pickpop__dow", w));
+      const start = new Date(y, m, 1 - new Date(y, m, 1).getDay()); // 일요일부터
       for (let i = 0; i < 42; i += 1) {
         const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
         if (i >= 35 && d.getMonth() !== m) break;

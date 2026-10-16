@@ -13,16 +13,20 @@ from sqlalchemy.orm import Session
 
 from app.core.rules import COMMON_LABELS, judged_labels, rule_sets_by_label
 from app.features.auth.schemas import CurrentUser
+from app.features.changes import service as changes_service
 from app.features.forecasts import service as forecasts_service
 from app.features.judgments import repository
 from app.features.judgments.models import Judgment, JudgmentRun
 from app.features.judgments.schemas import (
     Bar,
+    BoardItem,
     Cell,
     Chart,
+    CheckIssue,
     CountTile,
     CriterionCard,
     DashboardView,
+    DayBoard,
     DetailView,
     ElementKey,
     FilterLink,
@@ -30,6 +34,8 @@ from app.features.judgments.schemas import (
     HistoryRow,
     HistorySite,
     HistoryView,
+    HomeDay,
+    HomeIndexDay,
     HomeView,
     HourRow,
     Notice,
@@ -43,8 +49,6 @@ from app.features.judgments.schemas import (
     SiteSummary,
     Tab,
     Tile,
-    TodaySite,
-    TodayWork,
     VerdictFilter,
     WeekCell,
     WeekDay,
@@ -535,11 +539,10 @@ def build_dashboard(
 def build_home(
     session: Session, scope: SiteScope, now: datetime, ran: RunResult | None = None
 ) -> HomeView:
-    """홈: 오늘 작업(C04-5) → 내일 판정 개요. 현장 수와 관계없이 판정 조회는 한 번만 한다."""
+    """홈: 오늘·내일 공온 점검판(D-065) → 내일 날씨 개요. 판정 조회는 현장 수와 관계없이 한 번."""
     target_date = target_date_for(now)
     sites = sites_service.list_sites(session, scope)
     site_ids = [s.site_id for s in sites]
-    today_sites = _today_sites(session, sites, now)
     by_site: dict[int, dict[str, Judgment]] = {}
     for j in repository.latest_for_sites_date(session, site_ids, target_date):
         by_site.setdefault(j.site_id, {}).setdefault(_key(j), j)
@@ -588,16 +591,16 @@ def build_home(
     else:
         forecast_status = f"실패 · {run.failure_reason}"
     primary_rules = next(iter(rule_sets.values()), None)
-    phases: list[str] = [w.phase for t in today_sites for w in t.items]
+    boards, week = _check_boards(session, sites, by_site, rule_sets, now)
     return HomeView(
+        boards=boards,
+        week=week,
+        index_days=_index_days(session, sites, rule_sets, now),
+        checked_short=checked_short_text(
+            max(runs.values(), key=lambda r: r.ran_at, default=None), now
+        ),
         target_date=_date_text(target_date),
         today_date=_date_text(now.astimezone(KST).date()),
-        today_sites=today_sites,
-        today_counts=tuple(
-            (label, phases.count(phase))
-            for phase, label in _PHASE_LABELS.items()
-            if phases.count(phase)
-        ),
         sites=summaries,
         tiles=tiles,
         recent=recent,
@@ -614,6 +617,166 @@ def build_home(
 
 _PHASE_LABELS = {"now": "진행 중", "before": "예정", "done": "끝남"}
 
+# 공온 점검 항목(D-065). 날씨는 그중 하나다.
+# 모두 등록한 자료로만 확인하는 규칙이며 기준 수치를 새로 정하지 않는다.
+CHECK_LABELS = {
+    "weather": "날씨",
+    "company": "실행 업체",
+    "place": "작업 위치",
+    "overlap": "시간·위치 겹침",
+    "change": "변경 검토 중",
+}
+WEEK_DAYS_HOME = 7
+_WEATHER_OK = {Verdict.GO.value}
+
+
+_NO_SCORE = {"낮음": "중기 참고", "높음": "점수 없음", "보통": "점수 없음"}
+
+
+def _index_days(
+    session: Session, sites: Sequence[SiteRecord], rule_sets: Mapping[str, RuleSet], now: datetime
+) -> tuple[HomeIndexDay, ...]:
+    """내일부터 7일 공온지수. 현장마다 대시보드와 같은 주간 계산을 쓰고 날마다 가장 낮은 점수.
+
+    현장 수만큼 주간 계산(현장당 쿼리 3회)을 한다. 홈에 보이는 현장은 참여 현장뿐이다.
+    """
+    weeks = [(s, _week(session, s, rule_sets, now)) for s in sites]
+    if not weeks:
+        return ()
+    days: list[HomeIndexDay] = []
+    for n, first in enumerate(weeks[0][1].days):
+        scored = [(index, s) for s, w in weeks if (index := w.days[n].index) is not None]
+        if scored:
+            index, site = min(scored, key=lambda pair: pair[0].score)
+            days.append(
+                HomeIndexDay(
+                    label=first.label,
+                    short=f"{_WEEKDAYS[first.day.weekday()]} {first.day.day}",
+                    is_tomorrow=first.is_tomorrow,
+                    score=index.score,
+                    sub=site.name if len(weeks) > 1 else "",
+                    href=dashboard_href(site.site_id),
+                )
+            )
+        else:
+            confidence = next((w.days[n].confidence for _, w in weeks if w.days[n].in_period),
+                              first.confidence)  # fmt: skip
+            days.append(HomeIndexDay(
+                label=first.label, short=f"{_WEEKDAYS[first.day.weekday()]} {first.day.day}",
+                is_tomorrow=first.is_tomorrow, score=None,
+                sub=_NO_SCORE.get(confidence, confidence),
+                href=dashboard_href(weeks[0][0].site_id),
+            ))  # fmt: skip
+    return tuple(days)
+
+
+def _check_boards(
+    session: Session,
+    sites: Sequence[SiteRecord],
+    latest_by_site: dict[int, dict[str, Judgment]],
+    rule_sets: Mapping[str, RuleSet],
+    now: datetime,
+) -> tuple[tuple[DayBoard, ...], tuple[HomeDay, ...]]:
+    """오늘·내일 점검판과 오늘부터 7일 미리보기(작업 1회·변경 1회·업체 2회 조회).
+
+    날씨는 내일만 본다(판정 범위 D-041·D-061). 오늘·그 뒤 날은 날씨를 빼고 나머지 항목만 확인한다.
+    """
+    local = now.astimezone(KST)
+    today = local.date()
+    tomorrow = today + timedelta(days=1)
+    last = today + timedelta(days=WEEK_DAYS_HOME - 1)
+    names = {s.site_id: s.name for s in sites}
+    site_by_id = {s.site_id: s for s in sites}
+    items = schedules_service.items_between_for_sites(session, list(names), today, last)
+    open_changes = changes_service.open_change_item_ids(session, [i.item_id for i in items])
+    companies = teams_service.company_names(session, list({i.site_id for i in items}))
+    weather: dict[int, str | None] = {}
+    for site_id in {i.site_id for i in items if i.work_date == tomorrow}:
+        day_items = tuple(i for i in items if i.site_id == site_id and i.work_date == tomorrow)
+        triples = _current_pairs(site_by_id[site_id], _targets(day_items), tomorrow,
+                                 latest_by_site.get(site_id, {}), rule_sets)  # fmt: skip
+        for target, card, _ in _folded(triples, rule_sets):
+            if target.item_id is not None:
+                weather[target.item_id] = card.verdict
+
+    def issues(i: WorkItemRecord) -> tuple[CheckIssue, ...]:
+        found: list[CheckIssue] = []
+        if i.work_date == tomorrow:
+            verdict = weather.get(i.item_id)
+            if verdict is None:
+                found.append(CheckIssue("weather", "날씨 판정 전"))
+            elif verdict not in _WEATHER_OK:
+                found.append(CheckIssue("weather", f"날씨 {verdict}"))
+        if i.performing_participant_id is None:
+            found.append(CheckIssue("company", "실행 업체 미지정"))
+        if not i.location:
+            found.append(CheckIssue("place", "작업 위치 없음"))
+        clash = next(
+            (o for o in items
+             if o.item_id != i.item_id and o.site_id == i.site_id and o.work_date == i.work_date
+             and o.location and o.location == i.location
+             and o.start_local < i.end_local and i.start_local < o.end_local),
+            None,
+        )  # fmt: skip
+        if clash is not None:
+            found.append(CheckIssue("overlap", f"{clash.work_type}와 같은 곳·같은 시간"))
+        if i.item_id in open_changes:
+            found.append(CheckIssue("change", "변경 검토 중"))
+        return tuple(found)
+
+    checked = {i.item_id: issues(i) for i in items}
+
+    def board_item(i: WorkItemRecord) -> BoardItem:
+        phase: Literal["before", "now", "done"] | None = None
+        if i.work_date == today:
+            phase = (
+                "before" if local.time() < i.start_local
+                else "done" if local.time() >= i.end_local
+                else "now"
+            )  # fmt: skip
+        return BoardItem(
+            item_id=i.item_id,
+            site_name=names[i.site_id],
+            work_type=i.work_type,
+            time_text=f"{i.start_local:%H:%M}–{i.end_local:%H:%M}",
+            location=i.location,
+            company=""
+            if i.performing_participant_id is None
+            else companies.get(i.performing_participant_id, ""),
+            href=f"/schedule?site_id={i.site_id}&day={i.work_date.isoformat()}",
+            issues=checked[i.item_id],
+            phase=phase,
+            phase_label="" if phase is None else _PHASE_LABELS[phase],
+            progress_pct=0
+            if phase is None
+            else _progress(local.time(), i.start_local, i.end_local),
+            weather=weather.get(i.item_id) if i.work_date == tomorrow else None,
+        )
+
+    def board(key: Literal["today", "tomorrow"], title: str, day: date) -> DayBoard:
+        day_items = [i for i in items if i.work_date == day]
+        rows = tuple(board_item(i) for i in day_items)
+        criteria = tuple(
+            (label, n)
+            for k, label in CHECK_LABELS.items()
+            if (n := sum(1 for r in rows if any(x.key == k for x in r.issues)))
+        )
+        return DayBoard(key, title, _date_text(day), rows, criteria)
+
+    week = tuple(
+        HomeDay(
+            date_text=f"{d.month}/{d.day}({_WEEKDAYS[d.weekday()]})",
+            short=f"{_WEEKDAYS[d.weekday()]} {d.day}",
+            href=f"/schedule?day={d.isoformat()}",
+            works=sum(1 for i in items if i.work_date == d),
+            issues=sum(1 for i in items if i.work_date == d and checked[i.item_id]),
+            is_today=d == today,
+            is_weekend=d.weekday() >= 5,
+        )
+        for d in (today + timedelta(days=n) for n in range(WEEK_DAYS_HOME))
+    )
+    return (board("today", "오늘", today), board("tomorrow", "내일", tomorrow)), week
+
 
 def _progress(now: time, start: time, end: time) -> int:
     span = _minutes(end) - _minutes(start)
@@ -623,54 +786,6 @@ def _progress(now: time, start: time, end: time) -> int:
 
 def _minutes(at: time) -> int:
     return at.hour * 60 + at.minute
-
-
-def _today_sites(
-    session: Session, sites: Sequence[SiteRecord], now: datetime
-) -> tuple[TodaySite, ...]:
-    """오늘 작업이 있는 현장과 그 작업(작업 1회·업체 2회 조회). 시작 시각 순."""
-    local = now.astimezone(KST)
-    today = local.date()
-    site_ids = [s.site_id for s in sites]
-    items_by_site = schedules_service.items_on_for_sites(session, site_ids, today)
-    companies = teams_service.company_names(session, list(items_by_site))
-    result = []
-    for site in sites:
-        items = sorted(
-            items_by_site.get(site.site_id, ()), key=lambda i: (i.start_local, i.end_local)
-        )
-        if not items:
-            continue
-        works = []
-        for i in items:
-            phase: Literal["before", "now", "done"] = (
-                "before" if local.time() < i.start_local
-                else "done" if local.time() >= i.end_local
-                else "now"
-            )  # fmt: skip
-            works.append(
-                TodayWork(
-                    time_text=f"{i.start_local:%H:%M}–{i.end_local:%H:%M}",
-                    work_type=i.work_type,
-                    location=i.location,
-                    company=""
-                    if i.performing_participant_id is None
-                    else companies.get(i.performing_participant_id, ""),
-                    phase=phase,
-                    phase_label=_PHASE_LABELS[phase],
-                    progress_pct=_progress(local.time(), i.start_local, i.end_local),
-                    site_name=site.name,
-                )
-            )
-        result.append(
-            TodaySite(
-                site_id=site.site_id,
-                name=site.name,
-                href=f"/schedule?site_id={site.site_id}&day={today.isoformat()}",
-                items=tuple(works),
-            )
-        )
-    return tuple(result)
 
 
 def _site_summary(

@@ -53,7 +53,7 @@
 </div>
 
 <table class="calendar">
-<thead><tr>{% for w in "월화수목금토일" %}<th scope="col"{% if loop.index > 5 %} class="is-weekend"{% endif %}>{{ w }}</th>{% endfor %}</tr></thead>
+<thead><tr>{% for w in "일월화수목금토" %}<th scope="col"{% if loop.first or loop.last %} class="is-weekend"{% endif %}>{{ w }}</th>{% endfor %}</tr></thead>
 <tbody>
 {% set legend = namespace(types=[]) %}
 {% for week in view.weeks %}
@@ -224,10 +224,6 @@
 <span class="timepair__dash" aria-hidden="true">–</span>
 <label class="field"><span class="visually-hidden">종료</span><input type="time" name="end" value="{{ view.form.end }}" data-after="start" placeholder="종료" required></label>
 </div>
-<div class="quicktimes" role="group" aria-label="자주 쓰는 시간">
-{% for t in (view.recent_times or ()) %}<button type="button" class="chipbtn" data-time="{{ t }}">{{ t }}</button>{% endfor %}
-{% for t in ("08:00–17:00", "08:00–12:00", "13:00–17:00") if t not in view.recent_times %}<button type="button" class="chipbtn" data-time="{{ t }}">{{ t }}</button>{% endfor %}
-</div>
 <p class="small addform__hint" data-today-hint hidden>오늘 작업은 지금({{ view.now_hm }}) 뒤로만 잡을 수 있어요.</p>
 </fieldset>
 
@@ -308,8 +304,8 @@
       const title = document.createElement("strong"); title.textContent = `${y}년 ${m + 1}월`;
       head.append(nav("‹", "이전 달", -1), title, nav("›", "다음 달", 1));
       grid.innerHTML = "";
-      for (const w of "월화수목금토일") { const s = document.createElement("span"); s.className = "dpick__dow"; s.textContent = w; grid.append(s); }
-      const first = new Date(y, m, 1), lead = (first.getDay() + 6) % 7;
+      for (const w of "일월화수목금토") { const s = document.createElement("span"); s.className = "dpick__dow"; s.textContent = w; grid.append(s); }
+      const first = new Date(y, m, 1), lead = first.getDay();  // 일요일부터
       for (let i = 0; i < lead; i += 1) grid.append(document.createElement("span"));
       for (let day = 1; day <= new Date(y, m + 1, 0).getDate(); day += 1) {
         const d = new Date(y, m, day), key = iso(d);
@@ -395,12 +391,6 @@
     form.addEventListener("change", update);
     form.addEventListener("input", update);
     form.addEventListener("dates", update);
-    form.querySelectorAll("[data-time]").forEach((b) => b.addEventListener("click", () => {
-      const [s, e] = b.dataset.time.split("–");
-      form.elements.start.value = s; form.elements.end.value = e;
-      form.elements.start.removeAttribute("aria-invalid"); form.elements.end.removeAttribute("aria-invalid");
-      update();
-    }));
     form.addEventListener("submit", (e) => {
       if (picker && !picker.count()) { e.preventDefault(); dbox.querySelector(".dpick__summary").textContent = "날짜를 하나 이상 골라 주세요"; return; }
       const s = startInput.value, min = startInput.dataset.min;

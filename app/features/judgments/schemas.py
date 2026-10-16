@@ -137,25 +137,65 @@ class DashboardView:
 
 
 @dataclass(frozen=True, slots=True)
-class TodayWork:
-    """홈의 오늘 작업 한 줄. phase는 지금 시각 기준(before 예정 · now 진행 중 · done 끝남)."""
+class CheckIssue:
+    """공온 점검에서 걸린 항목 하나. key는 CHECK_LABELS의 키."""
 
-    time_text: str
-    work_type: str
-    location: str
-    company: str
-    phase: Literal["before", "now", "done"]
-    phase_label: str
-    progress_pct: int  # 계획 시간 중 지난 비율(0~100). 실제 진척이 아니다
-    site_name: str = ""
+    key: str
+    label: str
 
 
 @dataclass(frozen=True, slots=True)
-class TodaySite:
-    site_id: int
-    name: str
-    href: str  # 작업 일정의 오늘
-    items: tuple[TodayWork, ...]
+class BoardItem:
+    """오늘·내일 점검판의 작업 한 줄."""
+
+    item_id: int
+    site_name: str
+    work_type: str
+    time_text: str
+    location: str
+    company: str
+    href: str  # 작업 일정의 그날
+    issues: tuple[CheckIssue, ...]
+    phase: Literal["before", "now", "done"] | None = None  # 오늘만
+    phase_label: str = ""
+    progress_pct: int = 0
+    weather: str | None = None  # 내일만: 판정 4단계 이름, None은 판정 전
+
+
+@dataclass(frozen=True, slots=True)
+class DayBoard:
+    key: Literal["today", "tomorrow"]
+    title: str  # "오늘"·"내일"
+    date_text: str
+    items: tuple[BoardItem, ...]
+    criteria: tuple[tuple[str, int], ...]  # (점검 항목 이름, 걸린 작업 수), 걸린 것만
+
+    @property
+    def ready(self) -> int:
+        return sum(1 for i in self.items if not i.issues)
+
+
+@dataclass(frozen=True, slots=True)
+class HomeIndexDay:
+    """홈의 이번 주 공온지수 한 칸. 현장이 여럿이면 그날 가장 낮은 점수를 보인다(가장 조심할 곳)."""
+
+    label: str  # "10/17(토)"
+    short: str  # "토 17" (좁은 화면)
+    is_tomorrow: bool
+    score: int | None  # None: 점수 없음(판정 전·중기 참고·작업 없음)
+    sub: str  # 점수가 없을 때 이유, 있으면 현장 이름(여럿일 때)
+    href: str
+
+
+@dataclass(frozen=True, slots=True)
+class HomeDay:
+    date_text: str  # "10/18(일)" (읽기용 이름)
+    short: str  # "일 18" (칸에 보이는 짧은 글)
+    href: str
+    works: int
+    issues: int  # 점검에 걸린 작업 수(날씨는 내일만)
+    is_today: bool
+    is_weekend: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -206,8 +246,10 @@ class RecentRun:
 class HomeView:
     target_date: str
     today_date: str
-    today_sites: tuple[TodaySite, ...]  # 오늘 작업이 있는 현장만
-    today_counts: tuple[tuple[str, int], ...]  # (진행 중·예정·끝남, 건수)
+    boards: tuple[DayBoard, ...]  # 오늘·내일 공온 점검판(D-065)
+    week: tuple[HomeDay, ...]  # 오늘부터 7일
+    index_days: tuple[HomeIndexDay, ...]  # 내일부터 7일 공온지수
+    checked_short: str | None  # 가장 최근 점검(판정 실행) 시각 '15:15 확인'
     sites: tuple[SiteSummary, ...]
     tiles: tuple[CountTile, ...]
     recent: tuple[RecentRun, ...]

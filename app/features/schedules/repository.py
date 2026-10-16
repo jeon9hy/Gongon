@@ -1,4 +1,4 @@
-from datetime import date, datetime, time
+from datetime import date, datetime
 
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
@@ -98,18 +98,6 @@ def work_type_usage(session: Session, site_id: int) -> dict[str, int]:
         .group_by(WorkItem.work_type)
     ).all()
     return {work_type: count for work_type, count in rows}
-
-
-def recent_times(session: Session, site_id: int, limit: int) -> list[tuple[time, time]]:
-    """최근 등록한 작업 시간(겹치지 않게). 화면은 버튼으로만 보이고 미리 채우지 않는다."""
-    rows = session.execute(
-        select(WorkItem.start_local, WorkItem.end_local)
-        .where(WorkItem.site_id == site_id, WorkItem.deleted_at.is_(None))
-        .group_by(WorkItem.start_local, WorkItem.end_local)
-        .order_by(func.max(WorkItem.id).desc())
-        .limit(limit)
-    ).all()
-    return [(start, end) for start, end in rows]
 
 
 def get_many(session: Session, item_ids: list[int]) -> list[WorkItem]:

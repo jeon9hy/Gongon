@@ -188,6 +188,22 @@ def propose(
     return case.id, ()
 
 
+def open_change_item_ids(session: Session, item_ids: list[int]) -> set[int]:
+    """진행 중(초안·영향 검토) 변경이 걸린 작업 ID(쿼리 한 번). 홈의 공온 점검이 쓴다."""
+    if not item_ids:
+        return set()
+    return set(
+        session.scalars(
+            select(ChangeCase.work_item_id)
+            .join(ChangeRevision, ChangeRevision.case_id == ChangeCase.id)
+            .where(
+                ChangeCase.work_item_id.in_(item_ids),
+                ChangeRevision.status.in_(OPEN_STATUSES),
+            )
+        )
+    )
+
+
 # ---------- 상태 전이 ----------
 
 Outcome = Literal["ok", "already"]
