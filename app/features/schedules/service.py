@@ -581,7 +581,7 @@ def _month_groups(
     start, end = min(anchors), max(anchors)
     start = max(start, _add_months(shown, -MONTH_PICK_MAX))
     end = min(end, _add_months(shown, MONTH_PICK_MAX))
-    # 한 해를 3줄×4칸으로 보이므로 해의 1월~12월을 모두 채운다(기간 밖 달은 막힘으로 보인다)
+    # 한 해를 3줄 4칸으로 보이므로 해의 1월~12월을 모두 채운다(기간 밖 달은 막힘으로 보인다)
     start, end = start.replace(month=1), end.replace(month=12)
 
     groups: dict[int, list[MonthChoice]] = {}

@@ -321,7 +321,7 @@ def test_month_picker_spans_six_months_each_way_and_marks_the_work_period(
 
     menu = month_menu(client.get(f"/schedule?site_id={site_id}").text)
 
-    # 한 해를 3줄×4칸으로 보이므로 2026·2027년 열두 달을 모두 두고, 기간 밖 달은 링크 없이 막는다
+    # 한 해를 3줄 4칸으로 보이므로 2026·2027년 열두 달을 모두 두고, 기간 밖 달은 링크 없이 막는다
     assert "2026년" in menu and "2027년" in menu
     assert menu.count('class="monthpick__month') == 24
     assert 'aria-current="true">10월</a>' in menu
