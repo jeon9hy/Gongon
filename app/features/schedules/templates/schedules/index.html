@@ -6,7 +6,8 @@
 <section class="hero" aria-labelledby="schedule-title">
 <div class="hero__main">
 <p class="hero__date">{{ icon("calendar", 15) }} 작업 일정{% if view.site_name %} · {{ view.site_name }}{% endif %}</p>
-<h1 class="hero__title" id="schedule-title">{{ view.month_title.split(" ")[-1] if view.site_id is not none else "이번 달" }} 공사 ON?</h1>
+<h1 class="hero__title" id="schedule-title">{{ view.month_title.split(" ")[-1] if view.site_id is not none else "이번 달" }} 작업 일정</h1>
+<p class="hero__lead">공온이 작업마다 날씨 판정과 변경 이력을 함께 붙여 둡니다.</p>
 </div>
 {% if view.sites %}
 <form method="get" action="/schedule" class="hero__action">

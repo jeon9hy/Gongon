@@ -1194,3 +1194,10 @@ span.pickpop__title { cursor: default; display: inline-flex; align-items: center
   .today__who { grid-column: 2 / 3; grid-row: 2; }
   .tomorrow-head form, .tomorrow-head .btn { width: 100%; }
 }
+
+/* 작업 일정 하위 메뉴(D-063): 달력 · 공온 판정 · 판정 내역. 주 메뉴보다 한 단계 낮은 알약 탭 */
+.subnav { display: flex; gap: 4px; align-self: flex-start; padding: 4px; border-radius: 999px; background: var(--card); border: 1px solid var(--line-soft); max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.subnav::-webkit-scrollbar { display: none; }
+.subnav a { flex: 0 0 auto; padding: 8px 16px; border-radius: 999px; font-size: 14px; font-weight: 500; color: var(--muted); text-decoration: none; }
+.subnav a:hover { color: var(--ink); background: var(--surface); }
+.subnav a[aria-current="page"] { background: var(--ink); color: #FFFFFF; }

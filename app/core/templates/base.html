@@ -19,8 +19,10 @@
 {% if me %}
 <nav class="appnav" aria-label="주 메뉴">
 {% set current_site_id = view.site_id | default(view.selected_site_id | default(none)) if view is defined else none %}
-{% for key, href, label in [("home", "/", "홈"), ("dashboard", "/dashboard", "현장 대시보드"), ("schedule", "/schedule", "작업 일정"), ("changes", "/changes", "변경"), ("history", "/judgments", "판정 내역"), ("sites", "/sites", "현장 설정")] %}
-<a href="{{ href }}{% if key not in ('home', 'history', 'changes') and current_site_id %}?site_id={{ current_site_id }}{% endif %}"{% if nav_active == key %} aria-current="page"{% endif %}>{{ label }}</a>
+{# 주 메뉴는 핵심 4개(D-063). 공온 판정·판정 내역은 작업 일정 안의 하위 메뉴다. #}
+{% set nav_group = {"dashboard": "schedule", "history": "schedule"}.get(nav_active, nav_active) %}
+{% for key, href, label in [("home", "/", "홈"), ("schedule", "/schedule", "작업 일정"), ("changes", "/changes", "변경"), ("sites", "/sites", "현장")] %}
+<a href="{{ href }}{% if key in ('schedule', 'sites') and current_site_id %}?site_id={{ current_site_id }}{% endif %}"{% if nav_group == key %} aria-current="page"{% endif %}>{{ label }}</a>
 {% endfor %}
 </nav>
 <div class="appbar__actions">
@@ -34,6 +36,14 @@
 </header>
 
 <main class="page page--{{ nav_active }}" id="main" tabindex="-1">
+{% if me and nav_active in ("schedule", "dashboard", "history") %}
+{% set site_q = "?site_id=" ~ current_site_id if current_site_id else "" %}
+<nav class="subnav" aria-label="작업 일정 메뉴">
+{% for key, href, label in [("schedule", "/schedule" ~ site_q, "달력"), ("dashboard", "/dashboard" ~ site_q, "공온 판정"), ("history", "/judgments", "판정 내역")] %}
+<a href="{{ href }}"{% if nav_active == key %} aria-current="page"{% endif %}>{{ label }}</a>
+{% endfor %}
+</nav>
+{% endif %}
 {% block content %}{% endblock %}
 </main>
 

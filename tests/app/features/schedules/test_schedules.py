@@ -80,9 +80,16 @@ def test_navigation_keeps_the_selected_site_through_judgment_detail(
         response = client.get(path)
         assert response.status_code == 200
         navigation = response.text.split('<nav class="appnav"')[1].split("</nav>")[0]
-        for destination in ("dashboard", "schedule", "sites"):
+        for destination in ("schedule", "sites"):
             assert f'href="/{destination}?site_id={site_id}"' in navigation
-        assert 'href="/judgments"' in navigation  # 판정 내역은 늘 전체 현장으로 연다
+        assert "/dashboard" not in navigation and "/judgments" not in navigation  # 하위 메뉴로
+    for path in (f"/dashboard?site_id={site_id}", f"/schedule?site_id={site_id}"):
+        page = client.get(path).text
+        subnav = page.split('<nav class="subnav"')[1].split("</nav>")[0]
+        assert f'href="/dashboard?site_id={site_id}"' in subnav
+        assert f'href="/schedule?site_id={site_id}"' in subnav
+        assert 'href="/judgments"' in subnav  # 판정 내역은 늘 전체 현장으로 연다
+    assert '<nav class="subnav"' not in client.get(f"/sites?site_id={site_id}").text
 
 
 @pytest.mark.parametrize(

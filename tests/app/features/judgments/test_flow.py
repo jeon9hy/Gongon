@@ -263,8 +263,10 @@ def test_home_is_separate_from_site_dashboard_in_menu(client: TestClient) -> Non
     dashboard = client.get("/dashboard").text
 
     assert '<a href="/" aria-current="page">홈</a>' in home
-    assert '<a href="/dashboard" aria-current="page">현장 대시보드</a>' not in home
-    assert '<a href="/dashboard" aria-current="page">현장 대시보드</a>' in dashboard
+    assert '<nav class="subnav"' not in home
+    # 공온 판정은 작업 일정의 하위 메뉴다(D-063)
+    assert '<a href="/schedule" aria-current="page">작업 일정</a>' in dashboard
+    assert '<a href="/dashboard" aria-current="page">공온 판정</a>' in dashboard
 
 
 def test_home_summarizes_each_site_and_links_to_its_dashboard(

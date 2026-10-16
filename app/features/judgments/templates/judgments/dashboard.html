@@ -15,8 +15,9 @@
 
 <section class="hero" aria-labelledby="dash-title">
 <div class="hero__main">
-<p class="hero__date">{{ icon("calendar", 15) }} 현장 대시보드 · {{ view.target_date }} 판정</p>
+<p class="hero__date">{{ icon("calendar", 15) }} 공온 판정 · {{ view.target_date }}</p>
 <h1 class="hero__title" id="dash-title">{{ view.site_name }} 공사 ON?</h1>
+<p class="hero__lead">공온이 기상청 예보를 공종별 기준과 비교한 결과입니다.</p>
 <ul class="hero__facts">
 <li>{{ icon("history", 15) }}<span>{% if view.work_hours %}내일 작업 {{ view.work_hours }}{% else %}내일 등록한 작업 없음{% endif %}</span></li>
 <li>{{ icon("check", 15, 2.4) }}<span>판정 항목 {{ view.cards | length }}개</span></li>
