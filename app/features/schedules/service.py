@@ -81,19 +81,19 @@ def build_view(
 ) -> ScheduleView | None:
     """월 달력 + 고른 날짜 상세. 현장이 없으면 빈 화면, 없거나 범위 밖 site_id면 None.
 
-    month(YYYY-MM)·day(YYYY-MM-DD)가 형식에 맞지 않으면 무시하고 기본값(내일이 든 달·내일)을 쓴다.
+    month(YYYY-MM)·day(YYYY-MM-DD)가 형식에 맞지 않으면 무시하고 기본값(오늘이 든 달·오늘)을 쓴다.
     """
     sites = sites_service.list_sites(session, scope)
     site = _pick(sites, site_id)
     if site_id is not None and site is None:
         return None  # 없거나 참여하지 않은 현장(D-057)
     tomorrow = today + timedelta(days=1)
-    selected = _date(day or "") or (_date(form.work_date) if form else None) or tomorrow
+    selected = _date(day or "") or (_date(form.work_date) if form else None) or today
     first = _month(month or "") or selected.replace(day=1)
     if (selected.year, selected.month) != (first.year, first.month):
-        # 달만 바꿔 왔으면 그 달에 내일이 있으면 내일, 없으면 1일을 고른다.
-        in_month = (tomorrow.year, tomorrow.month) == (first.year, first.month)
-        selected = tomorrow if in_month else first
+        # 달만 바꿔 왔으면 그 달에 오늘이 있으면 오늘, 없으면 1일을 고른다.
+        in_month = (today.year, today.month) == (first.year, first.month)
+        selected = today if in_month else first
     grid_start = first - timedelta(days=first.weekday())
     last = _month_end(first)
     grid_end = last + timedelta(days=6 - last.weekday())
@@ -127,7 +127,7 @@ def build_view(
                     is_target=d == tomorrow,
                     in_period=site.works_on(d),
                     selected=d == selected,
-                    addable=d > today and site.works_on(d),
+                    addable=d >= today and site.works_on(d),
                     items=tuple(on_day[:CELL_ITEMS]),
                     more=max(0, len(on_day) - CELL_ITEMS),
                 )
@@ -157,7 +157,7 @@ def build_view(
         month_title=f"{first.year}년 {first.month}월",
         prev_href=f"{base}{(first - timedelta(days=1)):%Y-%m}",
         next_href=f"{base}{(last + timedelta(days=1)):%Y-%m}",
-        this_month_href=f"{base}{tomorrow:%Y-%m}&day={tomorrow.isoformat()}",
+        this_month_href=f"{base}{today:%Y-%m}&day={today.isoformat()}",
         month_groups=() if site is None else _month_groups(site, first, tomorrow, base),
         weeks=weeks,
         detail=detail,
@@ -185,21 +185,22 @@ def build_view(
 def _detail(
     site: SiteRecord, day: date, today: date, items: tuple[WorkItemRecord, ...]
 ) -> DayDetail:
-    if day <= today:
-        note: str | None = (
-            "지난 날짜와 오늘은 작업을 추가할 수 없습니다(판정은 다음 날 작업을 봅니다)."
-        )
+    if day < today:
+        note: str | None = "지난 날짜는 작업을 추가할 수 없습니다."
     elif not site.works_on(day):
         note = f"현장 작업 기간({site.period_text()}) 밖입니다."
+    elif day == today:
+        # 판정은 내일부터 7일(D-041)이라 오늘 작업은 일정·변경 관리로만 쓴다(C04-4).
+        note = "오늘 작업은 일정·변경 관리용입니다. 기상 판정은 내일 작업부터 합니다."
     elif not items:
-        note = "등록한 작업 없음 · 현장 기본 작업 시간으로 판정합니다."
+        note = "등록한 작업 없음 · 작업이 없는 날은 판정하지 않습니다."
     else:
         note = None
     return DayDetail(
         day=day,
         day_text=_day_text(day),
         is_target=day == today + timedelta(days=1),
-        can_add=day > today and site.works_on(day),
+        can_add=day >= today and site.works_on(day),
         note=note,
         items=items,
     )
@@ -411,8 +412,8 @@ def _validate(
         errors.append(date_error)
     elif len(days) > MAX_DAYS:
         errors.append(f"한 번에 {MAX_DAYS}일까지 추가할 수 있습니다.")
-    elif any(d <= today for d in days):
-        errors.append("작업 날짜는 내일 이후여야 합니다(판정은 다음 날 작업을 봅니다).")
+    elif any(d < today for d in days):
+        errors.append("지난 날짜에는 작업을 추가할 수 없습니다. 오늘 이후 날짜를 고르세요.")
     elif not all(site.works_on(d) for d in days):
         errors.append(f"현장 작업 기간({site.period_text()}) 안의 날짜를 고르세요.")
     elif len(work_types) * len(days) > MAX_ITEMS:

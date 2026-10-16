@@ -90,7 +90,7 @@ def test_navigation_keeps_the_selected_site_through_judgment_detail(
     [
         ({"work_types": "고소작업대 아님"}, "목록에 있는 공종"),
         ({"work_types": ""}, "공종을 하나 이상"),
-        ({"work_date": "2026-10-04"}, "내일 이후"),  # 오늘
+        ({"work_date": "2026-10-03"}, "지난 날짜"),  # 어제(오늘은 허용, C04-4)
         ({"work_date": "2027-01-01"}, "작업 기간"),  # 현장 기간 밖
         ({"start": "12:00", "end": "12:00"}, "종료는 시작보다"),
         ({"start": "9시"}, "00:00 형식"),
@@ -240,18 +240,18 @@ def test_dashboard_opens_when_first_card_has_daily_elements(
 # ---------- 월 달력 ----------
 
 
-def test_month_grid_starts_on_monday_and_selects_tomorrow(client: TestClient) -> None:
+def test_month_grid_starts_on_monday_and_selects_today(client: TestClient) -> None:
     site_id = add_site(client)
-    page = client.get(f"/schedule?site_id={site_id}").text  # 지금 10/4 → 내일 10/5가 든 10월
+    page = client.get(f"/schedule?site_id={site_id}").text  # 지금 10/4 → 오늘이 든 10월
     assert "2026년 10월" in page
     # 10월 1일은 목요일 → 달력은 9월 28일(월)부터, 11월 1일(일)까지 5주
     assert page.count('<td class="calcell') == 35
     assert 'day=2026-09-28"' in page and 'day=2026-11-01"' in page
     selected = (
-        f'href="/schedule?site_id={site_id}&amp;month=2026-10&amp;day=2026-10-05" '
-        'aria-label="10월 5일, 작업 0건" aria-current="date"'
+        f'href="/schedule?site_id={site_id}&amp;month=2026-10&amp;day=2026-10-04" '
+        'aria-label="10월 4일, 작업 0건" aria-current="date"'
     )
-    assert selected in page  # 내일(판정 대상)이 기본 선택
+    assert selected in page  # 오늘이 기본 선택(C04-4)
     assert "month=2026-09" in page and "month=2026-11" in page  # 이전·다음 달
 
 
@@ -276,8 +276,8 @@ def test_malformed_month_or_day_falls_back(client: TestClient, query: str) -> No
 
 def test_past_day_shows_detail_without_add_button(client: TestClient) -> None:
     site_id = add_site(client)
-    page = client.get(f"/schedule?site_id={site_id}&day=2026-10-04").text  # 오늘
-    assert "작업을 추가할 수 없습니다" in page
+    page = client.get(f"/schedule?site_id={site_id}&day=2026-10-03").text  # 어제
+    assert "지난 날짜는 작업을 추가할 수 없습니다" in page
     assert 'type="button" data-open-add' not in page  # 모달 자체는 있어도 여는 버튼이 없다
 
 
@@ -362,7 +362,7 @@ def test_picked_dates_add_one_item_per_day(client: TestClient, session: Session)
 @pytest.mark.parametrize(
     ("days", "message"),
     [
-        (("2026-10-05", "2026-10-04"), "내일 이후"),  # 하나라도 오늘이면 아무것도 만들지 않는다
+        (("2026-10-05", "2026-10-03"), "지난 날짜"),  # 하나라도 지난 날이면 아무것도 만들지 않는다
         (("2026-10-05", "2027-01-03"), "작업 기간"),
         ((), "작업 날짜를 고르세요"),
     ],
@@ -383,5 +383,21 @@ def test_date_picker_disables_days_that_cannot_take_work(client: TestClient) -> 
 
     page = client.get(f"/schedule?site_id={site_id}").text
 
-    assert 'data-date="2026-10-04" disabled' in page  # 오늘
-    assert 'data-date="2026-10-05" aria-pressed="true"' in page  # 고른 날(내일)
+    assert 'data-date="2026-10-03" disabled' in page  # 어제
+    assert 'data-date="2026-10-04" aria-pressed="true"' in page  # 오늘을 기본으로 고른다(C04-4)
+    assert 'data-date="2026-10-05" aria-pressed="false"' in page
+
+
+def test_today_work_can_be_added_and_is_shown_without_judgment(
+    client: TestClient, session: Session
+) -> None:
+    """오늘(경계)은 추가할 수 있다(어제는 위 검사가 막는다). 오늘 작업은 판정 대상이 아니다."""
+    site_id = add_site(client)
+
+    response = add_item(client, site_id, work_date="2026-10-04")
+
+    assert response.status_code == 303
+    assert [d.isoformat() for d in session.scalars(select(WorkItem.work_date))] == ["2026-10-04"]
+    page = client.get(response.headers["location"]).text
+    assert "기상 판정은 내일 작업부터 합니다" in page
+    assert "작업 추가" in page

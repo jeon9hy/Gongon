@@ -210,7 +210,7 @@ def test_unchanged_edit_keeps_the_version(
     "changes",
     [
         {"start": "12:00", "end": "12:00"},  # 시작 = 종료
-        {"work_date": "2026-10-04"},  # 오늘(판정은 다음 날부터)
+        {"work_date": "2026-10-03"},  # 어제(오늘은 허용, C04-4)
         {"work_date": "2027-01-01"},  # 현장 작업 기간 밖
         {"plan_version": "abc"},
     ],

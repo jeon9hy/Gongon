@@ -113,7 +113,7 @@ class CalendarDay:
     is_target: bool  # 내일(판정 대상 날짜)
     in_period: bool  # 현장 작업 기간 안
     selected: bool
-    addable: bool  # 작업을 추가할 수 있는 날(내일 이후·작업 기간 안)
+    addable: bool  # 작업을 추가할 수 있는 날(오늘 이후·작업 기간 안)
     items: tuple[WorkItemRecord, ...]  # 칸에 보이는 작업(최대 CELL_ITEMS개)
     more: int  # 칸에 다 못 보인 작업 수
 
@@ -125,7 +125,7 @@ class DayDetail:
     day: date
     day_text: str  # "10월 9일(금)"
     is_target: bool
-    can_add: bool  # 내일 이후·작업 기간 안이면 작업을 추가할 수 있다
+    can_add: bool  # 오늘 이후·작업 기간 안이면 작업을 추가할 수 있다
     note: str | None  # 추가할 수 없는 이유 등
     items: tuple[WorkItemRecord, ...]
 

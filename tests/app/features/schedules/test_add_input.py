@@ -104,7 +104,7 @@ def test_range_with_weekdays_picks_only_those_days(
     [
         ({"range_end": "2026-10-04"}, "종료일은 시작일과 같거나"),
         ({"weekdays": []}, "요일을 하나 이상"),
-        ({"range_start": "2026-10-04", "weekdays": [str(i) for i in range(7)]}, "내일 이후"),
+        ({"range_start": "2026-10-03", "weekdays": [str(i) for i in range(7)]}, "지난 날짜"),
         ({"range_end": "2027-02-01"}, "92일까지"),
         ({"range_end": "2026-10-06", "weekdays": ["5", "6"]}, "해당 요일이 없습니다"),
         ({"range_start": "10월 5일"}, "날짜 형식"),

@@ -1143,3 +1143,32 @@ a.window--link:hover .window__link { color: var(--accent); }
 .change-diff dd { margin: 0; }
 .change-history { margin: 0; padding-left: 18px; }
 .change-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }
+
+/* 날짜·시간 고르기(C04-4): 입력칸처럼 보이는 버튼 + 누르면 뜨는 판. 고른 칸은 남색 면에 흰 글자 */
+.pickfield { min-height: 40px; width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); padding: 0 14px; font: inherit; font-size: 14px; font-weight: 500; color: var(--ink); text-align: left; text-indent: 0; cursor: pointer; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pickfield::after { content: ""; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: translateY(-2px) rotate(45deg); flex: 0 0 auto; }
+.pickfield.is-empty { color: var(--placeholder); }
+.pickfield:hover { border-color: var(--ink); }
+.pickfield[aria-expanded="true"], .pickfield:focus-visible { outline: 0; border-color: var(--ink); box-shadow: 0 0 0 3px var(--accent-soft); }
+.pickfield[aria-invalid="true"] { border-color: var(--stop-text); }
+.pickpop { position: fixed; z-index: 1000; width: 296px; max-width: calc(100vw - 16px); padding: 12px; background: var(--card); border: 1px solid var(--line-soft); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); display: flex; flex-direction: column; gap: 8px; text-indent: 0; font-weight: 500; }
+.pickpop__head { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding-bottom: 6px; border-bottom: 1px solid var(--line-soft); }
+.pickpop__nav, .pickpop__title { min-height: 36px; border: 0; border-radius: var(--radius-sm); background: transparent; font: inherit; color: var(--ink); cursor: pointer; }
+.pickpop__nav { width: 36px; font-size: 20px; line-height: 1; }
+.pickpop__title { padding: 0 12px; font-size: 15px; font-weight: 600; }
+span.pickpop__title { cursor: default; display: inline-flex; align-items: center; }
+.pickpop__nav:hover, button.pickpop__title:hover { background: var(--surface); }
+.pickpop__grid { display: grid; gap: 4px; }
+.pickpop__grid--days { grid-template-columns: repeat(7, 1fr); }
+.pickpop__grid--wide { grid-template-columns: repeat(4, 1fr); background: var(--surface); border-radius: var(--radius-md); padding: 6px; }
+.pickpop__grid--time { grid-template-columns: repeat(6, 1fr); }
+.pickpop__dow { padding: 4px 0; text-align: center; font-size: 12px; color: var(--muted); }
+.pickpop__cell { min-height: 36px; border: 0; border-radius: var(--radius-sm); background: transparent; font: inherit; font-size: 14px; color: var(--text); cursor: pointer; font-variant-numeric: tabular-nums; }
+.pickpop__grid--wide .pickpop__cell { min-height: 44px; }
+.pickpop__cell:hover:not(:disabled) { background: var(--accent-soft); color: var(--ink); }
+.pickpop__cell.is-today { box-shadow: inset 0 0 0 1px var(--accent); color: var(--accent); }
+.pickpop__cell.is-faded { color: var(--placeholder); }
+.pickpop__cell[aria-pressed="true"] { background: var(--ink); color: #FFFFFF; box-shadow: none; }
+.pickpop__cell:disabled { color: var(--line); cursor: not-allowed; }
+.pickpop__label { font-size: 12px; color: var(--muted); }
+.pickpop__foot { display: flex; justify-content: flex-end; }
