@@ -464,15 +464,16 @@ def build_dashboard(
         latest.setdefault(_key(j), j)
     rule_sets = rule_sets_by_label()
     targets = _targets(site, schedules_service.items_on(session, site.site_id, target_date))
-    paired = tuple((t, latest.get(t.key)) for t in targets)
+    triples = _current_pairs(site, targets, target_date, latest, rule_sets)
+    paired = tuple((t, j) for t, j, _ in triples)
     cards = tuple(
-        _card(t.label, j, t.work_type in rule_sets)
+        _card_for(t, j, stale, rule_sets)
         if j is None
         else replace(
-            _card(t.label, j, t.work_type in rule_sets),
+            _card_for(t, j, stale, rule_sets),
             open_href=dashboard_href(site.site_id, work=t.key),
         )
-        for t, j in paired
+        for t, j, stale in triples
     )
     judged = [(t, j) for t, j in paired if j is not None]
     # 상세 카드: 고른 작업, 없으면 가장 높은 단계(같으면 앞쪽) 작업(D-041 후속).
@@ -621,15 +622,17 @@ def _site_summary(
 
     if not working:
         return summary(None, f"작업 기간이 아닙니다 · {site.period_text()}", None)
-    targets = _targets(site, items)
-    cards = tuple(_card(t.label, latest.get(t.key), t.work_type in rule_sets) for t in targets)
-    if not any(t.key in latest for t in targets):
-        return summary(None, "아직 판정하지 않았습니다", None, cards)
+    triples = _current_pairs(site, _targets(site, items), target_date, latest, rule_sets)
+    cards = tuple(_card_for(t, j, stale, rule_sets) for t, j, stale in triples)
+    current = [j for _, j, _ in triples if j is not None]
+    if not current:
+        stale_reason = next((stale for _, _, stale in triples if stale), None)
+        return summary(None, stale_reason or "아직 판정하지 않았습니다", None, cards)
     # 현장의 단계는 작업·공통 카드 중 가장 높은 단계(기준 미확인 공종의 '확인 필요' 포함).
     worst = max(
         (c for c in cards if c.verdict is not None), key=lambda c: Verdict(str(c.verdict)).severity
     )
-    judged_at = max(j.judged_at for j in latest.values())
+    judged_at = max(j.judged_at for j in current)
     return summary(
         worst.verdict, f"{worst.work_type} · {worst.reason}", _kst_text(judged_at), cards
     )
@@ -709,9 +712,14 @@ def _week(
         in_period = site.works_on(day)
         # 등록한 작업만 보여 준다. 작업이 없는 내일만 현장 기본 공종으로 대체한다(D-023).
         has_work = day in items_by_day or day == dates[0]
-        pairs = [
-            (t, latest.get((day, t.key))) for t in _targets(site, items_by_day.get(day, ()))
-        ] if in_period and has_work else []  # fmt: skip
+        day_latest = {key: j for (d, key), j in latest.items() if d == day}
+        triples = (
+            _current_pairs(site, _targets(site, items_by_day.get(day, ())), day, day_latest,
+                           rule_sets)
+            if in_period and has_work else []
+        )  # fmt: skip
+        pairs = [(t, j) for t, j, _ in triples]
+        stale_by_key = {t.key: stale for t, _, stale in triples}
         judged = [j for _, j in pairs if j is not None]
         covered = any(_has_forecast(times, *_work_range(day, t)) for t, _ in pairs)
         confidence = (
@@ -725,7 +733,7 @@ def _week(
             if confidence == "낮음" and mid_parts:
                 cell = _mid_cell(target, rule_sets, mid_parts)
             else:
-                card = _card(target.label, judgment, target.work_type in rule_sets)
+                card = _card_for(target, judgment, stale_by_key[target.key], rule_sets)
                 state: Literal["none", "pending"] = (
                     "pending" if confidence in ("예보 없음", "판정 전") else "none"
                 )
@@ -954,6 +962,58 @@ def _card(work_type: str, judgment: Judgment | None, has_rules: bool) -> WorkCar
     reason = _window_reason(judgment.hours, worst)
     window_text = _range_text(_dt(worst["start_at"]), _dt(worst["end_at"]))
     return WorkCard(work_type, time_range, judgment.verdict, f"{window_text} · {reason}", href)
+
+
+def _current_pairs(
+    site: SiteRecord,
+    targets: list["_Target"],
+    day: date,
+    latest: Mapping[str, Judgment],
+    rule_sets: Mapping[str, RuleSet],
+) -> list[tuple["_Target", Judgment | None, str | None]]:
+    """(대상, 현재 판정, 재판정 필요 사유). 입력이 바뀐 판정은 현재 판정으로 쓰지 않는다(C04-1)."""
+    triples: list[tuple[_Target, Judgment | None, str | None]] = []
+    for target in targets:
+        judgment = latest.get(target.key)
+        stale = None if judgment is None else _stale_reason(site, target, day, judgment, rule_sets)
+        triples.append((target, None if stale else judgment, stale))
+    return triples
+
+
+def _stale_reason(
+    site: SiteRecord,
+    target: "_Target",
+    day: date,
+    judgment: Judgment,
+    rule_sets: Mapping[str, RuleSet],
+) -> str | None:
+    """저장된 판정의 입력(격자·작업 시각·기준 버전)이 지금 현장·작업·기준과 다르면 그 사유.
+
+    판정 4단계와 별개 표시다(새 단계 아님). 예전 판정은 기록에 남고 상세 주소로 볼 수 있다.
+    """
+    changed: list[str] = []
+    if (judgment.grid_nx, judgment.grid_ny) != (site.grid_nx, site.grid_ny):
+        changed.append("현장 위치")
+    if (judgment.work_start_at, judgment.work_end_at) != _work_range(day, target):
+        changed.append("작업 시간")
+    rule_set = rule_sets.get(target.work_type)
+    if rule_set is not None and judgment.rule_version != rule_set.rule_version:
+        changed.append("판정 기준")
+    if not changed:
+        return None
+    return f"재판정 필요 · {'·'.join(changed)} 변경 후 아직 판정하지 않음"
+
+
+def _card_for(
+    target: "_Target",
+    judgment: Judgment | None,
+    stale: str | None,
+    rule_sets: Mapping[str, RuleSet],
+) -> WorkCard:
+    if stale is None or target.work_type not in rule_sets:
+        return _card(target.label, judgment, target.work_type in rule_sets)
+    time_range = f"{target.start_local:%H:%M}–{target.end_local:%H:%M}"
+    return WorkCard(target.label, time_range, None, stale, None)
 
 
 def _primary(
