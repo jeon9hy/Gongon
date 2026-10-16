@@ -98,7 +98,8 @@ def test_new_item_can_name_a_performing_company_of_this_site(
     item = only_item(session)
     assert (item.performing_participant_id, item.plan_version) == (prime, 1)
     page = client.get(f"/schedule?site_id={site_id}&day=2026-10-05").text
-    assert "실행 업체 가상건설 · 원청 · 계획 v1" in page
+    assert "가상건설 · v1" in page  # 작업 카드
+    assert "<dt>실행 업체</dt><dd>가상건설</dd>" in page  # 작업 상세
 
 
 def test_item_without_performer_stays_unassigned(
@@ -107,7 +108,8 @@ def test_item_without_performer_stays_unassigned(
     add_item(client, site_id)
 
     assert only_item(session).performing_participant_id is None
-    assert "실행 업체 미지정" in client.get(f"/schedule?site_id={site_id}&day=2026-10-05").text
+    page = client.get(f"/schedule?site_id={site_id}&day=2026-10-05").text
+    assert "업체 미지정 · v1" in page and "<dt>실행 업체</dt><dd>미지정</dd>" in page
 
 
 def test_performer_from_another_site_is_rejected(
@@ -156,7 +158,7 @@ def test_edit_saves_previous_plan_and_raises_version(
     assert revision.performing_participant_id is None
     assert revision.changed_at == FIXED_NOW and revision.source == "edit"
     page = client.get(response.headers["location"]).text
-    assert "계획 v2" in page and "변경 이력 1건" in page and "09:00–12:00 · A구역" in page
+    assert "v2 · 변경 1번" in page and "v1 10/05 09:00–12:00 · A구역" in page
 
 
 def test_edit_with_an_outdated_version_is_refused_with_409(

@@ -27,9 +27,15 @@
 </nav>
 <div class="appbar__actions">
 <a class="btn btn--accent btn--sm" href="/sites">{{ icon("plus", 14, 2.4) }} 현장 추가</a>
-<span class="appbar__user">{{ me.display_name }} · {{ me.organization_name }}
-<form method="post" action="/logout"><button class="btn btn--soft btn--sm" type="submit">로그아웃</button></form>
-</span>
+<details class="menu usermenu">
+<summary class="usermenu__trigger" aria-label="{{ me.display_name }} 메뉴"><span class="usermenu__avatar" aria-hidden="true">{{ me.display_name[:1] }}</span><span class="usermenu__name">{{ me.display_name }}</span>{{ icon("chevron-down", 14, 2.2) }}</summary>
+<div class="menu__panel usermenu__panel">
+<p class="usermenu__who"><strong>{{ me.display_name }}</strong><span>{{ me.organization_name }}</span></p>
+<a class="menu__item" href="/me">{{ icon("site", 16) }} 내 정보</a>
+<a class="menu__item" href="/guide">{{ icon("info", 16) }} 공온 가이드</a>
+<form method="post" action="/logout"><button class="menu__item usermenu__logout" type="submit">{{ icon("arrow-right", 16) }} 로그아웃</button></form>
+</div>
+</details>
 </div>
 {% endif %}
 </div>
@@ -56,14 +62,14 @@
 <div class="sitefoot__col">
 <p class="sitefoot__head">서비스</p>
 <a href="/">홈</a>
-<a href="/dashboard">현장 대시보드</a>
 <a href="/schedule">작업 일정</a>
 <a href="/changes">변경</a>
+<a href="/sites">현장</a>
 </div>
 <div class="sitefoot__col">
-<p class="sitefoot__head">기록·설정</p>
-<a href="/judgments">판정 내역</a>
-<a href="/sites">현장 설정</a>
+<p class="sitefoot__head">도움</p>
+<a href="/guide">공온 가이드</a>
+<a href="/me">내 정보</a>
 </div>
 {% endif %}
 <div class="sitefoot__col">

@@ -1,6 +1,7 @@
 """작업 일정 입력(S08-1)과 작업별 판정 연결. 기상청은 가짜(FakeKma), 지금은 2026-10-04 15:00 KST."""
 
 import re
+from datetime import date, time
 from typing import Any
 
 import pytest
@@ -262,14 +263,14 @@ def test_month_grid_starts_on_monday_and_selects_today(client: TestClient) -> No
     assert "month=2026-09" in page and "month=2026-11" in page  # 이전·다음 달
 
 
-def test_cell_shows_three_items_and_counts_the_rest(client: TestClient) -> None:
+def test_cell_shows_five_dots_and_counts_the_rest(client: TestClient) -> None:
     site_id = add_site(client)
-    for hour in (8, 9, 10, 11):
+    for hour in (8, 9, 10, 11, 12, 13):
         add_item(client, site_id, start=f"{hour:02d}:00", end=f"{hour:02d}:30")
     page = client.get(f"/schedule?site_id={site_id}&day=2026-10-05").text
-    assert "+1건" in page
-    assert "작업 4건" in page  # 칸의 읽기용 라벨은 전체 건수
-    assert page.count("08:00–08:30") == 1  # 상세 패널에는 네 건 모두
+    cell = page.split('aria-label="10월 5일, 작업 6건"')[1].split("</td>")[0]
+    assert cell.count('class="dot dot--btn"') == 5 and ">+1</a>" in cell  # 점 5개 + 나머지
+    assert page.count('class="workcard"') == 6  # 상세 패널에는 여섯 건 모두
     assert "11:00–11:30" in page
 
 
@@ -336,7 +337,7 @@ def test_item_without_a_required_value_is_not_saved_and_modal_reopens(
 
     assert response.status_code == 422
     assert session.scalar(select(WorkItem.id)) is None
-    assert 'id="add-item" autofocus aria-labelledby="add-item-title" data-open' in response.text
+    assert 'id="add-item" aria-labelledby="add-item-title" data-open' in response.text
 
 
 def test_add_form_has_no_preselected_work_type_or_times(client: TestClient) -> None:
@@ -390,21 +391,62 @@ def test_date_picker_disables_days_that_cannot_take_work(client: TestClient) -> 
 
     page = client.get(f"/schedule?site_id={site_id}").text
 
-    assert 'data-date="2026-10-03" disabled' in page  # 어제
-    assert 'data-date="2026-10-04" aria-pressed="true"' in page  # 오늘을 기본으로 고른다(C04-4)
-    assert 'data-date="2026-10-05" aria-pressed="false"' in page
+    # 날짜 달력은 화면에서 그린다. 첫 날(오늘)·현장 기간·처음 고른 날(오늘)을 넘겨준다(D-064)
+    assert 'data-min="2026-10-04" data-start="2026-10-01" data-end="2026-12-31"' in page
+    assert 'data-initial="2026-10-04"' in page
 
 
 def test_today_work_can_be_added_and_is_shown_without_judgment(
     client: TestClient, session: Session
 ) -> None:
-    """오늘(경계)은 추가할 수 있다(어제는 위 검사가 막는다). 오늘 작업은 판정 대상이 아니다."""
+    """오늘(경계)은 추가할 수 있다(어제는 위 검사가 막는다). 지금(15:00) 뒤 시작이어야 한다."""
     site_id = add_site(client)
 
-    response = add_item(client, site_id, work_date="2026-10-04")
+    response = add_item(client, site_id, work_date="2026-10-04", start="15:01", end="17:00")
 
     assert response.status_code == 303
     assert [d.isoformat() for d in session.scalars(select(WorkItem.work_date))] == ["2026-10-04"]
     page = client.get(response.headers["location"]).text
-    assert "기상 판정은 내일 작업부터 합니다" in page
-    assert "작업 추가" in page
+    assert "15:01<span>–</span>17:00" in page and "오늘 먼저 챙길 것" in page
+
+
+@pytest.mark.parametrize("start", ["14:59", "15:00"])  # 바로 앞·같은 분은 이미 시작한 것으로 본다
+def test_today_work_must_start_after_now(client: TestClient, session: Session, start: str) -> None:
+    site_id = add_site(client)
+
+    response = add_item(client, site_id, work_date="2026-10-04", start=start, end="17:00")
+
+    assert response.status_code == 422 and "지금(15:00) 이후 시작" in response.text
+    assert session.scalar(select(WorkItem.id)) is None
+
+
+def test_started_today_work_can_change_end_but_not_move_start_into_the_past(
+    client: TestClient, session: Session
+) -> None:
+    """이미 시작한 오늘 작업(14:00)은 끝 시각을 고칠 수 있다. 시작을 다른 과거로는 못 옮긴다."""
+    site_id = add_site(client)
+    started = WorkItem(
+        site_id=site_id,
+        work_type="철골 작업",
+        work_date=date(2026, 10, 4),
+        start_local=time(14, 0),
+        end_local=time(16, 0),
+        location="",
+        memo="",
+    )
+    session.add(started)
+    session.commit()
+    item_id = session.scalars(select(WorkItem.id)).one()
+
+    def edit(start: str, end: str) -> Any:
+        return client.post(
+            f"/schedule/{item_id}/edit",
+            data={"site_id": site_id, "day": "2026-10-04", "plan_version": "1",
+                  "work_date": "2026-10-04", "start": start, "end": end},
+            follow_redirects=False,
+        )  # fmt: skip
+
+    assert edit("13:00", "16:00").status_code == 422  # 다른 과거 시각으로
+    assert edit("14:00", "18:00").status_code == 303  # 시작 그대로, 끝만 늘림
+    session.expire_all()
+    assert session.scalars(select(WorkItem.end_local)).one() == time(18, 0)

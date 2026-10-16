@@ -615,6 +615,16 @@ def build_home(
 _PHASE_LABELS = {"now": "진행 중", "before": "예정", "done": "끝남"}
 
 
+def _progress(now: time, start: time, end: time) -> int:
+    span = _minutes(end) - _minutes(start)
+    passed = _minutes(now) - _minutes(start)
+    return 0 if span <= 0 else max(0, min(100, round(passed * 100 / span)))
+
+
+def _minutes(at: time) -> int:
+    return at.hour * 60 + at.minute
+
+
 def _today_sites(
     session: Session, sites: Sequence[SiteRecord], now: datetime
 ) -> tuple[TodaySite, ...]:
@@ -648,6 +658,8 @@ def _today_sites(
                     else companies.get(i.performing_participant_id, ""),
                     phase=phase,
                     phase_label=_PHASE_LABELS[phase],
+                    progress_pct=_progress(local.time(), i.start_local, i.end_local),
+                    site_name=site.name,
                 )
             )
         result.append(

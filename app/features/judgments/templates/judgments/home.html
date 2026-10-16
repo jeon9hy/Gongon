@@ -4,17 +4,18 @@
 {% block content %}
 
 {% set today_total = view.today_sites | map(attribute="items") | map("length") | sum %}
-<section class="hero" aria-labelledby="home-title">
+{% set counts = dict(view.today_counts) %}
+<section class="hero home-hero" aria-labelledby="home-title">
 <div class="hero__main">
-<p class="hero__date">{{ icon("calendar", 15) }} {{ view.today_date }} · 오늘 현장</p>
-<h1 class="hero__title" id="home-title">{% if today_total %}오늘 작업 {{ today_total }}건{% else %}오늘 등록한 작업 없음{% endif %}</h1>
-<p class="hero__lead">{% if today_total %}공온이 오늘 현장 일정과 내일 준비를 한 화면에 모았습니다.{% else %}작업 일정에 오늘 작업을 더하면 공온이 시간대별 진행을 보여 드립니다.{% endif %}</p>
-{% if view.today_counts %}
-<ul class="hero__facts">{% for label, n in view.today_counts %}<li><span>{{ label }} {{ n }}건</span></li>{% endfor %}<li><span>현장 {{ view.today_sites | length }}곳</span></li></ul>
-{% endif %}
+<p class="hero__date">{{ icon("calendar", 15) }} {{ view.today_date }}</p>
+<h1 class="hero__title" id="home-title">{% if today_total %}오늘 작업 {{ today_total }}건{% else %}오늘은 쉬어 가는 날{% endif %}</h1>
 </div>
-{% if view.sites %}
-<div class="hero__action"><a class="btn hero__button" href="/schedule">{{ icon("calendar", 18) }} 작업 일정 열기</a></div>
+{% if today_total %}
+<dl class="home-hero__stats">
+{% for label in ("진행 중", "예정", "끝남") %}<div class="home-hero__stat{% if label == '진행 중' and counts.get(label) %} is-live{% endif %}"><dt>{{ label }}</dt><dd>{{ counts.get(label, 0) }}</dd></div>{% endfor %}
+</dl>
+{% elif view.sites %}
+<div class="hero__action"><a class="btn hero__button" href="/schedule">{{ icon("plus", 18, 2.2) }} 작업 올리기</a></div>
 {% endif %}
 </section>
 
@@ -52,47 +53,35 @@
 </section>
 {% else %}
 
-<section class="panel today" aria-labelledby="today-title">
-<div class="panel__head">
-<h2 class="h2" id="today-title">오늘 작업</h2>
-<a class="small" href="/schedule">일정에서 보기 ›</a>
-</div>
 {% if view.today_sites %}
-{% for t in view.today_sites %}
-<div class="today__site">
-<a class="today__name" href="{{ t.href }}">{{ t.name }} <span class="small muted">{{ t.items | length }}건</span></a>
-<ul class="today__list">
-{% for w in t.items %}
-<li class="today__row today__row--{{ w.phase }}">
-<span class="today__time">{{ w.time_text }}</span>
-<span class="today__what"><strong>{{ w.work_type }}</strong>{% if w.location %}<span class="muted"> · {{ w.location }}</span>{% endif %}</span>
-<span class="today__who small muted">{{ w.company or "실행 업체 미지정" }}</span>
-<span class="tag today__phase today__phase--{{ w.phase }}">{{ w.phase_label }}</span>
-</li>
-{% endfor %}
-</ul>
+<section class="today" aria-labelledby="today-title">
+<div class="sechead">
+<h2 class="h2" id="today-title">오늘 현장</h2>
+<a class="small" href="/schedule">일정 보기 ›</a>
 </div>
-{% endfor %}
-{% else %}
-<p class="small muted today__empty">오늘 등록한 작업이 없습니다. 작업 일정에서 오늘 작업을 더하면 공온이 여기에 모아 보여 드립니다.</p>
-{% endif %}
+<div class="todaygrid">
+{% for t in view.today_sites %}{% for w in t.items %}
+<a class="todaycard todaycard--{{ w.phase }}" href="{{ t.href }}" style="--c: {{ work_color(w.work_type) }}">
+<span class="todaycard__top"><span class="todaycard__type"><span class="dot"></span>{{ w.work_type }}</span><span class="todaycard__phase">{{ w.phase_label }}</span></span>
+<span class="todaycard__time">{{ w.time_text }}</span>
+<span class="todaycard__bar" role="presentation"><span style="width: {{ w.progress_pct }}%"></span></span>
+<span class="todaycard__meta">{{ t.name }}{% if w.location %} · {{ w.location }}{% endif %}</span>
+<span class="todaycard__meta">{{ w.company or "업체 미지정" }}</span>
+</a>
+{% endfor %}{% endfor %}
+</div>
 </section>
-
-<section class="tomorrow-head" aria-labelledby="tomorrow-title">
-<div>
-<h2 class="h2" id="tomorrow-title">내일 준비 · {{ view.target_date }}</h2>
-<p class="small muted">공온 판정으로 내일 날씨가 작업에 주는 영향을 미리 봅니다.</p>
-{% if view.forecast_issued or view.rule_version %}
-<p class="small muted">{% if view.forecast_issued %}예보 {{ view.forecast_issued }} 발표 · {{ view.next_forecast }}{% endif %}{% if view.rule_version %}{% if view.forecast_issued %} · {% endif %}기준 {{ view.rule_version }}{% if not view.rule_verified %} · 원문 대조 필요{% endif %}{% endif %}</p>
 {% endif %}
-</div>
+
+<div class="sechead sechead--tomorrow">
+<h2 class="h2" id="tomorrow-title">내일 준비 <span class="sechead__date">{{ view.target_date }}</span></h2>
 {% set managed_count = view.sites | selectattr("site_id", "in", manageable) | list | length %}
 {% if managed_count %}
 <form method="post" action="/judgments/run-all">
-<button class="btn btn--accent" type="submit" title="내가 조정자인 현장의 내일부터 7일 작업을 예보로 판정합니다">{{ icon("cloud-sun", 16) }} 현장 {{ managed_count }}곳 판정하기</button>
+<button class="btn btn--accent btn--sm" type="submit">{{ icon("cloud-sun", 15) }} 내일 날씨 판정</button>
 </form>
 {% endif %}
-</section>
+</div>
 
 <section class="stats stats--home" aria-label="내일 판정 요약">
 {% for t in view.tiles %}
@@ -175,6 +164,7 @@
 <div class="panel__body">
 <dl class="facts" style="padding: 8px 0;">
 <dt>최근 예보 수집</dt><dd>{{ view.forecast_status }}</dd>
+{% if view.forecast_issued %}<dt>예보 발표</dt><dd>{{ view.forecast_issued }}</dd>{% endif %}
 <dt>자료 유형</dt><dd>예보 (관측 아님)</dd>
 </dl>
 </div>

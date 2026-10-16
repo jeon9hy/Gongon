@@ -13,6 +13,7 @@ from app.core.security import SameOriginMiddleware
 from app.core.templating import STATIC_DIR
 from app.features.auth.router import router as auth_router
 from app.features.changes.router import router as changes_router
+from app.features.help.router import router as help_router
 from app.features.judgments.auto_refresh import run_hourly
 from app.features.judgments.router import router as judgments_router
 from app.features.schedules.router import router as schedules_router
@@ -42,6 +43,7 @@ def create_app(auto_refresh: bool = False) -> FastAPI:
     app.include_router(teams_router)
     app.include_router(schedules_router)
     app.include_router(changes_router)
+    app.include_router(help_router)
 
     # 프로세스 생존 확인용(liveness). DB·외부 API 상태는 확인하지 않는다.
     @app.get("/healthz", include_in_schema=False)

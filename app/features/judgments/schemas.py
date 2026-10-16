@@ -146,6 +146,8 @@ class TodayWork:
     company: str
     phase: Literal["before", "now", "done"]
     phase_label: str
+    progress_pct: int  # 계획 시간 중 지난 비율(0~100). 실제 진척이 아니다
+    site_name: str = ""
 
 
 @dataclass(frozen=True, slots=True)

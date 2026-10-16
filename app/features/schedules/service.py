@@ -30,7 +30,7 @@ from app.features.teams import service as teams_service
 from app.features.teams.schemas import MANAGE_ROLES
 from engine.kst import KST
 
-CELL_ITEMS = 3  # 달력 칸에 보이는 작업 수(나머지는 +N)
+CELL_ITEMS = 5  # 달력 칸에 점으로 보이는 작업 수(나머지는 +N, D-064)
 MONTH_PICK_SPAN = 6  # 달 고르기 목록에 늘 넣는 보고 있는 달 앞뒤 개월 수
 MONTH_PICK_MAX = 24  # 달 고르기 목록은 보고 있는 달에서 앞뒤 최대 이 개월까지
 MAX_LOCATION = 60
@@ -78,6 +78,7 @@ def build_view(
     day: str | None = None,
     edit_item_id: int | None = None,
     edit_errors: tuple[str, ...] = (),
+    now_hm: str = "",
 ) -> ScheduleView | None:
     """월 달력 + 고른 날짜 상세. 현장이 없으면 빈 화면, 없거나 범위 밖 site_id면 None.
 
@@ -173,6 +174,14 @@ def build_view(
         revisions=revisions,
         edit_item_id=edit_item_id,
         edit_errors=edit_errors,
+        today_iso=today.isoformat(),
+        now_hm=now_hm,
+        period_start_iso=""
+        if site is None or site.work_start_date is None
+        else site.work_start_date.isoformat(),
+        period_end_iso=""
+        if site is None or site.work_end_date is None
+        else site.work_end_date.isoformat(),
         recent_times=()
         if site is None
         else tuple(
@@ -207,7 +216,7 @@ def _detail(
 
 
 def add_item(
-    session: Session, user: CurrentUser, site_id: int, form: WorkItemForm, today: date
+    session: Session, user: CurrentUser, site_id: int, form: WorkItemForm, now: datetime
 ) -> tuple[date | None, tuple[str, ...]]:
     """검증에 통과하면 고른 공종 x 날짜마다 작업을 저장한다. (첫 작업 날짜, 오류 목록).
 
@@ -217,7 +226,7 @@ def add_item(
     if site is None:
         return None, ("현장을 찾을 수 없습니다.",)
     performer, performer_error = _performer(session, site_id, form.performing_participant_id)
-    items, errors = _validate(site, form, today)
+    items, errors = _validate(site, form, now)
     if performer_error:
         errors = (*errors, performer_error)
     if not items or performer_error:
@@ -234,7 +243,6 @@ def update_item(
     site_id: int,
     item_id: int,
     form: WorkItemEditForm,
-    today: date,
     now: datetime,
 ) -> tuple[PlanChangeResult, tuple[str, ...]]:
     """작업 일정 화면의 계획 수정. 조정자만. 화면을 연 뒤 다른 사람이 먼저 바꿨으면 conflict."""
@@ -249,7 +257,8 @@ def update_item(
     performer, performer_error = _performer(session, site_id, form.performing_participant_id)
     as_add = WorkItemForm((item.work_type,), form.work_date, form.start, form.end,
                           form.location, form.memo)  # fmt: skip
-    validated, errors = _validate(site, as_add, today)
+    # 이미 시작한 오늘 작업의 끝 시각·위치만 고칠 때는 '지금 이후 시작' 규칙을 다시 묻지 않는다.
+    validated, errors = _validate(site, as_add, now, keep=(item.work_date, item.start_local))
     if performer_error:
         errors = (*errors, performer_error)
     if not validated or performer_error:
@@ -395,13 +404,18 @@ def delete_item(
 
 
 def _validate(
-    site: SiteRecord, form: WorkItemForm, today: date
+    site: SiteRecord,
+    form: WorkItemForm,
+    now: datetime,
+    keep: tuple[date, time] | None = None,
 ) -> tuple[list[WorkItem], tuple[str, ...]]:
     """고른 공종 x 날짜마다 작업 하나씩(여러 공종·여러 날 한 번에 추가).
 
     하나라도 맞지 않으면 아무것도 만들지 않는다.
     """
     errors: list[str] = []
+    local_now = now.astimezone(KST)
+    today = local_now.date()
     work_types = tuple(dict.fromkeys(w for w in form.work_types if w))
     if not work_types:
         errors.append("공종을 하나 이상 고르세요.")
@@ -426,6 +440,13 @@ def _validate(
         errors.append("작업 시간을 00:00 형식으로 입력하세요.")
     elif start >= end:
         errors.append("작업 종료는 시작보다 늦어야 합니다(같은 날 안에서).")
+    elif (
+        today in days
+        and start <= local_now.time().replace(second=0, microsecond=0)
+        and keep != (today, start)
+    ):
+        # 오늘 작업은 지금 이후에 시작해야 한다(D-064). 같은 분은 이미 시작한 것으로 본다.
+        errors.append(f"오늘 작업은 지금({local_now:%H:%M}) 이후 시작 시각으로 등록하세요.")
     location, memo = form.location.strip(), form.memo.strip()
     if len(location) > MAX_LOCATION:
         errors.append(f"작업 위치는 {MAX_LOCATION}자 이하로 입력하세요.")

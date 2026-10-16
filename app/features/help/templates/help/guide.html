@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, verdict_badge %}
+{% block title %}공온 가이드{% endblock %}
+{% block content %}
+<section class="hero" aria-labelledby="guide-title">
+<div class="hero__main">
+<p class="hero__date">{{ icon("info", 15) }} 공온 가이드</p>
+<h1 class="hero__title" id="guide-title">공온 200% 쓰는 법</h1>
+<p class="hero__lead">공사 변경 뒤 필요한 일을 연결하고, 처리 결과까지 확인합니다.</p>
+</div>
+</section>
+
+<nav class="guide-toc" aria-label="목차">
+<a href="#menu">메뉴</a><a href="#work">작업 올리기</a><a href="#judge">공온 판정</a><a href="#change">변경</a><a href="#roles">역할</a>
+</nav>
+
+<section class="panel guide" id="menu">
+<h2 class="h2">메뉴는 네 개면 충분해요</h2>
+<dl class="guide-list">
+<div><dt>홈</dt><dd>오늘 현장에서 돌아가는 작업과 내일 준비를 한 화면에서 봅니다. 진행 중·예정·끝남은 <strong>계획 시간 기준</strong>이며 실제 작업 기록이 아닙니다.</dd></div>
+<div><dt>작업 일정</dt><dd>달력에서 작업을 올리고 고칩니다. 안에 <strong>공온 판정</strong>(현장별 날씨 판정)과 <strong>판정 내역</strong>이 있어요. 달력의 점 색은 공종 색이고, 점을 누르면 그 작업이 열립니다.</dd></div>
+<div><dt>변경</dt><dd>작업 계획이 바뀔 때 제안하고, 영향을 검토한 뒤 확정합니다. 함께 바꿔야 할 일은 후속 조치로 이어집니다.</dd></div>
+<div><dt>현장</dt><dd>현장 등록·수정과 참여 업체·참여자 관리입니다.</dd></div>
+</dl>
+</section>
+
+<section class="panel guide" id="work">
+<h2 class="h2">작업 올리기</h2>
+<ul class="guide-points">
+<li>공종을 여러 개 고르면 공종마다 작업이 따로 생겨요. 날짜도 여러 날 고를 수 있고, 달력을 끌면 그 사이 날이 한 번에 골라집니다.</li>
+<li>시간은 목록에서 고르거나 직접 쳐도 돼요. <code>930</code> → 09:30, <code>17</code> → 17:00. 종료 시간 옆에는 걸리는 시간이 보이고, 시작을 바꾸면 길이를 그대로 유지해요.</li>
+<li>오늘 작업은 <strong>지금 이후 시작</strong>으로만 올릴 수 있어요. 지난 날짜에는 올릴 수 없습니다.</li>
+<li>이미 시작한 오늘 작업은 시작 시각을 그대로 두면 끝 시각·위치를 고칠 수 있어요.</li>
+<li>공종은 바꿀 수 없어요. 다른 공종이면 새로 올리세요. 시간·위치를 바꾸면 이전 판정은 기록으로 남고 다시 판정해야 해요.</li>
+<li>‘오늘 먼저 챙길 것’은 진행 중 → 곧 시작 → 빠진 정보(업체 미지정) 순서의 규칙으로 고릅니다. AI 추천이 아니에요.</li>
+</ul>
+</section>
+
+<section class="panel guide" id="judge">
+<h2 class="h2">공온 판정 읽는 법</h2>
+<ul class="guide-points">
+<li>기상청 단기예보를 공종별 기준과 비교해 네 단계로 알려 드려요: {{ verdict_badge("진행") }} {{ verdict_badge("확인 필요") }} {{ verdict_badge("중지 검토") }} {{ verdict_badge("판정 불가") }}</li>
+<li>판정은 규칙으로만 합니다. 같은 예보·같은 기준이면 늘 같은 결과예요. 예보로 직접 비교할 수 없는 조건은 ‘중지 검토’로 올리지 않고 ‘확인 필요’까지만 냅니다.</li>
+<li>판정은 내일부터 7일 작업에 합니다. 오늘 작업은 일정·변경 관리용이라 판정하지 않아요.</li>
+<li>판정 기준을 원문과 아직 대조하지 못한 공종은 ‘판정 기준 준비 중’으로 보이고 ‘확인 필요’로만 판정합니다.</li>
+<li>폭염(체감온도)은 모든 작업에 같이 판정해 그 작업 결과에 합쳐요.</li>
+<li>판정은 예보값과 기준의 비교 결과일 뿐 현장 안전을 보장하지 않아요. <strong>최종 판단은 현장 책임자가 합니다.</strong></li>
+</ul>
+</section>
+
+<section class="panel guide" id="change">
+<h2 class="h2">변경은 이렇게 흘러가요</h2>
+<ol class="guide-steps">
+<li><strong>제안</strong> 조정자·담당자가 바뀐 날짜·시간·위치와 원인을 적어요.</li>
+<li><strong>영향 검토</strong> 함께 바꿔야 할 일을 확인해요.</li>
+<li><strong>확정</strong> 조정자가 확정하면 작업 계획이 바뀝니다. 확정한 버전은 고치지 않고, 다시 바꾸려면 재변경을 제안해요.</li>
+</ol>
+<p class="small muted">확정은 작업 계획을 바꾼 기록이에요. 공급사 예약·출역 변경이 끝났다는 뜻은 아니니 후속 조치로 따로 챙겨요.</p>
+</section>
+
+<section class="panel guide" id="roles">
+<h2 class="h2">역할</h2>
+<dl class="guide-list">
+<div><dt>조정자</dt><dd>원청 소속. 현장·작업 관리, 판정 실행, 변경 확정, 참여자 관리.</dd></div>
+<div><dt>담당자</dt><dd>변경 제안과 자기 업체 조치 처리.</dd></div>
+<div><dt>열람자</dt><dd>보기만 합니다.</dd></div>
+</dl>
+</section>
+{% endblock %}

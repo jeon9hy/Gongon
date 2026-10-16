@@ -65,7 +65,14 @@ def schedule(
         else None
     )
     view = service.build_view(
-        session, scope, site_id, now.date(), message=message, month=month, day=day
+        session,
+        scope,
+        site_id,
+        now.date(),
+        message=message,
+        month=month,
+        day=day,
+        now_hm=f"{now:%H:%M}",
     )
     if view is None:
         raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
@@ -108,9 +115,11 @@ def add_item(
         range_end=range_end,
         weekdays=tuple(weekdays or ()),
     )
-    first_day, errors = service.add_item(session, user, site_id, form, now.date())
+    first_day, errors = service.add_item(session, user, site_id, form, now)
     if first_day is None:
-        view = service.build_view(session, scope, site_id, now.date(), form, errors)
+        view = service.build_view(
+            session, scope, site_id, now.date(), form, errors, now_hm=f"{now:%H:%M}"
+        )
         if view is None:
             raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
         return _render(request, view, manageable, status_code=422)
@@ -144,12 +153,13 @@ def edit_item(
     form = WorkItemEditForm(
         work_date, start, end, location, memo, performing_participant_id, plan_version
     )
-    result, errors = service.update_item(session, user, site_id, item_id, form, now.date(), now)
+    result, errors = service.update_item(session, user, site_id, item_id, form, now)
     if result == "missing":
         raise HTTPException(status_code=404, detail="작업을 찾을 수 없습니다")
     if result == "conflict" or errors:
         view = service.build_view(
             session, scope, site_id, now.date(), day=day, edit_item_id=item_id,
+            now_hm=f"{now:%H:%M}",
             edit_errors=(CONFLICT_MESSAGE,) if result == "conflict" else errors,
         )  # fmt: skip
         if view is None:
