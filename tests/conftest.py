@@ -46,6 +46,7 @@ TABLES = (
     "mid_forecast_runs",
     "sites",
     "project_memberships",
+    "participant_contacts",
     "project_participants",
     "auth_sessions",
     "users",

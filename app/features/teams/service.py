@@ -3,9 +3,10 @@
 - 비참여 현장은 404(존재를 드러내지 않음), 역할 부족은 403.
 - 같은 회사여도 멤버십이 없으면 볼 수 없다. 회사 공통 관리자는 없다.
 - 조정자는 원청 소속만 될 수 있다. 마지막 조정자는 회수할 수 없다.
+- 참여 업체는 사람 없이 등록·종료·재개하고, 업체별 담당자 명부를 둔다(C04-9, D-066).
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, cast
 
 from fastapi import Depends, HTTPException
@@ -16,16 +17,24 @@ from app.core.db import get_session
 from app.features.auth import service as auth_service
 from app.features.auth.schemas import CurrentUser, UserInfo
 from app.features.teams import repository
-from app.features.teams.models import ProjectMembership, ProjectParticipant
+from app.features.teams.models import ParticipantContact, ProjectMembership, ProjectParticipant
 from app.features.teams.schemas import (
     ALL_ROLES,
+    CATEGORY_LABELS,
+    CONTACT_DETAIL_ROLES,
     KIND_LABELS,
     MANAGE_ROLES,
     PROPOSE_ROLES,
     ROLE_LABELS,
+    Category,
+    ContactForm,
+    ContactView,
+    MemberForm,
     MembersView,
     MemberView,
-    ParticipantKind,
+    Option,
+    ParticipantForm,
+    ParticipantOption,
     ParticipantView,
     Role,
     RoleOption,
@@ -34,6 +43,8 @@ from engine.kst import KST
 
 NOT_FOUND = "현장을 찾을 수 없습니다"
 FORBIDDEN = "이 현장에서 이 작업을 할 권한이 없습니다"
+SAME_NAME_MEMBER = "같은 이름의 업체가 이미 있어요. 그 업체에 붙일지 따로 추가할지 고르세요."
+SAME_NAME_PARTICIPANT = "같은 이름의 업체가 이미 있어요. 다른 업체면 '따로 등록'을 체크하세요."
 
 
 def site_ids_for(session: Session, user_id: int) -> frozenset[int]:
@@ -95,14 +106,27 @@ ProposableSitesDep = Annotated[frozenset[int], Depends(proposable_site_ids)]
 
 
 def participant_labels(session: Session, site_id: int) -> dict[int, str]:
-    """현장 참여 업체 ID → "회사 이름 · 원청/협력업체"(원청 먼저). 실행 업체 고르기·표시에 쓴다."""
+    """현장 참여 업체 ID → "회사 이름 · 구분"(원청 먼저, 참여 종료 업체 포함). 표시에 쓴다.
+
+    고를 수 있는 업체(참여 중)는 participant_choices."""
     participants = repository.participants(session, site_id)
     names = auth_service.organization_names(session, (p.organization_id for p in participants))
     return {
-        p.id: f"{names.get(p.organization_id, '이름 없음')} · "
-        f"{KIND_LABELS[cast(ParticipantKind, p.kind)]}"
+        p.id: f"{names.get(p.organization_id, '이름 없음')} · {_group_label(p)}"
         for p in participants
     }
+
+
+def participant_choices(session: Session, site_id: int) -> tuple[ParticipantOption, ...]:
+    """작업 실행 업체·조치 담당으로 고를 수 있는 참여 중 업체(구분 순 → 이름 순, D-066)."""
+    participants = [p for p in repository.participants(session, site_id) if p.ended_at is None]
+    names = auth_service.organization_names(session, (p.organization_id for p in participants))
+    options = [
+        ParticipantOption(p.id, names.get(p.organization_id, "이름 없음"), _group_label(p))
+        for p in participants
+    ]
+    order = {label: i for i, label in enumerate(("원청", *CATEGORY_LABELS.values()))}
+    return tuple(sorted(options, key=lambda o: (order[o.group_label], o.name, o.participant_id)))
 
 
 def company_names(session: Session, site_ids: list[int]) -> dict[int, str]:
@@ -125,9 +149,21 @@ def add_founder(session: Session, site_id: int, user: CurrentUser, now: datetime
 
 
 def add_member(
-    session: Session, site_id: int, actor: CurrentUser, email: str, role_raw: str, now: datetime
+    session: Session,
+    site_id: int,
+    actor: CurrentUser,
+    email: str,
+    role_raw: str,
+    now: datetime,
+    contact_id: str = "",
+    same_name: str = "",
 ) -> tuple[str, ...]:
-    """가입한 사용자를 참여자로 추가한다. 그 회사가 처음이면 협력업체로 참여시킨다."""
+    """가입한 사용자를 참여자로 추가한다. 그 회사가 처음이면 협력업체로 참여시킨다.
+
+    같은 현장에 같은 이름 업체가 있으면 조정자가 붙일지(same_name="attach:<id>") 따로 둘지
+    ("separate") 고를 때까지 저장하지 않는다(D-066, 자동 병합 없음). contact_id를 주면 그
+    업체 명부의 사람과 계정을 연결한다.
+    """
     require_role(session, actor, site_id, MANAGE_ROLES)
     if role_raw not in ALL_ROLES:
         return ("역할을 고르세요.",)
@@ -138,22 +174,302 @@ def add_member(
     if repository.active_membership(session, target.user_id, site_id) is not None:
         return ("이미 이 현장에 참여 중입니다. 역할을 바꾸려면 회수한 뒤 다시 추가하세요.",)
     participant = repository.participant_of(session, site_id, target.organization_id)
+    if participant is None:
+        matches = _same_name(session, site_id, target.organization_name)
+        if matches and not same_name:
+            return (SAME_NAME_MEMBER,)
+        if same_name.startswith("attach:"):
+            chosen = next((p for p in matches if f"attach:{p.id}" == same_name), None)
+            if chosen is None:
+                return ("붙일 업체를 다시 고르세요.",)
+            error = _attach(session, chosen, target.user_id, target.organization_id)
+            if error:
+                session.rollback()
+                return (error,)
+            participant = chosen
+    if participant is not None and participant.ended_at is not None:
+        session.rollback()
+        return ("참여 종료한 업체입니다. 먼저 참여를 재개하세요.",)
     if role == "coordinator" and (participant is None or participant.kind != "prime"):
+        session.rollback()
         return ("조정자는 원청 소속 사용자만 될 수 있습니다.",)
     if participant is None:
         participant = ProjectParticipant(
-            site_id=site_id, organization_id=target.organization_id, kind="subcontractor"
+            site_id=site_id,
+            organization_id=target.organization_id,
+            kind="subcontractor",
+            created_by_user_id=actor.user_id,
         )
         session.add(participant)
         session.flush()
     session.add(_membership(participant, target.user_id, role, actor.user_id, now))
+    if contact_id:
+        contact = repository.contact(session, site_id, _int(contact_id) or -1)
+        if contact is None or contact.participant_id != participant.id or contact.user_id:
+            session.rollback()
+            return ("연결할 명부의 사람은 같은 업체의 계정 미연결 담당자만 고를 수 있습니다.",)
+        contact.user_id = target.user_id
     try:
         session.commit()
     except IntegrityError:
-        # 같은 사용자를 동시에 두 번 추가한 경우(활성 멤버십 고유 인덱스)
+        # 같은 사용자를 동시에 두 번 추가했거나 이미 명부의 다른 사람과 연결된 경우
         session.rollback()
-        return ("이미 이 현장에 참여 중입니다.",)
+        return ("이미 이 현장에 참여 중이거나 명부의 다른 사람과 연결돼 있습니다.",)
     return ()
+
+
+def _attach(
+    session: Session, participant: ProjectParticipant, user_id: int, user_org_id: int
+) -> str | None:
+    """같은 이름 업체에 사용자를 붙인다(조정자가 고른 경우만).
+
+    - 명부로만 만든 업체(사용자 0명)면 그 참여 업체를 사용자의 회사로 바꾼다.
+    - 이미 사용자가 있는 업체면 사용자를 그 회사로 옮긴다. 다른 현장·동료·명부 연결이 없는
+      새 가입자만 옮긴다(다른 현장의 소속이 바뀌지 않게).
+    """
+    if not auth_service.organizations_with_users(session, [participant.organization_id]):
+        participant.organization_id = user_org_id
+        session.flush()
+        return None
+    movable = (
+        auth_service.organization_user_count(session, user_org_id) == 1
+        and not repository.active_site_ids(session, user_id, ALL_ROLES)
+        and not repository.organization_has_participants(session, user_org_id)
+        and not repository.user_has_contact_links(session, user_id)
+    )
+    if not movable:
+        return (
+            "이 사용자는 다른 현장·동료와 이미 연결돼 있어 이 업체로 옮길 수 없습니다. "
+            "다른 업체로 추가하세요."
+        )
+    auth_service.move_user_to_organization(session, user_id, participant.organization_id)
+    session.flush()
+    return None
+
+
+def _same_name(session: Session, site_id: int, name: str) -> list[ProjectParticipant]:
+    participants = repository.participants(session, site_id)
+    names = auth_service.organization_names(session, (p.organization_id for p in participants))
+    key = _name_key(name)
+    return [p for p in participants if _name_key(names.get(p.organization_id, "")) == key]
+
+
+def _name_key(name: str) -> str:
+    """같은 이름 비교: 앞뒤·연속 공백과 영문 대소문자만 무시한다(사업자 확인 없음)."""
+    return " ".join(name.split()).casefold()
+
+
+def register_participant(
+    session: Session, site_id: int, actor: CurrentUser, form: ParticipantForm
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """사람 없이 참여 업체를 등록한다(원청 조정자, D-066). (오류, 같은 이름 업체 표시 이름)."""
+    require_role(session, actor, site_id, MANAGE_ROLES)
+    name = " ".join(form.organization_name.split())
+    errors = _participant_errors(form, need_name=True)
+    if errors:
+        return errors, ()
+    matches = _same_name(session, site_id, name)
+    if matches and not form.confirm_same_name:
+        names = auth_service.organization_names(session, (p.organization_id for p in matches))
+        shown = tuple(f"{names[p.organization_id]} · {_group_label(p)}" for p in matches)
+        return (SAME_NAME_PARTICIPANT,), shown
+    organization_id = auth_service.create_organization(session, name)
+    participant = ProjectParticipant(
+        site_id=site_id,
+        organization_id=organization_id,
+        kind="subcontractor",
+        created_by_user_id=actor.user_id,
+    )
+    _apply_participant_values(participant, form)
+    session.add(participant)
+    session.commit()
+    return (), ()
+
+
+def edit_participant(
+    session: Session, site_id: int, actor: CurrentUser, participant_id: int, form: ParticipantForm
+) -> tuple[str, ...]:
+    """구분·맡은 공종·사업자번호·참여 시작일 수정. 원청은 구분이 없다."""
+    require_role(session, actor, site_id, MANAGE_ROLES)
+    participant = _participant_or_404(session, site_id, participant_id)
+    is_prime = participant.kind == "prime"
+    errors = _participant_errors(form, need_name=False, prime=is_prime)
+    if errors:
+        return errors
+    _apply_participant_values(participant, form)
+    if is_prime:
+        participant.category = None
+    session.commit()
+    return ()
+
+
+def end_participant(
+    session: Session, site_id: int, actor: CurrentUser, participant_id: int, now: datetime
+) -> tuple[str, ...]:
+    """참여 종료: 실행 업체·조치 담당 선택에서만 빠진다. 지난 작업·기록·멤버십은 그대로다."""
+    require_role(session, actor, site_id, MANAGE_ROLES)
+    participant = _participant_or_404(session, site_id, participant_id)
+    if participant.kind == "prime":
+        return ("원청은 참여 종료할 수 없습니다.",)
+    if participant.ended_at is not None:
+        return ("이미 참여 종료한 업체입니다.",)
+    participant.ended_at = now
+    participant.ended_by_user_id = actor.user_id
+    session.commit()
+    return ()
+
+
+def resume_participant(
+    session: Session, site_id: int, actor: CurrentUser, participant_id: int
+) -> tuple[str, ...]:
+    require_role(session, actor, site_id, MANAGE_ROLES)
+    participant = _participant_or_404(session, site_id, participant_id)
+    if participant.ended_at is None:
+        return ("참여 중인 업체입니다.",)
+    participant.ended_at = None
+    participant.ended_by_user_id = None
+    session.commit()
+    return ()
+
+
+def add_contact(
+    session: Session,
+    site_id: int,
+    actor: CurrentUser,
+    participant_id: int,
+    form: ContactForm,
+    now: datetime,
+) -> tuple[str, ...]:
+    """업체 담당자 명부에 사람을 더한다(계정 없이)."""
+    require_role(session, actor, site_id, MANAGE_ROLES)
+    _participant_or_404(session, site_id, participant_id)
+    name = " ".join(form.name.split())
+    errors = [] if name else ["담당자 이름을 입력하세요."]
+    for value, limit, label in (
+        (name, 40, "이름"),
+        (form.job_title.strip(), 40, "직책"),
+        (form.phone.strip(), 30, "연락처"),
+        (form.memo.strip(), 200, "메모"),
+    ):
+        if len(value) > limit:
+            errors.append(f"{label}: {limit}자 이내로 입력하세요.")
+    if errors:
+        return tuple(errors)
+    session.add(
+        ParticipantContact(
+            site_id=site_id,
+            participant_id=participant_id,
+            name=name,
+            job_title=form.job_title.strip(),
+            phone=form.phone.strip(),
+            memo=form.memo.strip(),
+            created_at=now,
+            created_by_user_id=actor.user_id,
+        )
+    )
+    session.commit()
+    return ()
+
+
+def remove_contact(
+    session: Session, site_id: int, actor: CurrentUser, contact_id: int, now: datetime
+) -> None:
+    """명부에서 뺀다(행은 보존). 계정 연결도 함께 풀린다(활성 연결 인덱스에서 빠짐)."""
+    require_role(session, actor, site_id, MANAGE_ROLES)
+    contact = _contact_or_404(session, site_id, contact_id)
+    contact.removed_at = now
+    session.commit()
+
+
+def link_contact(
+    session: Session, site_id: int, actor: CurrentUser, contact_id: int, email: str
+) -> tuple[str, ...]:
+    """명부의 사람을 가입한 계정과 연결한다. 그 사용자의 회사 = 업체 회사일 때만(D-066)."""
+    require_role(session, actor, site_id, MANAGE_ROLES)
+    contact = _contact_or_404(session, site_id, contact_id)
+    if contact.user_id is not None:
+        return ("이미 계정이 연결돼 있습니다. 먼저 연결을 해제하세요.",)
+    target = auth_service.find_user_by_email(session, email)
+    if target is None or not target.is_active:
+        return ("가입한 사용자의 이메일을 입력하세요.",)
+    participant = repository.participant(session, site_id, contact.participant_id)
+    if participant is None or participant.organization_id != target.organization_id:
+        return ("이 업체 소속 사용자만 연결할 수 있습니다. 먼저 참여자로 추가해 업체를 맞추세요.",)
+    contact.user_id = target.user_id
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        return ("이 사용자는 이 현장 명부의 다른 사람과 이미 연결돼 있습니다.",)
+    return ()
+
+
+def unlink_contact(session: Session, site_id: int, actor: CurrentUser, contact_id: int) -> None:
+    require_role(session, actor, site_id, MANAGE_ROLES)
+    contact = _contact_or_404(session, site_id, contact_id)
+    contact.user_id = None
+    session.commit()
+
+
+def _participant_or_404(session: Session, site_id: int, participant_id: int) -> ProjectParticipant:
+    participant = repository.participant(session, site_id, participant_id)
+    if participant is None:
+        raise HTTPException(status_code=404, detail="참여 업체를 찾을 수 없습니다")
+    return participant
+
+
+def _contact_or_404(session: Session, site_id: int, contact_id: int) -> ParticipantContact:
+    contact = repository.contact(session, site_id, contact_id)
+    if contact is None:
+        raise HTTPException(status_code=404, detail="담당자를 찾을 수 없습니다")
+    return contact
+
+
+def _participant_errors(
+    form: ParticipantForm, need_name: bool, prime: bool = False
+) -> tuple[str, ...]:
+    errors = []
+    name = " ".join(form.organization_name.split())
+    if need_name and not name:
+        errors.append("업체 이름을 입력하세요.")
+    if len(name) > auth_service.ORGANIZATION_MAX:
+        errors.append(f"업체 이름은 {auth_service.ORGANIZATION_MAX}자 이내로 입력하세요.")
+    if not prime and form.category not in CATEGORY_LABELS:
+        errors.append("업체 구분을 고르세요.")
+    if len(form.trade_note.strip()) > 60:
+        errors.append("맡은 공종은 60자 이내로 입력하세요.")
+    if len(form.business_no.strip()) > 20:
+        errors.append("사업자번호는 20자 이내로 입력하세요.")
+    if form.joined_on.strip() and _date(form.joined_on) is None:
+        errors.append("참여 시작일을 날짜로 입력하세요.")
+    return tuple(errors)
+
+
+def _apply_participant_values(participant: ProjectParticipant, form: ParticipantForm) -> None:
+    participant.category = form.category
+    participant.trade_note = form.trade_note.strip() or None
+    participant.business_no = form.business_no.strip() or None
+    participant.joined_on = _date(form.joined_on)
+
+
+def _group_label(participant: ProjectParticipant) -> str:
+    if participant.kind == "prime":
+        return KIND_LABELS["prime"]
+    return CATEGORY_LABELS[cast(Category, participant.category or "subcontractor")]
+
+
+def _date(raw: str) -> date | None:
+    try:
+        return date.fromisoformat(raw.strip())
+    except ValueError:
+        return None
+
+
+def _int(raw: str) -> int | None:
+    try:
+        return int(raw)
+    except ValueError:
+        return None
 
 
 def revoke_member(
@@ -208,40 +524,134 @@ def build_members_view(
     site_id: int,
     site_name: str,
     viewer: CurrentUser,
-    email: str = "",
-    role: str = "assignee",
+    member_form: MemberForm | None = None,
+    participant_form: ParticipantForm | None = None,
+    participant_same_name: tuple[str, ...] = (),
     errors: tuple[str, ...] = (),
     message: str | None = None,
 ) -> MembersView:
+    """업체 카드(구분·공종·기간·상태) + 담당자 명부 + 참여자. 쿼리 수는 업체·사람 수와 무관하다."""
     my_role = require_role(session, viewer, site_id, ALL_ROLES)
     can_manage = my_role in MANAGE_ROLES
+    show_detail = my_role in CONTACT_DETAIL_ROLES
+    member_form = member_form or MemberForm()
+    participant_form = participant_form or ParticipantForm()
+    participants = repository.participants(session, site_id)
     memberships = repository.active_memberships(session, site_id)
-    users = auth_service.describe_users(session, (m.user_id for m in memberships))
-    by_participant: dict[int, list[ProjectMembership]] = {}
+    contacts = repository.contacts(session, site_id)
+    users = auth_service.describe_users(
+        session,
+        [m.user_id for m in memberships] + [c.user_id for c in contacts if c.user_id is not None],
+    )
+    names = auth_service.organization_names(session, (p.organization_id for p in participants))
+    role_of = {m.user_id: cast(Role, m.role) for m in memberships}
+    members_of: dict[int, list[ProjectMembership]] = {}
     for m in memberships:
-        by_participant.setdefault(m.participant_id, []).append(m)
-    organization_names = {u.organization_id: u.organization_name for u in users.values()}
-    participants = tuple(
+        members_of.setdefault(m.participant_id, []).append(m)
+    contacts_of: dict[int, list[ParticipantContact]] = {}
+    for c in contacts:
+        contacts_of.setdefault(c.participant_id, []).append(c)
+    views = tuple(
         ParticipantView(
-            organization_name=organization_names.get(p.organization_id, "참여자 없음"),
-            kind_label=KIND_LABELS[cast(ParticipantKind, p.kind)],
+            participant_id=p.id,
+            organization_name=names.get(p.organization_id, "이름 없음"),
+            kind_label=_group_label(p),
+            is_prime=p.kind == "prime",
+            category="" if p.kind == "prime" else (p.category or "subcontractor"),
+            trade_note=p.trade_note or "",
+            business_no=(p.business_no or "") if can_manage else None,
+            joined_on="" if p.joined_on is None else p.joined_on.isoformat(),
+            status_text=_status_text(p),
+            is_ended=p.ended_at is not None,
             members=tuple(
                 _member_view(m, users[m.user_id], viewer, can_manage)
-                for m in by_participant.get(p.id, [])
+                for m in members_of.get(p.id, [])
+            ),
+            contacts=tuple(
+                _contact_view(c, users, role_of, show_detail) for c in contacts_of.get(p.id, [])
             ),
         )
-        for p in repository.participants(session, site_id)
+        for p in participants
+    )
+    contact_options = tuple(
+        Option(
+            str(c.id),
+            f"{names.get(p.organization_id, '')} · {c.name}"
+            + (f" {c.job_title}" if c.job_title else ""),
+            str(c.id) == member_form.contact_id,
+        )
+        for p in participants
+        if p.ended_at is None
+        for c in contacts_of.get(p.id, [])
+        if c.user_id is None
     )
     return MembersView(
         site_id=site_id,
         site_name=site_name,
         my_role_label=ROLE_LABELS[my_role],
         can_manage=can_manage,
-        participants=participants,
-        role_options=tuple(RoleOption(r, ROLE_LABELS[r], r == role) for r in ALL_ROLES),
-        email=email,
+        participants=views,
+        role_options=tuple(RoleOption(r, ROLE_LABELS[r], r == member_form.role) for r in ALL_ROLES),
+        category_options=tuple(
+            Option(c, label, c == participant_form.category) for c, label in CATEGORY_LABELS.items()
+        ),
+        contact_options=contact_options if can_manage else (),
+        member_form=member_form,
+        participant_form=participant_form,
+        participant_same_name=participant_same_name,
+        member_same_name=_member_same_name(session, site_id, member_form, errors),
         errors=errors,
         message=message,
+    )
+
+
+def _member_same_name(
+    session: Session, site_id: int, form: MemberForm, errors: tuple[str, ...]
+) -> tuple[Option, ...]:
+    """참여자 추가에서 같은 이름 업체 경고가 났을 때 고를 수 있는 선택지."""
+    if SAME_NAME_MEMBER not in errors:
+        return ()
+    target = auth_service.find_user_by_email(session, form.email)
+    if target is None:
+        return ()
+    matches = _same_name(session, site_id, target.organization_name)
+    names = auth_service.organization_names(session, (p.organization_id for p in matches))
+    return (
+        *(
+            Option(f"attach:{p.id}", f"{names[p.organization_id]}({_group_label(p)})에 붙이기")
+            for p in matches
+        ),
+        Option("separate", "다른 업체로 따로 추가"),
+    )
+
+
+def _status_text(participant: ProjectParticipant) -> str:
+    if participant.ended_at is not None:
+        return f"참여 종료 · {participant.ended_at.astimezone(KST):%Y-%m-%d}"
+    if participant.joined_on is not None:
+        return f"참여 중 · {participant.joined_on:%Y-%m-%d}부터"
+    return "참여 중"
+
+
+def _contact_view(
+    contact: ParticipantContact,
+    users: dict[int, UserInfo],
+    role_of: dict[int, Role],
+    show_detail: bool,
+) -> ContactView:
+    account = None
+    if contact.user_id is not None and contact.user_id in users:
+        role = role_of.get(contact.user_id)
+        account = f"{users[contact.user_id].display_name} 계정 · " + (
+            ROLE_LABELS[role] if role else "참여 권한 없음"
+        )
+    return ContactView(
+        contact_id=contact.id,
+        name=contact.name,
+        job_title=contact.job_title,
+        phone=contact.phone if show_detail else None,
+        memo=contact.memo if show_detail else None,
+        account_text=account,
     )
 
 

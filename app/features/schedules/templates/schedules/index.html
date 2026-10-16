@@ -162,7 +162,8 @@
 <label class="field">실행 업체
 <select name="performing_participant_id">
 <option value=""{% if not i.performing_participant_id %} selected{% endif %}>미지정</option>
-{% for p in view.participants %}<option value="{{ p.participant_id }}"{% if p.participant_id == i.performing_participant_id %} selected{% endif %}>{{ p.name }}</option>{% endfor %}
+{% set ns = namespace(g="", found=false) %}{% for p in view.participants %}{% if p.group_label != ns.g %}{% if ns.g %}</optgroup>{% endif %}<optgroup label="{{ p.group_label }}">{% set ns.g = p.group_label %}{% endif %}<option value="{{ p.participant_id }}"{% if p.participant_id == i.performing_participant_id %}{% set ns.found = true %} selected{% endif %}>{{ p.name }}</option>{% endfor %}{% if ns.g %}</optgroup>{% endif %}
+{% if i.performing_participant_id and not ns.found %}<option value="{{ i.performing_participant_id }}" selected>{{ view.participant_names.get(i.performing_participant_id, "").split(" · ")[0] }} (참여 종료)</option>{% endif %}
 </select>
 </label>
 </div>
@@ -231,7 +232,7 @@
 <label class="field">실행 업체
 <select name="performing_participant_id">
 <option value="">미지정</option>
-{% for p in view.participants %}<option value="{{ p.participant_id }}"{% if p.selected %} selected{% endif %}>{{ p.name }}</option>{% endfor %}
+{% set ns = namespace(g="") %}{% for p in view.participants %}{% if p.group_label != ns.g %}{% if ns.g %}</optgroup>{% endif %}<optgroup label="{{ p.group_label }}">{% set ns.g = p.group_label %}{% endif %}<option value="{{ p.participant_id }}"{% if p.selected %} selected{% endif %}>{{ p.name }}</option>{% endfor %}{% if ns.g %}</optgroup>{% endif %}
 </select>
 </label>
 </div>

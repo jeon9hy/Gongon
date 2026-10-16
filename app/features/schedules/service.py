@@ -27,7 +27,7 @@ from app.features.schedules.schemas import (
 from app.features.sites import service as sites_service
 from app.features.sites.schemas import SiteRecord, SiteScope
 from app.features.teams import service as teams_service
-from app.features.teams.schemas import MANAGE_ROLES
+from app.features.teams.schemas import MANAGE_ROLES, ParticipantOption
 from engine.kst import KST
 
 CELL_ITEMS = 5  # 달력 칸에 점으로 보이는 작업 수(나머지는 +N, D-064)
@@ -109,6 +109,7 @@ def build_view(
     weeks: tuple[tuple[CalendarDay, ...], ...] = ()
     detail = None
     labels: dict[int, str] = {}
+    choices: tuple[ParticipantOption, ...] = ()
     revisions: dict[int, tuple[RevisionView, ...]] = {}
     if site is not None:
         items = [
@@ -144,6 +145,7 @@ def build_view(
         weeks = tuple(tuple(cells[i : i + 7]) for i in range(0, len(cells), 7))
         detail = _detail(site, selected, today, tuple(by_day.get(selected, [])))
         labels = teams_service.participant_labels(session, site.site_id)
+        choices = teams_service.participant_choices(session, site.site_id)
         revisions = _revision_views(session, [i.item_id for i in detail.items], labels)
 
     # 공종·시간은 미리 고르지 않는다(개발자 요청). 날짜만 고른 날로 채운다.
@@ -174,8 +176,13 @@ def build_view(
         errors=errors,
         message=message,
         participants=tuple(
-            ParticipantChoice(pid, name, str(pid) == shown_form.performing_participant_id)
-            for pid, name in labels.items()
+            ParticipantChoice(
+                c.participant_id,
+                c.name,
+                str(c.participant_id) == shown_form.performing_participant_id,
+                c.group_label,
+            )
+            for c in choices
         ),
         participant_names=labels,
         revisions=revisions,
@@ -255,7 +262,9 @@ def update_item(
     expected = _int(form.plan_version)
     if expected is None:
         return "conflict", ()
-    performer, performer_error = _performer(session, site_id, form.performing_participant_id)
+    performer, performer_error = _performer(
+        session, site_id, form.performing_participant_id, keep=item.performing_participant_id
+    )
     as_add = WorkItemForm((item.work_type,), form.work_date, form.start, form.end,
                           form.location, form.memo)  # fmt: skip
     # 이미 시작한 오늘 작업의 끝 시각·위치만 고칠 때는 '지금 이후 시작' 규칙을 다시 묻지 않는다.
@@ -348,15 +357,21 @@ def apply_plan_change(
     return "saved"
 
 
-def _performer(session: Session, site_id: int, raw: str) -> tuple[int | None, str | None]:
-    """실행 업체 입력 → 참여 업체 ID. 빈 값은 미지정. 다른 현장의 참여 업체는 거부한다."""
+def _performer(
+    session: Session, site_id: int, raw: str, keep: int | None = None
+) -> tuple[int | None, str | None]:
+    """실행 업체 입력 → 참여 업체 ID. 빈 값은 미지정.
+
+    참여 중인 이 현장 업체만 고를 수 있다(D-066). 수정할 때 이미 연결된 업체(keep)는 참여
+    종료했어도 그대로 둘 수 있다(기존 연결 유지)."""
     if not raw.strip():
         return None, None
     participant_id = _int(raw)
-    if participant_id is None or participant_id not in teams_service.participant_labels(
-        session, site_id
-    ):
-        return None, "실행 업체는 이 현장의 참여 업체 중에서 고르세요."
+    if participant_id is not None and participant_id == keep:
+        return participant_id, None
+    active = {c.participant_id for c in teams_service.participant_choices(session, site_id)}
+    if participant_id is None or participant_id not in active:
+        return None, "실행 업체는 이 현장의 참여 업체 중 참여 중인 곳에서 고르세요."
     return participant_id, None
 
 

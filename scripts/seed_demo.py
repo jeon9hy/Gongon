@@ -1,6 +1,7 @@
 """시연용 가상 현장·업체·참여자·작업을 개발 DB에 만든다(D-056 합성 자료, 실제 회사 아님).
 
 원청 1곳과 공종별 협력업체·공급사·감리를 만들고, 오늘부터 일주일 작업을 올린다.
+업체는 명부로 먼저 등록하고(D-066) 사람은 담당자 명부와 로그인 계정을 연결한다.
 공온 점검이 보이도록 업체 미지정·위치 없음·같은 곳 같은 시간 겹침을 일부러 섞는다.
 회사·사람 이름은 모두 지어낸 것이며 이름 앞에 [가상]을 붙인다. 같은 계정이 있으면 만들지 않는다.
 
@@ -16,7 +17,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from sqlalchemy import text
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.clock import now_kst
@@ -28,6 +29,8 @@ from app.features.schedules.schemas import WorkItemForm
 from app.features.sites import service as sites_service
 from app.features.sites.schemas import SiteForm
 from app.features.teams import service as teams_service
+from app.features.teams.models import ParticipantContact
+from app.features.teams.schemas import ContactForm, ParticipantForm
 
 PASSWORD = "gongon-demo-1234"
 DOMAIN = "demo.gongon.test"  # 실제로 받을 수 없는 시험용 도메인
@@ -49,6 +52,23 @@ class Person:
 
 
 PRIME = "[가상] 한결종합건설"
+# 업체 → (구분, 맡은 공종). 원청은 명부 등록 대상이 아니다(현장을 만들 때 생김).
+COMPANIES = {
+    "[가상] 대성골조": ("subcontractor", "철근콘크리트(골조)"),
+    "[가상] 우진철강": ("subcontractor", "철골"),
+    "[가상] 서해펌프": ("equipment", "콘크리트 펌프카"),
+    "[가상] 동부레미콘": ("supplier", "레미콘"),
+    "[가상] 미래크레인": ("equipment", "이동식 크레인·양중"),
+    "[가상] 청솔방수": ("subcontractor", "방수"),
+    "[가상] 새벽전기": ("subcontractor", "전기"),
+    "[가상] 평화가설": ("subcontractor", "비계·가설"),
+    "[가상] 정도건설사업관리": ("supervision", "건설사업관리"),
+}
+# 계정 없는 명부 담당자(전화 대리 기록 대상, C06). 번호는 실제로 걸리지 않는 형식이다.
+EXTRA_CONTACTS = (
+    ("[가상] 동부레미콘", "배차 담당", "출하 배차", "010-0000-0001"),
+    ("[가상] 서해펌프", "현장 배정", "공무", "010-0000-0002"),
+)
 PEOPLE = (
     Person("pm", "김도윤 소장", PRIME, "coordinator", "현장소장"),
     Person("works", "박서연 과장", PRIME, "coordinator", "공무·공정"),
@@ -95,8 +115,7 @@ def main() -> int:
             return 0
         users: dict[str, CurrentUser] = {}
         for p in PEOPLE:
-            # 같은 회사 사람은 첫 사람이 만든 회사에 붙여야 하지만 가입 화면은 회사를 새로 만든다.
-            # 시연에서는 회사 이름이 같으면 같은 업체로 본다(참여 업체는 회사 단위).
+            # 가입은 사람마다 회사를 새로 만든다. 현장에 붙일 때 같은 이름 업체에 붙인다(D-066).
             user_id, errors = auth_service.signup(
                 session,
                 SignupForm(email=f"{p.key}@{DOMAIN}", display_name=p.name,
@@ -108,7 +127,6 @@ def main() -> int:
             info = auth_service.describe_users(session, [user_id])[user_id]
             users[p.key] = CurrentUser(info.user_id, info.email, info.display_name,
                                        info.organization_id, info.organization_name)  # fmt: skip
-        _merge_companies(session, users)
         pm = users["pm"]
         site_id, errors = sites_service.create_site(
             session,
@@ -123,18 +141,41 @@ def main() -> int:
         if site_id is None:
             print(f"현장 생성 실패: {errors}")
             return 1
-        for p in PEOPLE[1:]:
-            errors = teams_service.add_member(
-                session, site_id, pm, f"{p.key}@{DOMAIN}", p.role, now
+        joined = (now.date() - timedelta(days=30)).isoformat()
+        for company, (category, trade) in COMPANIES.items():
+            errors, _ = teams_service.register_participant(
+                session, site_id, pm, ParticipantForm(company, category, trade, "", joined)
             )
+            if errors:
+                print(f"업체 등록 실패 {company}: {errors}")
+                return 1
+        ids = _participant_ids(session, site_id)
+        for p in PEOPLE:
+            teams_service.add_contact(session, site_id, pm, ids[p.company],
+                                      ContactForm(p.name.split()[0], p.duty[:40]), now)  # fmt: skip
+        for company, name, title, phone in EXTRA_CONTACTS:
+            teams_service.add_contact(session, site_id, pm, ids[company],
+                                      ContactForm(name, title, phone), now)  # fmt: skip
+        for p in PEOPLE[1:]:
+            contact = session.scalar(
+                select(ParticipantContact.id).where(
+                    ParticipantContact.site_id == site_id,
+                    ParticipantContact.participant_id == ids[p.company],
+                    ParticipantContact.name == p.name.split()[0],
+                )
+            )
+            errors = teams_service.add_member(
+                session, site_id, pm, f"{p.key}@{DOMAIN}", p.role, now,
+                contact_id=str(contact), same_name=f"attach:{ids[p.company]}",
+            )  # fmt: skip
             if errors:
                 print(f"참여자 추가 실패 {p.key}: {errors}")
                 return 1
         if args.viewer:
-            errors = teams_service.add_member(session, site_id, pm, args.viewer, "viewer", now)
+            errors = teams_service.add_member(session, site_id, pm, args.viewer, "viewer", now,
+                                              same_name="separate")  # fmt: skip
             print("열람자 추가:", "실패 " + " ".join(errors) if errors else args.viewer)
-        labels = teams_service.participant_labels(session, site_id)
-        participants = {label.split(" · ")[0]: pid for pid, label in labels.items()}
+        participants = _participant_ids(session, site_id)
         companies = {p.key: p.company for p in PEOPLE}
         added = skipped = 0
         for offset, work_type, start, end, place, performer in WORK:
@@ -159,29 +200,10 @@ def main() -> int:
     return 0
 
 
-def _merge_companies(session: Session, users: dict[str, CurrentUser]) -> None:
-    """가입이 사람마다 회사를 새로 만들므로, 같은 이름의 회사는 첫 회사로 합친다(시연 자료 전용)."""
-    session.execute(
-        text(
-            "UPDATE users u SET organization_id = f.first_id FROM ("
-            " SELECT name, min(id) AS first_id FROM organizations GROUP BY name) f, organizations o"
-            " WHERE u.organization_id = o.id AND o.name = f.name AND o.id <> f.first_id"
-            " AND u.email LIKE :pattern"
-        ),
-        {"pattern": f"%@{DOMAIN}"},
-    )
-    session.execute(
-        text(
-            "DELETE FROM organizations o WHERE o.name LIKE '[가상]%' AND NOT EXISTS"
-            " (SELECT 1 FROM users u WHERE u.organization_id = o.id)"
-            " AND NOT EXISTS (SELECT 1 FROM project_participants p WHERE p.organization_id = o.id)"
-        )
-    )
-    session.commit()
-    for key, user in list(users.items()):
-        info = auth_service.describe_users(session, [user.user_id])[user.user_id]
-        users[key] = CurrentUser(info.user_id, info.email, info.display_name,
-                                 info.organization_id, info.organization_name)  # fmt: skip
+def _participant_ids(session: Session, site_id: int) -> dict[str, int]:
+    """회사 이름 → 참여 업체 ID(시연 자료는 이름이 겹치지 않는다)."""
+    labels = teams_service.participant_labels(session, site_id)
+    return {label.split(" · ")[0]: pid for pid, label in labels.items()}
 
 
 def _print_summary(site_id: int, added: int, skipped: int, now: datetime) -> None:

@@ -74,8 +74,9 @@ PlanChangeResult = Literal["saved", "unchanged", "conflict", "missing"]
 @dataclass(frozen=True, slots=True)
 class ParticipantChoice:
     participant_id: int
-    name: str  # 회사 이름 · 원청/협력업체
+    name: str  # 회사 이름
     selected: bool = False
+    group_label: str = ""  # 원청·협력업체·자재 공급·장비 임대·감리·CM(선택 목록 묶음)
 
 
 @dataclass(frozen=True, slots=True)

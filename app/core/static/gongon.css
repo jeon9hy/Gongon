@@ -1547,3 +1547,20 @@ details[open] > :not(summary) { animation: rise-in 0.25s ease-out; }
 .tline__phase { display: inline-flex; align-items: center; gap: 4px; }
 .tline__warn { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: var(--verdict-check-mark); color: #FFFFFF; font-size: 11px; font-weight: 800; }
 .homebar__date > span { white-space: nowrap; }
+
+/* 참여 업체 명부(C04-9) */
+.roster { display: flex; flex-direction: column; gap: 10px; }
+.roster--ended { opacity: .72; }
+.roster__head .h2 { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.roster__label { margin: 6px 0 0; font-weight: 500; }
+.roster__acts { margin-left: auto; display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.roster__acts form { margin-left: 0; }
+.roster__pop summary:hover, .roster__pop[open] summary { color: var(--ink); background: var(--accent-soft); }
+.roster__popform .btn { color: white; border-color: var(--ink); }
+.roster__tools { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; padding-top: 8px; border-top: 1px solid var(--line-soft); }
+.roster__more { flex: 1 1 100%; }
+.roster__more summary { list-style: none; display: inline-flex; align-items: center; cursor: pointer; }
+.roster__more summary::-webkit-details-marker { display: none; }
+.roster__more:not([open]) { flex: 0 0 auto; }
+.roster__form { display: flex; flex-direction: column; gap: 10px; padding-top: 10px; }
+.roster__choice { gap: 8px; }
