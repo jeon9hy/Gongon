@@ -57,7 +57,7 @@ def board(page: str, key: str) -> str:
 
 def rows(section: str) -> list[tuple[str, str]]:
     """오늘 일정의 (단계, 시간) 목록(화면 순서)."""
-    pattern = r'class="tline__row tline__row--(\w+)".*?<span class="tline__time">([^<]+)</span>'
+    pattern = r'class="job job--(\w+)".*?<span class="job__time">([^<]+)</span>'
     return re.findall(pattern, section, re.S)
 
 
@@ -89,15 +89,16 @@ def test_checks_flag_missing_company_place_and_true_overlaps_only(
     put(session, site_id, TODAY, time(16, 0), time(17, 0), "콘크리트 타설", "", None)
 
     today = board(client.get("/").text, "today")
-    prio = today.split('class="prio"')[1]
+    prio = today.split('class="todo"')[1].split("</div>")[0]
 
     # 먼저 챙길 것: 걸린 작업마다 항목과 작업을 보인다
     assert 'title="이동식 크레인와 같은 곳·같은 시간"' in prio  # 철골 작업 줄
     assert 'title="철골 작업와 같은 곳·같은 시간"' in prio  # 이동식 크레인 줄
     assert "고소작업대와 같은 곳" not in today and "도장·방수와 같은 곳" not in today  # 끝=시작
-    assert ">업체 미지정</span><a" in prio and ">위치 없음</span><a" in prio
-    assert today.count('class="tline__warn"') == 3  # 철골·크레인·콘크리트 타설
-    assert ">날씨</span>" not in prio  # 오늘은 날씨를 보지 않는다
+    assert ">업체 미지정 · 16:00 콘크리트 타설</a>" in prio
+    assert ">위치 없음 · 16:00 콘크리트 타설</a>" in prio
+    assert today.count('class="job__warn"') == 3  # 철골·크레인·콘크리트 타설
+    assert ">날씨 ·" not in prio  # 오늘은 날씨를 보지 않는다
 
 
 def test_tomorrow_board_counts_weather_before_judgment_and_open_change(
@@ -118,10 +119,11 @@ def test_tomorrow_board_counts_weather_before_judgment_and_open_change(
 
     tomorrow = board(client.get("/").text, "tomorrow")
 
-    assert '<span class="crit">날씨 <strong>1</strong></span>' in tomorrow  # 판정 전
-    assert '<span class="crit">변경 검토 중 <strong>1</strong></span>' in tomorrow
-    assert ">0/1</strong>" in tomorrow
-    assert "아직 판정 전이에요" in tomorrow
+    assert 'aria-label="준비 끝 0건 / 1건"' in tomorrow
+    # 작업 줄의 알약: 판정 전 날씨와 진행 중 변경이 확인할 것으로 걸린다
+    pill = tomorrow.split('<span class="pill pill--warn"')[1].split("</span>")[0]
+    assert "날씨" in pill and "변경 중" in pill
+    assert "일정 ›" not in tomorrow
 
 
 def test_week_index_shows_seven_days_from_tomorrow(client: TestClient, session: Session) -> None:
@@ -161,4 +163,4 @@ def test_home_without_any_work_says_so(client: TestClient) -> None:
 
     page = client.get("/").text
 
-    assert "오늘은 쉬어 가는 날" in page and 'class="tline__row' not in page
+    assert "오늘은 쉬어 가는 날" in page and 'class="job job--' not in page

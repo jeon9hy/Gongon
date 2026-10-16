@@ -42,8 +42,6 @@ from app.features.judgments.schemas import (
     NoticeItem,
     PageLink,
     PrimaryJudgment,
-    RecentItem,
-    RecentRun,
     RunResult,
     SiteOption,
     SiteSummary,
@@ -585,11 +583,6 @@ def build_home(
     if off_period:
         tiles = (*tiles, CountTile("작업 없음", off_period, None))
 
-    names = {s.site_id: s.name for s in sites}
-    recent_rows = repository.page(
-        session, None, None, 0, RECENT_ROWS, site_ids=site_ids, until=target_date
-    )
-    recent = _recent_runs(recent_rows, names, runs, target_date)
     run = forecasts_service.latest_run(session)
     if run is None:
         forecast_status = "아직 수집하지 않음"
@@ -610,7 +603,6 @@ def build_home(
         today_date=_date_text(now.astimezone(KST).date()),
         sites=summaries,
         tiles=tiles,
-        recent=recent,
         forecast_status=forecast_status,
         forecast_issued=None if run is None or not run.succeeded else _kst_text(run.base_at),
         rule_version=None if primary_rules is None else primary_rules.rule_version,
@@ -1156,63 +1148,6 @@ def _key(judgment: Judgment) -> str:
             return f"item:{judgment.work_item_id}:{judgment.work_type}"
         return f"item:{judgment.work_item_id}"
     return judgment.work_type
-
-
-RECENT_RUNS = 5
-# 한 번 판정에 공종 수 + 공통 기준만큼 행이 생긴다. 넉넉히 읽어 묶음 5개를 채운다(쿼리 1회).
-RECENT_ROWS = RECENT_RUNS * 10
-
-
-def _recent_runs(
-    rows: list[Judgment],
-    names: Mapping[int, str],
-    site_runs: Mapping[int, JudgmentRun] | None = None,
-    current_from: date | None = None,
-) -> tuple[RecentRun, ...]:
-    """현장·대상 날짜마다 작업별 최신 판정만 묶는다(지난 판정은 판정 내역에 남는다). rows는 최신순.
-
-    같은 예보로 다시 판정하면 새 행을 만들지 않으므로, 판정 시각이 아니라 작업 키로 갱신을 판단한다.
-    """
-    groups: dict[tuple[int, date], dict[str, Judgment]] = {}
-    for j in rows:
-        groups.setdefault((j.site_id, j.target_date), {}).setdefault(_key(j), j)
-    ordered = sorted(
-        groups.items(),
-        key=lambda g: (g[0][1], max(j.judged_at for j in g[1].values())),
-        reverse=True,
-    )
-    runs = []
-    for (site_id, target_date), latest in ordered[:RECENT_RUNS]:
-        items = list(latest.values())
-        judged_at = max(j.judged_at for j in items)
-        runs.append(
-            RecentRun(
-                target_label=_date_text(target_date),
-                site_name=names.get(site_id, "삭제된 현장"),
-                verdict=max((Verdict(j.verdict) for j in items), key=lambda v: v.severity).value,
-                when=_recent_when(site_id, target_date, judged_at, site_runs, current_from),
-                items=tuple(
-                    RecentItem(j.work_type, j.verdict, f"/judgments/{j.id}") for j in items
-                ),
-                more_href=f"/judgments?site_id={site_id}",
-            )
-        )
-    return tuple(runs)
-
-
-def _recent_when(
-    site_id: int,
-    target_date: date,
-    judged_at: datetime,
-    runs: Mapping[int, JudgmentRun] | None,
-    current_from: date | None,
-) -> str:
-    """아직 다가올 날짜면 마지막 확인 시각을, 지난 날짜면 판정이 나온 시각을 보여 준다."""
-    run = None if runs is None else runs.get(site_id)
-    is_current = current_from is not None and target_date >= current_from
-    if is_current and run is not None and run.ran_at >= judged_at:
-        return checked_text(run) or ""
-    return f"{_kst_text(judged_at)} 판정"
 
 
 def dashboard_href(site_id: int, **params: str | int) -> str:

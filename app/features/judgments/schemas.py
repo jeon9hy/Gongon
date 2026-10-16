@@ -224,25 +224,6 @@ class CountTile:
 
 
 @dataclass(frozen=True, slots=True)
-class RecentItem:
-    work_type: str
-    verdict: str
-    href: str
-
-
-@dataclass(frozen=True, slots=True)
-class RecentRun:
-    """홈의 최근 판정 한 줄: 한 현장·대상 날짜의 작업별 최신 판정 묶음(다시 판정하면 갱신)."""
-
-    target_label: str  # 10/09(금) — 날짜별로 묶어 보여 준다
-    site_name: str
-    verdict: str  # 묶음 안에서 가장 높은 단계
-    when: str
-    items: tuple[RecentItem, ...]
-    more_href: str  # 그 현장의 판정 내역
-
-
-@dataclass(frozen=True, slots=True)
 class HomeView:
     target_date: str
     today_date: str
@@ -252,7 +233,6 @@ class HomeView:
     checked_short: str | None  # 가장 최근 점검(판정 실행) 시각 '15:15 확인'
     sites: tuple[SiteSummary, ...]
     tiles: tuple[CountTile, ...]
-    recent: tuple[RecentRun, ...]
     forecast_status: str
     forecast_issued: str | None
     rule_version: str | None
