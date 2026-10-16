@@ -69,6 +69,7 @@ uv run python -m pytest tests/<경로> -q  # 작업 중 빠른 확인: 관련 �
   테스트는 그 DB의 `public` 스키마를 지우고 마이그레이션을 다시 적용하므로, DB 이름에 `test`가 없으면 실행을 거부한다.
   CI는 `postgres:17` 서비스로 항상 실행한다.
 - 외부 API는 호출하지 않는다(가짜 응답 `tests/fakes.py`).
+- DB 세션 시간대가 달라도 결과가 같아야 한다. 시각을 다루는 변경 뒤에는 UTC 세션으로 한 번 더 돌린다: `PGTZ=UTC uv run python -m pytest tests -q -p no:cacheprovider`(PowerShell은 `$env:PGTZ="UTC"`). DB에서 읽은 시각은 `.astimezone(KST)` 뒤에 비교한다(C04-1).
 - Windows 한글 출력: `check.py`는 UTF-8 모드로 실행한다. pytest를 직접 실행할 때 깨지면 `PYTHONUTF8=1`을 설정한다(Git Bash: `export PYTHONUTF8=1`, PowerShell: `$env:PYTHONUTF8=1`).
 
 ## 앱 실행

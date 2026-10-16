@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.features.judgments.models import Judgment
 from app.features.schedules.models import WorkItem
+from engine.kst import KST
 from tests.fakes import FakeKma
 
 SITE: dict[str, Any] = {
@@ -132,7 +133,10 @@ def test_items_are_judged_separately_and_rerun_adds_nothing(
     run(client, site_id)  # 같은 예보·기준·작업이면 다시 저장하지 않는다
 
     steel = session.scalars(select(Judgment).where(STEEL).order_by(Judgment.id)).all()
-    assert [(j.work_start_at.hour, j.work_end_at.hour, j.verdict) for j in steel] == [
+    assert [
+        (j.work_start_at.astimezone(KST).hour, j.work_end_at.astimezone(KST).hour, j.verdict)
+        for j in steel
+    ] == [
         (9, 12, "진행"),
         (13, 16, "중지 검토"),
     ]
@@ -152,7 +156,10 @@ def test_day_without_items_uses_site_default_hours(client: TestClient, session: 
     run(client, site_id)
 
     steel = session.scalars(select(Judgment).where(STEEL)).one()
-    assert (steel.work_start_at.hour, steel.work_end_at.hour) == (7, 17)
+    assert (steel.work_start_at.astimezone(KST).hour, steel.work_end_at.astimezone(KST).hour) == (
+        7,
+        17,
+    )
     assert steel.work_item_id is None
 
 
