@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}{{ view.title }}{% endblock %}
+{% block content %}
+<section class="hero" aria-labelledby="change-title">
+<div class="hero__main">
+<p class="hero__date">{{ icon("history", 15) }} {{ view.site_name }} · {{ view.work_label }}</p>
+<h1 class="hero__title" id="change-title">{{ view.title }}</h1>
+<p class="small muted">지금 작업 계획 {{ view.current_plan_text }}{% if view.current_version_text %} · 현재 확정 {{ view.current_version_text }}{% else %} · 아직 확정한 버전 없음{% endif %}</p>
+</div>
+{% if view.rechange_href %}<div class="hero__action"><a class="btn btn--accent" href="{{ view.rechange_href }}">{{ icon("plus", 16, 2.2) }} 재변경 제안</a></div>{% endif %}
+</section>
+
+{% if view.errors %}<div class="alert alert--error" role="alert"><ul>{% for e in view.errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+{% elif view.message %}<div class="alert alert--ok" role="status">{{ icon("check", 16, 2.4) }} {{ view.message }}</div>{% endif %}
+
+{% for r in view.revisions %}
+<section class="card card--tight change-rev change-rev--{{ r.status }}" aria-label="버전 {{ r.number }}">
+<div class="change-row__head"><h2 class="h2">v{{ r.number }}</h2><span class="tag change-status change-status--{{ r.status }}">{{ r.status_label }}</span></div>
+<dl class="change-diff">
+<div><dt>변경 전</dt><dd>{{ r.before_text }}</dd></div>
+<div><dt>변경 후</dt><dd><strong>{{ r.after_text }}</strong></dd></div>
+<div><dt>원인</dt><dd>{{ r.reasons_text }}</dd></div>
+{% if r.basis_note %}<div><dt>근거</dt><dd>{{ r.basis_note }}</dd></div>{% endif %}
+{% if r.withdraw_reason %}<div><dt>철회 이유</dt><dd>{{ r.withdraw_reason }}</dd></div>{% endif %}
+</dl>
+<ul class="small muted change-history">{% for h in r.history %}<li>{{ h }}</li>{% endfor %}</ul>
+{% if r.can_submit or r.can_confirm or r.can_withdraw %}
+<div class="change-actions">
+{% if r.can_submit %}
+<form method="post" action="/changes/{{ view.case_id }}/revisions/{{ r.revision_id }}/submit"><input type="hidden" name="site_id" value="{{ view.site_id }}"><button class="btn btn--soft btn--sm" type="submit">영향 검토로 보내기</button></form>
+{% endif %}
+{% if r.can_confirm %}
+<form method="post" action="/changes/{{ view.case_id }}/revisions/{{ r.revision_id }}/confirm"><input type="hidden" name="site_id" value="{{ view.site_id }}"><input type="hidden" name="confirm_key" value="{{ view.confirm_key }}"><button class="btn btn--accent btn--sm" type="submit">확정 · 작업 계획 바꾸기</button></form>
+{% endif %}
+{% if r.can_withdraw %}
+<details class="delete-action">
+<summary>철회</summary>
+<form method="post" action="/changes/{{ view.case_id }}/revisions/{{ r.revision_id }}/withdraw" class="delete-action__confirm">
+<input type="hidden" name="site_id" value="{{ view.site_id }}">
+<label class="field">철회 이유<input type="text" name="reason" maxlength="300" required></label>
+<button class="btn btn--sm" type="submit">이 제안 철회</button>
+</form>
+</details>
+{% endif %}
+</div>
+{% endif %}
+</section>
+{% endfor %}
+<p class="small muted">확정은 작업 계획을 바꾼 기록입니다. 공급사 예약·출역 변경이 끝났다는 뜻이 아닙니다. 확정한 버전은 고치지 않고, 바꾸려면 재변경을 제안합니다.</p>
+{% endblock %}

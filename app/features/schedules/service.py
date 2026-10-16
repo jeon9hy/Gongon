@@ -266,6 +266,37 @@ def update_item(
     return result, ()
 
 
+def get_item(session: Session, site_id: int, item_id: int) -> WorkItemRecord | None:
+    """지우지 않은 작업 하나(다른 현장의 작업은 None). 변경 건이 현재 계획을 읽을 때 쓴다."""
+    item = repository.get_active(session, site_id, item_id)
+    return None if item is None else _record(item)
+
+
+def items_by_ids(session: Session, item_ids: list[int]) -> dict[int, WorkItemRecord]:
+    """여러 작업을 쿼리 한 번으로(지운 작업은 빠진다)."""
+    return {i.id: _record(i) for i in repository.get_many(session, item_ids)}
+
+
+def apply_plan_change_by_id(
+    session: Session,
+    site_id: int,
+    item_id: int,
+    expected_version: int,
+    values: PlanValues,
+    *,
+    changed_by: int | None,
+    now: datetime,
+    source: str,
+) -> PlanChangeResult:
+    """다른 기능(변경 확정)이 부르는 계획 저장. 커밋하지 않는다. 지운·다른 현장 작업이면 missing."""
+    item = repository.get_active(session, site_id, item_id)
+    if item is None:
+        return "missing"
+    return apply_plan_change(
+        session, item, expected_version, values, changed_by=changed_by, now=now, source=source
+    )
+
+
 def apply_plan_change(
     session: Session,
     item: WorkItem,

@@ -9,6 +9,8 @@ KIND_LABELS: dict[ParticipantKind, str] = {"prime": "원청", "subcontractor": "
 # 현장 수정·작업 일정·판정 실행·참여자 관리(D-057). 조치 처리 권한은 C06에서 따로 정한다.
 MANAGE_ROLES: tuple[Role, ...] = ("coordinator",)
 ALL_ROLES: tuple[Role, ...] = ("coordinator", "assignee", "viewer")
+# 변경 제안(초안·영향 검토로 보내기). 확정·철회(남의 제안)는 조정자만(D-057 A2, C05).
+PROPOSE_ROLES: tuple[Role, ...] = ("coordinator", "assignee")
 
 
 @dataclass(frozen=True, slots=True)

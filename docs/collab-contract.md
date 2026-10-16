@@ -44,7 +44,7 @@ C01 [공개 조사](research/C01-public-research.md)의 설계 가정 A1~A7과 �
 - 저장 시 제출한 `plan_version`이 현재와 다르면 409와 "다른 사람이 먼저 바꿨습니다" 안내(동시 수정).
 - C04-1은 S08-4-1~4 결함 수정(plan의 C02~C07 분해 기준 참조).
 
-## 4. C05 변경 건·버전
+## 4. C05 변경 건·버전 (구현 완료 2026-10-16, D-060)
 
 변경 건 `change_cases`: site_id, work_item_id, title, created_by, created_at. 버전 `change_revisions`: case_id, number(1..), status, reasons(text[] — 총정리 §1.1 요인 코드), before/after 계획 값(work_date·start·end·location), note, based_on_plan_version, proposed_by/at, confirmed_by/at, withdrawn_by/at, withdraw_reason.
 

@@ -107,6 +107,9 @@
 <ul class="small muted">{% for r in history %}<li>v{{ r.plan_version }} {{ r.summary }} · {{ r.changed_text }} 변경</li>{% endfor %}</ul>
 </details>
 {% endif %}
+{% if view.site_id in proposable %}
+<a class="btn btn--soft btn--sm item-copy" href="/changes/new?site_id={{ view.site_id }}&item_id={{ i.item_id }}">변경 제안</a>
+{% endif %}
 {% if view.site_id in manageable %}
 <button type="button" class="btn btn--soft btn--sm item-copy" data-copy='{{ {"workType": i.work_type, "start": i.start_local.strftime("%H:%M"), "end": i.end_local.strftime("%H:%M"), "location": i.location, "memo": i.memo, "performer": (i.performing_participant_id or "") | string} | tojson }}'>{{ icon("plus", 14, 2.2) }} 다른 날에도 추가</button>
 <details class="item-edit"{% if view.edit_item_id == i.item_id %} open{% endif %}>

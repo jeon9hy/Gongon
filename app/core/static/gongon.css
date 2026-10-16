@@ -1113,3 +1113,21 @@ a.window--link:hover .window__link { color: var(--accent); }
 [data-mode-panel][hidden] { display: none; }
 /* 고르지 않은 칩에는 체크 표시를 숨긴다(고른 것과 헷갈리지 않게) */
 .toggle-chip input:not(:checked) + span > svg { display: none; }
+
+/* 변경 건(C05) */
+.change-filter { display: flex; gap: 6px; }
+.change-filter a { text-decoration: none; }
+.change-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.change-row { display: flex; flex-direction: column; gap: 4px; padding: 12px 16px; border: 1px solid var(--line-soft); border-radius: var(--radius-md); text-decoration: none; color: inherit; }
+.change-row:hover { background: var(--surface); }
+.change-row__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.change-status--review { background: var(--verdict-check-bg); color: var(--verdict-check-fg); }
+.change-status--confirmed { background: var(--verdict-go-bg); color: var(--verdict-go-fg); }
+.change-status--superseded, .change-status--withdrawn { background: var(--verdict-unknown-bg); color: var(--verdict-unknown-fg); }
+.change-rev--superseded, .change-rev--withdrawn { opacity: 0.8; }
+.change-diff { display: grid; gap: 6px; margin: 0; }
+.change-diff div { display: grid; grid-template-columns: 72px 1fr; gap: 8px; }
+.change-diff dt { color: var(--muted); font-size: 13px; }
+.change-diff dd { margin: 0; }
+.change-history { margin: 0; padding-left: 18px; }
+.change-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }

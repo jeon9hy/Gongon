@@ -12,7 +12,7 @@ from app.core.templating import register_template_dir, templates
 from app.features.auth.service import CurrentUserDep, require_user
 from app.features.schedules import service
 from app.features.schedules.schemas import ScheduleView, WorkItemEditForm, WorkItemForm
-from app.features.teams.service import AccessibleSitesDep, ManagedSitesDep
+from app.features.teams.service import AccessibleSitesDep, ManagedSitesDep, ProposableSitesDep
 
 register_template_dir(Path(__file__).parent / "templates")
 
@@ -24,13 +24,16 @@ NowDep = Annotated[datetime, Depends(now_kst)]
 
 
 def _render(
-    request: Request, view: ScheduleView, manageable: frozenset[int], status_code: int = 200
+    request: Request,
+    view: ScheduleView,
+    manageable: frozenset[int],
+    status_code: int = 200,
+    proposable: frozenset[int] = frozenset(),
 ) -> HTMLResponse:
+    context = {"nav_active": "schedule", "view": view, "manageable": manageable,
+               "proposable": proposable or manageable}  # fmt: skip
     return templates.TemplateResponse(
-        request,
-        "schedules/index.html",
-        {"nav_active": "schedule", "view": view, "manageable": manageable},
-        status_code=status_code,
+        request, "schedules/index.html", context, status_code=status_code
     )
 
 
@@ -40,6 +43,7 @@ def schedule(
     session: SessionDep,
     scope: AccessibleSitesDep,
     manageable: ManagedSitesDep,
+    proposable: ProposableSitesDep,
     now: NowDep,
     site_id: int | None = None,
     month: str | None = None,
@@ -65,7 +69,7 @@ def schedule(
     )
     if view is None:
         raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
-    return _render(request, view, manageable)
+    return _render(request, view, manageable, proposable=proposable)
 
 
 @router.post("/schedule")

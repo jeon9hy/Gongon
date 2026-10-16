@@ -19,8 +19,8 @@
 {% if me %}
 <nav class="appnav" aria-label="주 메뉴">
 {% set current_site_id = view.site_id | default(view.selected_site_id | default(none)) if view is defined else none %}
-{% for key, href, label in [("home", "/", "홈"), ("dashboard", "/dashboard", "현장 대시보드"), ("schedule", "/schedule", "작업 일정"), ("history", "/judgments", "판정 내역"), ("sites", "/sites", "현장 설정")] %}
-<a href="{{ href }}{% if key not in ('home', 'history') and current_site_id %}?site_id={{ current_site_id }}{% endif %}"{% if nav_active == key %} aria-current="page"{% endif %}>{{ label }}</a>
+{% for key, href, label in [("home", "/", "홈"), ("dashboard", "/dashboard", "현장 대시보드"), ("schedule", "/schedule", "작업 일정"), ("changes", "/changes", "변경"), ("history", "/judgments", "판정 내역"), ("sites", "/sites", "현장 설정")] %}
+<a href="{{ href }}{% if key not in ('home', 'history', 'changes') and current_site_id %}?site_id={{ current_site_id }}{% endif %}"{% if nav_active == key %} aria-current="page"{% endif %}>{{ label }}</a>
 {% endfor %}
 </nav>
 <div class="appbar__actions">

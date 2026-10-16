@@ -110,3 +110,11 @@ def recent_times(session: Session, site_id: int, limit: int) -> list[tuple[time,
         .limit(limit)
     ).all()
     return [(start, end) for start, end in rows]
+
+
+def get_many(session: Session, item_ids: list[int]) -> list[WorkItem]:
+    """지우지 않은 작업들(쿼리 1회). 목록 화면이 작업 이름을 한 번에 읽는다."""
+    if not item_ids:
+        return []
+    query = select(WorkItem).where(WorkItem.id.in_(item_ids), WorkItem.deleted_at.is_(None))
+    return list(session.scalars(query))

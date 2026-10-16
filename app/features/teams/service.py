@@ -21,6 +21,7 @@ from app.features.teams.schemas import (
     ALL_ROLES,
     KIND_LABELS,
     MANAGE_ROLES,
+    PROPOSE_ROLES,
     ROLE_LABELS,
     MembersView,
     MemberView,
@@ -81,6 +82,16 @@ def manageable_site_ids(
 
 
 ManagedSitesDep = Annotated[frozenset[int], Depends(manageable_site_ids)]
+
+
+def proposable_site_ids(
+    user: auth_service.CurrentUserDep, session: Annotated[Session, Depends(get_session)]
+) -> frozenset[int]:
+    """라우터 의존성: 변경을 제안할 수 있는 현장(조정자·담당자). 버튼 표시용이다."""
+    return repository.active_site_ids(session, user.user_id, PROPOSE_ROLES)
+
+
+ProposableSitesDep = Annotated[frozenset[int], Depends(proposable_site_ids)]
 
 
 def participant_labels(session: Session, site_id: int) -> dict[int, str]:
