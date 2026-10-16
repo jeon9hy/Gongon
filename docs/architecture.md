@@ -104,11 +104,12 @@ engine/judgment, engine/geo ──> (표준 라이브러리, 전달받은 데이
 | 기능 | 위치 | 작업·현재 상태 |
 | --- | --- | --- |
 | 인증·세션 | app/features/auth | C03-1 있음 |
-| 조직·프로젝트 참여·역할 | app/features/teams | C03-2 있음(위임은 C06), 회사 공통 관리자 없음 |
+| 조직·프로젝트 참여·역할 | app/features/teams | C03-2 있음(위임은 C06), 회사 공통 관리자 없음. 참여 업체 단독 등록·종료·담당자 명부는 C04-9(D-066) |
 | 작업·실행 업체·계획 버전 | app/features/schedules | C04 있음. 계획 저장은 `apply_plan_change`(커밋 없음, 낙관적 잠금) |
 | 변경 버전·영향 검토·확정·종료 | app/features/changes | C05 있음(제안·검토·확정·철회·재변경, `_after_confirm`에 C06·C07을 더함). 종료는 C06 |
 | 수행자 응답·막힘·완료·검증 | app/features/actions | C05·C06 계획 |
 | 발송 대기·시도·열람 | app/features/notifications | C07 계획, 실제 알림톡 D-015 유지 |
+| 현장 게시 화면(작업자용) | app/features/board | C11 계획(D-067). board 역할, 읽기 전용, 판정·변경·일정 서비스만 호출 |
 
 기능 간 호출은 service·schemas만 사용한다. 변경 확정은 changes 서비스가 공유 DB 세션으로 schedules·actions·notifications의 저장 처리를 조정한다. 호출된 서비스는 중간 커밋·외부 발송을 하지 않으며 계획 갱신·확정 버전·조치·발송 대기는 한 트랜잭션이다. 서비스 순환 호출·상대 기능 ORM/repository 직접 접근을 만들지 않는다.
 
