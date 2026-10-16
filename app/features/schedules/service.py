@@ -97,6 +97,12 @@ def build_view(
     tomorrow = today + timedelta(days=1)
     selected = _date(day or "") or (_date(form.work_date) if form else None) or today
     first = _month(month or "") or selected.replace(day=1)
+    if site is not None and not _overlaps_period(site, first):
+        # 작업 기간 밖의 달은 열지 않는다(개발자 요청): 가까운 기간 끝 달로 옮긴다
+        start, end = site.work_start_date, site.work_end_date
+        edge = start if start is not None and first < start else end
+        if edge is not None:
+            first = edge.replace(day=1)
     if (selected.year, selected.month) != (first.year, first.month):
         # 달만 바꿔 왔으면 그 달에 오늘이 있으면 오늘, 없으면 1일을 고른다.
         in_month = (today.year, today.month) == (first.year, first.month)
@@ -165,8 +171,8 @@ def build_view(
         site_name="" if site is None else site.name,
         period_text=None if site is None else site.period_text(),
         month_title=f"{first.year}년 {first.month}월",
-        prev_href=f"{base}{(first - timedelta(days=1)):%Y-%m}",
-        next_href=f"{base}{(last + timedelta(days=1)):%Y-%m}",
+        prev_href=_nav_href(site, base, (first - timedelta(days=1)).replace(day=1)),
+        next_href=_nav_href(site, base, last + timedelta(days=1)),
         this_month_href=f"{base}{today:%Y-%m}&day={today.isoformat()}",
         month_groups=() if site is None else _month_groups(site, first, tomorrow, base),
         weeks=weeks,
@@ -575,6 +581,8 @@ def _month_groups(
     start, end = min(anchors), max(anchors)
     start = max(start, _add_months(shown, -MONTH_PICK_MAX))
     end = min(end, _add_months(shown, MONTH_PICK_MAX))
+    # 한 해를 3줄 4칸으로 보이므로 해의 1월~12월을 모두 채운다(기간 밖 달은 막힘으로 보인다)
+    start, end = start.replace(month=1), end.replace(month=12)
 
     groups: dict[int, list[MonthChoice]] = {}
     month = start
@@ -590,6 +598,13 @@ def _month_groups(
         )
         month = _add_months(month, 1)
     return tuple((year, tuple(months)) for year, months in groups.items())
+
+
+def _nav_href(site: SiteRecord | None, base: str, first: date) -> str | None:
+    """이전·다음 달 주소. 그 달이 작업 기간 밖이면 None(버튼을 막는다)."""
+    if site is not None and not _overlaps_period(site, first):
+        return None
+    return f"{base}{first:%Y-%m}"
 
 
 def _overlaps_period(site: SiteRecord, first: date) -> bool:
