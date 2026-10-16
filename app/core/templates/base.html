@@ -37,14 +37,40 @@
 {% block content %}{% endblock %}
 </main>
 
-<footer class="statusbar" aria-label="자료 안내">
-<div class="statusbar__inner">
-<span>최종 판단은 현장 책임자가 합니다.</span>
-<span class="statusbar__sep" aria-hidden="true"></span>
-<span>예보 기상청 단기예보</span>
-<span class="statusbar__sep" aria-hidden="true"></span>
-<span>기준 산업안전보건기준에 관한 규칙 · KCS</span>
+<footer class="sitefoot" aria-label="서비스 안내">
+<div class="sitefoot__inner">
+<div class="sitefoot__top">
+<p class="sitefoot__lead">공사 변경 뒤 필요한 일을<br>처리 결과까지, 공온 하나로.</p>
+<nav class="sitefoot__cols" aria-label="바닥 메뉴">
+{% if me %}
+<div class="sitefoot__col">
+<p class="sitefoot__head">서비스</p>
+<a href="/">홈</a>
+<a href="/dashboard">현장 대시보드</a>
+<a href="/schedule">작업 일정</a>
+<a href="/changes">변경</a>
 </div>
+<div class="sitefoot__col">
+<p class="sitefoot__head">기록·설정</p>
+<a href="/judgments">판정 내역</a>
+<a href="/sites">현장 설정</a>
+</div>
+{% endif %}
+<div class="sitefoot__col">
+<p class="sitefoot__head">자료 출처</p>
+<span>기상청 단기예보</span>
+<span>산업안전보건기준에 관한 규칙</span>
+<span>국가건설기준(KCS)</span>
+</div>
+</nav>
+</div>
+<div class="sitefoot__info">
+<p>최종 판단은 현장 책임자가 합니다.</p>
+<p>공온 판정은 규칙 기반 참고 정보이며 작업 허가·공식 검측·안전 보장을 대신하지 않습니다.</p>
+</div>
+</div>
+<p class="sitefoot__mark" aria-hidden="true">Gongon ON</p>
+<p class="sitefoot__copy">© 공온 Gongon</p>
 </footer>
 <script>
 // 작은 화면에서는 날짜를 고른 직후 상세가 보이도록 링크에 문서 앵커를 붙인다.
