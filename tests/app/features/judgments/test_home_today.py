@@ -72,9 +72,8 @@ def test_today_board_lists_today_in_start_order_with_phase_at_boundaries(
 
     page = client.get("/").text
 
-    assert rows(board(page, "today")) == [
-        ("done", "14:00–15:00"), ("now", "15:00–17:00"), ("before", "15:05–16:00")
-    ]  # fmt: skip
+    # 끝난 작업(끝 = 지금 포함)은 목록에서 빠진다(개발자 요청 2026-10-17)
+    assert rows(board(page, "today")) == [("now", "15:00–17:00"), ("before", "15:05–16:00")]
     assert "오늘 작업 3건" in page
 
 
@@ -97,7 +96,7 @@ def test_checks_flag_missing_company_place_and_true_overlaps_only(
     assert 'title="철골 작업와 같은 곳·같은 시간"' in prio  # 이동식 크레인 줄
     assert "고소작업대와 같은 곳" not in today and "도장·방수와 같은 곳" not in today  # 끝=시작
     assert ">업체 미지정 · 16:00 콘크리트 타설</a>" in prio
-    assert ">위치 없음 · 16:00 콘크리트 타설</a>" in prio
+    assert "위치 없음" not in prio  # 위치는 선택 입력이라 점검하지 않는다(D-077)
     assert today.count('class="job__warn"') == 3  # 철골·크레인·콘크리트 타설
     assert ">날씨 ·" not in prio  # 오늘은 날씨를 보지 않는다
 

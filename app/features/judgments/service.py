@@ -629,12 +629,11 @@ def build_home(
 
 _PHASE_LABELS = {"now": "진행 중", "before": "예정", "done": "끝남"}
 
-# 공온 점검 항목(D-065). 날씨는 그중 하나다.
+# 공온 점검 항목(D-065). 날씨는 그중 하나다. 작업 위치는 선택 입력이라 점검하지 않는다(D-077).
 # 모두 등록한 자료로만 확인하는 규칙이며 기준 수치를 새로 정하지 않는다.
 CHECK_LABELS = {
     "weather": "날씨",
     "company": "실행 업체",
-    "place": "작업 위치",
     "overlap": "시간·위치 겹침",
     "change": "변경 검토 중",
 }
@@ -748,8 +747,6 @@ def _check_boards(
                 found.append(CheckIssue("weather", f"날씨 {verdict}"))
         if i.performing_participant_id is None:
             found.append(CheckIssue("company", "실행 업체 미지정"))
-        if not i.location:
-            found.append(CheckIssue("place", "작업 위치 없음"))
         clash = next(
             (o for o in items
              if o.item_id != i.item_id and o.site_id == i.site_id and o.work_date == i.work_date

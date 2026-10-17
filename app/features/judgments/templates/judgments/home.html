@@ -72,7 +72,7 @@
 {% set now_items = today_board.items | selectattr("phase", "equalto", "now") | list %}
 {% set next_items = today_board.items | selectattr("phase", "equalto", "before") | list %}
 <section class="hsec hsec--today reveal" aria-labelledby="today-title">
-{% set short = {"weather": "날씨", "company": "업체 미지정", "place": "위치 없음", "overlap": "겹침", "change": "변경 중"} %}
+{% set short = {"weather": "날씨", "company": "업체 미지정", "overlap": "겹침", "change": "변경 중"} %}
 {% set open_issues = today_board.items | rejectattr("phase", "equalto", "done") | selectattr("issues") | list %}
 {% set all_done = today_board.items and not now_items and not next_items %}
 <div class="hsec__head">
@@ -88,11 +88,12 @@
 {% for w in open_issues %}{% for x in w.issues %}<a class="chip chip--warn" href="{{ w.href }}" title="{{ x.label }}">{{ short.get(x.key, x.label) }} · {{ w.time_text[:5] }} {{ w.work_type }}</a>{% endfor %}{% endfor %}
 </div>
 {% endif %}
+{# 끝난 작업은 목록에서 뺀다(개발자 요청 2026-10-17) #}
 <ul class="jobs">
-{% for w in today_board.items %}
+{% for w in today_board.items if w.phase != "done" %}
 <li><a class="job job--{{ w.phase }}" href="{{ w.href }}">
 <span class="job__time">{{ w.time_text }}</span>
-<span class="job__what"><span class="job__dot" style="--c: {{ work_color(w.work_type) }}"></span><strong>{{ w.work_type }}</strong><span class="muted"> · {{ w.location or "-" }}</span></span>
+<span class="job__what"><span class="job__dot" style="--c: {{ work_color(w.work_type) }}"></span><strong>{{ w.work_type }}</strong>{% if w.location %}<span class="muted"> · {{ w.location }}</span>{% endif %}</span>
 <span class="job__who">{{ w.company or w.site_name }}</span>
 <span class="job__state">{% if w.issues and w.phase != "done" %}<span class="job__warn" title="{{ w.issues | map(attribute='label') | join(', ') }}" aria-label="확인할 것 {{ w.issues | length }}개">!</span>{% else %}<span class="job__warn job__warn--none" aria-hidden="true"></span>{% endif %}<span class="pill pill--{{ w.phase }}">{{ w.phase_label }}</span></span>
 {% if w.phase == "now" %}<span class="job__bar"><span style="width: {{ w.progress_pct }}%; --c: {{ work_color(w.work_type) }}"></span></span>{% endif %}
@@ -106,7 +107,7 @@
 
 {% macro tomorrow_row(w) %}<li><a class="job" href="{{ w.href }}">
 <span class="job__time">{{ w.time_text }}</span>
-<span class="job__what"><span class="job__dot" style="--c: {{ work_color(w.work_type) }}"></span><strong>{{ w.work_type }}</strong><span class="muted"> · {{ w.location or "-" }}</span></span>
+<span class="job__what"><span class="job__dot" style="--c: {{ work_color(w.work_type) }}"></span><strong>{{ w.work_type }}</strong>{% if w.location %}<span class="muted"> · {{ w.location }}</span>{% endif %}</span>
 <span class="job__who">{{ w.company or "업체 미정" }}</span>
 {% if w.issues %}<span class="pill pill--warn" title="{{ w.issues | map(attribute='label') | join(', ') }}">{{ icon("info", 13, 2.2) }} {% for x in w.issues %}{{ short.get(x.key, x.label) }}{% if not loop.last %}·{% endif %}{% endfor %}</span>
 {% else %}<span class="pill pill--ok">{{ icon("check", 13, 2.6) }} 준비 OK</span>{% endif %}
@@ -119,7 +120,7 @@
 {% set total = tomorrow_board.items | length %}
 {% set ready = tomorrow_board.ready %}
 {% set tmr_idx = view.index_days | selectattr("is_tomorrow") | first if view.index_days else none %}
-{% set short = {"weather": "날씨", "company": "업체", "place": "위치", "overlap": "겹침", "change": "변경 중"} %}
+{% set short = {"weather": "날씨", "company": "업체", "overlap": "겹침", "change": "변경 중"} %}
 <div class="kpis">
 <div class="kpi">
 <span class="kpi__label">작업</span>
