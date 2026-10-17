@@ -34,7 +34,7 @@
 <summary class="usermenu__trigger" aria-label="{{ me.display_name }} 메뉴"><span class="usermenu__avatar" aria-hidden="true">{{ me.display_name[:1] }}</span><span class="usermenu__name">{{ me.display_name }}</span>{{ icon("chevron-down", 14, 2.2) }}</summary>
 <div class="menu__panel usermenu__panel">
 <p class="usermenu__who"><strong>{{ me.display_name }}</strong><span>{{ me.organization_name }}</span></p>
-<a class="menu__item" href="/me">{{ icon("site", 16) }} 내 정보</a>
+<a class="menu__item" href="/me">{{ icon("user", 16) }} 내 정보</a>
 <a class="menu__item" href="/guide">{{ icon("info", 16) }} 공온 가이드</a>
 <form method="post" action="/logout"><button class="menu__item usermenu__logout" type="submit">{{ icon("arrow-right", 16) }} 로그아웃</button></form>
 </div>
@@ -59,7 +59,7 @@
 <footer class="sitefoot" aria-label="서비스 안내">
 <div class="sitefoot__inner">
 <div class="sitefoot__top">
-<p class="sitefoot__lead">바뀌는 현장에서도<br>할 일은 끝까지, 공온.</p>
+<p class="sitefoot__lead">변경에서 확인까지,<br>한 흐름으로.</p>
 <nav class="sitefoot__cols" aria-label="바닥 메뉴">
 {% if me %}
 <div class="sitefoot__col">
