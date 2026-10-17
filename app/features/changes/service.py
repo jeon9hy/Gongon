@@ -172,8 +172,7 @@ def propose(
         or 0
     ) + 1
     review = form.submit == "review"
-    session.add(
-        ChangeRevision(
+    new_revision = ChangeRevision(
             case_id=case.id,
             number=number,
             status="review" if review else "draft",
@@ -191,9 +190,18 @@ def propose(
             proposed_by_user_id=user.user_id,
             proposed_at=now,
             submitted_at=now if review else None,
-        )
-    )
+    )  # fmt: skip
+    session.add(new_revision)
     try:
+        session.flush()
+        current = session.scalar(
+            select(ChangeRevision.id).where(
+                ChangeRevision.case_id == case.id, ChangeRevision.status == "confirmed"
+            )
+        )
+        if current is not None:
+            # 재변경: 지금 확정 버전의 조치를 새 버전 후보로 제시한다(C07)
+            actions_service.carry_over(session, current, new_revision.id, user.user_id, now)
         session.commit()
     except IntegrityError:
         # 같은 건에 진행 중인 버전이 이미 있다(uq_change_revisions_one_open, 동시 제안 포함)
@@ -348,7 +356,7 @@ def _after_confirm(
         if not reason:
             return ("필수 후속 조치가 없습니다. 조치 없이 확정하는 이유를 입력하세요.",)
         revision.no_action_reason = reason[:500]
-    actions_service.replace_unstarted(session, previous_ids, user.user_id, now)
+    actions_service.replace_unstarted(session, previous_ids, user.user_id, now, revision.id)
     session.flush()
     return ()
 
@@ -668,6 +676,9 @@ def build_detail(
         and (manage or r.proposed_by_user_id == user.user_id)
         for r in revisions
     }
+    # 수행자가 처음 열어 본 시각(열람)을 남긴다. 상태는 바꾸지 않는다
+    actions_service.mark_viewed(session, user, case.site_id, [r.id for r in revisions], now)
+    session.commit()
     actions = actions_service.revision_actions(
         session,
         user,

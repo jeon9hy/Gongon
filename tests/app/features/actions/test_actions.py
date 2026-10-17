@@ -284,22 +284,62 @@ def test_viewer_cannot_act_and_outsider_gets_404(
     assert action(session).status == "requested"
 
 
-def test_rechange_replaces_unstarted_actions_and_keeps_reported_ones(
+def test_rechange_carries_actions_over_and_links_replacements(
     client: TestClient, session: Session, item: WorkItem, team: dict[str, Any], requested: int
 ) -> None:
-    rev1 = action(session).revision_id
-    add_more = session.get(ActionItem, action(session).id)
-    assert add_more is not None
-    # v2로 재변경 확정 → v1의 요청 대기 조치는 대체됨
+    old = action(session)
+    rev1 = old.revision_id
+    # 재변경 제안: v1의 요청 대기 조치가 v2 후보로 이어진다(사람이 고치고 확정, C07)
     second = propose(client, item_of(session), case_id=str(requested), after_work_date="2026-10-07")
     assert second.status_code == 303
     rev2 = revision(session, 2)
-    assert confirm(client, item, requested, rev2.id, no_action_reason="시간만").status_code == 303
-    replaced = action(session)
-    assert replaced.revision_id == rev1 and replaced.status == "replaced"
-    # 대체된 조치는 처리할 수 없다(구버전 화면의 늦은 처리)
+    session.expire_all()
+    carried = session.scalars(select(ActionItem).where(ActionItem.revision_id == rev2.id)).one()
+    assert carried.status == "candidate" and carried.carried_from_id == old.id
+    assert carried.title == old.title and carried.required
+
+    # 이어받은 필수 후보가 있으니 이유 없이 확정된다. 이전 조치는 대체되고 새 조치로 이어진다
+    assert confirm(client, item, requested, rev2.id).status_code == 303
+    session.expire_all()
+    replaced = session.get(ActionItem, old.id)
+    assert replaced is not None and replaced.revision_id == rev1
+    assert replaced.status == "replaced" and replaced.replaced_by_id == carried.id
+    assert session.get(ActionItem, carried.id).status == "requested"  # type: ignore[union-attr]
+    # 구버전 화면에서 늦게 누른 처리는 거부한다
     late = do(team["framer"], item, requested, replaced, "accept")
     assert late.status_code == 409 and "이전 버전의 조치" in late.text
+
+
+def test_rechange_offers_a_recheck_for_already_reported_work(
+    client: TestClient, session: Session, item: WorkItem, team: dict[str, Any], requested: int
+) -> None:
+    do(team["framer"], item, requested, action(session), "accept")
+    do(team["framer"], item, requested, action(session), "report", body="예약 변경함",
+       performed_date="2026-10-04", performed_time="14:00")  # fmt: skip
+
+    propose(client, item_of(session), case_id=str(requested), after_work_date="2026-10-07")
+    session.expire_all()
+    recheck = session.scalars(
+        select(ActionItem).where(ActionItem.revision_id == revision(session, 2).id)
+    ).one()
+
+    # 이미 보고한 일은 그대로 두고, 바뀐 일정에 맞는지 다시 확인하는 선택 후보만 제시한다
+    assert recheck.title.endswith("바뀐 일정에 맞게 다시 확인") and not recheck.required
+    assert recheck.due_at is None and recheck.due_note
+    assert session.get(ActionItem, recheck.carried_from_id).status == "reported"  # type: ignore[union-attr]
+
+
+def test_opening_the_change_records_a_view_once_without_changing_status(
+    session: Session, item: WorkItem, team: dict[str, Any], requested: int
+) -> None:
+    team["framer"].get(f"/changes/{requested}")
+    team["framer"].get(f"/changes/{requested}")
+    team["safety"].get(f"/changes/{requested}")  # 검증자는 열람으로 세지 않는다
+
+    session.expire_all()
+    viewed = session.scalars(select(ActionEvent).where(ActionEvent.kind == "viewed")).all()
+    assert [e.actor_user_id for e in viewed] == [team["framer_id"]]
+    assert action(session).status == "requested"
 
 
 def test_my_actions_groups_and_orders_overdue_first(

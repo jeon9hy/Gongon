@@ -46,6 +46,10 @@ class ActionItem(Base):
     excluded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     exclude_reason: Mapped[str | None] = mapped_column(Text)
     replaced_by_id: Mapped[int | None] = mapped_column(ForeignKey("action_items.id"))
+    # 재변경 제안 때 이어받은 이전 버전 조치(C07). 확정하면 그 조치의 replaced_by_id가 이것
+    carried_from_id: Mapped[int | None] = mapped_column(
+        ForeignKey("action_items.id", ondelete="SET NULL")
+    )
 
 
 class ActionEvent(Base):

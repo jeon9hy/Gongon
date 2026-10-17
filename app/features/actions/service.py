@@ -191,11 +191,16 @@ def activate(
 
 
 def replace_unstarted(
-    session: Session, revision_ids: Iterable[int], actor_id: int, now: datetime
+    session: Session,
+    revision_ids: Iterable[int],
+    actor_id: int,
+    now: datetime,
+    new_revision_id: int | None = None,
 ) -> int:
     """재변경 확정 때 이전 버전의 아직 끝나지 않은 조치(요청·수행 중·막힘)를 대체됨으로 둔다.
 
-    완료 보고·검증한 조치는 그대로 남긴다. 새 조치와의 연결·보완 후보는 C07에서 더한다.
+    새 버전에서 그 조치를 이어받은 조치가 있으면 replaced_by_id로 잇는다(C07).
+    완료 보고·검증한 조치는 그대로 남긴다(다시 확인은 새 버전의 보완 후보로 한다).
     """
     ids = list(revision_ids)
     if not ids:
@@ -207,11 +212,115 @@ def replace_unstarted(
             .with_for_update()
         )
     )
+    successors: dict[int, int] = {}
+    if new_revision_id is not None and old:
+        successors = {
+            carried: new_id
+            for new_id, carried in session.execute(
+                select(ActionItem.id, ActionItem.carried_from_id).where(
+                    ActionItem.revision_id == new_revision_id,
+                    ActionItem.carried_from_id.in_([a.id for a in old]),
+                    ActionItem.status != "candidate",
+                )
+            )
+            if carried is not None
+        }
     for a in old:
         a.status = "replaced"
+        a.replaced_by_id = successors.get(a.id)
         session.add(_event(a, "replaced", actor_id, now))
     session.flush()
     return len(old)
+
+
+def carry_over(
+    session: Session, from_revision_id: int, to_revision_id: int, actor_id: int, now: datetime
+) -> int:
+    """재변경 제안 때 이전 확정 버전의 조치를 새 버전 후보로 제시한다(사람이 고치고 확정, C07).
+
+    - 아직 끝나지 않은 조치(요청·수행 중·막힘): 같은 내용의 후보로 이어받는다.
+    - 완료 보고·검증한 조치: 바뀐 일정에 맞는지 다시 확인하는 선택 후보(보완 후보)로 제시한다.
+    자동 원복·자동 확정은 없다. 지난 기한은 그대로 쓰지 않고 다시 정하게 한다.
+    """
+    old = list(
+        session.scalars(
+            select(ActionItem)
+            .where(
+                ActionItem.revision_id == from_revision_id,
+                ActionItem.status.in_((*UNSTARTED_STATUSES, "reported", "verified")),
+            )
+            .order_by(ActionItem.id)
+        )
+    )
+    for a in old:
+        done = a.status in ("reported", "verified")
+        due_at = a.due_at if a.due_at is not None and a.due_at > now and not done else None
+        session.add(
+            ActionItem(
+                case_id=a.case_id,
+                revision_id=to_revision_id,
+                site_id=a.site_id,
+                title=(f"{a.title} · 바뀐 일정에 맞게 다시 확인" if done else a.title)[:TITLE_MAX],
+                done_criteria=a.done_criteria,
+                performing_participant_id=a.performing_participant_id,
+                assignee_user_id=a.assignee_user_id,
+                assignee_contact_id=a.assignee_contact_id,
+                verifier_user_id=a.verifier_user_id,
+                required=a.required and not done,
+                due_at=due_at,
+                due_note=None if due_at is not None else "재변경으로 기한을 다시 정해야 함",
+                status="candidate",
+                created_by_user_id=actor_id,
+                created_at=now,
+                carried_from_id=a.id,
+            )
+        )
+    session.flush()
+    return len(old)
+
+
+def mark_viewed(
+    session: Session, user: CurrentUser, site_id: int, revision_ids: list[int], now: datetime
+) -> None:
+    """수행자가 조치를 처음 열어 본 시각을 남긴다(상태는 바꾸지 않음, 계약 §5 열람).
+
+    조정자의 대리 기록 대상이나 검증자는 열람으로 세지 않는다. 커밋은 호출한 쪽이 한다.
+    """
+    if not revision_ids:
+        return
+    me = next(
+        (m for m in teams_service.site_members(session, site_id) if m.user_id == user.user_id),
+        None,
+    )
+    if me is None:
+        return
+    actions = list(
+        session.scalars(
+            select(ActionItem).where(
+                ActionItem.revision_id.in_(revision_ids),
+                ActionItem.status.in_(("requested", "accepted", "blocked")),
+            )
+        )
+    )
+    if not actions:
+        return
+    seen = set(
+        session.scalars(
+            select(ActionEvent.action_id).where(
+                ActionEvent.action_id.in_([a.id for a in actions]),
+                ActionEvent.kind == "viewed",
+                ActionEvent.actor_user_id == user.user_id,
+            )
+        )
+    )
+    delegators = _delegators(session, site_id, user.user_id, now)
+    linked = _contact_users(session, site_id, actions)
+    for a in actions:
+        if a.id in seen:
+            continue
+        if _performer_mode(a, me, delegators, linked) in ("self", "delegate"):
+            session.add(_event(a, "viewed", user.user_id, now))
+    session.flush()
 
 
 # ---------- 처리 ----------
@@ -884,6 +993,10 @@ def _card(
         else f"{a.blocked_reason} · 해결 담당 {a.blocked_resolver}",
         report_text=report,
         exclude_text=None if a.status != "excluded" else a.exclude_reason,
+        replaced_text=None
+        if a.status != "replaced"
+        else ("다음 버전 조치로 이어짐" if a.replaced_by_id else "다음 버전에서 이어받지 않음"),
+        carried=a.carried_from_id is not None,
         history=tuple(_event_text(e, name) for e in events),
         allowed=frozenset(allowed),
         behalf=mode == "behalf",

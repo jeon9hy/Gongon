@@ -22,6 +22,7 @@
 <div class="acard__top">
 <strong class="acard__title">{{ c.title }}</strong>
 {% if c.required %}<span class="tag">필수</span>{% else %}<span class="tag tag--unknown">선택</span>{% endif %}
+{% if c.carried %}<span class="tag tag--check">이전 버전에서 이어받음</span>{% endif %}
 <span class="astatus astatus--{{ c.status }}">{{ c.status_label }}</span>
 </div>
 {% if c.done_criteria %}<p class="acard__criteria">{{ icon("check", 13, 2.4) }} 완료 기준 · {{ c.done_criteria }}</p>{% endif %}
@@ -34,6 +35,7 @@
 {% if c.report_text %}<p class="acard__note">{{ c.report_text }}</p>{% endif %}
 {% if c.late_text %}<p class="acard__note acard__note--warn">{{ c.late_text }}</p>{% endif %}
 {% if c.exclude_text %}<p class="acard__note">제외 이유 · {{ c.exclude_text }}</p>{% endif %}
+{% if c.replaced_text %}<p class="acard__note">{{ c.replaced_text }}</p>{% endif %}
 
 {% if c.allowed %}
 <div class="acard__acts">

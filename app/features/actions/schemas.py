@@ -25,6 +25,7 @@ EVENT_LABELS: dict[str, str] = {
     "excluded": "제외",
     "replaced": "재변경으로 대체",
     "phone_record": "전화 확인 기록",
+    "viewed": "열람",
 }
 # 확정 뒤 아직 끝나지 않은 상태. 재변경 때 requested·accepted·blocked는 대체된다
 # (새 조치와의 연결은 C07).
@@ -118,6 +119,8 @@ class ActionCard:
     blocked_text: str | None
     report_text: str | None
     exclude_text: str | None
+    replaced_text: str | None
+    carried: bool  # 재변경으로 이전 버전에서 이어받은 후보·조치
     history: tuple[str, ...]
     allowed: frozenset[str]  # 지금 사용자가 누를 수 있는 처리(ACTION_KINDS)와 "remove"(후보 빼기)
     behalf: bool  # 조정자가 수행자 대신 기록하는 경우: 연락 상대·시각 필수
