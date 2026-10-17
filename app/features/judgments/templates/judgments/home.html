@@ -71,6 +71,13 @@
 
 {% set now_items = today_board.items | selectattr("phase", "equalto", "now") | list %}
 {% set next_items = today_board.items | selectattr("phase", "equalto", "before") | list %}
+{% macro today_row(w) %}<li><a class="job job--{{ w.phase }}" href="{{ w.href }}">
+<span class="job__time">{{ w.time_text }}</span>
+<span class="job__what"><span class="job__dot" style="--c: {{ work_color(w.work_type) }}"></span><strong>{{ w.work_type }}</strong>{% if w.location %}<span class="muted"> · {{ w.location }}</span>{% endif %}</span>
+<span class="job__who">{{ w.company or w.site_name }}</span>
+<span class="job__state">{% if w.issues and w.phase != "done" %}<span class="job__warn" title="{{ w.issues | map(attribute='label') | join(', ') }}" aria-label="확인할 것 {{ w.issues | length }}개">!</span>{% else %}<span class="job__warn job__warn--none" aria-hidden="true"></span>{% endif %}<span class="pill pill--{{ w.phase }}">{{ w.phase_label }}</span></span>
+{% if w.phase == "now" %}<span class="job__bar"><span style="width: {{ w.progress_pct }}%; --c: {{ work_color(w.work_type) }}"></span></span>{% endif %}
+</a></li>{% endmacro %}
 <section class="hsec hsec--today reveal" aria-labelledby="today-title">
 {% set short = {"weather": "날씨", "company": "업체 미지정", "overlap": "겹침", "change": "변경 중"} %}
 {% set open_issues = today_board.items | rejectattr("phase", "equalto", "done") | selectattr("issues") | list %}
@@ -90,16 +97,15 @@
 {% endif %}
 {# 끝난 작업은 목록에서 뺀다(개발자 요청 2026-10-17) #}
 <ul class="jobs">
-{% for w in today_board.items if w.phase != "done" %}
-<li><a class="job job--{{ w.phase }}" href="{{ w.href }}">
-<span class="job__time">{{ w.time_text }}</span>
-<span class="job__what"><span class="job__dot" style="--c: {{ work_color(w.work_type) }}"></span><strong>{{ w.work_type }}</strong>{% if w.location %}<span class="muted"> · {{ w.location }}</span>{% endif %}</span>
-<span class="job__who">{{ w.company or w.site_name }}</span>
-<span class="job__state">{% if w.issues and w.phase != "done" %}<span class="job__warn" title="{{ w.issues | map(attribute='label') | join(', ') }}" aria-label="확인할 것 {{ w.issues | length }}개">!</span>{% else %}<span class="job__warn job__warn--none" aria-hidden="true"></span>{% endif %}<span class="pill pill--{{ w.phase }}">{{ w.phase_label }}</span></span>
-{% if w.phase == "now" %}<span class="job__bar"><span style="width: {{ w.progress_pct }}%; --c: {{ work_color(w.work_type) }}"></span></span>{% endif %}
-</a></li>
-{% endfor %}
+{% for w in today_board.items if w.phase != "done" %}{{ today_row(w) }}{% endfor %}
 </ul>
+{% set done_items = today_board.items | selectattr("phase", "equalto", "done") | list %}
+{% if done_items %}
+<details class="worklist__more jobs__more">
+<summary><span class="when-closed">끝난 작업 {{ done_items | length }}건 보기</span><span class="when-open">접기</span> {{ icon("chevron-down", 14, 2.2) }}</summary>
+<ul class="jobs">{% for w in done_items %}{{ today_row(w) }}{% endfor %}</ul>
+</details>
+{% endif %}
 {% else %}
 <p class="hsec__empty">오늘 등록한 작업이 없어요. 내일 준비를 봐 둘까요?</p>
 {% endif %}
