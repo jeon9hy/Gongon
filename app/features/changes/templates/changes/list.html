@@ -24,6 +24,8 @@
 <div class="change-filter" aria-label="보기">
 <a class="tag{% if view.show == 'open' %} tag--go{% endif %}" href="{{ view.open_href }}"{% if view.show == 'open' %} aria-current="page"{% endif %}>진행 중</a>
 <a class="tag{% if view.show == 'all' %} tag--go{% endif %}" href="{{ view.all_href }}"{% if view.show == 'all' %} aria-current="page"{% endif %}>전체</a>
+{# 변경 제안은 바꿀 작업에서 시작한다. 목록에서 시작하는 길을 알려 준다 #}
+<a class="change-filter__hint small" href="/schedule">{{ icon("info", 14) }} 새 변경은 작업 일정에서 작업을 눌러 제안해요 ›</a>
 </div>
 {% if view.items %}
 <ul class="change-list">

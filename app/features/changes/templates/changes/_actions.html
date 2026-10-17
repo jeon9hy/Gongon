@@ -148,7 +148,7 @@
 <label class="field">기한 시각<input type="time" name="due_time" value="{{ ed.form.due_time }}"></label>
 </div>
 <label class="field">기한이 미정이면 그 사유<input type="text" name="due_note" value="{{ ed.form.due_note }}" maxlength="200" placeholder="예: 펌프 업체 일정 회신 대기"></label>
-<label class="row"><input type="checkbox" name="required" value="1"{% if ed.form.required %} checked{% endif %}> 필수 조치(끝나야 변경 건을 닫을 수 있어요)</label>
+<label class="checkline"><input type="checkbox" name="required" value="1"{% if ed.form.required %} checked{% endif %}> 필수 조치(끝나야 변경 건을 닫을 수 있어요)</label>
 <div class="modal__actions"><button class="btn btn--soft" type="button" data-close>취소</button><button class="btn btn--accent" type="submit">후보 더하기</button></div>
 </form>
 </div>

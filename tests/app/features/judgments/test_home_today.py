@@ -79,7 +79,20 @@ def test_today_board_lists_today_in_start_order_with_phase_at_boundaries(
     ]  # fmt: skip
     # 끝난 작업은 같은 목록 안에 숨겨 두고 '끝난 작업 1건 보기'로 연다
     assert today.count('<li class="is-extra">') == 1 and "끝난 작업 1건 보기" in today
-    assert "오늘 작업 3건" in page
+    # 제목은 끝나지 않은 작업만 센다(끝 = 지금인 작업 제외)
+    assert "오늘 남은 작업 2건" in page
+
+
+def test_today_all_done_says_finished_and_hides_empty_table_head(
+    client: TestClient, session: Session
+) -> None:
+    site_id = make_site(client)
+    put(session, site_id, TODAY, time(13, 0), time(15, 0), "철골 작업")  # 끝 = 지금 → 끝남
+
+    page = client.get("/").text
+
+    assert "오늘 작업 1건을 모두 마쳤어요" in page and "남은 작업" not in page
+    assert "jobs__head--alldone" in board(page, "today")
 
 
 def test_checks_flag_missing_company_place_and_true_overlaps_only(

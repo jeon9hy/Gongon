@@ -12,7 +12,7 @@
 <section class="homebar" aria-labelledby="home-title">
 <div class="homebar__text">
 <p class="homebar__date">{{ view.today_date }}</p>
-<h1 class="homebar__title" id="home-title">{% if today_board.items %}오늘 작업 {{ today_board.items | length }}건, 차근차근 가 볼까요?{% else %}오늘은 쉬어 가는 날{% endif %}</h1>
+<h1 class="homebar__title" id="home-title">{% set left_today = today_board.items | rejectattr("phase", "equalto", "done") | list %}{% if left_today %}오늘 남은 작업 {{ left_today | length }}건, 차근차근 가 볼까요?{% elif today_board.items %}오늘 작업 {{ today_board.items | length }}건을 모두 마쳤어요{% else %}오늘은 쉬어 가는 날{% endif %}</h1>
 </div>
 {% if managed_count %}
 <form method="post" action="/judgments/run-all" class="refresh" data-refresh>
@@ -97,7 +97,7 @@
 {% if today_board.items %}
 
 {# 끝난 작업은 목록에서 뺀다(개발자 요청 2026-10-17) #}
-<div class="jobs__head jobs__head--today" aria-hidden="true"><span>시간</span><span>작업</span><span>업체</span><span>진행률</span><span>상태</span></div>
+<div class="jobs__head jobs__head--today{% if all_done %} jobs__head--alldone{% endif %}" aria-hidden="true"><span>시간</span><span>작업</span><span>업체</span><span>진행률</span><span>상태</span></div>
 {% set done_items = today_board.items | selectattr("phase", "equalto", "done") | list %}
 <ul class="jobs" data-more-list>
 {% for w in today_board.items if w.phase != "done" %}{{ today_row(w) }}{% endfor %}

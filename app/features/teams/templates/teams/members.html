@@ -76,8 +76,8 @@
 <h3 class="roster__label small muted">로그인 참여자</h3>
 <ul class="member-list">
 {% for m in p.members %}
-<li class="member-row">
-<span><strong>{{ m.display_name }}</strong>{% if m.is_me %} (나){% endif %}{% if m.email %} <span class="small muted">{{ m.email }}</span>{% endif %}</span>
+<li class="member-row member-row--account">
+<span class="member-row__who"><strong>{{ m.display_name }}</strong>{% if m.is_me %} (나){% endif %}{% if m.email %} <span class="small muted">{{ m.email }}</span>{% endif %}</span>
 <span class="tag">{{ m.role_label }}</span>
 <span class="small muted">추가 {{ m.granted_text }}</span>
 {% if view.can_manage %}
@@ -166,7 +166,7 @@
 </div>
 <label class="field">사업자번호<input type="text" name="business_no" value="{{ view.participant_form.business_no }}" maxlength="20" placeholder="선택"></label>
 {% if view.participant_same_name %}
-<label class="row"><input type="checkbox" name="confirm_same_name" value="1"> 이름이 같은 다른 업체예요. 따로 등록</label>
+<label class="checkline"><input type="checkbox" name="confirm_same_name" value="1"> 이름이 같은 다른 업체예요. 따로 등록</label>
 {% endif %}
 </fieldset>
 <div class="modal__actions"><button class="btn btn--soft" type="button" data-close>취소</button><button class="btn btn--accent" type="submit">등록</button></div>

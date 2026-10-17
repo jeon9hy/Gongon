@@ -710,7 +710,7 @@ def build_detail(
         site_name=site.name,
         title=case.title,
         work_label="지운 작업" if item is None else item.label,
-        current_plan_text="작업이 지워졌습니다"
+        current_plan_text="작업이 지워졌어요"
         if item is None
         else f"{_plan_text(item.work_date, item.start_local, item.end_local, item.location)}"
         f" · 계획 v{item.plan_version}",

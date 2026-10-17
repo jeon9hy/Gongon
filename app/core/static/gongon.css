@@ -446,6 +446,7 @@ a.tag:hover { filter: brightness(0.96); }
   .sitefoot__lead { font-size: 22px; }
   .sitefoot__cols { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; width: 100%; }
   .sitefoot__col:last-child:not(:first-child) { grid-column: 1 / -1; }
+  .sitefoot__mark { margin-top: 20px; } /* 작은 글씨일 때 위로 당기면 안내 문구와 겹친다 */
   .facts { grid-template-columns: 1fr; gap: 6px; }
   .facts dd { text-align: left; margin-bottom: 8px; }
 }
@@ -2269,3 +2270,48 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 @media (max-width: 760px) { .vtiles--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (prefers-reduced-motion: reduce) { .weekslides__panel.is-enter { animation: none; } }
 .weekslides__panel[hidden] { display: none; }
+
+/* 오늘 작업이 다 끝나 목록이 접혀 있으면 빈 표 머리를 보이지 않는다 */
+.jobs__head--alldone:not(:has(~ .jobs.is-open)) { display: none; }
+/* 머리 알약: 휴대폰에서 줄이 바뀌어도 낱말 중간에서 끊지 않는다 */
+.hero__date { word-break: keep-all; overflow-wrap: anywhere; }
+.hero__date svg { flex-shrink: 0; }
+@media (max-width: 760px) { .hero__date { border-radius: 14px; } }
+/* 조치 후보 카드는 바탕이 회색이라 완료 기준 상자를 흰 바탕으로 구분한다 */
+.acard__criteria { align-self: flex-start; }
+.acard--candidate .acard__criteria { background: var(--card); }
+/* 줄 맨 앞의 아이콘 버튼(빼기)은 글자 왼쪽 선을 카드 글자에 맞춘다 */
+.acard__acts > form:first-child > .iconbtn { margin-left: -10px; }
+/* 체크 칸과 설명은 붙여서 왼쪽에 둔다(양 끝으로 벌어지지 않게) */
+.checkline { display: flex; align-items: center; gap: 8px; padding-left: var(--label-inset); font-size: 14px; color: var(--text); cursor: pointer; }
+.checkline input { width: 18px; height: 18px; margin: 0; flex-shrink: 0; accent-color: var(--accent); }
+/* 휴대폰 대화: 방 목록 줄은 내용 높이만, 나머지는 대화 칸이 차지한다 */
+@media (max-width: 760px) {
+  .chat { grid-template-rows: auto minmax(0, 1fr); }
+  .chat__rooms { align-items: center; }
+}
+/* 달력 점: 데스크톱은 보이는 점보다 넓게 눌리게, 휴대폰은 점 대신 날짜 칸을 누르게(10px 점은 손가락으로 못 누른다) */
+.dot--btn { position: relative; }
+.dot--btn::after { content: ""; position: absolute; inset: -5px; border-radius: 50%; }
+@media (max-width: 760px) {
+  .caldots > .dot--btn { pointer-events: none; }
+}
+/* 로그인 참여자 줄: 이름 길이와 상관없이 역할·추가 시각·버튼 열을 맞춘다 */
+@media (min-width: 761px) {
+  .member-row--account { display: grid; grid-template-columns: minmax(0, 1fr) 72px 170px 92px; }
+  .member-row--account > .tag { justify-self: start; }
+  .member-row--account > form { margin-left: 0; justify-self: end; }
+}
+.member-row__who { min-width: 0; overflow-wrap: anywhere; }
+/* 날짜 고르기 칸의 화살표를 선택 칸(select)과 같은 모양·크기로 */
+.pickfield::after { width: 16px; height: 16px; border: 0; transform: none; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235B6576' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat center / 16px; }
+.pickfield { padding-right: 14px; }
+.field input.timefield::placeholder { font-size: 14px; font-weight: 500; letter-spacing: 0; }
+.change-filter { flex-wrap: wrap; align-items: center; }
+.change-filter__hint { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; color: var(--muted); }
+.change-filter__hint:hover { color: var(--accent); }
+@media (max-width: 760px) { .change-filter__hint { margin-left: 0; flex-basis: 100%; padding-top: 4px; } }
+/* 데스크톱 방 목록은 긴 현장 이름을 두 줄까지 보여 준다 */
+@media (min-width: 761px) {
+  .chat__room span:last-child { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+}
