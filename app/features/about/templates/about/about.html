@@ -1,0 +1,82 @@
+{# 공온 소개(개발자 요청 2026-10-17): 왜 시작했나 · 어떻게 일하나 · 원칙 · 최종 비전. 지어낸 수치·고객 후기는 쓰지 않는다. #}
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}공온 소개{% endblock %}
+{% block body_class %} class="authbody aboutbody"{% endblock %}
+{% block page %}
+<div class="about">
+<header class="about__bar">
+<a class="auth__logo" href="{{ '/' if signed_in else '/welcome' }}"><img src="/static/brand/logo.png" alt="" width="32" height="32">공온</a>
+<nav class="about__nav" aria-label="소개 목차"><a href="#why">왜 시작했나</a><a href="#how">어떻게 일하나</a><a href="#principles">원칙</a><a href="#vision">비전</a></nav>
+{% if signed_in %}<a class="btn btn--accent btn--sm" href="/">앱으로 돌아가기</a>{% else %}<a class="btn btn--accent btn--sm" href="/signup">시작하기</a>{% endif %}
+</header>
+
+<main id="main" tabindex="-1">
+<section class="about__hero">
+<div class="about__orbs" aria-hidden="true"><span></span><span></span><span></span></div>
+<p class="auth__eyebrow" data-reveal>공사 + ON</p>
+<h1 class="about__title" data-reveal>공사가 바뀌는 순간,<br><em>할 일이 끊기지 않게.</em></h1>
+<p class="about__lead" data-reveal>공온은 공사 계획이 바뀔 때 함께 바꿔야 할 일을 관련 업체와 담당자에게 잇고,<br>실제로 처리됐는지 근거와 확인까지 남기는 서비스예요.</p>
+<img class="about__mascot" src="/static/brand/mascot-3d.png" alt="" width="360" height="290" data-reveal>
+<a class="about__scroll" href="#why" aria-label="아래로">{{ icon("chevron-down", 22, 2.2) }}</a>
+</section>
+
+<section class="about__section" id="why" aria-labelledby="why-title">
+<p class="about__kicker" data-reveal>01 · 왜 시작했나</p>
+<h2 class="about__h2" id="why-title" data-reveal>현장의 변경은 매일 일어나는데,<br>그 뒤에 남는 일은 흩어져 있었어요.</h2>
+<div class="about__cards">
+<article class="about__card" data-reveal style="--d: 0"><span class="about__icon">{{ icon("phone", 22) }}</span><h3>전화와 단톡방에 흩어진 연락</h3><p>타설 시간이 하루 밀리면 펌프·레미콘·장비·검측까지 연락이 줄줄이 이어져요. 누가 받았고 누가 못 받았는지 한곳에 남지 않아요.</p></article>
+<article class="about__card" data-reveal style="--d: 1"><span class="about__icon">{{ icon("history", 22) }}</span><h3>‘바꿨다’와 ‘처리됐다’의 차이</h3><p>계획표를 고쳤다고 예약까지 바뀐 건 아니에요. 실제로 처리됐는지 확인하는 데 또 시간이 들어요.</p></article>
+<article class="about__card" data-reveal style="--d: 2"><span class="about__icon">{{ icon("user-plus", 22) }}</span><h3>여러 회사가 함께 쓰는 현장</h3><p>원청과 협력업체, 공급사가 섞여 일하는데 각자 다른 도구를 써요. 같은 변경을 같은 기준으로 보기가 어려워요.</p></article>
+</div>
+</section>
+
+<section class="about__section about__section--tint" id="how" aria-labelledby="how-title">
+<p class="about__kicker" data-reveal>02 · 어떻게 일하나</p>
+<h2 class="about__h2" id="how-title" data-reveal>변경 하나가 끝까지 이어지는 흐름</h2>
+<ol class="about__flow" data-reveal>
+<li style="--d: 0"><span class="about__step">1</span><strong>변경 확정</strong><p>바뀐 날짜·시간·원인을 버전으로 남겨요.</p></li>
+<li style="--d: 1"><span class="about__step">2</span><strong>업체별 후속 조치</strong><p>누가, 언제까지, 무엇을 확인하면 끝나는지 정해요.</p></li>
+<li style="--d: 2"><span class="about__step">3</span><strong>완료 보고</strong><p>실제로 처리한 시각과 내용을 수행한 사람이 남겨요.</p></li>
+<li style="--d: 3"><span class="about__step">4</span><strong>검증</strong><p>보고한 사람과 다른 사람이 확인해야 끝나요.</p></li>
+</ol>
+<p class="about__note" data-reveal>날씨는 변경 원인 중 하나예요. 공온 판정은 규칙으로 계산한 참고 정보이고, 작업 여부는 현장 책임자가 정해요.</p>
+</section>
+
+<section class="about__section" id="principles" aria-labelledby="principles-title">
+<p class="about__kicker" data-reveal>03 · 원칙</p>
+<h2 class="about__h2" id="principles-title" data-reveal>우리가 지키는 세 가지</h2>
+<div class="about__cards">
+<article class="about__card" data-reveal style="--d: 0"><span class="about__icon about__icon--blue">{{ icon("check", 22, 2.4) }}</span><h3>근거를 남겨요</h3><p>누가 제안하고, 누가 확정하고, 누가 처리하고 확인했는지 시각과 함께 지우지 않고 남겨요.</p></article>
+<article class="about__card" data-reveal style="--d: 1"><span class="about__icon about__icon--blue">{{ icon("user-plus", 22) }}</span><h3>결정은 사람이 해요</h3><p>공온은 자동으로 승인하거나 확정하지 않아요. 판단에 필요한 것을 모아 보여줄 뿐이에요.</p></article>
+<article class="about__card" data-reveal style="--d: 2"><span class="about__icon about__icon--blue">{{ icon("info", 22) }}</span><h3>같은 입력엔 같은 결과</h3><p>판정은 공개된 기준과 규칙으로만 계산해요. 모르는 것은 모른다고 보여줘요.</p></article>
+</div>
+</section>
+
+<section class="about__vision" id="vision" aria-labelledby="vision-title">
+<div class="about__orbs about__orbs--dark" aria-hidden="true"><span></span><span></span></div>
+<p class="about__kicker about__kicker--light" data-reveal>04 · 최종 비전</p>
+<h2 class="about__h2 about__h2--light" id="vision-title" data-reveal>모든 현장의 변경이<br>끝까지 연결되는 건설 현장</h2>
+<p class="about__lead about__lead--light" data-reveal>계획이 바뀌어도 해야 할 일이 빠지지 않고, 처리된 것은 처리됐다고 믿을 수 있는 현장.<br>공온은 원청과 협력업체가 같은 화면에서 같은 사실을 보는 협업의 기본기가 되려고 해요.</p>
+<div class="about__cta" data-reveal>
+{% if signed_in %}<a class="btn btn--accent btn--lg" href="/">공온으로 돌아가기</a>{% else %}<a class="btn btn--accent btn--lg" href="/signup">가입하고 시작하기</a><a class="btn btn--soft btn--lg" href="/login">로그인</a>{% endif %}
+</div>
+</section>
+</main>
+<p class="welcome__foot">최종 판단은 현장 책임자가 합니다. · © 공온 Gongon</p>
+</div>
+<script>
+// 스크롤하면 차례로 떠오른다(동작 줄이기 설정이면 바로 보인다)
+(() => {
+  const items = document.querySelectorAll("[data-reveal]");
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches || !("IntersectionObserver" in window)) {
+    items.forEach((el) => el.classList.add("is-in"));
+    return;
+  }
+  const io = new IntersectionObserver((entries) => entries.forEach((e) => {
+    if (e.isIntersecting) { e.target.classList.add("is-in"); io.unobserve(e.target); }
+  }), { threshold: 0.15 });
+  items.forEach((el) => io.observe(el));
+})();
+</script>
+{% endblock %}

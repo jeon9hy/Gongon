@@ -11,6 +11,7 @@ from app.core.config import get_settings
 from app.core.errors import install_error_handlers
 from app.core.security import NoStoreHtmlMiddleware, SameOriginMiddleware
 from app.core.templating import STATIC_DIR
+from app.features.about.router import router as about_router
 from app.features.actions.router import router as actions_router
 from app.features.auth.router import router as auth_router
 from app.features.board.router import router as board_router
@@ -42,6 +43,7 @@ def create_app(auto_refresh: bool = False) -> FastAPI:
     app.add_middleware(NoStoreHtmlMiddleware)
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     app.include_router(auth_router)
+    app.include_router(about_router)
     app.include_router(judgments_router)
     app.include_router(sites_router)
     app.include_router(teams_router)
