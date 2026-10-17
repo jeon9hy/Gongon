@@ -47,7 +47,15 @@ def parse_rule_set(data: Any) -> RuleSet:
 
 def _require_verification(data: dict[str, Any], rule_set: RuleSet) -> None:
     # 원문 대조 완료 표시에는 발췌 파일·조문·대조일과 조건별 인용이 모두 있어야 한다.
-    _text(data, "source_snapshot")
+    # 발췌 파일 하나 또는 여럿(법령 두 개를 함께 근거로 쓰는 기준 등)
+    snapshot = data.get("source_snapshot")
+    snapshots = [snapshot] if isinstance(snapshot, str) else snapshot
+    if (
+        not isinstance(snapshots, list)
+        or not snapshots
+        or not all(isinstance(s, str) and s for s in snapshots)
+    ):
+        raise RuleSetError("source_snapshot이 비어 있거나 파일 목록이 아님")
     articles = data.get("source_articles")
     if (
         not isinstance(articles, list)

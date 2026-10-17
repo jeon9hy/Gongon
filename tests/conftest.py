@@ -194,3 +194,26 @@ def anonymous_client(browser: Browser) -> TestClient:
 def client(browser: Browser) -> TestClient:
     """가입·로그인한 기본 사용자(DEFAULT_USER, 가상건설)의 브라우저. 기존 화면 테스트가 쓴다."""
     return browser(DEFAULT_USER)
+
+
+@pytest.fixture
+def drop_rules(monkeypatch: pytest.MonkeyPatch) -> Callable[..., None]:
+    """기준표가 없는 공종 처리(기준 미확인 → 판정 안 함)를 시험하려고 일부 공종의 기준을 뺀다.
+
+    2026-10-17(D-080)부터 화면의 모든 공종에 기준이 있어 실제로는 생기지 않지만,
+    새 공종을 기준보다 먼저 추가할 때 같은 경로를 탄다.
+    """
+    from types import MappingProxyType
+
+    import app.core.rules as rules
+    import app.features.help.service as help_service
+    import app.features.judgments.service as judgments_service
+
+    full = rules.rule_sets_by_label()
+
+    def drop(*labels: str) -> None:
+        kept = MappingProxyType({k: v for k, v in full.items() if k not in labels})
+        for module in (rules, judgments_service, help_service):
+            monkeypatch.setattr(module, "rule_sets_by_label", lambda: kept)
+
+    return drop

@@ -1,6 +1,6 @@
 {
   "go": {
-    "schema_version": "1.2",
+    "schema_version": "1.3",
     "data_type": "forecast",
     "judgment_id": 1,
     "site_id": 1,
@@ -25,7 +25,8 @@
       "humidity_pct": "%",
       "sensible_temperature_c": "°C",
       "daily_mean_temperature_c": "°C",
-      "max_temperature_next_24h_c": "°C"
+      "max_temperature_next_24h_c": "°C",
+      "min_temperature_next_24h_c": "°C"
     },
     "hours": [
       {
@@ -78,7 +79,7 @@
     "judged_at": "2026-10-04T14:15:00+09:00"
   },
   "stop": {
-    "schema_version": "1.2",
+    "schema_version": "1.3",
     "data_type": "forecast",
     "judgment_id": 2,
     "site_id": 1,
@@ -103,7 +104,8 @@
       "humidity_pct": "%",
       "sensible_temperature_c": "°C",
       "daily_mean_temperature_c": "°C",
-      "max_temperature_next_24h_c": "°C"
+      "max_temperature_next_24h_c": "°C",
+      "min_temperature_next_24h_c": "°C"
     },
     "hours": [
       {
@@ -156,7 +158,7 @@
     "judged_at": "2026-10-04T14:15:00+09:00"
   },
   "missing": {
-    "schema_version": "1.2",
+    "schema_version": "1.3",
     "data_type": "forecast",
     "judgment_id": 3,
     "site_id": 1,
@@ -181,7 +183,8 @@
       "humidity_pct": "%",
       "sensible_temperature_c": "°C",
       "daily_mean_temperature_c": "°C",
-      "max_temperature_next_24h_c": "°C"
+      "max_temperature_next_24h_c": "°C",
+      "min_temperature_next_24h_c": "°C"
     },
     "hours": [
       {
@@ -234,7 +237,7 @@
     "judged_at": "2026-10-04T14:15:00+09:00"
   },
   "not_comparable": {
-    "schema_version": "1.2",
+    "schema_version": "1.3",
     "data_type": "forecast",
     "judgment_id": 4,
     "site_id": 1,
@@ -259,7 +262,8 @@
       "humidity_pct": "%",
       "sensible_temperature_c": "°C",
       "daily_mean_temperature_c": "°C",
-      "max_temperature_next_24h_c": "°C"
+      "max_temperature_next_24h_c": "°C",
+      "min_temperature_next_24h_c": "°C"
     },
     "hours": [
       {
@@ -312,7 +316,7 @@
     "judged_at": "2026-10-04T14:15:00+09:00"
   },
   "collection_failed": {
-    "schema_version": "1.2",
+    "schema_version": "1.3",
     "data_type": "forecast",
     "judgment_id": 5,
     "site_id": 1,
@@ -337,7 +341,8 @@
       "humidity_pct": "%",
       "sensible_temperature_c": "°C",
       "daily_mean_temperature_c": "°C",
-      "max_temperature_next_24h_c": "°C"
+      "max_temperature_next_24h_c": "°C",
+      "min_temperature_next_24h_c": "°C"
     },
     "hours": [],
     "windows": [

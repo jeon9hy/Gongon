@@ -68,6 +68,9 @@ API_HUB = KmaEndpoint(
 class KmaAuth:
     endpoint: KmaEndpoint
     key: str
+    # 첫 경로가 실패하면 쓸 다른 경로. API허브 키는 있어도 단기예보 활용신청이 안 돼
+    # 403이 나는 경우가 있어(2026-10-17 실제 발생) 공공데이터포털 키로 이어 받는다.
+    fallback: "KmaAuth | None" = None
 
 
 class ForecastFetchError(RuntimeError):
@@ -114,6 +117,23 @@ def urllib_get(url: str, params: dict[str, str], timeout_s: float) -> bytes:
 
 def fetch_vilage_forecast(
     auth: KmaAuth, base_at: datetime, nx: int, ny: int, http_get: HttpGet = urllib_get
+) -> FetchedForecast:
+    """첫 경로가 실패하고 다른 경로가 있으면 그쪽으로 받는다. 둘 다 실패하면 두 원인을 남긴다."""
+    try:
+        return _fetch_with(auth, base_at, nx, ny, http_get)
+    except ForecastFetchError as first:
+        if auth.fallback is None or not auth.fallback.key:
+            raise
+        logger.warning("%s 실패, %s로 다시 받음: %s", auth.endpoint.name,
+                       auth.fallback.endpoint.name, first)  # fmt: skip
+        try:
+            return _fetch_with(auth.fallback, base_at, nx, ny, http_get)
+        except ForecastFetchError as second:
+            raise ForecastFetchError(f"{first} / {second}") from second
+
+
+def _fetch_with(
+    auth: KmaAuth, base_at: datetime, nx: int, ny: int, http_get: HttpGet
 ) -> FetchedForecast:
     if not auth.key:
         raise ForecastFetchError(

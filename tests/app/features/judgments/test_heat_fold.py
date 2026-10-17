@@ -4,6 +4,7 @@
 작업이 없는 날은 판정하지 않는다.
 """
 
+from collections.abc import Callable
 from typing import Any
 
 from fastapi.testclient import TestClient
@@ -124,8 +125,9 @@ def test_site_without_work_is_not_judged_and_no_forecast_is_fetched(
 
 
 def test_notice_keeps_check_for_work_without_rules_even_when_heat_is_go(
-    client: TestClient, session: Session
+    client: TestClient, session: Session, drop_rules: Callable[..., None]
 ) -> None:
+    drop_rules("이동식 크레인")
     site_id = site_with_work(client)
     response = client.post(
         "/schedule", data={"site_id": site_id, "work_types": "이동식 크레인",

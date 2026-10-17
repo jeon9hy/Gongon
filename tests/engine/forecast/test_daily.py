@@ -65,3 +65,16 @@ def test_values_are_added_only_to_work_hours() -> None:
                                      DAY.replace(hour=11))  # fmt: skip
     assert MEAN in values_at(result, 10)
     assert MEAN not in values_at(result, 11)
+
+
+def test_low_is_min_of_24_hours_after_work_end() -> None:
+    # 한중 콘크리트: 타설 완료 후 24시간 동안 일최저기온(KCS 14 20 40 1.1(2))
+    low = Element.MIN_TEMPERATURE_NEXT_24H_C
+    temps = hours(DAY, 48)
+    temps[DAY.replace(hour=17)] = -5.0  # 종료 시각 자체는 '이후'가 아니다
+    temps[DAY + timedelta(hours=17 + 24)] = -1.0  # 종료 + 24시간은 포함
+    result = with_daily_temperatures(weather(temps), DAY.replace(hour=9), DAY.replace(hour=17))
+    assert values_at(result, 9)[low].lower == -1.0
+    del temps[DAY + timedelta(hours=30)]
+    missing = with_daily_temperatures(weather(temps), DAY.replace(hour=9), DAY.replace(hour=17))
+    assert low not in values_at(missing, 9)

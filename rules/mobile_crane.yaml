@@ -1,0 +1,39 @@
+# 이동식 크레인 판정 기준(D-080). 장비별 허용풍속(제조사 설명서)은 법령·KCS에 수치가 없어 여기서 쓰지 않는다.
+# 원문(국가법령정보센터 Open API 발췌):
+# - 산업안전보건기준에 관한 규칙 제37조①: 비·눈·바람 등 기상상태 불안정으로 위험해질 우려가 있으면 작업 중지
+# - 기상법 시행령 별표 1(특보의 기준) 강풍주의보: 육상에서 풍속 14m/s 이상(평균풍속 — 예보와 같은 양)
+# 강풍주의보 기준 풍속을 '바람으로 위험해질 우려'의 공식 수준으로 보고 중지 검토로 둔다.
+# 비·눈은 법령에 수치가 없어 확인 필요까지만 낸다. 순간풍속(주의보 20m/s)은 예보에 없어 쓰지 않는다.
+work_type: mobile_crane
+work_type_label: 이동식 크레인
+rule_version: "안전보건규칙 2025-09-01 · 기상법령 2026-09-18"  # 각 시행일
+source: 산업안전보건기준에 관한 규칙 제37조, 기상법 시행령 별표 1
+source_snapshot: [sources/osh_standards_rule_mst273603.json, sources/weather_act_enforcement_mst289709.json]
+source_articles: [제37조, 별표 1]
+source_verified: true
+verified_on: 2026-10-17
+conditions:
+  - id: mobile_crane_wind
+    element: wind_speed_mps
+    operator: ">="
+    threshold: 14.0
+    verdict: 중지 검토
+    forecast_comparable: true
+    action: 강풍주의보 기준 풍속 · 바람으로 위험해질 우려가 있으면 작업 중지(제37조①) · 장비 허용풍속(설명서)도 확인
+    quote: 육상에서 풍속 50.4km/h(14m/s) 이상
+  - id: mobile_crane_rain
+    element: precipitation_mm_per_h
+    operator: ">"
+    threshold: 0.0
+    verdict: 확인 필요
+    forecast_comparable: true
+    action: 비로 위험해질 우려가 있으면 작업 중지(제37조①) · 현장 판단
+    quote: 사업주는 비ㆍ눈ㆍ바람 또는 그 밖의 기상상태의 불안정으로 인하여 근로자가 위험해질 우려가 있는 경우 작업을 중지하여야 한다.
+  - id: mobile_crane_snow
+    element: snowfall_cm_per_h
+    operator: ">"
+    threshold: 0.0
+    verdict: 확인 필요
+    forecast_comparable: true
+    action: 눈으로 위험해질 우려가 있으면 작업 중지(제37조①) · 현장 판단
+    quote: 사업주는 비ㆍ눈ㆍ바람 또는 그 밖의 기상상태의 불안정으로 인하여 근로자가 위험해질 우려가 있는 경우 작업을 중지하여야 한다.

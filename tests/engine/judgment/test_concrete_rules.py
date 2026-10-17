@@ -1,6 +1,8 @@
-"""rules/concrete.yaml의 경계값이 출처 문장(가이드라인·KCS 14 20 41)대로 동작하는지 검사한다."""
+"""rules/concrete.yaml의 경계값이 출처 문장(가이드라인·KCS 14 20 41·40)대로 동작하는지 검사한다.
 
-import json
+인용이 원문과 같은지는 test_rule_sources.py가 검사한다.
+"""
+
 from datetime import datetime
 from pathlib import Path
 
@@ -24,6 +26,7 @@ MILD = {
     Element.PRECIPITATION_MM_PER_H: ForecastValue.exact(0.0, "강수없음"),
     Element.DAILY_MEAN_TEMPERATURE_C: ForecastValue.exact(15.0, "15.0"),
     Element.MAX_TEMPERATURE_NEXT_24H_C: ForecastValue.exact(20.0, "20"),
+    Element.MIN_TEMPERATURE_NEXT_24H_C: ForecastValue.exact(8.0, "8"),
 }
 
 
@@ -61,7 +64,7 @@ def test_rain_thresholds(rain: ForecastValue, expected: Verdict) -> None:
         (25.1, 20.0, Verdict.CHECK),
         (20.0, 30.1, Verdict.CHECK),
         (4.1, 10.0, Verdict.GO),
-        (4.0, 10.0, Verdict.CHECK),  # 한중(원문 대조 필요): 4℃ 이하
+        (4.0, 10.0, Verdict.CHECK),  # 한중: 일평균기온 4 ℃ 이하(KCS 14 20 40 1.1(2))
     ],
 )
 def test_temperature_thresholds(mean: float, peak: float, expected: Verdict) -> None:
@@ -77,16 +80,12 @@ def test_missing_daily_mean_is_unavailable_not_go() -> None:
     assert judge(w, RULES, DAY.replace(hour=9), DAY.replace(hour=10)).verdict == Verdict.UNAVAILABLE
 
 
-def test_concrete_rules_are_not_marked_verified_until_cold_rule_is_checked() -> None:
-    assert RULES.source_verified is False
+@pytest.mark.parametrize(("low", "expected"), [(0.1, Verdict.GO), (0.0, Verdict.CHECK)])
+def test_cold_after_placing_uses_next_24h_minimum(low: float, expected: Verdict) -> None:
+    # 한중: 타설 완료 후 24시간 동안 일최저기온 0 ℃ '이하'(KCS 14 20 40 1.1(2))
+    assert verdict(min_temperature_next_24h_c=exact(low)) == expected
 
 
-def test_quotes_match_saved_official_excerpts() -> None:
-    source = json.loads((RULES_DIR / "sources" / "kcs_concrete.json").read_text(encoding="utf-8"))
-    excerpts = " ".join(
-        text for doc in source["documents"] for text in doc.get("excerpts", {}).values()
-    )
-    quoted = [c for c in RULES.conditions if c.quote]
-    assert quoted, "인용이 있는 조건이 없음"
-    for c in quoted:
-        assert c.quote is not None and c.quote in excerpts, c.id
+def test_concrete_rules_are_verified_against_all_three_sources() -> None:
+    assert RULES.source_verified is True
+    assert "KCS 14 20 40" in RULES.source and "KCS 14 20 41" in RULES.source

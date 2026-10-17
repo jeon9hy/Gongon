@@ -32,6 +32,7 @@ class Element(StrEnum):
     # 하루 단위 값(engine/forecast/daily.py). 작업 시간의 모든 시각에 같은 값으로 넣는다.
     DAILY_MEAN_TEMPERATURE_C = "daily_mean_temperature_c"  # KCS 정의: 03~24시 3시간 간격 8회 평균
     MAX_TEMPERATURE_NEXT_24H_C = "max_temperature_next_24h_c"  # 작업 종료 후 24시간 최고
+    MIN_TEMPERATURE_NEXT_24H_C = "min_temperature_next_24h_c"  # 작업 종료 후 24시간 최저(한중)
 
 
 ELEMENT_LABEL = {
@@ -43,6 +44,7 @@ ELEMENT_LABEL = {
     Element.SENSIBLE_TEMPERATURE_C: "체감온도",
     Element.DAILY_MEAN_TEMPERATURE_C: "일평균기온",
     Element.MAX_TEMPERATURE_NEXT_24H_C: "종료 후 24시간 최고기온",
+    Element.MIN_TEMPERATURE_NEXT_24H_C: "종료 후 24시간 최저기온",
 }
 ELEMENT_UNIT = {
     Element.WIND_SPEED_MPS: "m/s",
@@ -53,6 +55,7 @@ ELEMENT_UNIT = {
     Element.SENSIBLE_TEMPERATURE_C: "°C",
     Element.DAILY_MEAN_TEMPERATURE_C: "°C",
     Element.MAX_TEMPERATURE_NEXT_24H_C: "°C",
+    Element.MIN_TEMPERATURE_NEXT_24H_C: "°C",
 }
 
 

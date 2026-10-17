@@ -119,6 +119,7 @@ _ICON = {
     Element.SENSIBLE_TEMPERATURE_C: "thermometer",
     Element.DAILY_MEAN_TEMPERATURE_C: "thermometer",
     Element.MAX_TEMPERATURE_NEXT_24H_C: "thermometer",
+    Element.MIN_TEMPERATURE_NEXT_24H_C: "thermometer",
 }
 
 
@@ -1608,7 +1609,7 @@ def serialize_judgment(judgment: Judgment) -> dict[str, Any]:
         return value.astimezone(KST).isoformat()
 
     return {
-        "schema_version": "1.2",
+        "schema_version": "1.3",
         "data_type": "forecast",
         "judgment_id": judgment.id,
         "site_id": judgment.site_id,

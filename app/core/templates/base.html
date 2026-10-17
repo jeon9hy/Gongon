@@ -152,7 +152,7 @@ document.querySelectorAll("dialog.modal[data-open]").forEach((d) => { if (!d.ope
 // 필수 입력: 비워 두고 보내면 칸 아래에 빨간 안내를 띄운다(브라우저 기본 말풍선 대신).
 // 문구는 라벨에서 만든다: 받침이 있으면 '을', 없으면 '를'. 고르는 칸은 '골라 주세요'.
 const fieldName = (input) => {
-  const label = input.closest("label");
+  const label = input.closest("label") || input.labels?.[0];
   if (!label) return input.getAttribute("placeholder") || "이 칸";
   const own = [...label.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join(" ").trim();
   const head = label.querySelector(":scope > span:not(.visually-hidden)");

@@ -4,6 +4,8 @@
   8개 값을 평균한다. 24시는 다음 날 00시 예보다. 관측 정의를 예보 기온(TMP)에 적용한 추정값이다.
 - 작업 종료 후 24시간 최고기온: KCS 14 20 41 "타설 완료 후 24시간 이내에 일 최고기온" 비교용.
   작업 종료 시각을 타설 완료로 보고 (종료, 종료+24시간] 정시 기온의 최댓값을 쓴다.
+- 작업 종료 후 24시간 최저기온: KCS 14 20 40 "타설 완료 후 24시간 동안 일최저기온" 비교용.
+  같은 24시간 정시 기온의 최솟값이다.
 - 필요한 시각이 하나라도 없으면 값을 만들지 않는다(판정 불가). 누락을 다른 값으로 채우지 않는다.
 - 값은 작업 시간에 걸친 정시마다 같은 값으로 넣어, 시간별 판정 엔진이 그대로 비교하게 한다.
 """
@@ -32,6 +34,9 @@ def with_daily_temperatures(
     peak = max_next_24h_c(temperature, work_end_at)
     if peak is not None:
         extra[Element.MAX_TEMPERATURE_NEXT_24H_C] = peak
+    low = min_next_24h_c(temperature, work_end_at)
+    if low is not None:
+        extra[Element.MIN_TEMPERATURE_NEXT_24H_C] = low
     if not extra:
         return weather
 
@@ -62,9 +67,28 @@ def daily_mean_c(
 def max_next_24h_c(
     temperature: dict[datetime, ForecastValue], work_end_at: datetime
 ) -> ForecastValue | None:
+    values = _next_24h(temperature, work_end_at)
+    if values is None:
+        return None
+    peak = max(values)
+    return ForecastValue.exact(peak, f"{peak:g}(종료 후 24시간 최고)")
+
+
+def min_next_24h_c(
+    temperature: dict[datetime, ForecastValue], work_end_at: datetime
+) -> ForecastValue | None:
+    values = _next_24h(temperature, work_end_at)
+    if values is None:
+        return None
+    low = min(values)
+    return ForecastValue.exact(low, f"{low:g}(종료 후 24시간 최저)")
+
+
+def _next_24h(
+    temperature: dict[datetime, ForecastValue], work_end_at: datetime
+) -> list[float] | None:
     first = work_end_at.replace(minute=0, second=0, microsecond=0) + _HOUR
     values = [temperature.get(first + timedelta(hours=i)) for i in range(24)]
     if any(v is None for v in values):
         return None
-    peak = max(v.lower for v in values if v is not None)
-    return ForecastValue.exact(peak, f"{peak:g}(종료 후 24시간 최고)")
+    return [v.lower for v in values if v is not None]

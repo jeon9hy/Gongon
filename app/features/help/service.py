@@ -12,20 +12,19 @@ from typing import Any
 
 from app.core.config import REPO_ROOT, get_settings
 from app.core.rules import COMMON_LABELS, WORK_TYPE_LABELS, basis_status, rule_sets_by_label
+from engine.judgment.types import ELEMENT_LABEL
 
 SOURCES_DIR = REPO_ROOT / "rules" / "sources"
 
-# 기준표가 아직 없는 공종에 대해 받아 둔 KCS 원문(후보). 기준표를 만들면 이 연결은 필요 없어진다.
-CANDIDATE_CODES = {
-    "콘크리트 타설": ("KCS 14 20 40",),
-    "도장·방수": ("KCS 41 47 00", "KCS 41 40 01", "KCS 41 40 06"),
-    "아스팔트 포장": ("KCS 44 50 10",),
-}
-# 기준을 구해도 예보로 판정하기 어려운 공종과 그 이유(D-032와 같은 문제)
-FORECAST_LIMITS = {
-    "이동식 크레인": "장비 풍속 제한은 보통 순간풍속인데 단기예보에는 평균풍속만 있어요. "
-    "현장 풍속 입력이 있어야 판정이 의미 있어요.",
-    "고소작업대": "이동식 크레인과 같아요(순간풍속).",
+# 예보(단기예보)로는 알 수 없어 판정하지 않는 것(D-080). 현장에서 확인한다.
+NOT_JUDGED = {
+    "철골 작업": "-",
+    "콘크리트 타설": "타설·양생 중 콘크리트 온도, 초기동해 위험(현장 측정)",
+    "이동식 크레인": "순간풍속·장비 허용풍속(설명서) — 예보는 평균풍속만 있음",
+    "고소작업대": "순간풍속·장비 허용풍속(설명서) — 예보는 평균풍속만 있음",
+    "도장·방수": "안개, 바탕 온도·이슬점, 바탕 동결·건조 상태",
+    "아스팔트 포장": "안개, 포설면 동결·습윤 상태, 코우트 공정 10 ℃ 조건",
+    "폭염(공통)": "현장 체감온도 측정·기록(제562조)",
 }
 
 
@@ -44,6 +43,7 @@ class BasisRow:
     label: str
     status: str
     tone: str  # go | check | unknown
+    elements: str
     source: str
     method: str
     note: str
@@ -74,7 +74,8 @@ class SourcesView:
 def _feeds() -> tuple[DataFeed, ...]:
     settings = get_settings()
     kma = bool(settings.kma_apihub_key or settings.kma_service_key)
-    kma_via = "기상청 API허브" if settings.kma_apihub_key else "공공데이터포털"
+    # API허브 키가 있으면 먼저 쓰고, 실패하면 공공데이터포털로 받는다(engine/forecast/kma.py)
+    kma_via = "API허브 → 실패 시 공공데이터포털" if settings.kma_apihub_key else "공공데이터포털"
     return (
         DataFeed("단기예보(시간별, 내일~3일)", f"기상청 · {kma_via}", "API",
                  "공온 판정·공온지수", "키 있음" if kma else "키 없음", kma),
@@ -92,17 +93,18 @@ def _feeds() -> tuple[DataFeed, ...]:
 
 
 def _not_yet() -> tuple[DataFeed, ...]:
-    settings = get_settings()
+    # 활용신청 상태는 2026-10-17 실제 호출로 확인한 값이다(키가 바뀌면 다시 확인).
     return (
         DataFeed("기상특보(강풍·호우·폭염·대설)", "기상청 · 공공데이터포털", "API",
-                 "판정 근거에 특보 표시", "미연결", False),
-        DataFeed("초단기예보·초단기실황", "기상청 · 공공데이터포털", "API",
-                 "오늘 6시간 안 날씨", "미연결", False),
-        DataFeed("지상관측(ASOS·AWS)", "기상청 API허브", "API",
-                 "예보와 실제 관측 비교(C08)",
-                 "미연결" + ("" if settings.kma_apihub_key else " · 키 없음"), False),
+                 "판정 근거에 발효 중 특보 표시", "승인됨 · 코드 미연결", False),
+        DataFeed("초단기실황·초단기예보", "기상청 · 공공데이터포털", "API",
+                 "오늘 6시간 안 실제 날씨", "승인됨 · 코드 미연결", False),
         DataFeed("공휴일(특일 정보)", "한국천문연구원 · 공공데이터포털", "API",
-                 "달력·작업일", "미연결", False),
+                 "달력·작업일", "승인됨 · 코드 미연결", False),
+        DataFeed("AWS 매분자료(순간풍속 포함)", "기상청 API허브", "API",
+                 "실제 관측 바람·비, 예보 비교(C08)", "승인됨 · 코드 미연결", False),
+        DataFeed("단기예보·ASOS 시간자료·특보", "기상청 API허브", "API",
+                 "공공데이터포털과 같은 자료", "활용신청 안 됨(403)", False),
     )  # fmt: skip
 
 
@@ -140,33 +142,31 @@ def _source_file(path: Path) -> SourceFile:
     return SourceFile(path.name, "웹 문서 발췌", data.get("retrieved_at", ""), (doc,))
 
 
-def _method_of(source: str) -> str:
-    if "규칙" in source:
-        return "법령 API 발췌"
-    return "공식 PDF 발췌" if "KCS" in source else "-"
+def _methods_of(source: str) -> str:
+    methods = []
+    if "규칙" in source or "시행령" in source:
+        methods.append("법령 API")
+    if "KCS 14 20 40" in source or any(c in source for c in ("KCS 41", "KCS 44")):
+        methods.append("KCSC API")
+    if "가이드라인" in source or "KCS 14 20 41" in source:
+        methods.append("공식 PDF")
+    return " · ".join(methods) or "-"
 
 
 def _bases() -> tuple[BasisRow, ...]:
     rule_sets = rule_sets_by_label()
     rows = []
     for label in (*WORK_TYPE_LABELS, *COMMON_LABELS):
-        status = basis_status(label)
         rule_set = rule_sets.get(label)
-        candidates = CANDIDATE_CODES.get(label, ())
-        note = FORECAST_LIMITS.get(label, "")
-        if candidates:
-            prefix = (
-                "받아 둔 원문(기준표 반영 전): " if rule_set is None else "추가로 받아 둔 원문: "
-            )
-            note = prefix + ", ".join(candidates)
+        note = NOT_JUDGED.get(label, "")
         if rule_set is None:
-            rows.append(BasisRow(label, "기준 미확보", "unknown", "-",
-                                 "KCSC API로 원문 받음" if candidates else "-", note))  # fmt: skip
+            rows.append(BasisRow(label, "기준 미확보", "unknown", "-", "-", "-", note))
             continue
         tone = "go" if rule_set.source_verified else "check"
-        method = _method_of(rule_set.source)
-        rows.append(BasisRow(label, status.replace("판정 · ", ""), tone, rule_set.source,
-                             method, note))  # fmt: skip
+        labels = dict.fromkeys(ELEMENT_LABEL[c.element] for c in rule_set.conditions)
+        status = basis_status(label).replace("판정 · ", "")
+        rows.append(BasisRow(label, status, tone, " · ".join(labels), rule_set.source,
+                             _methods_of(rule_set.source), note))  # fmt: skip
     return tuple(rows)
 
 

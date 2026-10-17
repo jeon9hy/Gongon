@@ -27,7 +27,7 @@ from engine.kst import KST
 API_URL = "https://kcsc.re.kr/OpenApi/CodeViewer"
 # 날씨로 비교할 수 있는 조건을 찾는 말. 넓게 잡고, 기준표로 옮길 때 사람이 다시 고른다.
 # '비가'는 '비가황 고무'를 빼려고 뒤 글자를 본다.
-WEATHER = re.compile(r"℃|기온|강우|강설|우천|비가(?!황)|습도|풍속|바람|동결|결빙|눈이")
+WEATHER = re.compile(r"℃|기상|기온|강우|강설|우천|비가(?!황)|습도|풍속|바람|동결|결빙|눈이")
 
 
 def plain(contents: str) -> str:

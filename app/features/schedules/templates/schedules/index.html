@@ -276,12 +276,13 @@
 
 <div class="inline">
 <label class="field">작업 위치<input type="text" name="location" maxlength="60" placeholder="선택 · 예: A구역 3층" value="{{ view.form.location }}"></label>
-<label class="field"><span class="fieldhead">실행 업체 <button type="button" class="linkbtn" data-open-dialog="quick-participant">{{ icon("building", 14) }} 업체 등록</button></span>
-<select name="performing_participant_id" required>
+{# 라벨 안에 버튼을 넣으면 라벨 어디를 눌러도 버튼이 눌린다. 라벨은 글자에만 건다. #}
+<div class="field"><span class="fieldhead"><label for="add-performer">실행 업체</label> <button type="button" class="linkbtn" data-open-dialog="quick-participant">{{ icon("building", 14) }} 업체 등록</button></span>
+<select id="add-performer" name="performing_participant_id" required>
 <option value="">업체 고르기</option>
 {% set ns = namespace(g="") %}{% for p in view.participants %}{% if p.group_label != ns.g %}{% if ns.g %}</optgroup>{% endif %}<optgroup label="{{ p.group_label }}">{% set ns.g = p.group_label %}{% endif %}<option value="{{ p.participant_id }}"{% if p.selected %} selected{% endif %}>{{ p.name }}</option>{% endfor %}{% if ns.g %}</optgroup>{% endif %}
 </select>
-</label>
+</div>
 </div>
 <label class="field">메모<input type="text" name="memo" maxlength="500" value="{{ view.form.memo }}" placeholder="선택"></label>
 <div class="modal__actions addform__foot">

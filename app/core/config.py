@@ -21,9 +21,10 @@ class Settings:
     session_cookie_secure: bool = False  # HTTPS 배포에서 SESSION_COOKIE_SECURE=1 (D-057)
 
     def kma_auth(self) -> KmaAuth:
+        portal = KmaAuth(DATA_GO_KR, self.kma_service_key)
         if self.kma_apihub_key:
-            return KmaAuth(API_HUB, self.kma_apihub_key)
-        return KmaAuth(DATA_GO_KR, self.kma_service_key)
+            return KmaAuth(API_HUB, self.kma_apihub_key, fallback=portal)
+        return portal
 
 
 def read_env_file(path: Path) -> dict[str, str]:

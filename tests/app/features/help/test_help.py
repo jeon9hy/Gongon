@@ -56,10 +56,10 @@ def test_sources_page_shows_each_work_type_basis_and_fetched_kcs(client: TestCli
         for label in ("철골 작업", "콘크리트 타설", "도장·방수", "아스팔트 포장", "이동식 크레인")
     }
 
-    assert "원문 확인됨" in rows["철골 작업"] and "법령 API" in rows["철골 작업"]
-    assert "원문 대조 필요" in rows["콘크리트 타설"]
-    assert "기준 미확보" in rows["도장·방수"] and "KCS 41 47 00" in rows["도장·방수"]
+    assert all("원문 확인됨" in row for row in rows.values())  # D-080: 모든 공종 원문 대조
+    assert "법령 API" in rows["철골 작업"] and "KCSC API" in rows["도장·방수"]
+    assert "습도" in rows["도장·방수"] and "KCS 41 47 00" in rows["도장·방수"]
     assert "KCS 44 50 10" in rows["아스팔트 포장"]
-    assert "순간풍속" in rows["이동식 크레인"]
+    assert "순간풍속" in rows["이동식 크레인"] and "기상법 시행령" in rows["이동식 크레인"]
     assert "kcs_weather.json" in page and "국가건설기준센터 OpenAPI" in page
     assert 'href="/sources"' in client.get("/guide").text  # 바닥글 자료실 링크

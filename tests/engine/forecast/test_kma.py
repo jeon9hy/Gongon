@@ -211,6 +211,41 @@ def test_http_error_keeps_kma_reason_from_body() -> None:
         fetch_vilage_forecast(KmaAuth(API_HUB, "hub-key"), BASE_AT, 60, 127, forbidden)
 
 
+HUB_403 = (
+    '{ "result" : { "status" : 403, "message" : '
+    '"활용신청이 필요한 API 입니다. 활용신청 후 다시 시도해 주십시오." } }'
+).encode()  # 2026-10-17 API허브가 실제로 돌려준 본문(단기예보 활용신청 전)
+
+
+def test_api_hub_403_falls_back_to_data_go_kr() -> None:
+    seen: list[str] = []
+
+    def fake_get(url: str, params: dict[str, str], timeout_s: float) -> bytes:
+        seen.append(url)
+        if url.startswith("https://apihub.kma.go.kr/"):
+            raise urllib.error.HTTPError(url, 403, "Forbidden", Message(), io.BytesIO(HUB_403))
+        assert params["serviceKey"] == "portal-key"
+        return page([item("WSD", "1")], total=1)
+
+    auth = KmaAuth(API_HUB, "hub-key", fallback=KmaAuth(DATA_GO_KR, "portal-key"))
+    fetched = fetch_vilage_forecast(auth, BASE_AT, 60, 127, fake_get)
+
+    assert len(fetched.items) == 1
+    assert seen[0].startswith("https://apihub.kma.go.kr/")
+    assert seen[1].startswith("https://apis.data.go.kr/")
+
+
+def test_both_routes_failing_keeps_both_reasons() -> None:
+    def fake_get(url: str, params: dict[str, str], timeout_s: float) -> bytes:
+        if url.startswith("https://apihub.kma.go.kr/"):
+            raise urllib.error.HTTPError(url, 403, "Forbidden", Message(), io.BytesIO(HUB_403))
+        raise urllib.error.URLError("timed out")
+
+    auth = KmaAuth(API_HUB, "hub-key", fallback=KmaAuth(DATA_GO_KR, "portal-key"))
+    with pytest.raises(ForecastFetchError, match=r"API허브 HTTP 403.* / 연결 실패"):
+        fetch_vilage_forecast(auth, BASE_AT, 60, 127, fake_get)
+
+
 def test_real_response_values_are_all_understood() -> None:
     # 2026-10-04 17시 발표, 격자 (60, 127) 실제 응답에서 값 형식이 서로 다른 항목만 골라 저장했다.
     path = Path(__file__).parent / "data" / "kma_vilage_fcst_20261004_1700_60_127.json"

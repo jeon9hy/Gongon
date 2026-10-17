@@ -1,6 +1,7 @@
 """현장 등록 → 예보 수집 → 판정 저장 → 화면 조회 흐름. 기상청은 가짜(FakeKma)다."""
 
 import urllib.error
+from collections.abc import Callable
 from dataclasses import replace
 from typing import Any
 
@@ -73,8 +74,9 @@ def test_rain_at_threshold_in_afternoon_gives_stop_review_window(
 
 
 def test_work_type_without_rules_is_shown_as_check_and_never_judged(
-    client: TestClient, session: Session
+    client: TestClient, session: Session, drop_rules: Callable[..., None]
 ) -> None:
+    drop_rules("고소작업대")
     site_id = add_site(client)
     page = client.get(run(client, site_id)).text
 
@@ -85,8 +87,9 @@ def test_work_type_without_rules_is_shown_as_check_and_never_judged(
 
 
 def test_site_with_only_unconfirmed_work_types_gets_only_common_heat_judgment(
-    client: TestClient, session: Session, fake_kma: FakeKma
+    client: TestClient, session: Session, fake_kma: FakeKma, drop_rules: Callable[..., None]
 ) -> None:
+    drop_rules("고소작업대")
     site_id = add_site(client, work_types=["고소작업대"])
 
     location = run(client, site_id)
@@ -143,8 +146,8 @@ def test_same_issue_and_grid_is_fetched_once_and_not_judged_twice(
 
     assert len(fake_kma.calls) == 1
     assert count(session, ForecastRun) == 1
-    # 현장마다 철골 1건 + 작업 2건의 폭염 2건. 다시 실행해도 늘지 않음
-    assert count(session, Judgment) == 6
+    # 현장마다 철골·고소작업대 2건 + 작업 2건의 폭염 2건. 다시 실행해도 늘지 않음
+    assert count(session, Judgment) == 8
 
 
 def test_missing_key_records_unavailable_with_reason_and_retries_later(
@@ -297,7 +300,7 @@ def test_run_all_judges_every_site_and_fetches_shared_grid_once(
     response = client.post("/judgments/run-all", follow_redirects=False)
 
     assert response.headers["location"] == "/?ran=all_done"
-    assert count(session, Judgment) == 6
+    assert count(session, Judgment) == 8
     assert len(fake_kma.calls) == 1
     assert "전체 현장을 판정했습니다" in client.get(response.headers["location"]).text
 
@@ -366,7 +369,7 @@ def test_last_day_of_work_period_is_still_judged(client: TestClient, session: Se
     site_id = add_site(client, work_start_date="2026-09-01", work_end_date="2026-10-05")
 
     assert "ran=done" in run(client, site_id)
-    assert count(session, Judgment) == 3
+    assert count(session, Judgment) == 4  # 철골·고소작업대 + 작업마다 폭염
 
 
 def test_run_all_skips_sites_outside_period_and_home_counts_them(
@@ -379,7 +382,7 @@ def test_run_all_skips_sites_outside_period_and_home_counts_them(
     home = client.get(location).text
 
     assert location == "/?ran=all_done"
-    assert count(session, Judgment) == 3
+    assert count(session, Judgment) == 4
     assert "작업 기간이 아닙니다 · 2026-11-01~2026-11-30" in client.get("/dashboard").text
     assert "작업 없음" in home
 

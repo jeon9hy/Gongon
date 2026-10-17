@@ -34,11 +34,14 @@ package = false
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = ["--strict-markers", "--import-mode=importlib"]
+# 도구 캐시는 .cache/ 한 곳에 모은다(저장소 최상위를 깔끔하게)
+cache_dir = ".cache/pytest"
 
 [tool.ruff]
 target-version = "py312"
 line-length = 100
 extend-exclude = ["migrations"]
+cache-dir = ".cache/ruff"
 
 [tool.ruff.lint]
 # DTZ: 시간대 없는 datetime 사용을 막는다(시각 계약 원칙).
@@ -53,6 +56,7 @@ ignore = ["RUF001"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
+cache_dir = ".cache/mypy"
 # 새 최상위 패키지(engine/ 등)가 생겨도 검사 대상에서 빠지지 않도록 루트 전체를 본다.
 files = ["."]
 # tests/에 __init__.py가 없어도 tests.fakes처럼 저장소 루트 기준 모듈 이름을 쓴다.

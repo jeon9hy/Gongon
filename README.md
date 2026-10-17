@@ -25,13 +25,18 @@ Judgments are deterministic: the same input and rule version always give the sam
 
 ## Work types and sources
 
+Every criterion is checked word for word against the official text (`tests/engine/judgment/test_rule_sources.py`).
+
 | Work type | Rule file | Source |
 | --- | --- | --- |
 | Steel erection | `rules/steel.yaml` | Occupational Safety and Health Standards Rules, Art. 383 |
-| Concrete placing | `rules/concrete.yaml` | KCS 14 20 41 (rain, hot weather) |
-| Heat (all sites) | `rules/heat.yaml` | KMA heat index |
+| Concrete placing | `rules/concrete.yaml` | KCS 14 20 41 (hot weather), KCS 14 20 40 (cold weather), MOLIT rain guideline |
+| Mobile crane, aerial work platform | `rules/mobile_crane.yaml`, `rules/aerial_platform.yaml` | OSH Standards Rules Art. 37(1), Enforcement Decree of the Weather Act, Annex 1 (strong-wind advisory) |
+| Painting, waterproofing | `rules/paint_waterproof.yaml` | KCS 41 47 00 §3.2.17, KCS 41 40 01 §3.5 |
+| Asphalt paving | `rules/asphalt_paving.yaml` | KCS 44 50 10 §3.4.7 |
+| Heat (all sites) | `rules/heat.yaml` | OSH Standards Rules, Art. 559–560 |
 
-Other work types can be selected but show 확인 필요 until their criteria are confirmed. See `docs/references.md` for the exact sources and verification status.
+Things a forecast cannot tell (fog, gusts, surface condition) are not judged; the app lists them for an on-site check.
 
 ## Tech stack
 
@@ -77,19 +82,22 @@ Tests run without network access or external accounts. External APIs are replace
 ## Project layout
 
 ```
+app/               Web app (FastAPI). One folder per feature under app/features/
+  core/            Config, DB session, shared templates, styles, static files
 engine/            Pure logic, no DB/HTTP/web
   geo/             Lat/lon → KMA grid
   forecast/        KMA response parsing (short-range, mid-range)
   judgment/        Rule engine, Gongon Index
-app/
-  core/            Config, DB session, shared templates and styles
-  features/        One folder per feature: router, service, repository, models, templates
-    sites/  schedules/  forecasts/  judgments/
-rules/             Criteria per work type (YAML, versioned)
-migrations/        Alembic revisions
+rules/             Criteria per work type (YAML)
+  sources/         Excerpts of the official texts each criterion quotes
+migrations/        Alembic revisions (DB changes only go here)
+scripts/           Start, check, demo data, fetch official texts
+tests/             Mirrors app/ and engine/
 docs/              Plan, decisions, architecture, setup (Korean)
-tests/
+.github/           CI
 ```
+
+Not in Git (local only): `.env` (keys), `.venv/` (packages), `.cache/` (tool caches), `__pycache__/`.
 
 Dependencies only point one way: `app → engine`. Features call each other only through `service` and `schemas`. `tests/test_import_boundaries.py` enforces this.
 

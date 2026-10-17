@@ -23,9 +23,9 @@
 <section class="panel srcs">
 <h2 class="h2">공종별 판정 기준</h2>
 <div class="table-wrap table-wrap--plain"><table>
-<thead><tr><th>공종</th><th>상태</th><th>기준 출처</th><th>원문 받은 방법</th><th>메모</th></tr></thead>
+<thead><tr><th>공종</th><th>상태</th><th>판정 요소</th><th>기준 출처</th><th>원문 받은 방법</th><th>예보로 판정하지 못하는 것</th></tr></thead>
 <tbody>
-{% for b in view.bases %}<tr><td><b>{{ b.label }}</b></td><td><span class="tag tag--{{ b.tone }}">{{ b.status }}</span></td><td>{{ b.source }}</td><td>{{ b.method }}</td><td class="small muted">{{ b.note }}</td></tr>{% endfor %}
+{% for b in view.bases %}<tr><td><b>{{ b.label }}</b></td><td><span class="tag tag--{{ b.tone }}">{{ b.status }}</span></td><td>{{ b.elements }}</td><td>{{ b.source }}</td><td>{{ b.method }}</td><td class="small muted">{{ b.note }}</td></tr>{% endfor %}
 </tbody>
 </table></div>
 </section>
@@ -42,7 +42,7 @@
 </section>
 
 <section class="panel srcs">
-<h2 class="h2">아직 연결하지 않은 자료</h2>
+<h2 class="h2">아직 앱에 연결하지 않은 자료</h2>
 <div class="table-wrap table-wrap--plain"><table>
 <thead><tr><th>자료</th><th>제공처</th><th>방식</th><th>쓸 곳</th><th>상태</th></tr></thead>
 <tbody>
