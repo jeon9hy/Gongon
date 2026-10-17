@@ -1,5 +1,7 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal
+
+from app.features.actions.schemas import RevisionActions
 
 # 변경 원인(product.md §1). 여러 원인이면 복수로 고른다. 기상은 그중 하나다.
 REASON_LABELS: dict[str, str] = {
@@ -112,6 +114,8 @@ class RevisionView:
     can_submit: bool
     can_confirm: bool
     can_withdraw: bool
+    no_action_reason: str | None = None  # 필수 조치 없이 확정한 이유(C06)
+    actions: RevisionActions | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -128,3 +132,6 @@ class ChangeDetailView:
     confirm_key: str  # 확정 버튼의 재전송 식별값(화면을 열 때 새로 만든다)
     errors: tuple[str, ...] = ()
     message: str | None = None
+    closed_text: str | None = None  # "10/20 17:00 종료 · 테스트 조정자"
+    can_close: bool = False  # 조정자이고 종료 조건을 채움
+    close_blockers: tuple[str, ...] = field(default_factory=tuple)  # 종료를 막는 것(조정자에게만)

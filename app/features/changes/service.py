@@ -23,7 +23,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.features.actions import service as actions_service
-from app.features.actions.schemas import ActionForm, CandidateForm
+from app.features.actions.schemas import ActionForm, CandidateForm, RevisionActions
 from app.features.auth import service as auth_service
 from app.features.auth.schemas import CurrentUser, UserInfo
 from app.features.changes.models import ChangeCase, ChangeRevision
@@ -567,8 +567,12 @@ def build_detail(
     session: Session,
     user: CurrentUser,
     case_id: int,
+    now: datetime,
     errors: tuple[str, ...] = (),
     message: str | None = None,
+    candidate_form: CandidateForm | None = None,
+    candidate_errors: tuple[str, ...] = (),
+    candidate_revision_id: int | None = None,
 ) -> ChangeDetailView:
     case = session.get(ChangeCase, case_id)
     if case is None:
@@ -584,11 +588,46 @@ def build_detail(
             .order_by(ChangeRevision.number.desc())
         )
     )
-    people = auth_service.describe_users(session, _people(revisions))
+    ids = _people(revisions) | ({case.closed_by_user_id} if case.closed_by_user_id else set())
+    people = auth_service.describe_users(session, ids)
     item = schedules_service.get_item(session, case.site_id, case.work_item_id)
     current = next((r for r in revisions if r.status == "confirmed"), None)
     has_open = any(r.status in OPEN_STATUSES for r in revisions)
-    can_propose = role in PROPOSE_ROLES and item is not None
+    closed = case.closed_at is not None
+    can_propose = role in PROPOSE_ROLES and item is not None and not closed
+    manage = role in MANAGE_ROLES
+    editable = {
+        r.id: not closed
+        and r.status in OPEN_STATUSES
+        and role in PROPOSE_ROLES
+        and (manage or r.proposed_by_user_id == user.user_id)
+        for r in revisions
+    }
+    actions = actions_service.revision_actions(
+        session,
+        user,
+        case.site_id,
+        [r.id for r in revisions],
+        editable,
+        None if item is None else item.performing_participant_id,
+        now,
+        candidate_form,
+        candidate_errors,
+        candidate_revision_id,
+    )
+    blockers: list[str] = []
+    if manage and not closed:
+        if current is None:
+            blockers.append("확정한 버전이 없어요.")
+        if has_open:
+            blockers.append("진행 중인 제안이 있어요.")
+        if current is not None:
+            summary = actions[current.id]
+            if summary.remaining:
+                blockers.append(f"필수 조치 {summary.remaining}건이 검증 전이에요.")
+            if summary.blocked:
+                blockers.append(f"막힌 조치 {summary.blocked}건이 있어요.")
+    closer = people.get(case.closed_by_user_id or -1)
     return ChangeDetailView(
         case_id=case.id,
         site_id=case.site_id,
@@ -600,18 +639,31 @@ def build_detail(
         else f"{_plan_text(item.work_date, item.start_local, item.end_local, item.location)}"
         f" · 계획 v{item.plan_version}",
         current_version_text=None if current is None else f"v{current.number}",
-        revisions=tuple(_revision_view(r, role, user, people) for r in revisions),
+        revisions=tuple(
+            _revision_view(r, role, user, people, actions.get(r.id), closed) for r in revisions
+        ),
         rechange_href=None
         if has_open or not can_propose
         else f"/changes/new?site_id={case.site_id}&item_id={case.work_item_id}&case_id={case.id}",
         confirm_key=secrets.token_urlsafe(24),
         errors=errors,
         message=message,
+        closed_text=None
+        if case.closed_at is None
+        else f"{case.closed_at.astimezone(KST):%m/%d %H:%M} 종료"
+        + ("" if closer is None else f" · {closer.display_name}"),
+        can_close=manage and not closed and not blockers,
+        close_blockers=tuple(blockers),
     )
 
 
 def _revision_view(
-    r: ChangeRevision, role: str, user: CurrentUser, people: dict[int, UserInfo]
+    r: ChangeRevision,
+    role: str,
+    user: CurrentUser,
+    people: dict[int, UserInfo],
+    actions: RevisionActions | None = None,
+    closed: bool = False,
 ) -> RevisionView:
     def name(user_id: int | None) -> str:
         info = people.get(user_id or -1)
@@ -644,9 +696,11 @@ def _revision_view(
         basis_note=r.basis_note,
         history=tuple(history),
         withdraw_reason=r.withdraw_reason,
-        can_submit=r.status == "draft" and (manage or mine),
-        can_confirm=r.status == "review" and manage,
-        can_withdraw=r.status in OPEN_STATUSES and (manage or mine),
+        can_submit=r.status == "draft" and (manage or mine) and not closed,
+        can_confirm=r.status == "review" and manage and not closed,
+        can_withdraw=r.status in OPEN_STATUSES and (manage or mine) and not closed,
+        no_action_reason=r.no_action_reason,
+        actions=actions,
     )  # fmt: skip
 
 

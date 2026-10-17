@@ -23,7 +23,7 @@
 {# 주 메뉴는 핵심 4개(D-063). 공온 판정·판정 내역은 작업 일정 안의 하위 메뉴다. #}
 {% set nav_group = {"dashboard": "schedule", "history": "schedule"}.get(nav_active, nav_active) %}
 {# 현장은 메뉴 대신 '현장 추가' 버튼과 현장마다 설정 아이콘(모달)으로 다룬다(개발자 요청 2026-10-16) #}
-{% for key, href, label in [("home", "/", "홈"), ("schedule", "/schedule", "작업 일정"), ("changes", "/changes", "변경")] %}
+{% for key, href, label in [("home", "/", "홈"), ("schedule", "/schedule", "작업 일정"), ("changes", "/changes", "변경"), ("actions", "/actions", "내 조치")] %}
 <a href="{{ href }}{% if key == 'schedule' and current_site_id %}?site_id={{ current_site_id }}{% endif %}"{% if nav_group == key %} aria-current="page"{% endif %}>{{ label }}</a>
 {% endfor %}
 </nav>
@@ -66,6 +66,7 @@
 <a href="/">홈</a>
 <a href="/schedule">작업 일정</a>
 <a href="/changes">변경</a>
+<a href="/actions">내 조치</a>
 </div>
 <div class="sitefoot__col">
 <p class="sitefoot__head">도움</p>
@@ -132,6 +133,19 @@ if (FLASH_PARAMS.some((key) => flashUrl.searchParams.has(key))) {
     if (e.target.closest("[data-close-top]")) window.parent.document.getElementById("site-dialog")?.close();
   });
 })();
+// 모달 공통: [data-open-dialog]로 열고, 닫기 버튼·바깥 누름으로 닫는다. 오류로 다시 그린 화면은 data-open을 연다.
+document.addEventListener("click", (e) => {
+  const opener = e.target.closest("[data-open-dialog]");
+  if (opener) {
+    const d = document.getElementById(opener.dataset.openDialog);
+    if (d && !d.open) { opener.closest("details")?.removeAttribute("open"); d.showModal(); }
+    return;
+  }
+  const closer = e.target.closest("dialog [data-close]");
+  if (closer) { closer.closest("dialog").close(); return; }
+  if (e.target.matches?.("dialog.modal")) e.target.close();
+});
+document.querySelectorAll("dialog.modal[data-open]").forEach((d) => { if (!d.open) d.showModal(); });
 // 필수 입력: 비워 두고 보내면 칸 아래에 빨간 안내를 띄운다(브라우저 기본 말풍선 대신).
 // 문구는 라벨에서 만든다: 받침이 있으면 '을', 없으면 '를'. 고르는 칸은 '골라 주세요'.
 const fieldName = (input) => {

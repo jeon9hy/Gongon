@@ -1,17 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros.html" import icon %}
-{% block title %}참여 업체 · {{ view.site_name }}<script>
-// 업체 등록·참여자 추가 모달: 버튼으로 열고, 닫기·바깥 누름·Esc로 닫는다
-document.addEventListener("click", (e) => {
-  const opener = e.target.closest("[data-open-dialog]");
-  if (opener) { document.getElementById(opener.dataset.openDialog)?.showModal(); return; }
-  const closer = e.target.closest("dialog [data-close]");
-  if (closer) { closer.closest("dialog").close(); return; }
-  if (e.target.matches("dialog.modal")) e.target.close();
-});
-document.querySelectorAll("dialog[data-open]").forEach((d) => d.showModal());
-</script>
-{% endblock %}
+{% block title %}참여 업체 · {{ view.site_name }}{% endblock %}
 {% block content %}
 
 <section class="hero" aria-labelledby="members-title">

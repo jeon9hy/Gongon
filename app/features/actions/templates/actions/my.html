@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}내 조치{% endblock %}
+{% block content %}
+{% set total = view.to_respond | length + view.blocked | length + view.to_verify | length %}
+<section class="homebar" aria-labelledby="my-title">
+<div class="homebar__text">
+<p class="homebar__date">내 조치</p>
+<h1 class="homebar__title" id="my-title">{% if total %}챙길 조치 {{ total }}건이 있어요{% else %}지금 맡은 조치가 없어요{% endif %}</h1>
+</div>
+<button class="btn btn--soft btn--sm" type="button" data-open-dialog="dlg-delegate">{{ icon("user-plus", 15) }} 잠시 맡기기</button>
+</section>
+
+{% if view.errors %}<div class="alert alert--error" role="alert"><ul>{% for e in view.errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+{% elif view.message %}<div class="alert alert--ok" role="status">{{ view.message }}</div>{% endif %}
+
+<div class="kpis kpis--my">
+<a class="kpi kpi--link" href="#g-respond"><span class="kpi__label">응답 대기</span><span class="kpi__value">{{ view.to_respond | length }}<small>건</small></span></a>
+<a class="kpi kpi--link" href="#g-blocked"><span class="kpi__label">막힘</span><span class="kpi__value">{{ view.blocked | length }}<small>건</small></span></a>
+<a class="kpi kpi--link" href="#g-verify"><span class="kpi__label">검증 대기</span><span class="kpi__value">{{ view.to_verify | length }}<small>건</small></span></a>
+</div>
+
+{% for key, title, rows, empty in [("respond", "응답 대기", view.to_respond, "응답할 조치가 없어요."), ("blocked", "막힘", view.blocked, "막힌 조치가 없어요."), ("verify", "검증 대기", view.to_verify, "검증할 조치가 없어요.")] %}
+<section class="hsec" id="g-{{ key }}" aria-labelledby="g-{{ key }}-title">
+<div class="hsec__head"><h2 class="hsec__title" id="g-{{ key }}-title">{{ title }} <span>{{ rows | length }}건 · 기한 지난 것부터</span></h2></div>
+{% if rows %}
+<ul class="jobs">
+{% for a in rows %}
+<li><a class="job myact" href="{{ a.href }}">
+<span class="job__time{% if a.overdue %} is-overdue{% endif %}">{{ a.due_text }}</span>
+<span class="job__what"><strong>{{ a.title }}</strong></span>
+<span class="job__who">{{ a.site_name }}</span>
+<span class="job__state"><span class="pill pill--{% if a.why == '검증' %}ok{% elif a.why == '대리 기록' %}warn{% else %}before{% endif %}">{{ a.why }}</span><span class="pill pill--done">{{ a.status_label }}</span></span>
+</a></li>
+{% endfor %}
+</ul>
+{% else %}
+<p class="hsec__empty">{{ empty }}</p>
+{% endif %}
+</section>
+{% endfor %}
+
+{% if view.delegations %}
+<section class="hsec" aria-labelledby="deleg-title">
+<div class="hsec__head"><h2 class="hsec__title" id="deleg-title">맡긴·맡은 일</h2></div>
+<ul class="jobs">
+{% for d in view.delegations %}
+<li class="job"><span class="job__time">{{ d.period_text }}</span><span class="job__what"><strong>{{ d.from_name }} → {{ d.to_name }}</strong></span><span class="job__who">{{ d.site_name }}</span>
+<span class="job__state">{% if d.can_revoke %}<form method="post" action="/actions/delegations/{{ d.delegation_id }}/revoke"><button class="btn btn--soft btn--sm" type="submit">거두기</button></form>{% endif %}</span></li>
+{% endfor %}
+</ul>
+</section>
+{% endif %}
+
+<dialog class="modal" id="dlg-delegate" aria-labelledby="dlg-delegate-title">
+<div class="modal__box">
+<div class="modal__head"><h2 class="h2" id="dlg-delegate-title">잠시 맡기기</h2><button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
+<form class="modal__form" method="post" action="/actions/delegations">
+{% if view.delegate_choices %}
+<label class="field">맡을 사람(같은 업체)
+<select name="choice" required><option value="">고르기</option>{% for c in view.delegate_choices %}<option value="{{ c.value }}">{{ c.label }}</option>{% endfor %}</select>
+</label>
+<div class="modal__grid">
+<label class="field">시작 날짜<input type="date" name="start_date" required></label>
+<label class="field">시작 시각<input type="time" name="start_time" required></label>
+<label class="field">끝 날짜<input type="date" name="end_date" required></label>
+<label class="field">끝 시각<input type="time" name="end_time" required></label>
+</div>
+{% else %}
+<p class="small muted">같은 업체의 다른 조정자·담당자가 있어야 맡길 수 있어요.</p>
+{% endif %}
+<div class="modal__actions"><button class="btn btn--soft" type="button" data-close>취소</button>{% if view.delegate_choices %}<button class="btn btn--accent" type="submit">맡기기</button>{% endif %}</div>
+</form>
+</div>
+</dialog>
+{% endblock %}

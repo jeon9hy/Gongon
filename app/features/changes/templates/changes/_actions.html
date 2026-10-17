@@ -1,0 +1,156 @@
+{# 버전별 후속 조치(C06). r: RevisionView, view: ChangeDetailView #}
+{% set ra = r.actions %}
+{% set kind_labels = {"accept": "수락", "resume": "다시 수행", "block": "막힘 보고", "report": "완료 보고", "verify": "검증 완료", "reject": "반려", "exclude": "제외", "phone": "전화 기록"} %}
+{% if ra and (ra.cards or ra.editor) %}
+<div class="acts" id="rev-{{ r.revision_id }}">
+<div class="acts__head">
+<h3 class="acts__title">{{ icon("check", 16, 2.4) }} 후속 조치</h3>
+{% if ra.required_total %}
+<span class="acts__progress" role="img" aria-label="필수 조치 {{ ra.required_total }}건 중 {{ ra.required_done }}건 끝">
+<span class="meter{% if ra.required_done == ra.required_total %} meter--ok{% endif %}"><span style="width: {{ (ra.required_done * 100 / ra.required_total) | round | int }}%"></span></span>
+<b>필수 {{ ra.required_done }}/{{ ra.required_total }}</b>
+</span>
+{% elif ra.candidates %}<span class="acts__note">후보 {{ ra.candidates }}건 · 확정하면 요청돼요</span>{% endif %}
+{% if ra.blocked %}<span class="pill pill--warn">막힘 {{ ra.blocked }}</span>{% endif %}
+{% if ra.editor %}<button type="button" class="btn btn--soft btn--sm acts__add" data-open-dialog="cand-{{ r.revision_id }}">{{ icon("plus", 14, 2.2) }} 조치 후보</button>{% endif %}
+</div>
+
+{% if ra.cards %}
+<ul class="acards">
+{% for c in ra.cards %}
+<li class="acard acard--{{ c.status }}" id="action-{{ c.action_id }}">
+<div class="acard__top">
+<strong class="acard__title">{{ c.title }}</strong>
+{% if c.required %}<span class="tag">필수</span>{% else %}<span class="tag tag--unknown">선택</span>{% endif %}
+<span class="astatus astatus--{{ c.status }}">{{ c.status_label }}</span>
+</div>
+{% if c.done_criteria %}<p class="acard__criteria">{{ icon("check", 13, 2.4) }} 완료 기준 · {{ c.done_criteria }}</p>{% endif %}
+<dl class="acard__facts">
+<div><dt>수행</dt><dd>{{ c.performer_text }}</dd></div>
+<div><dt>검증</dt><dd>{{ c.verifier_text }}</dd></div>
+<div><dt>기한</dt><dd{% if c.overdue %} class="is-overdue"{% endif %}>{{ c.due_text }}</dd></div>
+</dl>
+{% if c.blocked_text %}<p class="acard__note acard__note--warn">막힘 · {{ c.blocked_text }}</p>{% endif %}
+{% if c.report_text %}<p class="acard__note">{{ c.report_text }}</p>{% endif %}
+{% if c.late_text %}<p class="acard__note acard__note--warn">{{ c.late_text }}</p>{% endif %}
+{% if c.exclude_text %}<p class="acard__note">제외 이유 · {{ c.exclude_text }}</p>{% endif %}
+
+{% if c.allowed %}
+<div class="acard__acts">
+{% for kind in ("accept", "resume", "report", "verify", "block", "reject", "phone", "exclude") if kind in c.allowed %}
+{% set needs_form = kind in ("block", "report", "reject", "exclude", "phone") or (c.behalf and kind in ("accept", "resume")) %}
+{% if needs_form %}
+<button type="button" class="btn btn--sm {% if kind in ('report', 'verify') %}btn--accent{% elif kind in ('reject', 'exclude') %}btn--danger-line{% else %}btn--soft{% endif %}" data-open-dialog="act-{{ c.action_id }}-{{ kind }}">{{ kind_labels[kind] }}</button>
+{% else %}
+<form method="post" action="/changes/{{ view.case_id }}/actions/{{ c.action_id }}/{{ kind }}">
+<input type="hidden" name="site_id" value="{{ view.site_id }}"><input type="hidden" name="revision_id" value="{{ c.revision_id }}">
+<button class="btn btn--sm {% if kind == 'verify' %}btn--accent{% else %}btn--soft{% endif %}" type="submit">{{ kind_labels[kind] }}</button>
+</form>
+{% endif %}
+{% endfor %}
+{% if "remove" in c.allowed %}
+<form method="post" action="/changes/{{ view.case_id }}/revisions/{{ c.revision_id }}/actions/{{ c.action_id }}/remove">
+<input type="hidden" name="site_id" value="{{ view.site_id }}">
+<button class="iconbtn iconbtn--danger" type="submit" aria-label="후보 빼기">{{ icon("trash", 15) }}<span>빼기</span></button>
+</form>
+{% endif %}
+</div>
+{% endif %}
+
+{% if c.history %}
+<details class="acard__history"><summary class="small">기록 {{ c.history | length }}건</summary>
+<ol class="small muted">{% for h in c.history %}<li>{{ h }}</li>{% endfor %}</ol>
+</details>
+{% endif %}
+
+{# 처리 입력 모달: 종류마다 필요한 칸만 #}
+{% for kind in ("accept", "resume", "block", "report", "reject", "exclude", "phone") if kind in c.allowed %}
+{% if kind in ("block", "report", "reject", "exclude", "phone") or (c.behalf and kind in ("accept", "resume")) %}
+<dialog class="modal" id="act-{{ c.action_id }}-{{ kind }}" aria-labelledby="act-title-{{ c.action_id }}-{{ kind }}">
+<div class="modal__box">
+<div class="modal__head"><h2 class="h2" id="act-title-{{ c.action_id }}-{{ kind }}">{{ kind_labels[kind] }} · {{ c.title }}</h2><button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
+<form class="modal__form" method="post" action="/changes/{{ view.case_id }}/actions/{{ c.action_id }}/{{ kind }}">
+<input type="hidden" name="site_id" value="{{ view.site_id }}"><input type="hidden" name="revision_id" value="{{ c.revision_id }}">
+{% if c.done_criteria and kind in ("report", "reject") %}<p class="acard__criteria">{{ icon("check", 13, 2.4) }} 완료 기준 · {{ c.done_criteria }}</p>{% endif %}
+{% if kind == "report" %}
+<label class="field">처리 내용<textarea name="body" rows="3" maxlength="1000" required placeholder="무엇을 누구와 어떻게 바꿨는지"></textarea></label>
+<div class="modal__grid">
+<label class="field">실제 처리 날짜<input type="date" name="performed_date" required></label>
+<label class="field">처리 시각<input type="time" name="performed_time" required></label>
+</div>
+<label class="field">참조 번호<input type="text" name="reference" maxlength="100" placeholder="선택 · 예약 번호 등"></label>
+{% elif kind == "block" %}
+<label class="field">막힌 이유<textarea name="body" rows="3" maxlength="1000" required></textarea></label>
+<label class="field">막힘을 풀 담당<input type="text" name="resolver" maxlength="60" required placeholder="사람·회사"></label>
+{% elif kind == "reject" %}
+<label class="field">반려 이유<textarea name="body" rows="3" maxlength="1000" required></textarea></label>
+{% elif kind == "exclude" %}
+<label class="field">제외 이유<textarea name="body" rows="3" maxlength="1000" required></textarea></label>
+{% elif kind == "phone" %}
+<label class="field">통화 내용<textarea name="body" rows="3" maxlength="1000" required></textarea></label>
+{% endif %}
+{% if kind == "phone" or (c.behalf and kind in ("accept", "resume", "block", "report")) %}
+<p class="small muted">{% if kind == "phone" %}전화로 확인한 내용을 남겨요. 상태는 바뀌지 않아요.{% else %}수행자 대신 전화로 확인해 기록해요(대리 기록).{% endif %}</p>
+<label class="field">연락한 상대·회사<input type="text" name="counterpart" maxlength="100" required placeholder="예: 김OO · 가상펌프"></label>
+<div class="modal__grid">
+<label class="field">연락 날짜<input type="date" name="contacted_date" required></label>
+<label class="field">연락 시각<input type="time" name="contacted_time" required></label>
+</div>
+{% endif %}
+<div class="modal__actions"><button class="btn btn--soft" type="button" data-close>취소</button><button class="btn {% if kind in ('reject', 'exclude') %}btn--danger{% else %}btn--accent{% endif %}" type="submit">{{ kind_labels[kind] }}</button></div>
+</form>
+</div>
+</dialog>
+{% endif %}
+{% endfor %}
+</li>
+{% endfor %}
+</ul>
+{% elif ra.editor %}
+<p class="acts__empty">아직 조치가 없어요. 바뀐 일정에 맞춰 누가 무엇을 해야 하는지 더해 볼까요?</p>
+{% endif %}
+
+{% if ra.editor %}
+{% set ed = ra.editor %}
+<dialog class="modal modal--wide" id="cand-{{ r.revision_id }}" aria-labelledby="cand-title-{{ r.revision_id }}"{% if ed.errors %} data-open{% endif %}>
+<div class="modal__box">
+<div class="modal__head"><h2 class="h2" id="cand-title-{{ r.revision_id }}">조치 후보 더하기 · v{{ r.number }}</h2><button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
+<form class="modal__form" method="post" action="/changes/{{ view.case_id }}/revisions/{{ r.revision_id }}/actions" data-cand>
+{% if ed.errors %}<div class="alert alert--error" role="alert"><ul>{% for e in ed.errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+<input type="hidden" name="site_id" value="{{ view.site_id }}">
+<label class="field">조치 이름<input type="text" name="title" value="{{ ed.form.title }}" maxlength="80" required list="cand-titles-{{ r.revision_id }}" placeholder="예: 펌프카 예약 변경"></label>
+<datalist id="cand-titles-{{ r.revision_id }}">{% for t in ed.title_suggestions %}<option value="{{ t }}">{% endfor %}</datalist>
+<label class="field">완료 기준<input type="text" name="done_criteria" value="{{ ed.form.done_criteria }}" maxlength="120" placeholder="선택 · 무엇을 확인하면 끝나는지"></label>
+<div class="modal__grid">
+<label class="field">수행 업체
+<select name="performing_participant_id" required data-cand-company>
+<option value="">고르기</option>
+{% for o in ed.participants %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}
+</select>
+</label>
+<label class="field">담당
+<select name="assignee" data-cand-assignee>
+<option value="">업체 담당자 누구나</option>
+{% for o in ed.assignees %}<option value="{{ o.value }}" data-company="{{ o.participant_id }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}
+</select>
+</label>
+</div>
+<label class="field">검증자
+<select name="verifier_user_id" required>
+<option value="">고르기</option>
+{% for o in ed.verifiers %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}
+</select>
+</label>
+<div class="modal__grid">
+<label class="field">기한 날짜<input type="date" name="due_date" value="{{ ed.form.due_date }}"></label>
+<label class="field">기한 시각<input type="time" name="due_time" value="{{ ed.form.due_time }}"></label>
+</div>
+<label class="field">기한이 미정이면 그 사유<input type="text" name="due_note" value="{{ ed.form.due_note }}" maxlength="200" placeholder="예: 펌프 업체 일정 회신 대기"></label>
+<label class="row"><input type="checkbox" name="required" value="1"{% if ed.form.required %} checked{% endif %}> 필수 조치(끝나야 변경 건을 닫을 수 있어요)</label>
+<div class="modal__actions"><button class="btn btn--soft" type="button" data-close>취소</button><button class="btn btn--accent" type="submit">후보 더하기</button></div>
+</form>
+</div>
+</dialog>
+{% endif %}
+</div>
+{% endif %}

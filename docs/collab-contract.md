@@ -77,10 +77,16 @@ C01 [공개 조사](research/C01-public-research.md)의 설계 가정 A1~A7과 �
 
 ## 5. C06 후속 조치·검증
 
-`action_items`: revision_id, site_id, title, done_criteria(완료 기준 120자, 선택 — 무엇을 확인하면 끝나는지, D-070), performing_participant_id, assignee_user_id(NULL = 업체 내 미지정), verifier_user_id, required(bool), due_at/due_note, status, replaced_by_id, excluded_by/at/reason.
+`action_items`(0017): case_id, revision_id, site_id, title(80), done_criteria(완료 기준 120자, 선택 — 무엇을 확인하면 끝나는지, D-070), performing_participant_id(참여 중 업체), assignee_user_id 또는 assignee_contact_id(계정 없는 명부의 사람, 둘 다 NULL = 업체 내 미지정, D-074), verifier_user_id, required(bool), due_at 또는 due_note(미정 사유 필수), status, 보고·검증·제외·막힘 기록 칸, replaced_by_id(C07).
+
+- 후보: 초안·영향 검토 버전에 `candidate`로 붙인다(조정자 또는 그 버전 제안자). 확정과 같은 트랜잭션에서 `requested`. 확정 뒤에는 내용을 고치지 않고 제외만 한다.
+- 확정 때 필수 조치가 0건이면 `change_revisions.no_action_reason` 필수. 재변경 확정 때 이전 확정 버전의 `requested·accepted·blocked`는 `replaced`(새 조치 연결·보완 후보는 C07).
+- 잠금 순서: 변경 건 → 버전 → 조치. 종료한 건(`closed_at`)은 확정·재변경 제안·조치 처리를 받지 않는다.
+- 내 조치(`/actions`): 내 응답 대기·막힘·검증 대기. 묶음마다 기한 지남 → 가까운 기한 → 기한 미정. 조정자에게는 계정 없는 명부 담당의 조치가 '대리 기록'으로 보인다.
 
 | 조치 상태 | 뜻 | 허용 전이(행위자) |
 | --- | --- | --- |
+| `candidate` 조치 후보 | 확정 전 버전에 더함 | 확정 때 `requested`, 그 전엔 빼기(삭제) |
 | `requested` 요청 대기 | 확정으로 생성 | `accepted`·`blocked`(수행자) |
 | `accepted` 수행 중 | 수행자가 수락 | `reported`·`blocked`(수행자) |
 | `blocked` 막힘 | 사유·해결 담당 필수 | `accepted`(수행자) |
@@ -90,7 +96,7 @@ C01 [공개 조사](research/C01-public-research.md)의 설계 가정 A1~A7과 �
 | `excluded` 제외 | 조정자가 이유와 함께 제외 | — |
 
 - 모든 전이는 `action_events`(action_id, revision_id, kind, actor_user_id, on_behalf, performed_at, recorded_at, body)로 남긴다. 열람(`viewed`)·전화 확인 기록(`phone_record`, 상대·회사·연락 시각)도 사건이며 상태를 바꾸지 않는다.
-- 수행자 = 지정 담당자 또는 실행 업체 소속 담당자(assignee 미지정 시). 검증자 ≠ 완료 보고자(A3, 프로젝트 설정 전까지 예외 없음).
+- 수행자 = 지정 담당자(명부 담당이 나중에 계정과 연결되면 그 계정), 미지정이면 실행 업체 소속 조정자·담당자, 위임받은 사람. 조정자는 수행자 대신 전화로 확인해 기록할 수 있다(`on_behalf`, 연락 상대·시각 필수). 검증자 ≠ 담당자·완료 보고자(A3, 프로젝트 설정 전까지 예외 없음). 열람자는 처리할 수 없다(403), 비참여자는 404.
 - 보고·검증 요청의 `revision_id`가 조치의 revision과 다르거나 조치가 `replaced`면 거부.
 - 종료 조건: 현재 버전의 `required` 조치가 모두 `verified` 또는 `excluded`(이유 있음), `blocked` 없음. 필수 0건이면 확정 때 이유 필수.
 - 첨부·위임: 근거는 텍스트(A5). 위임은 `action_delegations`(from, to, 기간)로 같은 업체 안에서만, 행위자 기록.

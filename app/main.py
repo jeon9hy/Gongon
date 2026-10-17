@@ -11,6 +11,7 @@ from app.core.config import get_settings
 from app.core.errors import install_error_handlers
 from app.core.security import NoStoreHtmlMiddleware, SameOriginMiddleware
 from app.core.templating import STATIC_DIR
+from app.features.actions.router import router as actions_router
 from app.features.auth.router import router as auth_router
 from app.features.changes.router import router as changes_router
 from app.features.help.router import router as help_router
@@ -44,6 +45,7 @@ def create_app(auto_refresh: bool = False) -> FastAPI:
     app.include_router(teams_router)
     app.include_router(schedules_router)
     app.include_router(changes_router)
+    app.include_router(actions_router)
     app.include_router(help_router)
 
     # 프로세스 생존 확인용(liveness). DB·외부 API 상태는 확인하지 않는다.

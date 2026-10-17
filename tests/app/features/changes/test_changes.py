@@ -92,7 +92,7 @@ def revision(session: Session, number: int = 1) -> ChangeRevision:
 def confirm(client: TestClient, item: WorkItem, case_id: int, rev_id: int, key: str = "k1") -> Any:
     return client.post(
         f"/changes/{case_id}/revisions/{rev_id}/confirm",
-        data={"site_id": item.site_id, "confirm_key": key},
+        data={"site_id": item.site_id, "confirm_key": key, "no_action_reason": "시간만 바뀜"},
         follow_redirects=False,
     )
 

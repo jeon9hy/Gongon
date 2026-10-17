@@ -5,11 +5,18 @@
 <section class="hero" aria-labelledby="change-title">
 <div class="hero__main">
 <p class="hero__date">{{ icon("history", 15) }} {{ view.site_name }} · {{ view.work_label }}</p>
-<h1 class="hero__title" id="change-title">{{ view.title }}</h1>
+<h1 class="hero__title" id="change-title">{{ view.title }}{% if view.closed_text %} <span class="tag tag--go">종료</span>{% endif %}</h1>
 <p class="small muted">지금 작업 계획 {{ view.current_plan_text }}{% if view.current_version_text %} · 현재 확정 {{ view.current_version_text }}{% else %} · 아직 확정한 버전 없음{% endif %}</p>
 </div>
-{% if view.rechange_href %}<div class="hero__action"><a class="btn btn--accent" href="{{ view.rechange_href }}">{{ icon("plus", 16, 2.2) }} 재변경 제안</a></div>{% endif %}
+<div class="hero__action">
+{% if view.rechange_href %}<a class="btn btn--soft" href="{{ view.rechange_href }}">{{ icon("plus", 16, 2.2) }} 재변경 제안</a>{% endif %}
+{% if view.can_close %}
+<form method="post" action="/changes/{{ view.case_id }}/close"><input type="hidden" name="site_id" value="{{ view.site_id }}"><button class="btn btn--accent" type="submit">{{ icon("check", 16, 2.4) }} 변경 건 종료</button></form>
+{% endif %}
+</div>
 </section>
+{% if view.closed_text %}<p class="closebar closebar--done">{{ icon("check", 15, 2.4) }} {{ view.closed_text }} · 필수 조치를 모두 확인했어요.</p>
+{% elif view.close_blockers %}<p class="closebar">{{ icon("info", 15) }} 종료하려면 · {{ view.close_blockers | join(" ") }}</p>{% endif %}
 
 {% if view.errors %}<div class="alert alert--error" role="alert"><ul>{% for e in view.errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
 {% elif view.message %}<div class="alert alert--ok" role="status">{{ icon("check", 16, 2.4) }} {{ view.message }}</div>{% endif %}
@@ -23,7 +30,9 @@
 <div><dt>원인</dt><dd>{{ r.reasons_text }}</dd></div>
 {% if r.basis_note %}<div><dt>근거</dt><dd>{{ r.basis_note }}</dd></div>{% endif %}
 {% if r.withdraw_reason %}<div><dt>철회 이유</dt><dd>{{ r.withdraw_reason }}</dd></div>{% endif %}
+{% if r.no_action_reason %}<div><dt>조치 없이 확정</dt><dd>{{ r.no_action_reason }}</dd></div>{% endif %}
 </dl>
+{% include "changes/_actions.html" %}
 <ul class="small muted change-history">{% for h in r.history %}<li>{{ h }}</li>{% endfor %}</ul>
 {% if r.can_submit or r.can_confirm or r.can_withdraw %}
 <div class="change-actions">
@@ -31,7 +40,9 @@
 <form method="post" action="/changes/{{ view.case_id }}/revisions/{{ r.revision_id }}/submit"><input type="hidden" name="site_id" value="{{ view.site_id }}"><button class="btn btn--soft btn--sm" type="submit">영향 검토로 보내기</button></form>
 {% endif %}
 {% if r.can_confirm %}
-<form method="post" action="/changes/{{ view.case_id }}/revisions/{{ r.revision_id }}/confirm"><input type="hidden" name="site_id" value="{{ view.site_id }}"><input type="hidden" name="confirm_key" value="{{ view.confirm_key }}"><button class="btn btn--accent btn--sm" type="submit">확정 · 작업 계획 바꾸기</button></form>
+<form class="confirmform" method="post" action="/changes/{{ view.case_id }}/revisions/{{ r.revision_id }}/confirm"><input type="hidden" name="site_id" value="{{ view.site_id }}"><input type="hidden" name="confirm_key" value="{{ view.confirm_key }}">
+{% if not r.actions or not r.actions.required_candidates %}<label class="field">필수 조치 없이 확정하는 이유<input type="text" name="no_action_reason" maxlength="500" required placeholder="예: 같은 업체 안 시간만 바뀌어 따로 할 일이 없음"></label>{% endif %}
+<button class="btn btn--accent btn--sm" type="submit">확정 · 작업 계획 바꾸기{% if r.actions and r.actions.candidates %} · 조치 {{ r.actions.candidates }}건 요청{% endif %}</button></form>
 {% endif %}
 {% if r.can_withdraw %}
 <details class="delete-action">
@@ -47,4 +58,17 @@
 {% endif %}
 </section>
 {% endfor %}
+<script>
+// 조치 후보: 수행 업체를 고르면 그 업체 사람만 담당으로 보인다
+document.querySelectorAll("[data-cand]").forEach((form) => {
+  const company = form.querySelector("[data-cand-company]");
+  const assignee = form.querySelector("[data-cand-assignee]");
+  const sync = () => {
+    [...assignee.options].forEach((o) => { if (o.dataset.company) o.hidden = o.dataset.company !== company.value; });
+    if (assignee.selectedOptions[0]?.hidden) assignee.value = "";
+  };
+  company.addEventListener("change", sync);
+  sync();
+});
+</script>
 {% endblock %}

@@ -290,11 +290,8 @@
 
   // ---- 모달 열고 닫기(바깥·취소·Esc). 화면 일부를 바꿔 끼워도 동작하도록 문서에서 한 번만 받는다 ----
   document.addEventListener("click", (e) => {
-    const closeBtn = e.target.closest("dialog [data-close]");
-    if (closeBtn) { closeBtn.closest("dialog").close(); return; }
-    if (e.target.tagName === "DIALOG") { e.target.close(); return; }
-    const opener = e.target.closest("[data-open-dialog]");
-    if (opener) { e.target.closest("details")?.removeAttribute("open"); document.getElementById(opener.dataset.openDialog)?.showModal(); return; }
+    // 모달 열기·닫기는 공통(base.html)이 한다
+    if (e.target.closest("dialog [data-close], [data-open-dialog]") || e.target.tagName === "DIALOG") return;
     const add = e.target.closest("[data-open-add]");
     if (add && addDialog) { picker?.reset(add.dataset.day ? [add.dataset.day] : []); addDialog.showModal(); return; }
     const copy = e.target.closest("[data-copy]");
@@ -457,7 +454,7 @@
       const brief = doc.querySelector('[data-swap="briefing"]'), curBrief = document.querySelector('[data-swap="briefing"]');
       if (curBrief) curBrief.remove();
       if (brief) document.querySelector('[data-swap="day"]').before(brief);
-      document.querySelectorAll("dialog[data-open]").forEach((d) => d.showModal());
+      document.querySelectorAll("dialog[data-open]").forEach((d) => { if (!d.open) d.showModal(); });
       if (push) history.pushState({ schedule: true }, "", url);
       window.scrollTo(scroll);
       // 교체한 패널을 기준으로 브라우저가 스크롤 앵커를 다시 잡은 뒤에도 같은 위치로 둔다.

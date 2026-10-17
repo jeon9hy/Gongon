@@ -149,13 +149,14 @@ def _site_members(session: Session, memberships: list[ProjectMembership]) -> tup
 def roster_people(
     session: Session, site_id: int, contact_ids: Iterable[int] = ()
 ) -> tuple[RosterPerson, ...]:
-    """명부의 사람(쿼리 1~2회). contact_ids를 주면 명부에서 뺀 사람도 그 ID는 돌려준다(기록 표시용)."""
+    """명부의 사람(쿼리 1~2회). contact_ids를 주면 명부에서 뺀 사람도 그 ID는 돌려준다."""
     people = repository.contacts(session, site_id)
     missing = set(contact_ids) - {c.id for c in people}
     if missing:
         people += repository.contacts_by_ids(session, site_id, missing)
     return tuple(
-        RosterPerson(c.id, c.site_id, c.participant_id, c.name, c.job_title, c.user_id) for c in people
+        RosterPerson(c.id, c.site_id, c.participant_id, c.name, c.job_title, c.user_id)
+        for c in people
     )
 
 

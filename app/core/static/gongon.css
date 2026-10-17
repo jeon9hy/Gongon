@@ -1851,3 +1851,48 @@ details.hmore { padding: 0; } /* 판정 내역의 옛 .hmore 여백이 접힌 �
 .embed .danger-zone { margin-top: 20px; }
 .sitelinks { display: flex; flex-wrap: wrap; gap: 8px; }
 .site-gear { width: 36px; height: 36px; padding: 0; justify-content: center; }
+
+/* 후속 조치(C06): 버전 카드 안의 조치 묶음 */
+.acts { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; padding-top: 14px; border-top: 1px solid var(--line-soft); }
+.acts__head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.acts__title { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-size: 15px; font-weight: 700; color: var(--ink); }
+.acts__progress { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink); }
+.acts__progress .meter { width: 96px; margin: 0; }
+.acts__note, .acts__empty { font-size: 13px; color: var(--muted); }
+.acts__add { margin-left: auto; }
+.acards { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.acard { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border: 1px solid var(--line-soft); border-radius: var(--radius-md); background: var(--card); scroll-margin-top: 90px; }
+.acard:target { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.acard--candidate { border-style: dashed; background: var(--surface); }
+.acard--replaced, .acard--excluded { opacity: 0.6; }
+.acard__top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.acard__title { font-size: 15px; color: var(--ink); }
+.astatus { margin-left: auto; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--surface); color: var(--muted); white-space: nowrap; }
+.astatus--requested { background: var(--accent-soft); color: var(--accent); }
+.astatus--accepted { background: var(--accent); color: var(--accent-fg); }
+.astatus--blocked { background: var(--verdict-check-bg); color: var(--verdict-check-fg); }
+.astatus--reported { background: #EFE9FF; color: #5B3CC4; }
+.astatus--verified { background: var(--verdict-go-bg); color: var(--verdict-go-fg); }
+.acard__criteria { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: var(--radius-sm); background: var(--surface); font-size: 13px; color: var(--ink); }
+.acard__facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.acard__facts div { min-width: 0; }
+.acard__facts dt { font-size: 12px; color: var(--muted); }
+.acard__facts dd { margin: 0; font-size: 13px; color: var(--text); overflow-wrap: anywhere; }
+.acard__facts dd.is-overdue { color: var(--stop-text); font-weight: 600; }
+.acard__note { font-size: 13px; color: var(--text); }
+.acard__note--warn { color: var(--verdict-check-fg); }
+.acard__acts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.acard__acts form { display: inline; }
+.acard__history summary { cursor: pointer; color: var(--muted); }
+.acard__history ol { margin: 6px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 2px; }
+.closebar { display: flex; align-items: center; gap: 6px; padding: 10px 14px; border-radius: var(--radius-md); background: var(--surface); font-size: 13px; color: var(--muted); }
+.closebar--done { background: var(--verdict-go-bg); color: var(--verdict-go-fg); font-weight: 600; }
+.confirmform { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; }
+.confirmform .field { flex: 1 1 280px; }
+.hero__action { display: flex; flex-wrap: wrap; gap: 8px; }
+textarea { width: 100%; min-height: 72px; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); font: inherit; font-size: 14px; resize: vertical; }
+textarea:focus-visible { outline: 0; border-color: var(--ink); box-shadow: 0 0 0 3px var(--accent-soft); }
+@media (max-width: 640px) { .acard__facts { grid-template-columns: minmax(0, 1fr); } .astatus { margin-left: 0; } }
+.kpis--my { background: var(--card); }
+.myact .job__time { font-size: 12px; font-weight: 600; }
+.job__time.is-overdue { color: var(--stop-text); }
