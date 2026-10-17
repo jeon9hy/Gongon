@@ -181,6 +181,7 @@ def build_view(
         form=shown_form,
         errors=errors,
         message=message,
+        has_partners=site is not None and has_partner_companies(session, site.site_id),
         participants=tuple(
             ParticipantChoice(
                 c.participant_id,
@@ -239,6 +240,8 @@ def add_item(
     site = sites_service.get_site(session, site_id, None)
     if site is None:
         return None, ("현장을 찾을 수 없습니다.",)
+    if not has_partner_companies(session, site_id):
+        return None, (NO_COMPANY,)
     performer, performer_error = _performer(session, site_id, form.performing_participant_id)
     items, errors = _validate(site, form, now)
     if performer_error:
@@ -363,15 +366,23 @@ def apply_plan_change(
     return "saved"
 
 
+NO_COMPANY = "먼저 참여 업체를 등록해 주세요. 원청 말고 일할 업체가 있어야 작업을 올릴 수 있어요."
+
+
+def has_partner_companies(session: Session, site_id: int) -> bool:
+    """원청 말고 참여 중인 업체가 하나라도 있는가(작업 추가 조건, D-076)."""
+    return any(c.group_label != "원청" for c in teams_service.participant_choices(session, site_id))
+
+
 def _performer(
     session: Session, site_id: int, raw: str, keep: int | None = None
 ) -> tuple[int | None, str | None]:
-    """실행 업체 입력 → 참여 업체 ID. 빈 값은 미지정.
+    """실행 업체 입력 → 참여 업체 ID. 작업마다 실행 업체가 있어야 한다(D-076).
 
     참여 중인 이 현장 업체만 고를 수 있다(D-066). 수정할 때 이미 연결된 업체(keep)는 참여
     종료했어도 그대로 둘 수 있다(기존 연결 유지)."""
     if not raw.strip():
-        return None, None
+        return None, "실행 업체를 골라 주세요."
     participant_id = _int(raw)
     if participant_id is not None and participant_id == keep:
         return participant_id, None

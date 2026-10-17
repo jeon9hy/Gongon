@@ -160,6 +160,7 @@ class ScheduleView:
     errors: tuple[str, ...]
     message: str | None
     participants: tuple[ParticipantChoice, ...] = ()  # 실행 업체로 고를 수 있는 참여 업체
+    has_partners: bool = False  # 원청 말고 참여 중인 업체가 있나(없으면 작업 추가를 막는다)
     today_iso: str = ""  # 작업 추가 달력의 첫 날(지난 날은 고를 수 없다)
     now_hm: str = ""  # 오늘 작업은 이 시각 뒤에 시작해야 한다(D-064)
     period_start_iso: str = ""  # 현장 작업 기간(빈 값은 제한 없음)

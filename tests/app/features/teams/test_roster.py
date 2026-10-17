@@ -125,6 +125,7 @@ def test_ended_company_leaves_choices_but_keeps_existing_work(
     data = {**ITEM, "site_id": site_id, "performing_participant_id": str(pump.id)}
     assert client.post("/schedule", data=data, follow_redirects=False).status_code == 303
 
+    register(client, site_id, "가상크레인")  # 다른 협력업체가 있어야 작업 추가 자체는 열린다(D-076)
     ended = client.post(f"/sites/{site_id}/participants/{pump.id}/end", follow_redirects=False)
     rejected = client.post("/schedule", data={**data, "work_date": "2026-10-06"})
     item = session.scalars(select(WorkItem)).one()

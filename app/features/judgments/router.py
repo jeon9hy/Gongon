@@ -36,10 +36,11 @@ def home(
     manageable: ManagedSitesDep,
     now: NowDep,
     ran: RunResult | None = None,
+    site_id: int | None = None,
 ) -> Response:
     if not scope and teams_service.board_site_ids(session, user.user_id):
         return RedirectResponse("/board", status_code=303)  # 현장 TV 계정은 게시 화면만(D-067)
-    view = service.build_home(session, scope, now, ran)
+    view = service.build_home(session, scope, now, ran, site_id)
     return templates.TemplateResponse(
         request,
         "judgments/home.html",

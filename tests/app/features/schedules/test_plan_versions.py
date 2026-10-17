@@ -88,11 +88,23 @@ def site_id(client: TestClient) -> int:
     return add_site(client)
 
 
+def add_partner(client: TestClient, site_id: int, name: str = "가상골조") -> None:
+    """원청 말고 일할 업체(D-076: 없으면 작업을 올리지 못한다)."""
+    response = client.post(
+        f"/sites/{site_id}/participants",
+        data={"organization_name": name, "category": "subcontractor"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 303, response.text
+
+
 def test_new_item_can_name_a_performing_company_of_this_site(
     client: TestClient, site_id: int, session: Session
 ) -> None:
     prime = participant_ids(session, site_id)[0]
+    add_partner(client, site_id)
 
+    # 협력업체가 있으면 원청(직영)도 실행 업체로 고를 수 있다
     assert add_item(client, site_id, performing_participant_id=str(prime)).status_code == 303
 
     item = only_item(session)
@@ -102,14 +114,21 @@ def test_new_item_can_name_a_performing_company_of_this_site(
     assert "<dt>실행 업체</dt><dd>가상건설</dd>" in page  # 작업 상세
 
 
-def test_item_without_performer_stays_unassigned(
+def test_work_needs_a_partner_company_and_a_performer(
     client: TestClient, site_id: int, session: Session
 ) -> None:
-    add_item(client, site_id)
+    # 원청만 있는 현장: 작업을 올리지 못하고 업체 등록을 안내한다(D-076)
+    blocked = add_item(client, site_id, performing_participant_id="")
+    assert blocked.status_code == 422 and "먼저 참여 업체를 등록해 주세요" in blocked.text
+    assert (
+        "먼저 참여 업체를 등록해 주세요</strong>" in client.get(f"/schedule?site_id={site_id}").text
+    )
 
-    assert only_item(session).performing_participant_id is None
-    page = client.get(f"/schedule?site_id={site_id}&day=2026-10-05").text
-    assert "업체 미지정 · v1" in page and "<dt>실행 업체</dt><dd>미지정</dd>" in page
+    add_partner(client, site_id)
+    missing = add_item(client, site_id, performing_participant_id="")
+
+    assert missing.status_code == 422 and "실행 업체를 골라 주세요." in missing.text
+    assert session.scalar(select(WorkItem.id)) is None
 
 
 def test_performer_from_another_site_is_rejected(
@@ -117,6 +136,7 @@ def test_performer_from_another_site_is_rejected(
 ) -> None:
     other = add_site(client, "다른현장")
     foreign = participant_ids(session, other)[0]
+    add_partner(client, site_id)
 
     response = add_item(client, site_id, performing_participant_id=str(foreign))
 
@@ -155,7 +175,7 @@ def test_edit_saves_previous_plan_and_raises_version(
     assert (revision.plan_version, revision.start_local, revision.location) == (
         1, time(9, 0), "A구역"
     )  # fmt: skip
-    assert revision.performing_participant_id is None
+    assert revision.performing_participant_id not in (None, prime)  # 처음엔 기본 협력업체
     assert revision.changed_at == FIXED_NOW and revision.source == "edit"
     page = client.get(response.headers["location"]).text
     assert "v2 · 변경 1번" in page and "v1 10/05 09:00–12:00 · A구역" in page

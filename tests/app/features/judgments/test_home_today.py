@@ -28,8 +28,9 @@ SITE: dict[str, Any] = {
 TODAY, TOMORROW = date(2026, 10, 4), date(2026, 10, 5)
 
 
-def make_site(client: TestClient) -> int:
-    location = client.post("/sites", data=SITE, follow_redirects=False).headers["location"]
+def make_site(client: TestClient, name: str | None = None) -> int:
+    data = SITE if name is None else {**SITE, "name": name}
+    location = client.post("/sites", data=data, follow_redirects=False).headers["location"]
     return int(location.split("site_id=")[1].split("&")[0])
 
 
@@ -164,3 +165,21 @@ def test_home_without_any_work_says_so(client: TestClient) -> None:
     page = client.get("/").text
 
     assert "오늘은 쉬어 가는 날" in page and 'class="job job--' not in page
+
+
+def test_home_switches_between_sites(client: TestClient, session: Session) -> None:
+    first = make_site(client)
+    second = make_site(client, "둘째현장")
+    put(session, first, TODAY, time(16, 0), time(17, 0), "철골 작업")
+    put(session, second, TODAY, time(16, 0), time(17, 0), "도장·방수")
+
+    all_page = client.get("/").text
+    only_second = client.get(f"/?site_id={second}").text
+
+    assert 'aria-label="현장 고르기"' in all_page and "오늘 2</span>" in all_page
+    today_all = board(all_page, "today")
+    assert "철골 작업" in today_all and "도장·방수" in today_all
+    today_second = board(only_second, "today")
+    assert "도장·방수" in today_second and "철골 작업" not in today_second
+    # 내 현장이 아닌 ID는 무시하고 전체를 보인다
+    assert "철골 작업" in board(client.get("/?site_id=99999").text, "today")

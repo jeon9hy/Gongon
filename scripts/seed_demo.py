@@ -3,7 +3,7 @@
 원청 1곳과 공종별 협력업체·공급사·감리를 만들고, 오늘부터 일주일 작업을 올린다.
 업체는 명부로 먼저 등록하고(D-066) 사람은 담당자 명부와 로그인 계정을 연결한다.
 공온 점검이 보이도록 업체 미지정·위치 없음·같은 곳 같은 시간 겹침을 일부러 섞는다.
-회사·사람 이름은 모두 지어낸 것이며 이름 앞에 [가상]을 붙인다. 같은 계정이 있으면 만들지 않는다.
+회사·사람 이름은 모두 지어낸 것이며 이름 앞에 을 붙인다. 같은 계정이 있으면 만들지 않는다.
 
     PYTHONUTF8=1 uv run python scripts/seed_demo.py
     PYTHONUTF8=1 uv run python scripts/seed_demo.py --viewer me@example.com  # 내 계정에 열람 권한
@@ -35,7 +35,7 @@ from app.features.teams.schemas import ContactForm, ParticipantForm
 PASSWORD = "gongon-demo-1234"
 DOMAIN = "demo.gongon.test"  # 실제로 받을 수 없는 시험용 도메인
 SITE = SiteForm(
-    name="[가상] 한결 리버뷰 아파트 신축공사",
+    name="한결 리버뷰 아파트 신축공사",
     road_address="서울 중구 세종대로 110",
     latitude="37.5665",
     longitude="126.9780",
@@ -68,38 +68,38 @@ class Person:
     duty: str  # 표시용 직무
 
 
-PRIME = "[가상] 한결종합건설"
+PRIME = "한결종합건설"
 # 업체 → (구분, 맡은 공종). 원청은 명부 등록 대상이 아니다(현장을 만들 때 생김).
 COMPANIES = {
-    "[가상] 대성골조": ("subcontractor", "철근콘크리트(골조)"),
-    "[가상] 우진철강": ("subcontractor", "철골"),
-    "[가상] 서해펌프": ("equipment", "콘크리트 펌프카"),
-    "[가상] 동부레미콘": ("supplier", "레미콘"),
-    "[가상] 미래크레인": ("equipment", "이동식 크레인·양중"),
-    "[가상] 청솔방수": ("subcontractor", "방수"),
-    "[가상] 새벽전기": ("subcontractor", "전기"),
-    "[가상] 평화가설": ("subcontractor", "비계·가설"),
-    "[가상] 정도건설사업관리": ("supervision", "건설사업관리"),
+    "대성골조": ("subcontractor", "철근콘크리트(골조)"),
+    "우진철강": ("subcontractor", "철골"),
+    "서해펌프": ("equipment", "콘크리트 펌프카"),
+    "동부레미콘": ("supplier", "레미콘"),
+    "미래크레인": ("equipment", "이동식 크레인·양중"),
+    "청솔방수": ("subcontractor", "방수"),
+    "새벽전기": ("subcontractor", "전기"),
+    "평화가설": ("subcontractor", "비계·가설"),
+    "정도건설사업관리": ("supervision", "건설사업관리"),
 }
 # 계정 없는 명부 담당자(전화 대리 기록 대상, C06). 번호는 실제로 걸리지 않는 형식이다.
 EXTRA_CONTACTS = (
-    ("[가상] 동부레미콘", "배차 담당", "출하 배차", "010-0000-0001"),
-    ("[가상] 서해펌프", "현장 배정", "공무", "010-0000-0002"),
+    ("동부레미콘", "배차 담당", "출하 배차", "010-0000-0001"),
+    ("서해펌프", "현장 배정", "공무", "010-0000-0002"),
 )
 PEOPLE = (
     Person("pm", "김도윤 소장", PRIME, "coordinator", "현장소장"),
     Person("works", "박서연 과장", PRIME, "coordinator", "공무·공정"),
     Person("safety", "이준호 대리", PRIME, "assignee", "안전관리자"),
     Person("quality", "정하늘 대리", PRIME, "assignee", "품질관리자"),
-    Person("frame", "최민석 반장", "[가상] 대성골조", "assignee", "철근콘크리트(골조) 협력업체"),
-    Person("steel", "정해원 소장", "[가상] 우진철강", "assignee", "철골 협력업체"),
-    Person("pump", "오상훈 기사", "[가상] 서해펌프", "assignee", "콘크리트 펌프카 임대"),
-    Person("remicon", "한지민 주임", "[가상] 동부레미콘", "assignee", "레미콘 공급사"),
-    Person("crane", "강태호 기사", "[가상] 미래크레인", "assignee", "이동식 크레인·양중"),
-    Person("water", "윤가은 실장", "[가상] 청솔방수", "assignee", "방수 협력업체"),
-    Person("elec", "조성민 과장", "[가상] 새벽전기", "assignee", "전기 협력업체"),
-    Person("scaffold", "임동현 반장", "[가상] 평화가설", "assignee", "비계·가설 협력업체"),
-    Person("cm", "문하늘 감리원", "[가상] 정도건설사업관리", "viewer", "감리(건설사업관리)"),
+    Person("frame", "최민석 반장", "대성골조", "assignee", "철근콘크리트(골조) 협력업체"),
+    Person("steel", "정해원 소장", "우진철강", "assignee", "철골 협력업체"),
+    Person("pump", "오상훈 기사", "서해펌프", "assignee", "콘크리트 펌프카 임대"),
+    Person("remicon", "한지민 주임", "동부레미콘", "assignee", "레미콘 공급사"),
+    Person("crane", "강태호 기사", "미래크레인", "assignee", "이동식 크레인·양중"),
+    Person("water", "윤가은 실장", "청솔방수", "assignee", "방수 협력업체"),
+    Person("elec", "조성민 과장", "새벽전기", "assignee", "전기 협력업체"),
+    Person("scaffold", "임동현 반장", "평화가설", "assignee", "비계·가설 협력업체"),
+    Person("cm", "문하늘 감리원", "정도건설사업관리", "viewer", "감리(건설사업관리)"),
 )
 
 # (며칠 뒤, 공종, 시작, 끝, 위치, 실행 업체 키 또는 None)
@@ -228,7 +228,7 @@ def _participant_ids(session: Session, site_id: int) -> dict[str, int]:
 
 
 def _print_summary(site_id: int, added: int, skipped: int, now: datetime) -> None:
-    print(f"[가상] 현장 {site_id} 만듦 · 작업 {added}건 · {now:%m/%d %H:%M}")
+    print(f"현장 {site_id} 만듦 · 작업 {added}건 · {now:%m/%d %H:%M}")
     if skipped:
         print(f"  오늘 이미 지난 시각의 작업 {skipped}건은 건너뜀(오늘은 지금 이후 시작만, D-064)")
     print(f"로그인 비밀번호는 모두 {PASSWORD}")

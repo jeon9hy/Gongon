@@ -170,6 +170,8 @@ def test_copy_button_carries_the_item_to_the_add_form(client: TestClient, site_i
     raw = re.search(r"data-copy='([^']+)'", page)
 
     assert raw is not None
+    copied = json.loads(raw.group(1))
+    performer = copied.pop("performer")
     expected = {"workType": "철골 작업", "start": "08:00", "end": "17:00", "location": "A구역",
-                "memo": "양중", "performer": ""}  # fmt: skip
-    assert json.loads(raw.group(1)) == expected
+                "memo": "양중"}  # fmt: skip
+    assert copied == expected and performer.isdigit()  # 실행 업체도 함께 옮긴다

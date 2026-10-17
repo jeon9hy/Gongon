@@ -1981,3 +1981,26 @@ textarea:focus-visible { outline: 0; border-color: var(--ink); box-shadow: 0 0 0
 .board__weather { margin-top: auto; padding-top: 12px; border-top: 1px solid #FFFFFF22; font-size: 20px; color: var(--dark-text); }
 @media (max-width: 900px) { .board__cols { grid-template-columns: 1fr; } .board__row { grid-template-columns: 1fr auto; font-size: 20px; } .board__who { display: none; } }
 .boardbody .board { background: transparent; border: 0; border-radius: 0; } /* 옛 홈의 .board 카드 규칙과 이름이 겹친다 */
+/* 작업 목록 표(개발자 요청 2026-10-17): 칸 안 내용은 가운데, 주의(!) 자리는 늘 비워 둬 줄이 흔들리지 않게 */
+.job { justify-items: center; text-align: center; }
+.job__what { justify-content: center; }
+.job .pill, .job .job__state { justify-self: center; }
+.job__state { display: inline-grid; grid-template-columns: 18px auto; align-items: center; gap: 6px; }
+.job__state:not(:has(.job__warn)) { grid-template-columns: auto; }
+.job__warn--none { visibility: hidden; }
+@media (max-width: 760px) {
+  .job { justify-items: start; text-align: left; }
+  .job__what { justify-content: flex-start; }
+  .job .pill, .job .job__state { justify-self: end; }
+}
+
+/* 홈 현장 넘기기(개발자 요청 2026-10-17): 가로로 미는 현장 칸, 고른 현장은 파랑 */
+.sitetabs { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; padding: 2px; margin: 0 -2px; }
+.sitetabs::-webkit-scrollbar { display: none; }
+.sitetab { flex: 0 0 auto; scroll-snap-align: start; display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px 8px 8px; border: 1px solid var(--line-soft); border-radius: 999px; background: var(--card); text-decoration: none; color: var(--text); box-shadow: var(--shadow-sm); transition: border-color var(--ease), background-color var(--ease), transform var(--ease); }
+.sitetab:hover { border-color: var(--line); color: var(--ink); transform: translateY(-1px); }
+.sitetab.is-current { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.sitetab__dot { width: 28px; height: 28px; border-radius: 999px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-size: 13px; font-weight: 700; }
+.sitetab.is-current .sitetab__dot { background: #FFFFFF; color: var(--accent); }
+.sitetab__name { max-width: 220px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 14px; font-weight: 600; }
+.sitetab__count { font-size: 12px; font-weight: 600; opacity: 0.75; }

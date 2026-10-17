@@ -7,9 +7,11 @@ TEST_DATABASE_URL이 없으면 DB 테스트는 건너뛴다(건너뜀은 통과�
 
 import contextlib
 import os
+import re
 import zlib
 from collections.abc import Callable, Iterator
 from datetime import datetime
+from typing import Any
 
 import pytest
 from alembic import command
@@ -57,6 +59,41 @@ TABLES = (
     "users",
     "organizations",
 )
+DEFAULT_PARTNER = "기본 협력업체"
+_SCHEDULE_WRITE = re.compile(r"^/schedule(/\d+/edit)?$")
+
+
+class GongonClient(TestClient):
+    """작업 추가·수정에 실행 업체가 없으면 그 현장의 '기본 협력업체'를 붙인다(D-076).
+
+    예전 테스트는 실행 업체 없이 작업을 올렸다. 실행 업체 필수 자체를 보는 테스트는
+    performing_participant_id를 직접(빈 값 포함) 넣으면 그대로 보낸다."""
+
+    def post(self, url: Any, *args: Any, **kwargs: Any) -> Any:
+        data = kwargs.get("data")
+        if (
+            isinstance(url, str)
+            and _SCHEDULE_WRITE.match(url)
+            and isinstance(data, dict)
+            and "performing_participant_id" not in data
+            and data.get("site_id")
+        ):
+            kwargs["data"] = {**data, "performing_participant_id": self._partner(data["site_id"])}
+        return super().post(url, *args, **kwargs)
+
+    def _partner(self, site_id: Any) -> str:
+        pattern = rf'<option value="(\d+)"[^>]*>{DEFAULT_PARTNER}</option>'
+        found = re.search(pattern, super().get(f"/schedule?site_id={site_id}").text)
+        if found is None:
+            super().post(
+                f"/sites/{site_id}/participants",
+                data={"organization_name": DEFAULT_PARTNER, "category": "subcontractor",
+                      "confirm_same_name": "1"},
+            )  # fmt: skip
+            found = re.search(pattern, super().get(f"/schedule?site_id={site_id}").text)
+        return "" if found is None else found.group(1)
+
+
 # 쓰기 요청은 같은 출처여야 한다(app/core/security.py). TestClient의 기본 호스트와 맞춘다.
 SAME_ORIGIN = {"Origin": "http://testserver"}
 DEFAULT_USER = {
@@ -135,7 +172,7 @@ def browser(app: FastAPI) -> Iterator[Browser]:
     with contextlib.ExitStack() as stack:
 
         def make(user: dict[str, str] | None = None) -> TestClient:
-            test_client = stack.enter_context(TestClient(app, headers=SAME_ORIGIN))
+            test_client = stack.enter_context(GongonClient(app, headers=SAME_ORIGIN))
             if user is not None:
                 # 휴대폰 번호가 없는 사용자 자료는 이메일로 정한 가상 번호를 붙인다(사람마다 다르게)
                 phone = f"010{zlib.crc32(user['email'].encode()) % 10**8:08d}"

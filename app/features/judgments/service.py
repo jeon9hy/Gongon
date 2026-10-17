@@ -45,6 +45,7 @@ from app.features.judgments.schemas import (
     RunResult,
     SiteOption,
     SiteSummary,
+    SiteTab,
     Tab,
     Tile,
     VerdictFilter,
@@ -542,11 +543,21 @@ def build_dashboard(
 
 
 def build_home(
-    session: Session, scope: SiteScope, now: datetime, ran: RunResult | None = None
+    session: Session,
+    scope: SiteScope,
+    now: datetime,
+    ran: RunResult | None = None,
+    site_id: int | None = None,
 ) -> HomeView:
-    """홈: 오늘·내일 공온 점검판(D-065) → 내일 날씨 개요. 판정 조회는 현장 수와 관계없이 한 번."""
+    """홈: 오늘·내일 공온 점검판(D-065) → 내일 날씨 개요. 판정 조회는 현장 수와 관계없이 한 번.
+
+    site_id를 주면(내 현장일 때) 그 현장만 보인다. 위 현장 칸은 늘 전체 범위로 만든다.
+    """
     target_date = target_date_for(now)
-    sites = sites_service.list_sites(session, scope)
+    all_sites = sites_service.list_sites(session, scope)
+    selected = site_id if site_id in {s.site_id for s in all_sites} else None
+    tabs = _site_tabs(session, all_sites, selected, now)
+    sites = [s for s in all_sites if selected is None or s.site_id == selected]
     site_ids = [s.site_id for s in sites]
     by_site: dict[int, dict[str, Judgment]] = {}
     for j in repository.latest_for_sites_date(session, site_ids, target_date):
@@ -593,6 +604,8 @@ def build_home(
     primary_rules = next(iter(rule_sets.values()), None)
     boards, week = _check_boards(session, sites, by_site, rule_sets, now)
     return HomeView(
+        tabs=tabs,
+        selected_site_id=selected,
         boards=boards,
         week=week,
         index_days=_index_days(session, sites, rule_sets, now),
@@ -630,6 +643,30 @@ _WEATHER_OK = {Verdict.GO.value}
 
 
 _NO_SCORE = {"낮음": "중기 참고", "높음": "점수 없음", "보통": "점수 없음"}
+
+
+def _site_tabs(
+    session: Session, sites: Sequence[SiteRecord], selected: int | None, now: datetime
+) -> tuple[SiteTab, ...]:
+    """현장이 둘 이상이면 전체 + 현장마다 오늘 작업 수(쿼리 1회)."""
+    if len(sites) < 2:
+        return ()
+    today = now.astimezone(KST).date()
+    items = schedules_service.items_on_for_sites(session, [s.site_id for s in sites], today)
+    counts = {sid: len(rows) for sid, rows in items.items()}
+    return (
+        SiteTab(None, "전체", sum(counts.values()), selected is None, "/"),
+        *(
+            SiteTab(
+                s.site_id,
+                s.name,
+                counts.get(s.site_id, 0),
+                s.site_id == selected,
+                f"/?site_id={s.site_id}",
+            )
+            for s in sites
+        ),
+    )
 
 
 def _index_days(

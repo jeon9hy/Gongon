@@ -181,8 +181,8 @@
 <div class="inline">
 <label class="field">작업 위치<input type="text" name="location" maxlength="60" value="{{ i.location }}" placeholder="예: A구역 3층"></label>
 <label class="field">실행 업체
-<select name="performing_participant_id">
-<option value=""{% if not i.performing_participant_id %} selected{% endif %}>미지정</option>
+<select name="performing_participant_id" required>
+<option value=""{% if not i.performing_participant_id %} selected{% endif %}>업체 고르기</option>
 {% set ns = namespace(g="", found=false) %}{% for p in view.participants %}{% if p.group_label != ns.g %}{% if ns.g %}</optgroup>{% endif %}<optgroup label="{{ p.group_label }}">{% set ns.g = p.group_label %}{% endif %}<option value="{{ p.participant_id }}"{% if p.participant_id == i.performing_participant_id %}{% set ns.found = true %} selected{% endif %}>{{ p.name }}</option>{% endfor %}{% if ns.g %}</optgroup>{% endif %}
 {% if i.performing_participant_id and not ns.found %}<option value="{{ i.performing_participant_id }}" selected>{{ view.participant_names.get(i.performing_participant_id, "").split(" · ")[0] }} (참여 종료)</option>{% endif %}
 </select>
@@ -224,6 +224,14 @@
 <button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button>
 </div>
 {% if view.errors %}<div class="alert alert--error" role="alert"><ul>{% for e in view.errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+{% if not view.has_partners %}
+{# 원청 말고 일할 업체가 없으면 작업을 올리지 못한다(D-076) #}
+<div class="nocompany">
+<span class="nocompany__icon" aria-hidden="true">{{ icon("building", 22) }}</span>
+<div><strong>먼저 참여 업체를 등록해 주세요</strong><p class="small muted">작업마다 실행 업체가 있어야 해요.</p></div>
+<button type="button" class="btn btn--accent btn--sm" data-open-dialog="quick-participant">{{ icon("building", 15) }} 업체 등록</button>
+</div>
+{% endif %}
 <input type="hidden" name="site_id" value="{{ view.site_id }}">
 <input type="hidden" name="date_mode" value="pick">
 
@@ -259,8 +267,8 @@
 <div class="inline">
 <label class="field">작업 위치<input type="text" name="location" maxlength="60" placeholder="예: A구역 3층" value="{{ view.form.location }}"></label>
 <label class="field"><span class="addform__label">실행 업체 <button type="button" class="linkbtn" data-open-dialog="quick-participant">{{ icon("building", 14) }} 업체 등록</button></span>
-<select name="performing_participant_id">
-<option value="">미지정</option>
+<select name="performing_participant_id" required>
+<option value="">업체 고르기</option>
 {% set ns = namespace(g="") %}{% for p in view.participants %}{% if p.group_label != ns.g %}{% if ns.g %}</optgroup>{% endif %}<optgroup label="{{ p.group_label }}">{% set ns.g = p.group_label %}{% endif %}<option value="{{ p.participant_id }}"{% if p.selected %} selected{% endif %}>{{ p.name }}</option>{% endfor %}{% if ns.g %}</optgroup>{% endif %}
 </select>
 </label>
@@ -269,7 +277,7 @@
 <div class="modal__actions addform__foot">
 <p class="small addform__count" data-count aria-live="polite"></p>
 <button class="btn btn--soft" type="button" data-close>취소</button>
-<button class="btn btn--accent" type="submit">{{ icon("plus", 16, 2.2) }} 추가</button>
+<button class="btn btn--accent" type="submit"{% if not view.has_partners %} disabled{% endif %}>{{ icon("plus", 16, 2.2) }} 추가</button>
 </div>
 </form>
 </dialog>
