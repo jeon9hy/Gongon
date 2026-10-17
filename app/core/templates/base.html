@@ -16,8 +16,8 @@
 <header class="appbar">
 <div class="appbar__inner">
 {% set me = request.state.user if request is defined else none %}
-<a class="logo-word" href="/" aria-label="공온 홈"><img class="logo-mark" src="/static/brand/logo.png" alt="" width="32" height="32">공온</a>
-<a class="appbar__about" href="/about">소개</a>
+<span class="appbar__brand"><a class="logo-word" href="/" aria-label="공온 홈"><img class="logo-mark" src="/static/brand/logo.png" alt="" width="32" height="32">공온</a>
+<a class="appbar__about" href="/about">소개</a></span>
 {% if me %}
 <nav class="appnav" aria-label="주 메뉴">
 {% set current_site_id = view.site_id | default(view.selected_site_id | default(none)) if view is defined else none %}
@@ -59,7 +59,7 @@
 <footer class="sitefoot" aria-label="서비스 안내">
 <div class="sitefoot__inner">
 <div class="sitefoot__top">
-<p class="sitefoot__lead">공사 변경 뒤 필요한 일을<br>처리 결과까지, 공온 하나로.</p>
+<p class="sitefoot__lead">바뀌는 현장에서도<br>할 일은 끝까지, 공온.</p>
 <nav class="sitefoot__cols" aria-label="바닥 메뉴">
 {% if me %}
 <div class="sitefoot__col">

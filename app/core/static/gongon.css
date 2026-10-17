@@ -2245,3 +2245,12 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .about__hero .auth__eyebrow { align-self: center; }
 .about__section--tint { padding-left: max(24px, calc((100% - 1152px) / 2)); padding-right: max(24px, calc((100% - 1152px) / 2)); }
 .about__section--tint > * { max-width: none; margin-left: 0; margin-right: 0; }
+.appbar__brand { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+/* 변경 버전 기록: 점 목록 대신 얇은 시간선 */
+.change-history { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 2px solid var(--line-soft); display: flex; flex-direction: column; gap: 4px; }
+.change-history li { position: relative; }
+.change-history li::before { content: ""; position: absolute; left: -19px; top: 7px; width: 8px; height: 8px; border-radius: 999px; background: var(--line); }
+/* 대화방 이름: 단어 단위로, 길면 말줄임 */
+.chat__room span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; word-break: keep-all; }
+.chat__head { min-height: 64px; }
+.about__foot { margin-top: 40px; font-size: 12px; color: var(--dark-muted); }
