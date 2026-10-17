@@ -2154,3 +2154,24 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .jobs__more { gap: 0; }
 .jobs__more > .jobs { border-top: 1px solid var(--line-soft); }
 .jobs__more > summary { margin-top: 6px; }
+
+/* 내일 공종별 표, 같은 목록 안 더보기(틈 없음) */
+.jobs__head--types, .job--type { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.job__count { font-size: 13px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.is-extra-wrap { display: contents; }
+[data-more-list] .is-extra { display: none; }
+[data-more-list].is-open .is-extra { display: block; }
+.jobs__toggle { display: flex; align-items: center; justify-content: center; gap: 4px; width: 100%; min-height: 36px; margin-top: 4px; border: 0; border-radius: var(--radius-sm); background: transparent; font: inherit; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.jobs__toggle:hover { background: var(--surface); color: var(--ink); }
+.jobs__toggle[aria-expanded="false"] .when-open, .jobs__toggle[aria-expanded="true"] .when-closed { display: none; }
+.jobs__toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+@media (max-width: 760px) { .job--type { grid-template-columns: minmax(0, 1fr) auto; } .job--type .job__count, .job--type .job__time { display: none; } }
+/* 공온 판정 머리: 점검 알약은 오른쪽 위, 설정 톱니는 현장 고르기 옆 */
+.hero:has(.hero__corner) { position: relative; padding-top: 72px; }
+.hero__corner { position: absolute; top: 18px; right: 18px; }
+.hero__tools { display: flex; align-items: center; gap: 8px; }
+@media (max-width: 760px) { .hero:has(.hero__corner) { padding-top: 80px; } .hero__corner { left: 18px; right: auto; } }
+.hero__corner .refresh__text b { white-space: nowrap; }
+.hero:has(.hero__corner) { padding-top: var(--card-pad); }
+.hero:has(.hero__corner) .hero__main { padding-right: 240px; }
+@media (max-width: 760px) { .hero:has(.hero__corner) { padding-top: 84px; } .hero:has(.hero__corner) .hero__main { padding-right: 0; } }

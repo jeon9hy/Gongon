@@ -74,9 +74,11 @@ def test_today_board_lists_today_in_start_order_with_phase_at_boundaries(
 
     # 끝난 작업(끝 = 지금 포함)은 목록에서 빠진다(개발자 요청 2026-10-17)
     today = board(page, "today")
-    shown, done = today.split("끝난 작업 1건 보기")
-    assert rows(shown) == [("now", "15:00–17:00"), ("before", "15:05–16:00")]
-    assert rows(done) == [("done", "14:00–15:00")]  # 따로 열어 볼 수 있다
+    assert rows(today) == [
+        ("now", "15:00–17:00"), ("before", "15:05–16:00"), ("done", "14:00–15:00")
+    ]  # fmt: skip
+    # 끝난 작업은 같은 목록 안에 숨겨 두고 '끝난 작업 1건 보기'로 연다
+    assert today.count('<li class="is-extra">') == 1 and "끝난 작업 1건 보기" in today
     assert "오늘 작업 3건" in page
 
 

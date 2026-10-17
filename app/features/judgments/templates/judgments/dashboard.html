@@ -14,6 +14,17 @@
 {% else %}
 
 <section class="hero" aria-labelledby="dash-title">
+{% if view.can_run and view.site_id in manageable %}
+{# 홈의 '공온 점검' 알약과 같은 모양(개발자 요청 2026-10-17) #}
+<form method="post" action="/judgments/run" class="refresh hero__corner">
+<input type="hidden" name="site_id" value="{{ view.site_id }}">
+<button type="submit" class="refresh__btn" title="새 예보로 다시 점검">
+<span class="logo-toggle" aria-hidden="true"></span>
+<span class="refresh__text"><small>공온 점검</small><b>{{ view.checked.split(" · ")[0] if view.checked else ("다시 점검하기" if view.primary else "지금 점검하기") }}</b></span>
+<span class="refresh__go" aria-label="새로 점검">{{ icon("history", 16, 2.2) }}</span>
+</button>
+</form>
+{% endif %}
 <div class="hero__main">
 <p class="hero__date">{{ icon("calendar", 15) }} 공온 판정 · {{ view.target_date }}</p>
 <h1 class="hero__title" id="dash-title">{{ view.site_name }} 공사 ON?</h1>
@@ -34,20 +45,10 @@
 </select>
 <noscript><button class="btn btn--soft" type="submit">보기</button></noscript>
 </form>
+{{ site_menu(view.site_id, view.site_name, can_delete=view.site_id in manageable) }}
 </div>
-{% if view.can_run and view.site_id in manageable %}
-{# 홈의 '공온 점검' 알약과 같은 모양(개발자 요청 2026-10-17) #}
-<form method="post" action="/judgments/run" class="refresh hero__action">
-<input type="hidden" name="site_id" value="{{ view.site_id }}">
-<button type="submit" class="refresh__btn" title="새 예보로 다시 점검">
-<span class="logo-toggle" aria-hidden="true"></span>
-<span class="refresh__text"><small>공온 점검</small><b>{{ view.checked or ("다시 점검하기" if view.primary else "지금 점검하기") }}</b></span>
-<span class="refresh__go" aria-label="새로 점검">{{ icon("history", 16, 2.2) }}</span>
-</button>
-</form>
-{% endif %}
+
 </div>
-<div class="hero__gear">{{ site_menu(view.site_id, view.site_name, can_delete=view.site_id in manageable) }}</div>
 </section>
 
 {% if view.off_period_note %}
