@@ -2,26 +2,45 @@
 # 원문(국가법령정보센터 Open API 발췌):
 # - 산업안전보건기준에 관한 규칙 제37조①: 비·눈·바람 등 기상상태 불안정으로 위험해질 우려가 있으면 작업 중지
 # - 기상법 시행령 별표 1(특보의 기준) 강풍주의보: 육상에서 풍속 14m/s 이상(평균풍속 — 예보와 같은 양)
-# 강풍주의보 기준 풍속을 '바람으로 위험해질 우려'의 공식 수준으로 보고 중지 검토로 둔다.
-# 비·눈은 법령에 수치가 없어 확인 필요까지만 낸다. 순간풍속(주의보 20m/s)은 예보에 없어 쓰지 않는다.
+# 판정 강도(D-081, 개발자 결정): 작업이 어려울 게 분명하면 중지 검토로 거른다. 이 공종의 법정 수치가 없어
+# 같은 고소·양중 성격인 철골 작업의 중지 기준(제383조: 풍속 10m/s·강우 1mm/h·강설 1cm/h 이상)을 준용한다.
+# 그보다 약한 비·눈('1mm 미만' 등)만 제37조①로 확인 필요. 순간풍속은 예보에 없어 쓰지 않는다.
 work_type: aerial_platform
 work_type_label: 고소작업대
-rule_version: "안전보건규칙 2025-09-01 · 기상법령 2026-09-18"  # 각 시행일
-source: 산업안전보건기준에 관한 규칙 제37조, 기상법 시행령 별표 1
+rule_version: "규칙 2025-09-01 · 시행령 2026-09-18 · D-081"  # 각 시행일·판정 강도
+source: 산업안전보건기준에 관한 규칙 제37조·제383조(준용), 기상법 시행령 별표 1
 source_snapshot: [sources/osh_standards_rule_mst273603.json, sources/weather_act_enforcement_mst289709.json]
-source_articles: [제37조, 별표 1]
+source_articles: [제37조, 제383조, 별표 1]
 source_verified: true
 verified_on: 2026-10-17
 conditions:
-  - id: aerial_platform_wind
+  - id: aerial_platform_wind_strong
     element: wind_speed_mps
     operator: ">="
     threshold: 14.0
     verdict: 중지 검토
     forecast_comparable: true
     cite: 기상법 시행령 별표 1
-    action: 강풍주의보 수준 · 작업 중지 검토
+    action: 강풍주의보 수준 · 작업 중지
     quote: 육상에서 풍속 50.4km/h(14m/s) 이상
+  - id: aerial_platform_wind
+    element: wind_speed_mps
+    operator: ">="
+    threshold: 10.0
+    verdict: 중지 검토
+    forecast_comparable: true
+    cite: 안전보건규칙 제383조 준용
+    action: 고소·양중 작업 중지 수준
+    quote: 1. 풍속이 초당 10미터 이상인 경우
+  - id: aerial_platform_rain_stop
+    element: precipitation_mm_per_h
+    operator: ">="
+    threshold: 1.0
+    verdict: 중지 검토
+    forecast_comparable: true
+    cite: 안전보건규칙 제383조 준용
+    action: 고소·양중 작업 중지 수준
+    quote: 2. 강우량이 시간당 1밀리미터 이상인 경우
   - id: aerial_platform_rain
     element: precipitation_mm_per_h
     operator: ">"
@@ -29,8 +48,17 @@ conditions:
     verdict: 확인 필요
     forecast_comparable: true
     cite: 안전보건규칙 제37조
-    action: 위험하면 작업 중지
+    action: 약한 비 · 위험하면 작업 중지
     quote: 사업주는 비ㆍ눈ㆍ바람 또는 그 밖의 기상상태의 불안정으로 인하여 근로자가 위험해질 우려가 있는 경우 작업을 중지하여야 한다.
+  - id: aerial_platform_snow_stop
+    element: snowfall_cm_per_h
+    operator: ">="
+    threshold: 1.0
+    verdict: 중지 검토
+    forecast_comparable: true
+    cite: 안전보건규칙 제383조 준용
+    action: 고소·양중 작업 중지 수준
+    quote: 3. 강설량이 시간당 1센티미터 이상인 경우
   - id: aerial_platform_snow
     element: snowfall_cm_per_h
     operator: ">"
@@ -38,5 +66,5 @@ conditions:
     verdict: 확인 필요
     forecast_comparable: true
     cite: 안전보건규칙 제37조
-    action: 위험하면 작업 중지
+    action: 약한 눈 · 위험하면 작업 중지
     quote: 사업주는 비ㆍ눈ㆍ바람 또는 그 밖의 기상상태의 불안정으로 인하여 근로자가 위험해질 우려가 있는 경우 작업을 중지하여야 한다.

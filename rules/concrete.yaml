@@ -4,12 +4,12 @@
 # - 서중: KCS 14 20 41:2025 서중콘크리트 1.1(2) — sources/kcs_concrete.json(공식 PDF)
 # - 한중: KCS 14 20 40:2024 한중 콘크리트 1.1(2) — sources/kcs_weather.json(국가건설기준센터 OpenAPI)
 # 시방서는 작업 중지 의무가 아니라 시공 방법(서중·한중 대책)을 정하므로 기온 조건은 확인 필요다.
-# 강우는 가이드라인이 '즉시 중지'를 정한 3mm 초과만 중지 검토, 그 아래 비는 확인 필요다.
+# 강우: 가이드라인이 '강우 시 타설은 금지가 원칙'이라 비가 오면 중지 검토(D-081). 3mm 초과는 즉시 중지 조치.
 # 화면 사유는 같은 요소에서 처음 해당한 조건을 보여 주므로 더 엄격한 조건을 먼저 둔다.
 # quote·값·단위·이상/초과가 원문과 같은지 tests/engine/judgment/test_rule_sources.py가 검사한다.
 work_type: concrete
 work_type_label: 콘크리트 타설
-rule_version: "KCS 14 20 41·40 · 강우 가이드라인 2024.12"
+rule_version: "KCS 14 20 41·40 · 강우지침 2024.12 · D-081"
 source: KCS 14 20 41:2025 서중, KCS 14 20 40:2024 한중, 국토교통부 강우 시 콘크리트 타설 가이드라인(2024.12)
 source_snapshot: [sources/kcs_concrete.json, sources/kcs_weather.json]
 source_articles:
@@ -33,7 +33,7 @@ conditions:
     element: precipitation_mm_per_h
     operator: ">"
     threshold: 0.0
-    verdict: 확인 필요
+    verdict: 중지 검토
     forecast_comparable: true
     cite: 강우 타설 가이드라인 1.1(1)
     action: 강우 시 타설 원칙 금지
