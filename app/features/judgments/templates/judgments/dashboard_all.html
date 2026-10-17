@@ -1,0 +1,33 @@
+{# 공온 판정 · 전체 현장(개발자 요청 2026-10-17): 현장을 고르지 않고 들어오면 현장별 요약을 먼저 보인다 #}
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}공온 판정{% endblock %}
+{% block content %}
+<section class="homebar" aria-labelledby="dash-all-title">
+<div class="homebar__text">
+<p class="homebar__date">공온 판정 · 내일 {{ view.target_date }}</p>
+<h1 class="homebar__title" id="dash-all-title">전체 현장</h1>
+</div>
+<div class="dashtools">
+<form method="get" action="/dashboard">
+<label class="visually-hidden" for="site-select">현장</label>
+<select id="site-select" class="hero__select" name="site_id" onchange="this.form.submit()">
+<option value="" selected>전체 현장</option>
+{% for s in view.sites %}<option value="{{ s.site_id }}">{{ s.name }}</option>{% endfor %}
+</select>
+<noscript><button class="btn btn--soft btn--sm" type="submit">보기</button></noscript>
+</form>
+{% if manageable %}
+<form method="post" action="/judgments/run-all" class="refresh" data-refresh>
+<button type="submit" class="refresh__btn" title="새 예보로 다시 점검">
+<span class="logo-toggle" aria-hidden="true"></span>
+<span class="refresh__text"><small>공온 점검</small><b>{{ view.checked_short or "아직 점검 전" }}</b></span>
+<span class="refresh__go" aria-label="새로 점검">{{ icon("history", 16, 2.2) }}</span>
+</button>
+</form>
+{% endif %}
+</div>
+</section>
+{% if view.message %}<div class="alert {% if view.message_is_error %}alert--error{% else %}alert--ok{% endif %}" role="status">{{ view.message }}</div>{% endif %}
+{% include "judgments/_sitelist.html" %}
+{% endblock %}

@@ -484,3 +484,37 @@ def test_site_modal_shows_errors_in_place(client: TestClient) -> None:
 
     assert response.status_code == 422
     assert 'class="embedbody"' in response.text and "저장하지 못했습니다" in response.text
+
+
+def test_menu_entry_shows_all_sites_when_there_are_several(client: TestClient) -> None:
+    # 현장을 고르지 않고 들어오면(메뉴) 전체, 홈에서 고른 현장으로 오면 그 현장
+    first = add_site(client)
+    second = add_site(client, name="둘째현장")
+    add_item(client, first)
+    add_item(client, second, work_types="도장·방수")
+
+    page = client.get("/schedule?day=2026-10-05").text
+
+    assert '<option value="" selected>전체 현장</option>' in page
+    assert "철골 작업" in page and "도장·방수" in page
+    assert '<b class="workcard__site">둘째현장</b>' in page
+    assert 'data-open-dialog="pick-site"' in page  # 작업 추가는 현장부터 고른다
+    one = client.get(f"/schedule?site_id={second}&day=2026-10-05").text
+    assert "도장·방수" in one and 'class="workcard__site"' not in one
+
+
+def test_single_site_still_opens_directly(client: TestClient) -> None:
+    add_site(client)
+
+    page = client.get("/schedule").text
+
+    assert "전체 현장" not in page and 'name="site_id" value=' in page
+
+
+def test_judgment_menu_entry_shows_all_sites_summary(client: TestClient) -> None:
+    add_site(client)
+    add_site(client, name="둘째현장")
+
+    page = client.get("/dashboard").text
+
+    assert "전체 현장</h1>" in page and "둘째현장" in page and "현장별 날씨 · 내일" in page

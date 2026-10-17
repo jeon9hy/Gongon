@@ -26,7 +26,7 @@
 {% for r in rows %}
 <li class="board__row{% if r.phase == '진행 중' %} is-now{% elif r.phase == '끝남' %} is-done{% endif %}">
 <span class="board__time">{{ r.time_text }}</span>
-<span class="board__what"><strong>{{ r.work_type }}</strong>{% if r.location %}<span>{{ r.location }}</span>{% endif %}</span>
+<span class="board__what"><strong>{{ r.work_type }}</strong><span>{{ r.location or "-" }}</span></span>
 <span class="board__who">{{ r.company }}</span>
 {% if r.phase %}<span class="board__phase">{{ r.phase }}</span>{% endif %}
 </li>

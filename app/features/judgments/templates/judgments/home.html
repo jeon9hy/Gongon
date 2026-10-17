@@ -92,7 +92,7 @@
 {% for w in today_board.items %}
 <li><a class="job job--{{ w.phase }}" href="{{ w.href }}">
 <span class="job__time">{{ w.time_text }}</span>
-<span class="job__what"><span class="job__dot" style="--c: {{ work_color(w.work_type) }}"></span><strong>{{ w.work_type }}</strong>{% if w.location %}<span class="muted"> · {{ w.location }}</span>{% endif %}</span>
+<span class="job__what"><span class="job__dot" style="--c: {{ work_color(w.work_type) }}"></span><strong>{{ w.work_type }}</strong><span class="muted"> · {{ w.location or "-" }}</span></span>
 <span class="job__who">{{ w.company or w.site_name }}</span>
 <span class="job__state">{% if w.issues and w.phase != "done" %}<span class="job__warn" title="{{ w.issues | map(attribute='label') | join(', ') }}" aria-label="확인할 것 {{ w.issues | length }}개">!</span>{% else %}<span class="job__warn job__warn--none" aria-hidden="true"></span>{% endif %}<span class="pill pill--{{ w.phase }}">{{ w.phase_label }}</span></span>
 {% if w.phase == "now" %}<span class="job__bar"><span style="width: {{ w.progress_pct }}%; --c: {{ work_color(w.work_type) }}"></span></span>{% endif %}
@@ -104,6 +104,13 @@
 {% endif %}
 </section>
 
+{% macro tomorrow_row(w) %}<li><a class="job" href="{{ w.href }}">
+<span class="job__time">{{ w.time_text }}</span>
+<span class="job__what"><span class="job__dot" style="--c: {{ work_color(w.work_type) }}"></span><strong>{{ w.work_type }}</strong><span class="muted"> · {{ w.location or "-" }}</span></span>
+<span class="job__who">{{ w.company or "업체 미정" }}</span>
+{% if w.issues %}<span class="pill pill--warn" title="{{ w.issues | map(attribute='label') | join(', ') }}">{{ icon("info", 13, 2.2) }} {% for x in w.issues %}{{ short.get(x.key, x.label) }}{% if not loop.last %}·{% endif %}{% endfor %}</span>
+{% else %}<span class="pill pill--ok">{{ icon("check", 13, 2.6) }} 준비 OK</span>{% endif %}
+</a></li>{% endmacro %}
 <section class="hsec hsec--tomorrow reveal" aria-labelledby="tomorrow-title" style="--i: 1">
 <div class="hsec__head">
 <h2 class="hsec__title" id="tomorrow-title">내일 <span>{{ tomorrow_board.date_text }}</span></h2>
@@ -134,17 +141,14 @@
 {% endif %}
 </div>
 <ul class="jobs">
-{% for w in tomorrow_board.items[:6] %}
-<li><a class="job" href="{{ w.href }}">
-<span class="job__time">{{ w.time_text }}</span>
-<span class="job__what"><span class="job__dot" style="--c: {{ work_color(w.work_type) }}"></span><strong>{{ w.work_type }}</strong>{% if w.location %}<span class="muted"> · {{ w.location }}</span>{% endif %}</span>
-<span class="job__who">{{ w.company or "업체 미정" }}</span>
-{% if w.issues %}<span class="pill pill--warn" title="{{ w.issues | map(attribute='label') | join(', ') }}">{{ icon("info", 13, 2.2) }} {% for x in w.issues %}{{ short.get(x.key, x.label) }}{% if not loop.last %}·{% endif %}{% endfor %}</span>
-{% else %}<span class="pill pill--ok">{{ icon("check", 13, 2.6) }} 준비 OK</span>{% endif %}
-</a></li>
-{% endfor %}
+{% for w in tomorrow_board.items[:6] %}{{ tomorrow_row(w) }}{% endfor %}
 </ul>
-{% if total > 6 %}<p class="jobs__more">외 {{ total - 6 }}건</p>{% endif %}
+{% if total > 6 %}
+<details class="worklist__more jobs__more">
+<summary><span class="when-closed">{{ total - 6 }}건 더보기</span><span class="when-open">접기</span> {{ icon("chevron-down", 14, 2.2) }}</summary>
+<ul class="jobs">{% for w in tomorrow_board.items[6:] %}{{ tomorrow_row(w) }}{% endfor %}</ul>
+</details>
+{% endif %}
 {% else %}
 <p class="hsec__empty">내일 일정이 비어 있어요. 미리 올려 둘까요?</p>
 {% endif %}
@@ -169,45 +173,7 @@
 </section>
 {% endif %}
 
-<section class="panel sitewx reveal" style="--i: 3" aria-labelledby="sites-title">
-<div class="panel__head">
-<h2 class="h2" id="sites-title">현장별 날씨 · 내일</h2>
-<p class="sitewx__src">{% if view.forecast_issued %}예보 {{ view.forecast_issued }} 발표 · {% endif %}수집 {{ view.forecast_status }}</p>
-</div>
-<ul class="sitelist">
-{% for s in view.sites %}
-<li class="siterow siterow--{{ verdict_class.get(s.verdict, 'unknown') }}">
-<div class="siterow__head">
-<div class="siterow__title">
-<a class="siterow__name" href="{{ s.detail_href }}">{{ s.name }}</a>
-<p class="siterow__meta">{{ icon("history", 13) }} {{ s.work_hours or "내일 작업 없음" }}<span aria-hidden="true">·</span>{% if s.checked_short %}{{ s.checked_short }}{% else %}판정 기록 없음{% endif %}</p>
-</div>
-<div class="siterow__status">
-{% if s.verdict %}{{ verdict_badge(s.verdict) }}{% elif not s.working %}<span class="badge badge--unknown">작업 없음</span>{% else %}<span class="badge badge--unknown">판정 전</span>{% endif %}
-{{ site_menu(s.site_id, s.name, can_delete=s.site_id in manageable) }}
-</div>
-</div>
-{% if s.cards %}
-<ul class="checks" aria-label="작업별 판정">
-{% for c in s.cards %}<li class="check check--{{ verdict_class.get(c.verdict, 'unknown') }}"><span class="check__name">{{ c.work_type }}</span><span class="check__verdict">{{ c.verdict or "판정 전" }}</span></li>{% endfor %}
-</ul>
-{% else %}
-<div class="tag-scroll" aria-label="공종">{% for w in s.work_types %}<span class="tag">{{ w }}</span>{% else %}<span class="tag">등록한 작업 없음</span>{% endfor %}</div>
-{% endif %}
-<p class="siterow__reason">{% if s.verdict %}<span class="siterow__reason-label">가장 높은 단계</span>{% endif %}{{ s.reason }}</p>
-<div class="siterow__foot">
-{% if s.working and s.site_id in manageable %}
-<form method="post" action="/judgments/run">
-<input type="hidden" name="site_id" value="{{ s.site_id }}">
-<button class="btn btn--soft btn--sm" type="submit">{{ icon("recheck", 15) }} {% if s.verdict %}다시 판정{% else %}판정하기{% endif %}</button>
-</form>
-{% endif %}
-<a class="siterow__link" href="{{ s.detail_href }}" aria-label="{{ s.name }} 대시보드에서 보기">대시보드에서 보기 {{ icon("arrow-right", 15, 2.2) }}</a>
-</div>
-</li>
-{% endfor %}
-</ul>
-</section>
+{% include "judgments/_sitelist.html" %}
 {% endif %}
 <script>
 // 현장 넘기기: 휴대폰에서 본문을 좌우로 밀면 이웃 현장으로. 고른 칸은 가로 목록 가운데로 보인다

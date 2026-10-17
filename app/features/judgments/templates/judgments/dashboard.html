@@ -29,19 +29,25 @@
 <form method="get" action="/dashboard">
 <label class="visually-hidden" for="site-select">현장</label>
 <select id="site-select" name="site_id" onchange="this.form.submit()">
+{% if view.sites | length > 1 %}<option value="">전체 현장</option>{% endif %}
 {% for s in view.sites %}<option value="{{ s.site_id }}"{% if s.selected %} selected{% endif %}>{{ s.name }}</option>{% endfor %}
 </select>
 <noscript><button class="btn btn--soft" type="submit">보기</button></noscript>
 </form>
-{{ site_menu(view.site_id, view.site_name, can_delete=view.site_id in manageable) }}
 </div>
 {% if view.can_run and view.site_id in manageable %}
-<form method="post" action="/judgments/run" class="hero__action">
+{# 홈의 '공온 점검' 알약과 같은 모양(개발자 요청 2026-10-17) #}
+<form method="post" action="/judgments/run" class="refresh hero__action">
 <input type="hidden" name="site_id" value="{{ view.site_id }}">
-<button class="btn hero__button" type="submit">{{ icon("recheck", 18) }} {% if view.primary %}다시 판정하기{% else %}지금 판정하기{% endif %}</button>
+<button type="submit" class="refresh__btn" title="새 예보로 다시 점검">
+<span class="logo-toggle" aria-hidden="true"></span>
+<span class="refresh__text"><small>공온 점검</small><b>{{ view.checked or ("다시 점검하기" if view.primary else "지금 점검하기") }}</b></span>
+<span class="refresh__go" aria-label="새로 점검">{{ icon("history", 16, 2.2) }}</span>
+</button>
 </form>
 {% endif %}
 </div>
+<div class="hero__gear">{{ site_menu(view.site_id, view.site_name, can_delete=view.site_id in manageable) }}</div>
 </section>
 
 {% if view.off_period_note %}

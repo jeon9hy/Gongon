@@ -61,6 +61,14 @@ def dashboard(
     ran: RunResult | None = None,
     work: Annotated[str | None, Query(max_length=60)] = None,
 ) -> HTMLResponse:
+    if site_id is None and scope is not None and len(scope) > 1:
+        # 현장을 고르지 않고 들어오면 전체 현장 요약(개발자 요청 2026-10-17)
+        overview = service.build_home(session, scope, now, ran)
+        return templates.TemplateResponse(
+            request,
+            "judgments/dashboard_all.html",
+            {"nav_active": "dashboard", "view": overview, "manageable": manageable},
+        )
     view = service.build_dashboard(session, scope, site_id, element, hour, now, ran, work)
     if view is None:
         raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")

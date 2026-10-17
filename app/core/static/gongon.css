@@ -2004,3 +2004,20 @@ textarea:focus-visible { outline: 0; border-color: var(--ink); box-shadow: 0 0 0
 .sitetab.is-current .sitetab__dot { background: #FFFFFF; color: var(--accent); }
 .sitetab__name { max-width: 220px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 14px; font-weight: 600; }
 .sitetab__count { font-size: 12px; font-weight: 600; opacity: 0.75; }
+
+/* 작업 일정 전체 현장(개발자 요청 2026-10-17): 카드의 현장 이름, 작업 추가 전 현장 고르기 */
+.workcard__site { font-weight: 700; color: var(--accent); }
+.sitepick { display: flex; flex-direction: column; gap: 8px; padding-bottom: var(--card-pad); }
+.sitepick__item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--line-soft); border-radius: var(--radius-md); font-weight: 600; color: var(--ink); text-decoration: none; transition: border-color var(--ease), background-color var(--ease); }
+.sitepick__item:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
+.sitepick__item svg { margin-left: auto; color: var(--muted); }
+.jobs__more { margin-top: 2px; }
+/* 공온 판정: 현장 설정 톱니는 오른쪽 위, 점검 버튼은 홈과 같은 알약 */
+.hero:has(.hero__gear) { position: relative; }
+.hero__gear { position: absolute; top: 14px; right: 14px; }
+.hero .refresh__btn, .homebar .refresh__btn, .dashtools .refresh__btn { display: inline-flex; align-items: center; gap: 12px; padding: 8px 8px 8px 14px; border: 1px solid var(--line-soft); border-radius: 999px; background: var(--card); box-shadow: var(--shadow-sm); color: var(--text); cursor: pointer; }
+.hero .refresh__btn:hover, .dashtools .refresh__btn:hover { border-color: var(--accent); box-shadow: 0 6px 16px #1C60EF1F; }
+.hero .refresh__btn:hover .refresh__go, .dashtools .refresh__btn:hover .refresh__go { transform: rotate(-200deg); }
+.dashtools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+/* 작업 추가 창: '실행 업체' 라벨은 다른 칸 라벨과 같은 글자·글자선, 오른쪽에 업체 등록 */
+.fieldhead { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; text-indent: 0; padding-left: var(--label-inset); }

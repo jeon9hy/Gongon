@@ -169,3 +169,5 @@ class ScheduleView:
     revisions: dict[int, tuple[RevisionView, ...]] = field(default_factory=dict)  # 고른 날 작업
     edit_item_id: int | None = None  # 수정에 실패한 작업(그 카드의 수정 칸을 연다)
     edit_errors: tuple[str, ...] = ()
+    all_mode: bool = False  # 현장 전체 달력(작업 추가는 현장을 먼저 고른다)
+    site_names: dict[int, str] = field(default_factory=dict)  # 전체에서 작업 카드에 현장 이름

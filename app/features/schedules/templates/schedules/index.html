@@ -6,12 +6,13 @@
 <section class="hero" aria-labelledby="schedule-title" data-swap="header">
 <div class="hero__main">
 <p class="hero__date">{{ icon("calendar", 15) }} 작업 일정{% if view.site_name %} · {{ view.site_name }}{% endif %}</p>
-<h1 class="hero__title" id="schedule-title">{{ view.month_title.split(" ")[-1] if view.site_id is not none else "이번 달" }} 작업 일정</h1>
+<h1 class="hero__title" id="schedule-title">{{ view.month_title.split(" ")[-1] if view.site_id is not none or view.all_mode else "이번 달" }} 작업 일정</h1>
 </div>
 {% if view.sites %}
 <form method="get" action="/schedule" class="hero__action">
 <label class="visually-hidden" for="schedule-site">현장</label>
 <select id="schedule-site" class="hero__select" name="site_id" onchange="this.form.submit()">
+{% if view.sites | length > 1 %}<option value=""{% if view.all_mode %} selected{% endif %}>전체 현장</option>{% endif %}
 {% for s in view.sites %}<option value="{{ s.site_id }}"{% if s.selected %} selected{% endif %}>{{ s.name }}</option>{% endfor %}
 </select>
 <noscript><button class="btn btn--soft btn--sm" type="submit">보기</button></noscript>
@@ -21,7 +22,7 @@
 
 {% if view.message %}<div class="alert alert--ok" role="status">{{ icon("check", 16, 2.4) }} {{ view.message }}</div>{% endif %}
 
-{% if view.site_id is none %}
+{% if view.site_id is none and not view.all_mode %}
 <section class="card">
 <h2 class="h2">현장부터 만들어 볼까요?</h2>
 <p class="small muted">현장이 있어야 작업을 올릴 수 있어요.</p>
@@ -105,13 +106,13 @@
 <h2 class="h2" id="day-title">{{ d.day_text }}</h2>
 <p class="small muted">{% if d.items %}작업 {{ d.items | length }}건{% elif d.can_add %}아직 비어 있어요{% else %}{{ d.note }}{% endif %}</p>
 </div>
-{% if d.is_target %}<a class="tag tag--go" href="/dashboard?site_id={{ view.site_id }}">판정 보기 ›</a>{% endif %}
+{% if d.is_target %}<a class="tag tag--go" href="/dashboard{% if view.site_id %}?site_id={{ view.site_id }}{% endif %}">판정 보기 ›</a>{% endif %}
 </div>
 {% if d.items %}
 {% macro workcard(i) %}{% set history = view.revisions.get(i.item_id, ()) %}<li><button type="button" class="workcard" style="--c: {{ work_color(i.work_type) }}" data-open-dialog="item-{{ i.item_id }}">
 <span class="workcard__time">{{ i.start_local.strftime("%H:%M") }}<span>–</span>{{ i.end_local.strftime("%H:%M") }}</span>
 <span class="workcard__title"><span class="dot"></span>{{ i.work_type }}{% if i.location %}<span class="workcard__place"> · {{ i.location }}</span>{% endif %}</span>
-<span class="workcard__meta">{{ view.participant_names.get(i.performing_participant_id, "업체 미지정").split(" · ")[0] if i.performing_participant_id else "업체 미지정" }} · v{{ i.plan_version }}{% if history %} · 변경 {{ history | length }}번{% endif %}</span>
+<span class="workcard__meta">{% if view.all_mode %}<b class="workcard__site">{{ view.site_names.get(i.site_id, "") }}</b> · {% endif %}{{ view.participant_names.get(i.performing_participant_id, "업체 미지정").split(" · ")[0] if i.performing_participant_id else "업체 미지정" }} · v{{ i.plan_version }}{% if history %} · 변경 {{ history | length }}번{% endif %}</span>
 </button></li>{% endmacro %}
 {# 하루 작업이 많으면 3건만 보이고 나머지는 더보기(개발자 요청 2026-10-16) #}
 <ul class="worklist">{% for i in d.items[:3] %}{{ workcard(i) }}{% endfor %}</ul>
@@ -124,7 +125,16 @@
 {% else %}
 <div class="empty-art empty-art--sm"><img class="mascot" src="/static/brand/mascot-schedule.png" alt="" width="120" height="95"><p>{% if d.can_add %}이날은 한가해요. 작업을 올려 볼까요?{% else %}{{ d.note or "이날은 작업이 없어요." }}{% endif %}</p></div>
 {% endif %}
-{% if d.can_add and view.site_id in manageable %}<button class="btn btn--accent daypanel__add" type="button" data-open-add data-day="{{ d.day.isoformat() }}">{{ icon("plus", 16, 2.2) }} 작업 추가</button>{% endif %}
+{% if d.can_add and view.site_id in manageable %}<button class="btn btn--accent daypanel__add" type="button" data-open-add data-day="{{ d.day.isoformat() }}">{{ icon("plus", 16, 2.2) }} 작업 추가</button>
+{% elif d.can_add and view.all_mode and (view.sites | selectattr("site_id", "in", manageable) | list) %}
+{# 전체 달력: 작업은 현장마다 올리므로 현장부터 고른다 #}
+<button class="btn btn--accent daypanel__add" type="button" data-open-dialog="pick-site">{{ icon("plus", 16, 2.2) }} 작업 추가</button>
+<dialog class="modal" id="pick-site" aria-labelledby="pick-site-title">
+<div class="modal__box">
+<div class="modal__head"><h2 class="h2" id="pick-site-title">어느 현장에 올릴까요? · {{ d.day_text }}</h2><button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
+<div class="sitepick">{% for s in view.sites if s.site_id in manageable %}<a class="sitepick__item" href="/schedule?site_id={{ s.site_id }}&day={{ d.day.isoformat() }}&add=1"><span class="sitetab__dot" aria-hidden="true">{{ s.name[:1] }}</span><span>{{ s.name }}</span>{{ icon("arrow-right", 16, 2.2) }}</a>{% endfor %}</div>
+</div>
+</dialog>{% endif %}
 
 {% for i in d.items %}
 {% set history = view.revisions.get(i.item_id, ()) %}
@@ -137,7 +147,7 @@
 </div>
 <p class="itemdlg__time">{{ d.day_text }} {{ i.start_local.strftime("%H:%M") }}–{{ i.end_local.strftime("%H:%M") }}</p>
 <dl class="itemdlg__facts">
-<div><dt>위치</dt><dd>{{ i.location or "—" }}</dd></div>
+<div><dt>위치</dt><dd>{{ i.location or "-" }}</dd></div>
 <div><dt>실행 업체</dt><dd>{{ company }}</dd></div>
 <div><dt>계획</dt><dd>v{{ i.plan_version }}{% if history %} · 변경 {{ history | length }}번{% endif %}</dd></div>
 {% if i.memo %}<div><dt>메모</dt><dd>{{ i.memo }}</dd></div>{% endif %}
@@ -149,14 +159,14 @@
 </details>
 {% endif %}
 <div class="itemdlg__actions">
-{% if view.site_id in proposable %}<a class="btn btn--soft btn--sm" href="/changes/new?site_id={{ view.site_id }}&item_id={{ i.item_id }}">{{ icon("history", 15) }} 변경 제안</a>{% endif %}
-{% if view.site_id in manageable %}<button type="button" class="btn btn--soft btn--sm itemdlg__copy" data-copy='{{ {"workType": i.work_type, "start": i.start_local.strftime("%H:%M"), "end": i.end_local.strftime("%H:%M"), "location": i.location, "memo": i.memo, "performer": (i.performing_participant_id or "") | string} | tojson }}'>{{ icon("plus", 15, 2.2) }} 다른 날에도</button>
+{% if i.site_id in proposable %}<a class="btn btn--soft btn--sm" href="/changes/new?site_id={{ i.site_id }}&item_id={{ i.item_id }}">{{ icon("history", 15) }} 변경 제안</a>{% endif %}
+{% if i.site_id in manageable %}<button type="button" class="btn btn--soft btn--sm itemdlg__copy" data-copy='{{ {"workType": i.work_type, "start": i.start_local.strftime("%H:%M"), "end": i.end_local.strftime("%H:%M"), "location": i.location, "memo": i.memo, "performer": (i.performing_participant_id or "") | string} | tojson }}'>{{ icon("plus", 15, 2.2) }} 다른 날에도</button>
 <span class="itemdlg__tools">
 <button type="button" class="iconbtn" data-edit-toggle aria-label="계획 수정" title="계획 수정">{{ icon("edit", 16) }}<span>수정</span></button>
 <details class="delete-action itemdlg__delete">
 <summary class="iconbtn iconbtn--danger" aria-label="작업 삭제" title="작업 삭제">{{ icon("trash", 16) }}<span>삭제</span></summary>
 <form method="post" action="/schedule/{{ i.item_id }}/delete" class="delete-action__confirm">
-<input type="hidden" name="site_id" value="{{ view.site_id }}">
+<input type="hidden" name="site_id" value="{{ i.site_id }}">
 <input type="hidden" name="day" value="{{ d.day.isoformat() }}">
 <p class="small">정말 지울까요? 되돌릴 수 없어요.</p>
 <button class="btn btn--danger btn--sm" type="submit">삭제</button>
@@ -164,12 +174,12 @@
 </details>
 </span>{% endif %}
 </div>
-{% if view.site_id in manageable %}
+{% if i.site_id in manageable %}
 <details class="itemdlg__edit"{% if view.edit_item_id == i.item_id %} open{% endif %}>
 <summary class="visually-hidden">계획 수정</summary>
 <form method="post" action="/schedule/{{ i.item_id }}/edit" class="itemdlg__form">
 {% if view.edit_item_id == i.item_id and view.edit_errors %}<div class="alert alert--error" role="alert"><ul>{% for e in view.edit_errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
-<input type="hidden" name="site_id" value="{{ view.site_id }}">
+<input type="hidden" name="site_id" value="{{ i.site_id }}">
 <input type="hidden" name="day" value="{{ d.day.isoformat() }}">
 <input type="hidden" name="plan_version" value="{{ i.plan_version }}">
 <label class="field">날짜<input type="date" name="work_date" value="{{ i.work_date.isoformat() }}" min="{{ view.today_iso }}" required></label>
@@ -179,7 +189,7 @@
 <label class="field">종료<input type="time" name="end" value="{{ i.end_local.strftime('%H:%M') }}" data-after="start" required></label>
 </div>
 <div class="inline">
-<label class="field">작업 위치<input type="text" name="location" maxlength="60" value="{{ i.location }}" placeholder="예: A구역 3층"></label>
+<label class="field">작업 위치<input type="text" name="location" maxlength="60" value="{{ i.location }}" placeholder="선택 · 예: A구역 3층"></label>
 <label class="field">실행 업체
 <select name="performing_participant_id" required>
 <option value=""{% if not i.performing_participant_id %} selected{% endif %}>업체 고르기</option>
@@ -265,8 +275,8 @@
 </fieldset>
 
 <div class="inline">
-<label class="field">작업 위치<input type="text" name="location" maxlength="60" placeholder="예: A구역 3층" value="{{ view.form.location }}"></label>
-<label class="field"><span class="addform__label">실행 업체 <button type="button" class="linkbtn" data-open-dialog="quick-participant">{{ icon("building", 14) }} 업체 등록</button></span>
+<label class="field">작업 위치<input type="text" name="location" maxlength="60" placeholder="선택 · 예: A구역 3층" value="{{ view.form.location }}"></label>
+<label class="field"><span class="fieldhead">실행 업체 <button type="button" class="linkbtn" data-open-dialog="quick-participant">{{ icon("building", 14) }} 업체 등록</button></span>
 <select name="performing_participant_id" required>
 <option value="">업체 고르기</option>
 {% set ns = namespace(g="") %}{% for p in view.participants %}{% if p.group_label != ns.g %}{% if ns.g %}</optgroup>{% endif %}<optgroup label="{{ p.group_label }}">{% set ns.g = p.group_label %}{% endif %}<option value="{{ p.participant_id }}"{% if p.selected %} selected{% endif %}>{{ p.name }}</option>{% endfor %}{% if ns.g %}</optgroup>{% endif %}

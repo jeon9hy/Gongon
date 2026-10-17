@@ -94,10 +94,15 @@ def build_view(
     site = _pick(sites, site_id)
     if site_id is not None and site is None:
         return None  # 없거나 참여하지 않은 현장(D-057)
+    # 현장을 고르지 않고 들어오면(메뉴·주소) 현장이 둘 이상일 때 전체를 보인다(2026-10-17 요청)
+    all_mode = site_id is None and len(sites) > 1
+    if all_mode:
+        site = None
+    shown: list[SiteRecord] = list(sites) if all_mode else ([site] if site is not None else [])
     tomorrow = today + timedelta(days=1)
     selected = _date(day or "") or (_date(form.work_date) if form else None) or today
     first = _month(month or "") or selected.replace(day=1)
-    if site is not None and not _overlaps_period(site, first):
+    if site is not None and not _overlaps_period([site], first):
         # 작업 기간 밖의 달은 열지 않는다(개발자 요청): 가까운 기간 끝 달로 옮긴다
         start, end = site.work_start_date, site.work_end_date
         edge = start if start is not None and first < start else end
@@ -117,17 +122,21 @@ def build_view(
     labels: dict[int, str] = {}
     choices: tuple[ParticipantOption, ...] = ()
     revisions: dict[int, tuple[RevisionView, ...]] = {}
-    if site is not None:
+    site_names = {s.site_id: s.name for s in shown}
+    if shown:
         items = [
             _record(i)
-            for i in repository.list_between(session, [site.site_id], grid_start, grid_end)
+            for i in repository.list_between(
+                session, [s.site_id for s in shown], grid_start, grid_end
+            )
         ]
         by_day: dict[date, list[WorkItemRecord]] = {}
         for item in items:
             by_day.setdefault(item.work_date, []).append(item)
 
         def href(d: date) -> str:
-            return f"/schedule?site_id={site.site_id}&month={d:%Y-%m}&day={d.isoformat()}"
+            prefix = "/schedule?" if site is None else f"/schedule?site_id={site.site_id}&"
+            return f"{prefix}month={d:%Y-%m}&day={d.isoformat()}"
 
         cells = []
         d = grid_start
@@ -140,18 +149,20 @@ def build_view(
                     in_month=d.month == first.month,
                     is_today=d == today,
                     is_target=d == tomorrow,
-                    in_period=site.works_on(d),
+                    in_period=_works_on(shown, d),
                     selected=d == selected,
-                    addable=d >= today and site.works_on(d),
+                    addable=d >= today and _works_on(shown, d),
                     items=tuple(on_day[:CELL_ITEMS]),
                     more=max(0, len(on_day) - CELL_ITEMS),
                 )
             )
             d += timedelta(days=1)
         weeks = tuple(tuple(cells[i : i + 7]) for i in range(0, len(cells), 7))
-        detail = _detail(site, selected, today, tuple(by_day.get(selected, [])))
-        labels = teams_service.participant_labels(session, site.site_id)
-        choices = teams_service.participant_choices(session, site.site_id)
+        detail = _detail(shown, selected, today, tuple(by_day.get(selected, [])))
+        for s in shown:  # 전체에서는 현장 수만큼(현장은 몇 곳뿐이다)
+            labels |= teams_service.participant_labels(session, s.site_id)
+        if site is not None:
+            choices = teams_service.participant_choices(session, site.site_id)
         revisions = _revision_views(session, [i.item_id for i in detail.items], labels)
 
     # 공종·시간은 미리 고르지 않는다(개발자 요청). 날짜만 고른 날로 채운다.
@@ -161,20 +172,22 @@ def build_view(
         range_end=selected.isoformat(),
     )
     shown_form = form or default_form
-    base = "" if site is None else f"/schedule?site_id={site.site_id}&month="
+    base = "/schedule?month=" if site is None else f"/schedule?site_id={site.site_id}&month="
     return ScheduleView(
         sites=tuple(
             SiteChoice(s.site_id, s.name, site is not None and s.site_id == site.site_id)
             for s in sites
         ),
         site_id=None if site is None else site.site_id,
-        site_name="" if site is None else site.name,
+        site_name="전체" if all_mode else ("" if site is None else site.name),
+        all_mode=all_mode,
+        site_names=site_names,
         period_text=None if site is None else site.period_text(),
         month_title=f"{first.year}년 {first.month}월",
-        prev_href=_nav_href(site, base, (first - timedelta(days=1)).replace(day=1)),
-        next_href=_nav_href(site, base, last + timedelta(days=1)),
+        prev_href=_nav_href(shown, base, (first - timedelta(days=1)).replace(day=1)),
+        next_href=_nav_href(shown, base, last + timedelta(days=1)),
         this_month_href=f"{base}{today:%Y-%m}&day={today.isoformat()}",
-        month_groups=() if site is None else _month_groups(site, first, tomorrow, base),
+        month_groups=() if not shown else _month_groups(shown, first, tomorrow, base),
         weeks=weeks,
         detail=detail,
         work_types=() if site is None else _work_type_choices(session, site.site_id, shown_form),
@@ -207,12 +220,16 @@ def build_view(
 
 
 def _detail(
-    site: SiteRecord, day: date, today: date, items: tuple[WorkItemRecord, ...]
+    shown: list[SiteRecord], day: date, today: date, items: tuple[WorkItemRecord, ...]
 ) -> DayDetail:
     if day < today:
         note: str | None = "지난 날짜는 작업을 추가할 수 없습니다."
-    elif not site.works_on(day):
-        note = f"현장 작업 기간({site.period_text()}) 밖입니다."
+    elif not _works_on(shown, day):
+        note = (
+            f"현장 작업 기간({shown[0].period_text()}) 밖입니다."
+            if len(shown) == 1
+            else "어느 현장도 작업하지 않는 날입니다."
+        )
     elif day == today:
         # 판정은 내일부터 7일(D-041)이라 오늘 작업은 일정·변경 관리로만 쓴다(C04-4).
         note = "오늘 작업은 일정·변경 관리용입니다. 기상 판정은 내일 작업부터 합니다."
@@ -224,7 +241,7 @@ def _detail(
         day=day,
         day_text=_day_text(day),
         is_target=day == today + timedelta(days=1),
-        can_add=day >= today and site.works_on(day),
+        can_add=day >= today and _works_on(shown, day),
         note=note,
         items=items,
     )
@@ -576,17 +593,22 @@ def _record(item: WorkItem) -> WorkItemRecord:
     )
 
 
+def _works_on(sites: list[SiteRecord], day: date) -> bool:
+    return any(s.works_on(day) for s in sites)
+
+
 def _month_groups(
-    site: SiteRecord, shown: date, tomorrow: date, base: str
+    sites: list[SiteRecord], shown: date, tomorrow: date, base: str
 ) -> tuple[tuple[int, tuple[MonthChoice, ...]], ...]:
     """달 고르기 목록: 보고 있는 달 앞뒤 MONTH_PICK_SPAN개월 + 작업 기간 + 내일이 든 달.
 
     작업 기간이 너무 길면 보고 있는 달 중심 앞뒤 MONTH_PICK_MAX개월로 자른다.
     """
     anchors = [shown, tomorrow.replace(day=1)]
-    for edge in (site.work_start_date, site.work_end_date):
-        if edge is not None:
-            anchors.append(edge.replace(day=1))
+    for site in sites:
+        for edge in (site.work_start_date, site.work_end_date):
+            if edge is not None:
+                anchors.append(edge.replace(day=1))
     # 작업 기간이 짧아도 앞뒤로 넘겨 볼 수 있게 보고 있는 달 앞뒤 MONTH_PICK_SPAN개월은 항상 넣는다.
     anchors += [_add_months(shown, -MONTH_PICK_SPAN), _add_months(shown, MONTH_PICK_SPAN)]
     start, end = min(anchors), max(anchors)
@@ -603,7 +625,7 @@ def _month_groups(
                 label=f"{month.month}월",
                 href=f"{base}{month:%Y-%m}",
                 selected=month == shown,
-                in_period=_overlaps_period(site, month),
+                in_period=_overlaps_period(sites, month),
                 is_target=month == tomorrow.replace(day=1),
             )
         )
@@ -611,17 +633,21 @@ def _month_groups(
     return tuple((year, tuple(months)) for year, months in groups.items())
 
 
-def _nav_href(site: SiteRecord | None, base: str, first: date) -> str | None:
-    """이전·다음 달 주소. 그 달이 작업 기간 밖이면 None(버튼을 막는다)."""
-    if site is not None and not _overlaps_period(site, first):
+def _nav_href(sites: list[SiteRecord], base: str, first: date) -> str | None:
+    """이전·다음 달 주소. 보이는 현장 모두의 작업 기간 밖이면 None(버튼을 막는다)."""
+    if sites and not _overlaps_period(sites, first):
         return None
     return f"{base}{first:%Y-%m}"
 
 
-def _overlaps_period(site: SiteRecord, first: date) -> bool:
-    """이 달 중 하루라도 작업 기간에 드는가(기간 끝이 비어 있으면 그쪽으로 제한 없음)."""
-    start, end = site.work_start_date, site.work_end_date
-    return (start is None or start <= _month_end(first)) and (end is None or end >= first)
+def _overlaps_period(sites: list[SiteRecord], first: date) -> bool:
+    """이 달 중 하루라도 어느 현장의 작업 기간에 드는가(기간 끝이 비면 그쪽 제한 없음)."""
+    end_of_month = _month_end(first)
+    return any(
+        (s.work_start_date is None or s.work_start_date <= end_of_month)
+        and (s.work_end_date is None or s.work_end_date >= first)
+        for s in sites
+    )
 
 
 def _add_months(first: date, months: int) -> date:
