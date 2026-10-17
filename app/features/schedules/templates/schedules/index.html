@@ -39,7 +39,7 @@
 {% if view.prev_href %}<a class="btn btn--sm" href="{{ view.prev_href }}" aria-label="이전 달" data-nav>{{ icon("arrow-left", 14, 2.2) }}</a>{% else %}<span class="btn btn--sm is-disabled" aria-disabled="true" aria-label="이전 달(작업 기간 밖)">{{ icon("arrow-left", 14, 2.2) }}</span>{% endif %}
 <details class="monthpick">
 <summary class="monthpick__toggle" aria-label="{{ view.month_title }} · 다른 달 고르기"><h2 class="h2" id="month-title">{{ view.month_title }}</h2>{{ icon("chevron-down", 16, 2.2) }}</summary>
-<div class="monthpick__menu">
+<div class="monthpick__menu"{% if view.pick_years %} data-range-from="{{ view.pick_years[0] }}" data-range-to="{{ view.pick_years[1] }}" data-base="/schedule?month="{% endif %}>
 <div class="monthpick__head" data-pick-head hidden>
 <button type="button" class="monthpick__step" data-step="-1" aria-label="이전 해">{{ icon("arrow-left", 14, 2.2) }}</button>
 <button type="button" class="monthpick__yeartoggle" data-year-toggle aria-label="연도 고르기"></button>
@@ -50,7 +50,7 @@
 <div class="monthpick__year" data-year="{{ year }}">
 <p class="monthpick__label">{{ year }}년</p>
 <div class="monthpick__grid">
-{% for m in months %}{% if m.in_period %}<a class="monthpick__month is-period{% if m.is_target %} is-target{% endif %}" href="{{ m.href }}" data-nav{% if m.selected %} aria-current="true"{% endif %}>{{ m.label }}</a>{% else %}<span class="monthpick__month is-off" aria-disabled="true">{{ m.label }}</span>{% endif %}{% endfor %}
+{% for m in months %}{% if m.in_period %}<a class="monthpick__month is-period" href="{{ m.href }}" data-nav{% if m.selected %} aria-current="true"{% endif %}>{{ m.label }}</a>{% else %}<span class="monthpick__month is-off" aria-disabled="true">{{ m.label }}</span>{% endif %}{% endfor %}
 </div>
 </div>
 {% endfor %}
@@ -63,16 +63,16 @@
 </div>
 
 <table class="calendar">
-<thead><tr>{% for w in "일월화수목금토" %}<th scope="col"{% if loop.first or loop.last %} class="is-weekend"{% endif %}>{{ w }}</th>{% endfor %}</tr></thead>
+<thead><tr>{% for w in "일월화수목금토" %}<th scope="col"{% if loop.first %} class="is-sun"{% elif loop.last %} class="is-sat"{% endif %}>{{ w }}</th>{% endfor %}</tr></thead>
 <tbody>
 {% set legend = namespace(types=[]) %}
 {% for week in view.weeks %}
 <tr>
 {% for c in week %}
-<td class="calcell{% if c.is_today %} is-today{% endif %}{% if not c.in_month %} is-outside{% endif %}{% if not c.in_period %} is-off{% endif %}{% if c.selected %} is-selected{% endif %}{% if c.is_target %} is-target{% endif %}">
-{% if c.in_period %}<a class="calcell__link" href="{{ c.href }}" aria-label="{{ c.day.month }}월 {{ c.day.day }}일, 작업 {{ c.items | length + c.more }}건"{% if c.selected %} aria-current="date"{% endif %}>
-<span class="calcell__day">{{ c.day.day }}{% if c.is_today %}<span class="calcell__flag">오늘</span>{% elif c.is_target %}<span class="calcell__flag calcell__flag--target">판정</span>{% endif %}</span>
-</a>{% else %}<span class="calcell__link" aria-disabled="true" aria-label="{{ c.day.month }}월 {{ c.day.day }}일, 작업 기간 밖"><span class="calcell__day">{{ c.day.day }}{% if c.is_today %}<span class="calcell__flag">오늘</span>{% endif %}</span></span>{% endif %}
+<td class="calcell{% if c.is_today %} is-today{% endif %}{% if not c.in_month %} is-outside{% endif %}{% if not c.in_period %} is-off{% endif %}{% if c.selected %} is-selected{% endif %}{% if c.holiday or c.day.weekday() == 6 %} is-sun{% elif c.day.weekday() == 5 %} is-sat{% endif %}">
+{% if c.in_period %}<a class="calcell__link" href="{{ c.href }}" aria-label="{{ c.day.month }}월 {{ c.day.day }}일{% if c.holiday %} {{ c.holiday }}{% endif %}, 작업 {{ c.items | length + c.more }}건"{% if c.selected %} aria-current="date"{% endif %}>
+<span class="calcell__day">{{ c.day.day }}{% if c.is_today %}<span class="calcell__flag">오늘</span>{% endif %}</span>{% if c.holiday %}<span class="calcell__holiday" title="{{ c.holiday }}">{{ c.holiday }}</span>{% endif %}
+</a>{% else %}<span class="calcell__link" aria-disabled="true" aria-label="{{ c.day.month }}월 {{ c.day.day }}일, 작업 기간 밖"><span class="calcell__day">{{ c.day.day }}{% if c.is_today %}<span class="calcell__flag">오늘</span>{% endif %}</span>{% if c.holiday %}<span class="calcell__holiday" title="{{ c.holiday }}">{{ c.holiday }}</span>{% endif %}</span>{% endif %}
 {% if c.items %}<span class="caldots">{% for i in c.items %}{% if i.work_type not in legend.types %}{% set legend.types = legend.types + [i.work_type] %}{% endif %}<button type="button" class="dot dot--btn" style="--c: {{ work_color(i.work_type) }}" data-item="{{ i.item_id }}" data-href="{{ c.href }}" aria-label="{{ c.day.month }}/{{ c.day.day }} {{ i.start_local.strftime('%H:%M') }} {{ i.work_type }} 상세" title="{{ i.start_local.strftime('%H:%M') }} {{ i.work_type }}"></button>{% endfor %}{% if c.more %}<a class="caldots__more" href="{{ c.href }}">+{{ c.more }}</a>{% endif %}</span>{% endif %}
 </td>
 {% endfor %}
@@ -517,31 +517,65 @@
   });
   // 달 고르기: 한 해의 달만 3줄 4칸으로 보이고, 위의 연도를 누르면 연도를 4줄 3칸으로 고른다.
   // 스크립트가 없으면 모든 해의 달이 이어서 보인다(달력을 바꿔 끼워도 문서 단위로 동작).
-  const pickShow = (box, year, mode = "months") => {
+  // 전체 달력(2020~2100년)은 화면에 보고 있는 해 앞뒤만 있다. 다른 해를 고르면 그 해 달을 만든다.
+  const ensureYear = (box, y) => {
+    if (!box.dataset.rangeFrom || box.querySelector(`.monthpick__year[data-year="${y}"]`)) return;
+    const block = document.createElement("div");
+    block.className = "monthpick__year";
+    block.dataset.year = String(y);
+    const label = document.createElement("p");
+    label.className = "monthpick__label";
+    label.textContent = `${y}년`;
+    const grid = document.createElement("div");
+    grid.className = "monthpick__grid";
+    for (let m = 1; m <= 12; m++) {
+      const a = document.createElement("a");
+      a.className = "monthpick__month is-period";
+      a.href = `${box.dataset.base}${y}-${String(m).padStart(2, "0")}`;
+      a.dataset.nav = "";
+      a.textContent = `${m}월`;
+      grid.append(a);
+    }
+    block.append(label, grid);
+    const after = [...box.querySelectorAll(".monthpick__year")].find((b) => Number(b.dataset.year) > y);
+    box.insertBefore(block, after || null);
+  };
+  // 연도는 3행 3열(9년)씩 보이고 ← →로 9년씩 넘긴다(개발자 요청 2026-10-17)
+  const YEAR_PAGE = 9;
+  const pickShow = (box, year, mode = "months", pageStart = null) => {
+    const from = Number(box.dataset.rangeFrom), to = Number(box.dataset.rangeTo);
+    if (from && year >= from && year <= to) ensureYear(box, year);
     const blocks = [...box.querySelectorAll(".monthpick__year")];
-    const years = blocks.map((b) => Number(b.dataset.year));
+    const years = from ? Array.from({ length: to - from + 1 }, (_, i) => from + i) : blocks.map((b) => Number(b.dataset.year));
     if (!years.includes(year)) year = years[0];
     box.dataset.year = String(year);
     box.querySelector("[data-pick-head]").hidden = false;
     const toggle = box.querySelector("[data-year-toggle]");
-    toggle.textContent = mode === "years" ? `${years[0]}–${years[years.length - 1]}` : `${year}년`;
+    const start = pageStart ?? years[0] + Math.floor((year - years[0]) / YEAR_PAGE) * YEAR_PAGE;
+    const page = years.filter((y) => y >= start && y < start + YEAR_PAGE);
+    box.dataset.mode = mode;
+    box.dataset.pageStart = String(start);
+    toggle.textContent = mode === "years" ? `${page[0]}–${page[page.length - 1]}` : `${year}년`;
     toggle.setAttribute("aria-expanded", String(mode === "years"));
     box.querySelectorAll("[data-step]").forEach((b) => {
-      const to = year + Number(b.dataset.step);
-      b.disabled = mode === "years" || !years.includes(to);
+      const dir = Number(b.dataset.step);
+      b.disabled = mode === "years"
+        ? !years.some((y) => (dir < 0 ? y < start : y >= start + YEAR_PAGE))
+        : !years.includes(year + dir);
+      b.setAttribute("aria-label", mode === "years" ? (dir < 0 ? "이전 9년" : "다음 9년") : (dir < 0 ? "이전 해" : "다음 해"));
     });
     blocks.forEach((b) => { b.hidden = mode === "years" || Number(b.dataset.year) !== year; });
     const grid = box.querySelector("[data-pick-years]");
     grid.hidden = mode !== "years";
     if (mode === "years") {
-      grid.replaceChildren(...years.map((y) => {
+      grid.replaceChildren(...page.map((y) => {
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "monthpick__yearbtn" + (y === year ? " is-current" : "");
         btn.textContent = `${y}년`;
         btn.dataset.pickYear = String(y);
         // 작업 기간에 든 달이 없는 해는 고르지 못한다
-        btn.disabled = !box.querySelector(`.monthpick__year[data-year="${y}"] .monthpick__month.is-period`);
+        btn.disabled = !from && !box.querySelector(`.monthpick__year[data-year="${y}"] .monthpick__month.is-period`);
         return btn;
       }));
     }
@@ -557,7 +591,9 @@
     if (!box) return;
     const step = e.target.closest("[data-step]"), toggle = e.target.closest("[data-year-toggle]"), pick = e.target.closest("[data-pick-year]");
     const year = Number(box.dataset.year);
-    if (step) pickShow(box, year + Number(step.dataset.step));
+    if (step && box.dataset.mode === "years") {
+      pickShow(box, year, "years", Number(box.dataset.pageStart) + Number(step.dataset.step) * YEAR_PAGE);
+    } else if (step) pickShow(box, year + Number(step.dataset.step));
     else if (toggle) pickShow(box, year, toggle.getAttribute("aria-expanded") === "true" ? "months" : "years");
     else if (pick) pickShow(box, Number(pick.dataset.pickYear));
   });

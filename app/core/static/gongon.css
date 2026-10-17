@@ -2325,3 +2325,51 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .srcs table { min-width: 760px; } /* 휴대폰에서는 좁혀 쓰지 않고 표를 가로로 밀어 본다 */
 /* 판정 근거 카드의 조항 표기: 한 줄로 짧게 */
 .criterion-source { color: var(--verdict-unknown-fg); word-break: keep-all; }
+
+/* ---- 줄바꿈 정리(C04-26): 제목이 길어도 배지·버튼은 같은 줄 오른쪽에 둔다 ---- */
+.detail-head { flex-wrap: nowrap; align-items: flex-start; }
+.detail-head__main { min-width: 0; }
+.detail-head > .badge, .detail-head > .verdict-badge, .detail-head > span:last-child { flex: none; white-space: nowrap; }
+.crit-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+.crit-head__label { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: 16px; font-weight: 700; word-break: keep-all; line-height: 1.3; }
+.crit-head__label .icon-circle { flex: none; }
+.crit-head > :last-child { white-space: nowrap; }
+.acts__head { flex-wrap: nowrap; }
+.acts__head > * { min-width: 0; }
+.acts__note { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acts__add, .acts__title { flex: none; white-space: nowrap; }
+/* 머리 알약: 한 줄로, 넘치면 말줄임 */
+.hero__date { display: block; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: 999px; }
+.hero__date svg { display: inline-block; vertical-align: -2px; margin-right: 6px; }
+@media (max-width: 760px) {
+  .hero__date { border-radius: 999px; }
+  /* 참여자 줄: 이름·메일 한 줄, 그 아래 역할·추가 시각·버튼을 같은 자리에 */
+  .member-row--account { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px 10px; }
+  .member-row--account > .member-row__who { grid-column: 1 / -1; }
+  .member-row--account > form { margin-left: 0; }
+}
+
+/* ---- 달력: 일요일·공휴일은 빨강, 토요일은 파랑. 공휴일 이름이 들어가게 칸을 키운다 ---- */
+.calendar th.is-sun { color: var(--stop-text); }
+.calendar th.is-sat { color: var(--accent); }
+.calcell.is-sun .calcell__day { color: var(--stop-text); }
+.calcell.is-sat .calcell__day { color: var(--accent); }
+.calcell { height: 128px; }
+.calcell__holiday { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 600; color: var(--stop-text); line-height: 1.3; }
+@media (max-width: 760px) {
+  .calcell { height: 76px; }
+  .calcell__holiday { font-size: 9px; text-align: center; letter-spacing: -0.02em; }
+}
+.calendar thead th.is-sun { color: var(--stop-text); }
+.calendar thead th.is-sat { color: var(--accent); }
+@media (max-width: 760px) {
+  /* 점이 두 줄로 꺾이지 않게 작게 한 줄로(최대 5개 + 나머지) */
+  .caldots { flex-wrap: nowrap; gap: 2px; }
+  .dot--btn { width: 7px; height: 7px; box-shadow: none; border: 0; }
+}
+.monthpick__years { grid-template-rows: repeat(3, 44px); max-height: none; overflow: visible; }  /* 3행 3열 */
+.caldots { flex-wrap: nowrap; overflow: hidden; }
+@media (min-width: 761px) and (max-width: 1200px) {
+  .caldots { gap: 3px; }
+  .dot--btn { width: 11px; height: 11px; }
+}

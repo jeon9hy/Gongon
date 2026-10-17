@@ -1,5 +1,6 @@
 """작업 일정(S08-1). 판정 기능은 items_on·items_on_for_sites·items_between으로 작업을 읽는다."""
 
+from collections.abc import Callable, Mapping
 from datetime import date, datetime, time, timedelta
 
 from sqlalchemy.orm import Session
@@ -33,6 +34,9 @@ from engine.kst import KST
 CELL_ITEMS = 5  # 달력 칸에 점으로 보이는 작업 수(나머지는 +N, D-064)
 MONTH_PICK_SPAN = 6  # 달 고르기 목록에 늘 넣는 보고 있는 달 앞뒤 개월 수
 MONTH_PICK_MAX = 24  # 달 고르기 목록은 보고 있는 달에서 앞뒤 최대 이 개월까지
+# 전체 달력은 이 해들 사이를 고를 수 있다(개발자 요청 2026-10-17)
+ALL_MODE_FIRST_YEAR = 2020
+ALL_MODE_LAST_YEAR = 2100
 MAX_LOCATION = 60
 MAX_DAYS = 31  # 한 번에 추가할 수 있는 날 수
 MAX_ITEMS = 100  # 한 번에 만들 수 있는 작업 수(공종 수 x 날 수)
@@ -85,6 +89,7 @@ def build_view(
     edit_item_id: int | None = None,
     edit_errors: tuple[str, ...] = (),
     now_hm: str = "",
+    holidays_of: Callable[[int], Mapping[date, str]] = lambda year: {},
 ) -> ScheduleView | None:
     """월 달력 + 고른 날짜 상세. 현장이 없으면 빈 화면, 없거나 범위 밖 site_id면 None.
 
@@ -102,6 +107,8 @@ def build_view(
     tomorrow = today + timedelta(days=1)
     selected = _date(day or "") or (_date(form.work_date) if form else None) or today
     first = _month(month or "") or selected.replace(day=1)
+    if all_mode:
+        first = min(max(first, date(ALL_MODE_FIRST_YEAR, 1, 1)), date(ALL_MODE_LAST_YEAR, 12, 1))
     if site is not None and not _overlaps_period([site], first):
         # 작업 기간 밖의 달은 열지 않는다(개발자 요청): 가까운 기간 끝 달로 옮긴다
         start, end = site.work_start_date, site.work_end_date
@@ -154,6 +161,7 @@ def build_view(
                     addable=d >= today and _works_on(shown, d),
                     items=tuple(on_day[:CELL_ITEMS]),
                     more=max(0, len(on_day) - CELL_ITEMS),
+                    holiday=holidays_of(d.year).get(d),
                 )
             )
             d += timedelta(days=1)
@@ -184,10 +192,11 @@ def build_view(
         site_names=site_names,
         period_text=None if site is None else site.period_text(),
         month_title=f"{first.year}년 {first.month}월",
-        prev_href=_nav_href(shown, base, (first - timedelta(days=1)).replace(day=1)),
-        next_href=_nav_href(shown, base, last + timedelta(days=1)),
+        prev_href=_nav_href(shown, base, (first - timedelta(days=1)).replace(day=1), all_mode),
+        next_href=_nav_href(shown, base, last + timedelta(days=1), all_mode),
         this_month_href=f"{base}{today:%Y-%m}&day={today.isoformat()}",
-        month_groups=() if not shown else _month_groups(shown, first, tomorrow, base),
+        month_groups=() if not shown else _month_groups(shown, first, tomorrow, base, all_mode),
+        pick_years=(ALL_MODE_FIRST_YEAR, ALL_MODE_LAST_YEAR) if all_mode else None,
         weeks=weeks,
         detail=detail,
         work_types=() if site is None else _work_type_choices(session, site.site_id, shown_form),
@@ -598,7 +607,7 @@ def _works_on(sites: list[SiteRecord], day: date) -> bool:
 
 
 def _month_groups(
-    sites: list[SiteRecord], shown: date, tomorrow: date, base: str
+    sites: list[SiteRecord], shown: date, tomorrow: date, base: str, all_mode: bool = False
 ) -> tuple[tuple[int, tuple[MonthChoice, ...]], ...]:
     """달 고르기 목록: 보고 있는 달 앞뒤 MONTH_PICK_SPAN개월 + 작업 기간 + 내일이 든 달.
 
@@ -614,6 +623,9 @@ def _month_groups(
     start, end = min(anchors), max(anchors)
     start = max(start, _add_months(shown, -MONTH_PICK_MAX))
     end = min(end, _add_months(shown, MONTH_PICK_MAX))
+    if all_mode:  # 전체 달력: 보고 있는 해 앞뒤 한 해(나머지 해는 화면 스크립트가 만든다)
+        start = date(max(ALL_MODE_FIRST_YEAR, shown.year - 1), 1, 1)
+        end = date(min(ALL_MODE_LAST_YEAR, shown.year + 1), 12, 1)
     # 한 해를 3줄 4칸으로 보이므로 해의 1월~12월을 모두 채운다(기간 밖 달은 막힘으로 보인다)
     start, end = start.replace(month=1), end.replace(month=12)
 
@@ -625,7 +637,7 @@ def _month_groups(
                 label=f"{month.month}월",
                 href=f"{base}{month:%Y-%m}",
                 selected=month == shown,
-                in_period=_overlaps_period(sites, month),
+                in_period=all_mode or _overlaps_period(sites, month),
                 is_target=month == tomorrow.replace(day=1),
             )
         )
@@ -633,8 +645,16 @@ def _month_groups(
     return tuple((year, tuple(months)) for year, months in groups.items())
 
 
-def _nav_href(sites: list[SiteRecord], base: str, first: date) -> str | None:
-    """이전·다음 달 주소. 보이는 현장 모두의 작업 기간 밖이면 None(버튼을 막는다)."""
+def _nav_href(
+    sites: list[SiteRecord], base: str, first: date, all_mode: bool = False
+) -> str | None:
+    """이전·다음 달 주소. 보이는 현장 모두의 작업 기간 밖이면 None(버튼을 막는다).
+
+    전체 달력은 2020년 1월~2100년 12월 밖만 막는다.
+    """
+    if all_mode:
+        inside = date(ALL_MODE_FIRST_YEAR, 1, 1) <= first <= date(ALL_MODE_LAST_YEAR, 12, 1)
+        return f"{base}{first:%Y-%m}" if inside else None
     if sites and not _overlaps_period(sites, first):
         return None
     return f"{base}{first:%Y-%m}"

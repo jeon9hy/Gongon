@@ -32,6 +32,7 @@ from app.core.config import (
 )
 from app.core.db import get_session
 from app.features.forecasts.service import get_http_get
+from app.features.schedules import holidays
 from app.main import create_app
 from engine.kst import KST
 from tests.fakes import FakeKma
@@ -158,6 +159,7 @@ def app(db_engine: Engine, session: Session, fake_kma: FakeKma, settings: Settin
     app.dependency_overrides[now_kst] = lambda: FIXED_NOW
     app.dependency_overrides[get_settings] = lambda: settings
     app.dependency_overrides[get_http_get] = lambda: fake_kma
+    holidays.clear_cache()  # 공휴일은 프로세스 캐시라 시험마다 비운다
     return app
 
 

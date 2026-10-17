@@ -48,8 +48,9 @@ def test_mild_dry_day_is_go() -> None:
 @pytest.mark.parametrize(
     ("rain", "expected"),
     [
-        (ForecastValue(0.0, 1.0, False, "1mm 미만"), Verdict.CHECK),  # 비가 오면 원칙 금지
-        (exact(3.0), Verdict.CHECK),  # 3mm 이하: 부득이 시 가이드라인 조치
+        (ForecastValue(0.0, 1.0, False, "1mm 미만"), Verdict.CHECK),  # 비가 오는지 애매
+        (exact(0.5), Verdict.STOP_REVIEW),  # 강우 시 타설 원칙 금지(D-081)
+        (exact(3.0), Verdict.STOP_REVIEW),
         (exact(3.1), Verdict.STOP_REVIEW),  # 3mm 초과: 즉시 중지
     ],
 )

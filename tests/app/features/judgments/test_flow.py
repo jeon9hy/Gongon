@@ -422,3 +422,18 @@ def test_history_lists_only_the_latest_judgment_per_work(
     shown = page.count('<li><a class="hrow')
     assert stored > shown > 0  # 이전 판정은 기록에 남지만 목록에는 최신만
     assert "예보 10/04 14:00" not in page
+
+
+def test_home_work_type_row_opens_the_worst_judgment(
+    client: TestClient, session: Session, fake_kma: FakeKma
+) -> None:
+    # 홈 날 패널의 공종 줄을 누르면 작업 일정이 아니라 그 판정 상세로 간다(개발자 요청 2026-10-17)
+    fake_kma.set_hour("20261005", 14, PCP="1.0mm")
+    run(client, add_site(client))
+    steel = session.scalars(select(Judgment).where(STEEL)).one()
+
+    home = client.get("/").text
+
+    row = home.split('class="job job--type" href="')[1].split('"')[0]
+    links = [h.split('"')[0] for h in home.split('class="job job--type" href="')[1:]]
+    assert f"/judgments/{steel.id}" in links and row.startswith("/judgments/")

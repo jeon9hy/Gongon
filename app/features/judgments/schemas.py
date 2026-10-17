@@ -233,7 +233,7 @@ class DayTypeRow:
     companies_text: str  # "우진철강 외 1"
     count: int
     verdict: str | None  # 판정 4단계 이름, None은 판정 전·점수 없음
-    href: str  # 작업 일정 그날
+    href: str  # 가장 높은 단계 판정의 상세. 판정이 없으면 작업 일정 그날
 
 
 @dataclass(frozen=True, slots=True)

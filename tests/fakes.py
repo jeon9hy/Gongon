@@ -17,6 +17,9 @@ class FakeKma:
         # (fcstDate, fcstTime) → {category: value}
         self.values: dict[tuple[str, str], dict[str, str]] = {}
         self.fail_with: Exception | None = None
+        # 특일 정보(공휴일) 가짜: {"20261003": "개천절"}. 형식은 실제 getRestDeInfo 응답과 같다.
+        self.holidays: dict[str, str] = {}
+        self.holiday_calls: list[dict[str, str]] = []
         for hour in range(24):
             self.set_hour(
                 "20261005", hour, PCP="강수없음", WSD="2.0", SNO="적설없음", TMP="20", REH="50"
@@ -28,6 +31,29 @@ class FakeKma:
     def __call__(self, url: str, params: dict[str, str], timeout_s: float) -> bytes:
         if "MidFcstInfoService" in url:
             return self._mid(params)
+        if "SpcdeInfoService" in url:
+            self.holiday_calls.append(params)
+            if self.fail_with is not None:
+                raise self.fail_with
+            year = params["solYear"]
+            item = [
+                {
+                    "dateKind": "01",
+                    "dateName": name,
+                    "isHoliday": "Y",
+                    "locdate": int(day),
+                    "seq": 1,
+                }
+                for day, name in sorted(self.holidays.items())
+                if day.startswith(year)
+            ]
+            found: dict[str, Any] = {
+                "items": {"item": item} if item else "",
+                "totalCount": len(item),
+            }
+            return json.dumps(
+                {"response": {"header": {"resultCode": "00"}, "body": found}}
+            ).encode()
         self.calls.append(params)
         if self.fail_with is not None:
             raise self.fail_with

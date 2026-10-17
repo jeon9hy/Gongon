@@ -117,6 +117,7 @@ class CalendarDay:
     addable: bool  # 작업을 추가할 수 있는 날(오늘 이후·작업 기간 안)
     items: tuple[WorkItemRecord, ...]  # 칸에 보이는 작업(최대 CELL_ITEMS개)
     more: int  # 칸에 다 못 보인 작업 수
+    holiday: str | None = None  # 공휴일 이름(특일 정보, 대체공휴일 포함)
 
 
 @dataclass(frozen=True, slots=True)
@@ -153,6 +154,9 @@ class ScheduleView:
     next_href: str | None
     this_month_href: str
     month_groups: tuple[tuple[int, tuple[MonthChoice, ...]], ...]  # (연도, 그 해의 달들)
+    # 전체 달력의 고를 수 있는 해(첫 해, 끝 해). 화면에는 보고 있는 해 앞뒤만 넣고
+    # 나머지는 스크립트가 만든다.
+    pick_years: tuple[int, int] | None
     weeks: tuple[tuple[CalendarDay, ...], ...]  # 월요일 시작 7칸씩
     detail: DayDetail | None
     work_types: tuple[WorkTypeChoice, ...]  # 고를 수 있는 공종(자주 쓴 순)

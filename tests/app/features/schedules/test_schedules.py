@@ -520,3 +520,46 @@ def test_judgment_menu_entry_shows_all_sites_summary(client: TestClient) -> None
     assert (
         "전체 현장</h1>" in page and "둘째현장" in page and ">현장별 날씨 <span>내일</span>" in page
     )
+
+
+def test_holiday_name_shows_in_red_cell_and_year_is_fetched_once(
+    client: TestClient, fake_kma: FakeKma
+) -> None:
+    fake_kma.holidays = {"20261003": "개천절", "20261009": "한글날"}
+    site_id = add_site(client)
+
+    page = client.get(f"/schedule?site_id={site_id}").text
+    client.get(f"/schedule?site_id={site_id}&day=2026-10-05")  # 같은 해는 다시 받지 않는다
+
+    cell = page.split('aria-label="10월 3일 개천절, 작업 0건"')[0].rsplit("<td", 1)[1]
+    assert "is-sun" in cell  # 공휴일은 일요일처럼 빨강
+    assert '<span class="calcell__holiday" title="개천절">개천절</span>' in page
+    assert "한글날" in page
+    assert len(fake_kma.holiday_calls) == 1 and fake_kma.holiday_calls[0]["solYear"] == "2026"
+    assert "calcell__flag--target" not in page  # 달력에는 '판정' 표시를 두지 않는다
+
+
+def test_holiday_failure_keeps_calendar_working(client: TestClient, fake_kma: FakeKma) -> None:
+    fake_kma.fail_with = OSError("timed out")
+    site_id = add_site(client)
+
+    response = client.get(f"/schedule?site_id={site_id}")
+
+    assert response.status_code == 200 and "calcell__holiday" not in response.text
+    assert len(fake_kma.holiday_calls) == 1  # 실패해도 시도는 했다(한 시간 뒤 다시)
+
+
+def test_all_sites_calendar_spans_2020_to_2100(client: TestClient) -> None:
+    add_site(client)
+    add_site(client, name="△△현장")  # 현장이 둘이면 메뉴로 들어올 때 전체 달력
+
+    first = client.get("/schedule?month=2020-01").text
+    before = client.get("/schedule?month=2019-06").text
+    last = client.get("/schedule?month=2101-03").text
+
+    assert "2020년 1월" in first and "2020년 1월" in before  # 범위 밖은 가장 가까운 끝 달로
+    assert 'aria-label="이전 달(작업 기간 밖)"' in first and "month=2020-02" in first
+    assert "2100년 12월" in last and 'aria-label="다음 달(작업 기간 밖)"' in last
+    # 달 고르기는 보고 있는 해 앞뒤만 넣고 나머지 해는 화면에서 만든다(페이지가 무거워지지 않게)
+    assert 'data-range-from="2020" data-range-to="2100"' in first
+    assert first.count('class="monthpick__year"') == 2  # 2020·2021

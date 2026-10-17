@@ -42,10 +42,13 @@ def verdict(rule_file: str, **changes: float) -> Verdict:
     ("changes", "expected"),
     [
         ({}, Verdict.GO),
-        ({"wind_speed_mps": 13.9}, Verdict.GO),
+        ({"wind_speed_mps": 9.9}, Verdict.GO),
+        ({"wind_speed_mps": 10.0}, Verdict.STOP_REVIEW),  # 제383조 준용 '10미터 이상'(D-081)
         ({"wind_speed_mps": 14.0}, Verdict.STOP_REVIEW),  # 강풍주의보 '14m/s 이상'
-        ({"precipitation_mm_per_h": 0.5}, Verdict.CHECK),  # 제37조①: 수치 없음 → 현장 판단
-        ({"snowfall_cm_per_h": 0.5}, Verdict.CHECK),
+        ({"precipitation_mm_per_h": 0.9}, Verdict.CHECK),  # 약한 비: 제37조① 현장 판단
+        ({"precipitation_mm_per_h": 1.0}, Verdict.STOP_REVIEW),  # '1밀리미터 이상'
+        ({"snowfall_cm_per_h": 0.9}, Verdict.CHECK),
+        ({"snowfall_cm_per_h": 1.0}, Verdict.STOP_REVIEW),
     ],
 )
 def test_lifting_and_aerial_work(
@@ -77,7 +80,7 @@ def test_paint_waterproof(changes: dict[str, float], expected: Verdict) -> None:
         ({"temperature_c": 5.1}, Verdict.GO),
         ({"temperature_c": 5.0}, Verdict.STOP_REVIEW),  # '5℃ 이하'
         ({"precipitation_mm_per_h": 0.5}, Verdict.STOP_REVIEW),
-        ({"snowfall_cm_per_h": 0.5}, Verdict.CHECK),  # 표면 동결·습윤은 현장 확인
+        ({"snowfall_cm_per_h": 0.5}, Verdict.STOP_REVIEW),  # 포설면이 젖거나 얼면 시공 안 함
     ],
 )
 def test_asphalt_paving(changes: dict[str, float], expected: Verdict) -> None:

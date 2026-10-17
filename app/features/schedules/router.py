@@ -11,6 +11,7 @@ from app.core.db import get_session
 from app.core.templating import register_template_dir, templates
 from app.features.auth.service import CurrentUserDep, require_user
 from app.features.schedules import service
+from app.features.schedules.holidays import HolidayLookupDep
 from app.features.schedules.schemas import ScheduleView, WorkItemEditForm, WorkItemForm
 from app.features.teams.schemas import CATEGORY_LABELS
 from app.features.teams.service import AccessibleSitesDep, ManagedSitesDep, ProposableSitesDep
@@ -46,6 +47,7 @@ def schedule(
     manageable: ManagedSitesDep,
     proposable: ProposableSitesDep,
     now: NowDep,
+    holidays_of: HolidayLookupDep,
     site_id: int | None = None,
     month: str | None = None,
     day: str | None = None,
@@ -74,6 +76,7 @@ def schedule(
         month=month,
         day=day,
         now_hm=f"{now:%H:%M}",
+        holidays_of=holidays_of,
     )
     if view is None:
         raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
@@ -88,6 +91,7 @@ def add_item(
     scope: AccessibleSitesDep,
     manageable: ManagedSitesDep,
     now: NowDep,
+    holidays_of: HolidayLookupDep,
     site_id: Annotated[int, Form()],
     work_types: Annotated[list[str] | None, Form()] = None,
     work_date: Annotated[str, Form()] = "",
@@ -119,8 +123,9 @@ def add_item(
     first_day, errors = service.add_item(session, user, site_id, form, now)
     if first_day is None:
         view = service.build_view(
-            session, scope, site_id, now.date(), form, errors, now_hm=f"{now:%H:%M}"
-        )
+            session, scope, site_id, now.date(), form, errors, now_hm=f"{now:%H:%M}",
+            holidays_of=holidays_of,
+        )  # fmt: skip
         if view is None:
             raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
         return _render(request, view, manageable, status_code=422)
@@ -140,6 +145,7 @@ def edit_item(
     scope: AccessibleSitesDep,
     manageable: ManagedSitesDep,
     now: NowDep,
+    holidays_of: HolidayLookupDep,
     item_id: int,
     site_id: Annotated[int, Form()],
     day: Annotated[str, Form()] = "",
@@ -160,7 +166,7 @@ def edit_item(
     if result == "conflict" or errors:
         view = service.build_view(
             session, scope, site_id, now.date(), day=day, edit_item_id=item_id,
-            now_hm=f"{now:%H:%M}",
+            now_hm=f"{now:%H:%M}", holidays_of=holidays_of,
             edit_errors=(CONFLICT_MESSAGE,) if result == "conflict" else errors,
         )  # fmt: skip
         if view is None:

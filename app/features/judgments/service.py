@@ -691,12 +691,13 @@ def _week_overview(
     site_ids = [s.site_id for s in sites]
     items = schedules_service.items_between_for_sites(session, site_ids, days[0], days[-1])
     companies = teams_service.company_names(session, site_ids)
-    verdicts: dict[tuple[int, str], list[str]] = {}
+    # (날, 공종) → [(판정, 판정 상세 주소)]. 줄을 누르면 가장 높은 단계 판정의 상세로 간다.
+    verdicts: dict[tuple[int, str], list[tuple[str, str | None]]] = {}
     for _, week in weeks:
         for row in week.rows:
             for n, cell in enumerate(row.cells):
                 if cell.verdict:
-                    verdicts.setdefault((n, row.work_type), []).append(cell.verdict)
+                    verdicts.setdefault((n, row.work_type), []).append((cell.verdict, cell.href))
     single = len(sites) == 1
     panels: list[DayPanel] = []
     for n, day in enumerate(days):
@@ -709,8 +710,10 @@ def _week_overview(
                 if i.performing_participant_id in companies
             ))  # fmt: skip
             found = verdicts.get((n, work_type), [])
-            worst = min(found, key=lambda v: _VERDICT_RANK.get(v, 9)) if found else None
+            worst_pair = min(found, key=lambda v: _VERDICT_RANK.get(v[0], 9)) if found else None
+            worst = worst_pair[0] if worst_pair else None
             prefix = f"/schedule?site_id={site_ids[0]}&" if single else "/schedule?"
+            schedule_href = f"{prefix}month={day:%Y-%m}&day={day.isoformat()}"
             rows.append(
                 DayTypeRow(
                     work_type=work_type,
@@ -721,7 +724,7 @@ def _week_overview(
                     else names[0] + (f" 외 {len(names) - 1}" if len(names) > 1 else ""),
                     count=len(group),
                     verdict=worst,
-                    href=f"{prefix}month={day:%Y-%m}&day={day.isoformat()}",
+                    href=(worst_pair[1] if worst_pair and worst_pair[1] else schedule_href),
                 )
             )
         rows.sort(key=lambda r: (_VERDICT_RANK.get(r.verdict or "", 2.5), r.work_type))
@@ -1703,9 +1706,22 @@ def _criterion(judgment: Judgment, element: Element) -> CriterionCard:
         + " / ".join(
             criterion_text(element, c["operator"], float(c["threshold"])) for c in rules.values()
         ),
-        source=" · ".join(dict.fromkeys(cites)) or judgment.rule_source,
+        source=_join_cites(cites) or judgment.rule_source,
         source_verified=judgment.rule_source_verified,
     )
+
+
+def _join_cites(cites: Sequence[str]) -> str:
+    """같은 문서의 조항은 묶는다: '지침 2.1(2)', '지침 1.1(1)' → '지침 2.1(2)·1.1(1)'."""
+    groups: dict[str, list[str]] = {}
+    for cite in dict.fromkeys(cites):
+        doc, _, clause = cite.rpartition(" ")
+        if not doc or not clause[:1].isdigit():
+            doc, clause = cite, ""
+        groups.setdefault(doc, [])
+        if clause:
+            groups[doc].append(clause)
+    return " · ".join(f"{doc} {'·'.join(cl)}".strip() for doc, cl in groups.items())
 
 
 def _hour_row(hour_json: dict[str, Any], elements: list[Element]) -> HourRow:

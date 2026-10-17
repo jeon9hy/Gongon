@@ -8,8 +8,8 @@
 </div>
 
 <article class="card" style="gap: 20px;">
-<div class="row" style="align-items: flex-start;">
-<div>
+<div class="row detail-head">
+<div class="detail-head__main">
 <p class="muted" style="font-size: 14px; font-weight: 600;">{{ view.site_name }} · {{ view.target_date }}</p>
 <h1 class="title title--sm" style="margin-top: 6px;">{{ view.work_type }}</h1>
 <p class="subtitle">작업 시간 {{ view.work_range }}</p>
@@ -34,8 +34,8 @@
 <div class="cards-3">
 {% for c in view.criteria %}
 <article class="card card--tight{% if c.verdict == '중지 검토' %} card--stop{% endif %}">
-<div class="row row--center" style="gap: 8px;">
-<span class="row row--center" style="gap: 10px; font-size: 16px; font-weight: 700;">
+<div class="crit-head">
+<span class="crit-head__label">
 <span class="icon-circle{% if c.verdict == '중지 검토' %} icon-circle--stop{% endif %}">{{ icon(c.icon, 20) }}</span>{{ c.label }}
 </span>
 {{ verdict_badge(c.verdict) }}
