@@ -12,6 +12,8 @@
 | 실행·검증 명령 | `docs/setup.md` |
 | 이미 정한 것 | `docs/decisions.md` (같은 선택을 다시 논의하지 않는다) |
 | 화면·알림 문구·용어 | `docs/brand.md` |
+| 공유·출시에 필요한 키·계정, 인증 계획 | `docs/launch-checklist.md` |
+| 운영자(admin) 화면 기획 | `docs/admin-spec.md` |
 
 - 요구사항은 `docs/product.md`(요약) + `docs/decisions.md`(결정) + `docs/collab-contract.md`·`docs/contract.md`(계약)이 기준이다(D-068). 기획이 바뀌면 결정을 남기고 product.md도 같은 작업에서 고친다. 정해지지 않은 기준 세부는 지어내지 말고 확인 항목으로 `docs/plan.md`에 남긴다.
 - 읽지 않는 파일: `uv.lock`, `.venv/`, 각종 캐시 폴더. 의존성은 `pyproject.toml`로 확인한다.
