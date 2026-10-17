@@ -225,6 +225,31 @@ class CountTile:
 
 
 @dataclass(frozen=True, slots=True)
+class DayTypeRow:
+    """7일 공온지수 날 패널의 공종 한 줄(공종별로 모아 가장 높은 판정 단계)."""
+
+    work_type: str
+    time_text: str  # "07:00-17:00"(그날 그 공종의 가장 이른 시작~가장 늦은 끝)
+    companies_text: str  # "우진철강 외 1"
+    count: int
+    verdict: str | None  # 판정 4단계 이름, None은 판정 전·점수 없음
+    href: str  # 작업 일정 그날
+
+
+@dataclass(frozen=True, slots=True)
+class DayPanel:
+    """홈 7일 공온지수의 하루(개발자 요청 2026-10-17): 원을 누르면 그날 판정 요약이 슬라이드처럼."""
+
+    label: str  # "내일" · "10/19(월)"
+    total: int
+    go: int
+    check: int
+    stop: int
+    rows: tuple[DayTypeRow, ...]
+    href: str  # 공온 판정(대시보드)
+
+
+@dataclass(frozen=True, slots=True)
 class SiteTab:
     """홈 위 현장 넘기기 칸(개발자 요청 2026-10-17). site_id None은 전체."""
 
@@ -253,6 +278,7 @@ class HomeView:
     message_is_error: bool
     next_forecast: str = ""
     tabs: tuple[SiteTab, ...] = ()  # 현장이 둘 이상일 때만
+    day_panels: tuple[DayPanel, ...] = ()  # index_days와 같은 7일, 같은 순서
     selected_site_id: int | None = None  # 고른 현장(전체면 None). 메뉴 링크가 이어받는다
 
 

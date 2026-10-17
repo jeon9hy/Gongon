@@ -27,6 +27,8 @@ from app.features.judgments.schemas import (
     CriterionCard,
     DashboardView,
     DayBoard,
+    DayPanel,
+    DayTypeRow,
     DetailView,
     ElementKey,
     FilterLink,
@@ -602,13 +604,15 @@ def build_home(
     else:
         forecast_status = f"실패 · {run.failure_reason}"
     primary_rules = next(iter(rule_sets.values()), None)
+    index_days, day_panels = _week_overview(session, sites, rule_sets, now)
     boards, week = _check_boards(session, sites, by_site, rule_sets, now)
     return HomeView(
         tabs=tabs,
         selected_site_id=selected,
         boards=boards,
         week=week,
-        index_days=_index_days(session, sites, rule_sets, now),
+        index_days=index_days,
+        day_panels=day_panels,
         checked_short=checked_short_text(
             max(runs.values(), key=lambda r: r.ran_at, default=None), now
         ),
@@ -668,14 +672,74 @@ def _site_tabs(
     )
 
 
-def _index_days(
-    session: Session, sites: Sequence[SiteRecord], rule_sets: Mapping[str, RuleSet], now: datetime
-) -> tuple[HomeIndexDay, ...]:
-    """내일부터 7일 공온지수. 현장마다 대시보드와 같은 주간 계산을 쓰고 날마다 가장 낮은 점수.
+_VERDICT_RANK = {"중지 검토": 0, "확인 필요": 1, "판정 불가": 2, "진행": 3}
 
-    현장 수만큼 주간 계산(현장당 쿼리 3회)을 한다. 홈에 보이는 현장은 참여 현장뿐이다.
-    """
+
+def _week_overview(
+    session: Session, sites: Sequence[SiteRecord], rule_sets: Mapping[str, RuleSet], now: datetime
+) -> tuple[tuple[HomeIndexDay, ...], tuple[DayPanel, ...]]:
+    """7일 공온지수와 날마다의 공종별 요약(주간 계산은 현장당 한 번, 작업 조회 한 번)."""
     weeks = [(s, _week(session, s, rule_sets, now)) for s in sites]
+    index_days = _index_days(weeks)
+    if not weeks:
+        return index_days, ()
+    days = [d.day for d in weeks[0][1].days]
+    site_ids = [s.site_id for s in sites]
+    items = schedules_service.items_between_for_sites(session, site_ids, days[0], days[-1])
+    companies = teams_service.company_names(session, site_ids)
+    verdicts: dict[tuple[int, str], list[str]] = {}
+    for _, week in weeks:
+        for row in week.rows:
+            for n, cell in enumerate(row.cells):
+                if cell.verdict:
+                    verdicts.setdefault((n, row.work_type), []).append(cell.verdict)
+    single = len(sites) == 1
+    panels: list[DayPanel] = []
+    for n, day in enumerate(days):
+        on_day = [i for i in items if i.work_date == day]
+        rows: list[DayTypeRow] = []
+        for work_type in sorted({i.work_type for i in on_day}):
+            group = [i for i in on_day if i.work_type == work_type]
+            names = list(dict.fromkeys(
+                companies[i.performing_participant_id] for i in group
+                if i.performing_participant_id in companies
+            ))  # fmt: skip
+            found = verdicts.get((n, work_type), [])
+            worst = min(found, key=lambda v: _VERDICT_RANK.get(v, 9)) if found else None
+            prefix = f"/schedule?site_id={site_ids[0]}&" if single else "/schedule?"
+            rows.append(
+                DayTypeRow(
+                    work_type=work_type,
+                    time_text=f"{min(i.start_local for i in group):%H:%M}–"
+                    f"{max(i.end_local for i in group):%H:%M}",
+                    companies_text="업체 미정"
+                    if not names
+                    else names[0] + (f" 외 {len(names) - 1}" if len(names) > 1 else ""),
+                    count=len(group),
+                    verdict=worst,
+                    href=f"{prefix}month={day:%Y-%m}&day={day.isoformat()}",
+                )
+            )
+        rows.sort(key=lambda r: (_VERDICT_RANK.get(r.verdict or "", 2.5), r.work_type))
+        tally = {v: sum(r.count for r in rows if r.verdict == v) for v in _VERDICT_RANK}
+        panels.append(
+            DayPanel(
+                label="내일" if n == 0 else index_days[n].label,
+                total=len(on_day),
+                go=tally["진행"],
+                check=tally["확인 필요"],
+                stop=tally["중지 검토"],
+                rows=tuple(rows),
+                href=index_days[n].href,
+            )
+        )
+    return index_days, tuple(panels)
+
+
+def _index_days(
+    weeks: list[tuple[SiteRecord, WeekView]],
+) -> tuple[HomeIndexDay, ...]:
+    """내일부터 7일 공온지수. 현장이 여럿이면 점수가 있는 현장의 평균(D-078)."""
     if not weeks:
         return ()
     days: list[HomeIndexDay] = []

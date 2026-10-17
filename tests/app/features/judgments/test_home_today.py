@@ -137,7 +137,8 @@ def test_week_index_shows_seven_days_from_tomorrow(client: TestClient, session: 
     page = client.get("/").text
     week = page.split('class="idxweek"')[1].split("</ol>")[0]
 
-    assert week.count('<a href="/dashboard?site_id=') == 7
+    # 7일 원은 버튼이고, 누르면 그날 패널(공종별 요약)이 보인다(슬라이드)
+    assert week.count('role="tab"') == 7 and page.count('class="weekslides__panel"') == 7
     assert '<span class="idxday__label">내일</span>' in week  # 첫 칸은 내일
     tomorrow = week.split("</li>")[0]
     assert 'class="ring ring--empty"' in tomorrow  # 판정하기 전에는 점수를 지어내지 않는다
