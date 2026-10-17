@@ -1,6 +1,9 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, verdict_badge, verdict_class, site_menu %}
+{% from "_macros.html" import icon, verdict_badge, verdict_class, site_menu, refresh_button %}
 {% block title %}내일 공사 ON?{% endblock %}
+{% block schedule_tools %}
+{% if view.site_id is not none %}{{ site_menu(view.site_id, view.site_name, can_delete=view.site_id in manageable) }}{% endif %}
+{% endblock %}
 {% block content %}
 
 
@@ -18,11 +21,7 @@
 {# 홈의 '공온 점검' 알약과 같은 모양(개발자 요청 2026-10-17) #}
 <form method="post" action="/judgments/run" class="refresh hero__corner">
 <input type="hidden" name="site_id" value="{{ view.site_id }}">
-<button type="submit" class="refresh__btn" title="새 예보로 다시 점검">
-<span class="logo-toggle" aria-hidden="true"></span>
-<span class="refresh__text"><small>공온 점검</small><b>{{ view.checked.split(" · ")[0] if view.checked else ("다시 점검하기" if view.primary else "지금 점검하기") }}</b></span>
-<span class="refresh__go" aria-label="새로 점검">{{ icon("history", 16, 2.2) }}</span>
-</button>
+{{ refresh_button(view.checked_short) }}
 </form>
 {% endif %}
 <div class="hero__main">
@@ -45,7 +44,6 @@
 </select>
 <noscript><button class="btn btn--soft" type="submit">보기</button></noscript>
 </form>
-{{ site_menu(view.site_id, view.site_name, can_delete=view.site_id in manageable) }}
 </div>
 
 </div>

@@ -45,26 +45,47 @@
 <span class="badge badge--{{ verdict_class[label] }}{% if large %} badge--lg{% endif %}">{{ label }}</span>
 {%- endmacro %}
 
-{# 현장 더보기 메뉴(홈·대시보드). 삭제는 메뉴 안에서 한 번 더 펼쳐 확인한다(D-040). #}
-{# can_delete: 조정자만(D-057). 숨김은 안내이고 권한은 서버가 확인한다. #}
-{% macro site_menu(site_id, site_name, show_schedule=True, can_delete=True) -%}
-<button type="button" class="iconbtn site-gear" data-site-dialog="/sites?site_id={{ site_id }}&embed=1" data-title="{{ site_name }} · 현장 설정" aria-label="{{ site_name }} 현장 설정" title="현장 설정">{{ icon("gear", 18) }}</button>
+{% macro refresh_button(checked_short, title="새 예보로 다시 점검") -%}
+<button type="submit" class="refresh__btn" title="{{ title }}">
+<span class="logo-toggle" aria-hidden="true"></span>
+<span class="refresh__text"><small>공온 점검</small><b>{{ checked_short or "아직 점검 전" }}</b></span>
+<span class="refresh__go" aria-label="새로 점검">{{ icon("history", 16, 2.2) }}</span>
+</button>
 {%- endmacro %}
 
-{# 현장 설정의 위험 영역. 누르면 같은 자리에서 확인 문구와 삭제 버튼이 펼쳐진다. #}
+{# 현장 메뉴(홈·작업 일정·공온 판정): 수정과 삭제를 각각 모달로 연다. #}
+{# can_delete: 조정자만(D-057). 숨김은 안내이고 권한은 서버가 확인한다. #}
+{% macro site_menu(site_id, site_name, can_delete=True) -%}
+<details class="menu site-menu">
+<summary class="menu__trigger" aria-label="{{ site_name }} 현장 메뉴" title="현장 메뉴">{{ icon("more", 20) }}</summary>
+<div class="menu__panel">
+<button type="button" class="menu__item" data-site-dialog="/sites?site_id={{ site_id }}&embed=1" data-title="{{ site_name }} · {{ '현장 수정' if can_delete else '현장 정보' }}">{{ icon("edit", 16) }} {{ '수정' if can_delete else '현장 정보' }}</button>
+{% if can_delete %}<button type="button" class="menu__item menu__item--danger" data-open-dialog="delete-site-{{ site_id }}">{{ icon("trash", 16) }} 삭제</button>{% endif %}
+</div>
+</details>
+{% if can_delete %}{{ site_delete_dialog(site_id, site_name) }}{% endif %}
+{%- endmacro %}
+
+{# 현장 삭제는 별도 모달에서 현장 이름을 확인한다. #}
 {% macro site_danger_zone(site_id, site_name, embed=False) -%}
 <section class="danger-zone" aria-labelledby="delete-title">
 <div class="danger-zone__text">
 <h2 class="h2" id="delete-title">현장 삭제</h2>
 <p class="small muted">목록·판정·작업 일정에서 빠집니다. 지난 판정 내역은 판정 내역 화면에 기록으로 남습니다.</p>
 </div>
-<details class="danger-zone__toggle">
-<summary class="btn btn--danger-line"><span class="when-closed">{{ icon("trash", 16) }} 현장 삭제</span><span class="when-open">취소</span></summary>
-<form class="danger-zone__confirm" method="post" action="/sites/{{ site_id }}/delete">
-{% if embed %}<input type="hidden" name="embed" value="1">{% endif %}
-<p><strong>{{ site_name }}</strong> 현장을 삭제합니다. 화면에서 되살릴 수 없습니다.</p>
-<button class="btn btn--danger" type="submit">{{ icon("trash", 16) }} 삭제</button>
-</form>
-</details>
+<button class="btn btn--danger-line" type="button" data-open-dialog="delete-site-{{ site_id }}">{{ icon("trash", 16) }} 현장 삭제</button>
 </section>
+{{ site_delete_dialog(site_id, site_name, embed) }}
+{%- endmacro %}
+
+{% macro site_delete_dialog(site_id, site_name, embed=False) -%}
+<dialog class="modal" id="delete-site-{{ site_id }}" aria-labelledby="delete-site-title-{{ site_id }}" aria-describedby="delete-site-note-{{ site_id }}">
+<form class="modal__box" method="post" action="/sites/{{ site_id }}/delete">
+<div class="modal__head"><h2 class="h2" id="delete-site-title-{{ site_id }}">현장을 삭제할까요?</h2><button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
+{% if embed %}<input type="hidden" name="embed" value="1">{% endif %}
+<p><strong>{{ site_name }}</strong></p>
+<p class="small" id="delete-site-note-{{ site_id }}">현장을 삭제하면 화면에서 되돌릴 수 없어요. 지난 판정 내역은 기록으로 남아요.</p>
+<div class="modal__actions"><button class="btn btn--soft" type="button" data-close autofocus>취소</button><button class="btn btn--danger" type="submit">{{ icon("trash", 16) }} 삭제</button></div>
+</form>
+</dialog>
 {%- endmacro %}

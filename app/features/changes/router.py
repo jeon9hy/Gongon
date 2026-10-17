@@ -37,11 +37,15 @@ MESSAGES = {
 
 
 def _form_page(
-    request: Request, view: ChangeFormView, now: datetime, status_code: int = 200
+    request: Request,
+    view: ChangeFormView,
+    now: datetime,
+    status_code: int = 200,
+    embed: bool = False,
 ) -> HTMLResponse:
     return templates.TemplateResponse(
         request, "changes/form.html",
-        {"nav_active": "changes", "view": view, "now": now.astimezone(KST)},
+        {"nav_active": "changes", "view": view, "now": now.astimezone(KST), "embed": embed},
         status_code=status_code,
     )  # fmt: skip
 
@@ -78,8 +82,11 @@ def new_change(
     site_id: int,
     item_id: int,
     case_id: int | None = None,
+    embed: bool = False,
 ) -> HTMLResponse:
-    return _form_page(request, service.new_form_view(session, user, site_id, item_id, case_id), now)
+    return _form_page(
+        request, service.new_form_view(session, user, site_id, item_id, case_id), now, embed=embed
+    )
 
 
 @router.post("/changes")
@@ -100,6 +107,7 @@ def propose(
     basis_note: Annotated[str, Form()] = "",
     plan_version: Annotated[str, Form()] = "",
     submit: Annotated[str, Form()] = "draft",
+    embed: Annotated[str, Form()] = "",
 ) -> Response:
     form = ChangeForm(
         work_item_id=work_item_id,
@@ -119,7 +127,12 @@ def propose(
         item_id = int(work_item_id) if work_item_id.isdigit() else 0
         existing = int(case_id) if case_id.isdigit() else None
         view = service.new_form_view(session, user, site_id, item_id, existing, form, errors)
-        return _form_page(request, view, now, status_code=422)
+        return _form_page(request, view, now, status_code=422, embed=embed == "1")
+    if embed == "1":
+        return HTMLResponse(
+            '<!doctype html><meta charset="utf-8"><script>'
+            f'window.top.location.href = "/changes/{new_case}?done=proposed";</script>'
+        )
     return RedirectResponse(f"/changes/{new_case}?done=proposed", status_code=303)
 
 

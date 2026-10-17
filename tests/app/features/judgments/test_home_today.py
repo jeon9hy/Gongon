@@ -7,6 +7,7 @@ conftest.FIXED_NOW = 2026-10-04 15:00(KST), 내일 = 10-05.
 
 import re
 from datetime import date, time
+from html import unescape
 from typing import Any
 
 from fastapi.testclient import TestClient
@@ -26,6 +27,27 @@ SITE: dict[str, Any] = {
     "work_end_date": "2026-12-31",
 }
 TODAY, TOMORROW = date(2026, 10, 4), date(2026, 10, 5)
+
+
+def test_empty_home_add_links_keep_the_site_and_day(client: TestClient) -> None:
+    site_id = make_site(client)
+    make_site(client, "가상B현장")
+
+    selected = client.get(f"/?site_id={site_id}").text
+    for label, day in [("작업을 추가할까요?", TODAY), ("미리 추가할까요?", TOMORROW)]:
+        link = re.search(r'href="([^"]+)">' + re.escape(label) + r"</a>", selected)
+        assert link is not None
+        href = unescape(link[1])
+        assert f"site_id={site_id}" in href and f"day={day.isoformat()}" in href
+        assert "add=1" in href
+        assert client.get(href).status_code == 200
+
+    overview = client.get("/").text
+    link = re.search(r'href="([^"]+)">작업을 추가할까요\?</a>', overview)
+    assert link is not None
+    href = unescape(link[1])
+    assert "site_id=" not in href
+    assert 'id="pick-site"' in client.get(href).text
 
 
 def make_site(client: TestClient, name: str | None = None) -> int:

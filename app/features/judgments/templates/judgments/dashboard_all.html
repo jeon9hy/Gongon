@@ -1,6 +1,6 @@
 {# 공온 판정 · 전체 현장(개발자 요청 2026-10-17): 현장을 고르지 않고 들어오면 현장별 요약을 먼저 보인다 #}
 {% extends "base.html" %}
-{% from "_macros.html" import icon %}
+{% from "_macros.html" import icon, refresh_button %}
 {% block title %}공온 판정{% endblock %}
 {% block content %}
 <section class="homebar" aria-labelledby="dash-all-title">
@@ -19,11 +19,7 @@
 </form>
 {% if manageable %}
 <form method="post" action="/judgments/run-all" class="refresh" data-refresh>
-<button type="submit" class="refresh__btn" title="새 예보로 다시 점검">
-<span class="logo-toggle" aria-hidden="true"></span>
-<span class="refresh__text"><small>공온 점검</small><b>{{ view.checked_short or "아직 점검 전" }}</b></span>
-<span class="refresh__go" aria-label="새로 점검">{{ icon("history", 16, 2.2) }}</span>
-</button>
+{{ refresh_button(view.checked_short) }}
 </form>
 {% endif %}
 </div>

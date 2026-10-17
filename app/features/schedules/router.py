@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.clock import now_kst
 from app.core.db import get_session
+from app.core.params import OptionalSiteIdQuery
 from app.core.templating import register_template_dir, templates
 from app.features.auth.service import CurrentUserDep, require_user
 from app.features.schedules import service
@@ -48,7 +49,7 @@ def schedule(
     proposable: ProposableSitesDep,
     now: NowDep,
     holidays_of: HolidayLookupDep,
-    site_id: int | None = None,
+    site_id: OptionalSiteIdQuery = None,
     month: str | None = None,
     day: str | None = None,
     saved: bool = False,

@@ -1,16 +1,21 @@
 {% extends "base.html" %}
 {% from "_macros.html" import icon %}
 {% block title %}변경 제안{% endblock %}
+{% block body_class %}{% if embed %} class="embedbody"{% endif %}{% endblock %}
+{% block page %}{% if embed %}<main class="embed" id="main" tabindex="-1">{{ self.content() }}</main>{% else %}{{ super() }}{% endif %}{% endblock %}
 {% block content %}
 {% set f = view.form %}
+{% if embed %}<p class="small muted">{{ view.site_name }} · {{ view.work_label }}</p>{% else %}
 <section class="hero" aria-labelledby="change-form-title">
 <div class="hero__main">
 <p class="hero__date">{{ icon("history", 15) }} {{ view.site_name }} · {{ view.work_label }}</p>
 <h1 class="hero__title" id="change-form-title">{% if view.case_id %}재변경 제안{% else %}변경 제안{% endif %}</h1>
 </div>
 </section>
+{% endif %}
 
 <form class="form" method="post" action="/changes" data-change-plan data-today="{{ now.strftime('%Y-%m-%d') }}" data-now="{{ now.strftime('%H:%M') }}" data-keep-date="{{ view.current_date }}" data-keep-start="{{ view.current_start }}">
+{% if embed %}<input type="hidden" name="embed" value="1">{% endif %}
 {% if view.errors %}
 <div class="alert alert--error" role="alert"><strong>제안하지 못했습니다</strong><ul>{% for e in view.errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
 {% endif %}
@@ -30,7 +35,7 @@
 
 <fieldset>
 <legend>바뀐 계획</legend>
-<div class="inline">
+<div class="inline change-plan__time">
 <label class="field" style="flex: 1 1 160px;">날짜<input type="date" name="after_work_date" value="{{ f.after_work_date }}" min="{{ now.strftime('%Y-%m-%d') }}" required></label>
 <label class="field" style="flex: 1 1 120px;">시작<input type="time" name="after_start" value="{{ f.after_start }}" required></label>
 <label class="field" style="flex: 1 1 120px;">종료<input type="time" name="after_end" data-after="after_start" value="{{ f.after_end }}" required></label>
@@ -50,7 +55,7 @@
 
 <div class="actions">
 <p></p>
-<a class="btn btn--soft" href="/schedule?site_id={{ view.site_id }}">취소</a>
+{% if embed %}<button class="btn btn--soft" type="button" data-close-top>취소</button>{% else %}<a class="btn btn--soft" href="/schedule?site_id={{ view.site_id }}">취소</a>{% endif %}
 <button class="btn btn--soft" type="submit" name="submit" value="draft">초안 저장</button>
 <button class="btn btn--accent" type="submit" name="submit" value="review">영향 검토로 보내기</button>
 </div>

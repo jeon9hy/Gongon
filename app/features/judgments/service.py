@@ -512,6 +512,7 @@ def build_dashboard(
         for t, j in judged
     ) if len(judged) > 1 else ()  # fmt: skip
 
+    last_run = repository.latest_runs(session, [site.site_id]).get(site.site_id)
     return DashboardView(
         sites=tuple(SiteOption(s.site_id, s.name, s.site_id == site.site_id) for s in sites),
         site_id=site.site_id,
@@ -542,7 +543,8 @@ def build_dashboard(
             "판정하지 않습니다."
         ),
         week=_week(session, site, rule_sets, now),
-        checked=checked_text(repository.latest_runs(session, [site.site_id]).get(site.site_id)),
+        checked=checked_text(last_run),
+        checked_short=checked_short_text(last_run, now),
         next_forecast=next_forecast_text(now),
         can_run=any(site.works_on(d) for d in horizon_dates(now)),
     )
@@ -702,6 +704,8 @@ def _week_overview(
     panels: list[DayPanel] = []
     for n, day in enumerate(days):
         on_day = [i for i in items if i.work_date == day]
+        prefix = f"/schedule?site_id={site_ids[0]}&" if single else "/schedule?"
+        schedule_href = f"{prefix}month={day:%Y-%m}&day={day.isoformat()}"
         rows: list[DayTypeRow] = []
         for work_type in sorted({i.work_type for i in on_day}):
             group = [i for i in on_day if i.work_type == work_type]
@@ -712,8 +716,6 @@ def _week_overview(
             found = verdicts.get((n, work_type), [])
             worst_pair = min(found, key=lambda v: _VERDICT_RANK.get(v[0], 9)) if found else None
             worst = worst_pair[0] if worst_pair else None
-            prefix = f"/schedule?site_id={site_ids[0]}&" if single else "/schedule?"
-            schedule_href = f"{prefix}month={day:%Y-%m}&day={day.isoformat()}"
             rows.append(
                 DayTypeRow(
                     work_type=work_type,
@@ -738,6 +740,7 @@ def _week_overview(
                 stop=tally["중지 검토"],
                 rows=tuple(rows),
                 href=index_days[n].href,
+                add_href=f"{schedule_href}&add=1",
             )
         )
     return index_days, tuple(panels)
@@ -868,7 +871,9 @@ def _check_boards(
             for k, label in CHECK_LABELS.items()
             if (n := sum(1 for r in rows if any(x.key == k for x in r.issues)))
         )
-        return DayBoard(key, title, _date_text(day), rows, criteria)
+        prefix = f"/schedule?site_id={sites[0].site_id}&" if len(sites) == 1 else "/schedule?"
+        add_href = f"{prefix}day={day.isoformat()}&add=1"
+        return DayBoard(key, title, _date_text(day), rows, criteria, add_href)
 
     week = tuple(
         HomeDay(

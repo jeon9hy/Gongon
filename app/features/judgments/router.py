@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.clock import now_kst
 from app.core.config import Settings, get_settings
 from app.core.db import get_session
+from app.core.params import OptionalSiteIdQuery
 from app.core.templating import register_template_dir, templates
 from app.features.auth.service import CurrentUserDep, require_user
 from app.features.forecasts import service as forecasts_service
@@ -36,7 +37,7 @@ def home(
     manageable: ManagedSitesDep,
     now: NowDep,
     ran: RunResult | None = None,
-    site_id: int | None = None,
+    site_id: OptionalSiteIdQuery = None,
 ) -> Response:
     if not scope and teams_service.board_site_ids(session, user.user_id):
         return RedirectResponse("/board", status_code=303)  # 현장 TV 계정은 게시 화면만(D-067)
@@ -55,7 +56,7 @@ def dashboard(
     scope: AccessibleSitesDep,
     manageable: ManagedSitesDep,
     now: NowDep,
-    site_id: int | None = None,
+    site_id: OptionalSiteIdQuery = None,
     element: ElementKey | None = None,
     hour: Annotated[int | None, Query(ge=0, le=23)] = None,
     ran: RunResult | None = None,
@@ -119,7 +120,7 @@ def history(
     session: SessionDep,
     scope: AccessibleSitesDep,
     verdict: VerdictFilter = "전체",
-    site_id: int | None = None,
+    site_id: OptionalSiteIdQuery = None,
     page: Annotated[int, Query(ge=1, le=1000)] = 1,
     size: int = service.HISTORY_PAGE_SIZES[0],
 ) -> HTMLResponse:

@@ -83,7 +83,8 @@ def test_navigation_keeps_the_selected_site_through_judgment_detail(
         navigation = response.text.split('<nav class="appnav"')[1].split("</nav>")[0]
         assert f'href="/schedule?site_id={site_id}"' in navigation
         assert "/dashboard" not in navigation and "/judgments" not in navigation  # 하위 메뉴로
-        assert "/sites" not in navigation  # 현장은 메뉴 대신 '현장 추가'·설정 아이콘 모달
+        assert f'href="/sites?site_id={site_id}"' in navigation  # 내 현장도 선택을 이어받는다
+        assert "/changes" not in navigation and "/actions" not in navigation  # 내 정보로 이동
     for path in (f"/dashboard?site_id={site_id}", f"/schedule?site_id={site_id}"):
         page = client.get(path).text
         subnav = page.split('<nav class="subnav"')[1].split("</nav>")[0]
@@ -486,14 +487,19 @@ def test_site_modal_shows_errors_in_place(client: TestClient) -> None:
     assert 'class="embedbody"' in response.text and "저장하지 못했습니다" in response.text
 
 
-def test_menu_entry_shows_all_sites_when_there_are_several(client: TestClient) -> None:
+@pytest.mark.parametrize("site_query", ["", "site_id=&"])
+def test_menu_entry_shows_all_sites_when_there_are_several(
+    client: TestClient, site_query: str
+) -> None:
     # 현장을 고르지 않고 들어오면(메뉴) 전체, 홈에서 고른 현장으로 오면 그 현장
     first = add_site(client)
     second = add_site(client, name="둘째현장")
     add_item(client, first)
     add_item(client, second, work_types="도장·방수")
 
-    page = client.get("/schedule?day=2026-10-05").text
+    response = client.get(f"/schedule?{site_query}day=2026-10-05")
+    assert response.status_code == 200
+    page = response.text
 
     assert '<option value="" selected>전체 현장</option>' in page
     assert "철골 작업" in page and "도장·방수" in page
@@ -503,23 +509,37 @@ def test_menu_entry_shows_all_sites_when_there_are_several(client: TestClient) -
     assert "도장·방수" in one and 'class="workcard__site"' not in one
 
 
-def test_single_site_still_opens_directly(client: TestClient) -> None:
+@pytest.mark.parametrize("query", ["", "?site_id="])
+def test_single_site_still_opens_directly(client: TestClient, query: str) -> None:
     add_site(client)
 
-    page = client.get("/schedule").text
+    response = client.get(f"/schedule{query}")
+    assert response.status_code == 200
+    page = response.text
 
     assert "전체 현장" not in page and 'name="site_id" value=' in page
 
 
-def test_judgment_menu_entry_shows_all_sites_summary(client: TestClient) -> None:
+@pytest.mark.parametrize("query", ["", "?site_id="])
+def test_judgment_menu_entry_shows_all_sites_summary(client: TestClient, query: str) -> None:
     add_site(client)
     add_site(client, name="둘째현장")
 
-    page = client.get("/dashboard").text
+    response = client.get(f"/dashboard{query}")
+    assert response.status_code == 200
+    page = response.text
 
     assert (
         "전체 현장</h1>" in page and "둘째현장" in page and ">현장별 날씨 <span>내일</span>" in page
     )
+
+
+@pytest.mark.parametrize("path", ["/", "/schedule", "/dashboard", "/judgments"])
+def test_site_filter_accepts_blank_but_rejects_non_integer(client: TestClient, path: str) -> None:
+    add_site(client)
+
+    assert client.get(f"{path}?site_id=").status_code == 200
+    assert client.get(f"{path}?site_id=invalid").status_code == 422
 
 
 def test_holiday_name_shows_in_red_cell_and_year_is_fetched_once(

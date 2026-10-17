@@ -131,6 +131,7 @@ class DashboardView:
     week: "WeekView | None" = None  # 내일부터 7일(D-041)
     next_forecast: str = ""  # 다음 예보 발표·반영 시각 안내
     checked: str | None = None  # 마지막 판정 실행(확인) 시각(D-044)
+    checked_short: str | None = None  # 홈과 같은 짧은 점검 시각
     work_options: "tuple[WorkOption, ...]" = ()  # 상세 카드에서 고를 수 있는 작업(2개 이상일 때)
     detail_open: bool = False  # 작업·요소·시각을 골라 들어왔으면 시간대별 예보 모달을 바로 연다
     can_run: bool = True  # 7일 중 작업일이 있어 판정할 수 있는가
@@ -169,6 +170,7 @@ class DayBoard:
     date_text: str
     items: tuple[BoardItem, ...]
     criteria: tuple[tuple[str, int], ...]  # (점검 항목 이름, 걸린 작업 수), 걸린 것만
+    add_href: str = ""  # 같은 현장·날짜의 작업 추가 모달
 
     @property
     def ready(self) -> int:
@@ -247,6 +249,7 @@ class DayPanel:
     stop: int
     rows: tuple[DayTypeRow, ...]
     href: str  # 공온 판정(대시보드)
+    add_href: str = ""  # 같은 현장·날짜의 작업 추가 모달
 
 
 @dataclass(frozen=True, slots=True)

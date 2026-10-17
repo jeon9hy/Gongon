@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="420" viewBox="0 0 1280 420" role="img" aria-labelledby="title desc">
+  <title id="title">공온: 변경 뒤 필요한 일을 연결하고 처리 결과까지 확인합니다</title>
+  <desc id="desc">변경 제안, 영향 검토와 확정, 후속 조치, 완료 보고와 검증으로 이어지는 서비스 흐름</desc>
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#F5F8FD"/><stop offset="1" stop-color="#EAF1FE"/></linearGradient>
+  </defs>
+  <rect width="1280" height="420" rx="28" fill="url(#bg)"/>
+  <circle cx="1130" cy="80" r="148" fill="#1C60EF" opacity=".045"/>
+  <circle cx="1130" cy="80" r="108" fill="none" stroke="#1C60EF" stroke-opacity=".09"/>
+  <g font-family="Pretendard, Malgun Gothic, sans-serif">
+    <rect x="64" y="50" width="60" height="44" rx="14" fill="#1C60EF"/>
+    <rect x="76" y="63" width="36" height="18" rx="9" fill="#FFFFFF" opacity=".25"/>
+    <circle cx="102" cy="72" r="10" fill="#FFFFFF"/>
+    <text x="140" y="88" font-size="44" font-weight="700" fill="#0E1E45">공온</text>
+    <text x="1028" y="78" font-size="14" font-weight="600" letter-spacing="3" fill="#1C60EF">GONGON</text>
+    <text x="64" y="166" font-size="38" font-weight="700" fill="#0E1E45">변경 뒤 필요한 일을 연결하고,</text>
+    <text x="64" y="215" font-size="38" font-weight="700" fill="#1C60EF">처리 결과까지 확인합니다.</text>
+    <text x="64" y="254" font-size="16" fill="#5B6576">원청과 협력업체가 함께 쓰는 공사 변경·후속 조치 서비스</text>
+    <g fill="#FFFFFF" stroke="#D3DCEA">
+      <rect x="64" y="296" width="264" height="84" rx="16"/>
+      <rect x="360" y="296" width="264" height="84" rx="16"/>
+      <rect x="656" y="296" width="264" height="84" rx="16"/>
+      <rect x="952" y="296" width="264" height="84" rx="16"/>
+    </g>
+    <g font-size="20" font-weight="700" fill="#0E1E45">
+      <text x="86" y="330">01  변경 제안</text><text x="382" y="330">02  검토·확정</text>
+      <text x="678" y="330">03  후속 조치</text><text x="974" y="330">04  완료·검증</text>
+    </g>
+    <g font-size="13" fill="#5B6576">
+      <text x="86" y="357">작업·원인·근거를 함께 기록</text><text x="382" y="357">현재 계획과 영향 확인</text>
+      <text x="678" y="357">업체별 담당자·기한 연결</text><text x="974" y="357">처리 근거를 확인하고 마무리</text>
+    </g>
+    <g fill="none" stroke="#1C60EF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M337 338h14m-5-5 5 5-5 5"/><path d="M633 338h14m-5-5 5 5-5 5"/><path d="M929 338h14m-5-5 5 5-5 5"/>
+    </g>
+  </g>
+</svg>

@@ -1,6 +1,9 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon %}
+{% from "_macros.html" import icon, site_menu %}
 {% block title %}작업 일정{% endblock %}
+{% block schedule_tools %}
+{% if view.site_id is not none and not view.all_mode %}{{ site_menu(view.site_id, view.site_name, can_delete=view.site_id in manageable) }}{% endif %}
+{% endblock %}
 {% block content %}
 
 <section class="hero" aria-labelledby="schedule-title" data-swap="header">
@@ -143,9 +146,22 @@
 <div class="modal__box">
 <div class="modal__head">
 <h2 class="h2 itemdlg__title" id="item-title-{{ i.item_id }}"><span class="dot" style="--c: {{ work_color(i.work_type) }}"></span>{{ i.work_type }}</h2>
+<div class="modal__tools">
+{% if i.site_id in manageable or i.site_id in proposable %}
+<details class="menu itemdlg__menu">
+<summary class="menu__trigger" aria-label="작업 메뉴" title="작업 메뉴">{{ icon("more", 20) }}</summary>
+<div class="menu__panel radial-menu">
+{% if i.site_id in manageable %}<button type="button" class="menu__item" aria-label="일정 복사" data-copy-href="/schedule?site_id={{ i.site_id }}&day={{ d.day.isoformat() }}&copy_id={{ i.item_id }}" data-copy='{{ {"workType": i.work_type, "start": i.start_local.strftime("%H:%M"), "end": i.end_local.strftime("%H:%M"), "location": i.location, "memo": i.memo, "performer": (i.performing_participant_id or "") | string} | tojson }}'>{{ icon("calendar", 18) }}<span aria-hidden="true">일정 복사</span></button>{% endif %}
+{% if i.site_id in proposable %}<button type="button" class="menu__item" aria-label="변경 제안" data-form-dialog="/changes/new?site_id={{ i.site_id }}&item_id={{ i.item_id }}&embed=1" data-title="변경 제안">{{ icon("history", 18) }}<span aria-hidden="true">변경 제안</span></button>{% endif %}
+{% if i.site_id in manageable %}<button type="button" class="menu__item" aria-label="수정" data-edit-toggle>{{ icon("edit", 18) }}<span aria-hidden="true">수정</span></button>
+<button type="button" class="menu__item menu__item--danger" aria-label="삭제" data-open-dialog="delete-item-{{ i.item_id }}">{{ icon("trash", 18) }}<span aria-hidden="true">삭제</span></button>{% endif %}
+</div>
+</details>
+{% endif %}
 <button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button>
 </div>
-<p class="itemdlg__time">{{ d.day_text }} {{ i.start_local.strftime("%H:%M") }}–{{ i.end_local.strftime("%H:%M") }}</p>
+</div>
+<p class="itemdlg__time"><span>{{ d.day_text }}</span> <span>{{ i.start_local.strftime("%H:%M") }}–{{ i.end_local.strftime("%H:%M") }}</span></p>
 <dl class="itemdlg__facts">
 <div><dt>위치</dt><dd>{{ i.location or "-" }}</dd></div>
 <div><dt>실행 업체</dt><dd>{{ company }}</dd></div>
@@ -158,22 +174,6 @@
 <ul class="small muted">{% for r in history %}<li>v{{ r.plan_version }} {{ r.summary }} · {{ r.changed_text }} 변경</li>{% endfor %}</ul>
 </details>
 {% endif %}
-<div class="itemdlg__actions">
-{% if i.site_id in proposable %}<a class="btn btn--soft btn--sm" href="/changes/new?site_id={{ i.site_id }}&item_id={{ i.item_id }}">{{ icon("history", 15) }} 변경 제안</a>{% endif %}
-{% if i.site_id in manageable %}<button type="button" class="btn btn--soft btn--sm itemdlg__copy" data-copy='{{ {"workType": i.work_type, "start": i.start_local.strftime("%H:%M"), "end": i.end_local.strftime("%H:%M"), "location": i.location, "memo": i.memo, "performer": (i.performing_participant_id or "") | string} | tojson }}'>{{ icon("plus", 15, 2.2) }} 다른 날에도</button>
-<span class="itemdlg__tools">
-<button type="button" class="iconbtn" data-edit-toggle aria-label="계획 수정" title="계획 수정">{{ icon("edit", 16) }}<span>수정</span></button>
-<details class="delete-action itemdlg__delete">
-<summary class="iconbtn iconbtn--danger" aria-label="작업 삭제" title="작업 삭제">{{ icon("trash", 16) }}<span>삭제</span></summary>
-<form method="post" action="/schedule/{{ i.item_id }}/delete" class="delete-action__confirm">
-<input type="hidden" name="site_id" value="{{ i.site_id }}">
-<input type="hidden" name="day" value="{{ d.day.isoformat() }}">
-<p class="small">정말 지울까요? 되돌릴 수 없어요.</p>
-<button class="btn btn--danger btn--sm" type="submit">삭제</button>
-</form>
-</details>
-</span>{% endif %}
-</div>
 {% if i.site_id in manageable %}
 <details class="itemdlg__edit"{% if view.edit_item_id == i.item_id %} open{% endif %}>
 <summary class="visually-hidden">계획 수정</summary>
@@ -183,10 +183,10 @@
 <input type="hidden" name="day" value="{{ d.day.isoformat() }}">
 <input type="hidden" name="plan_version" value="{{ i.plan_version }}">
 <label class="field">날짜<input type="date" name="work_date" value="{{ i.work_date.isoformat() }}" min="{{ view.today_iso }}" required></label>
-<div class="timepair">
-<label class="field">시작<input type="time" name="start" value="{{ i.start_local.strftime('%H:%M') }}" required></label>
+<div class="timepair timepair--labeled">
+<label class="field"><span>시작</span><input type="time" name="start" value="{{ i.start_local.strftime('%H:%M') }}" required></label>
 <span class="timepair__dash" aria-hidden="true">–</span>
-<label class="field">종료<input type="time" name="end" value="{{ i.end_local.strftime('%H:%M') }}" data-after="start" required></label>
+<label class="field"><span>종료</span><input type="time" name="end" value="{{ i.end_local.strftime('%H:%M') }}" data-after="start" required></label>
 </div>
 <div class="inline">
 <label class="field">작업 위치<input type="text" name="location" maxlength="60" value="{{ i.location }}" placeholder="선택 · 예: A구역 3층"></label>
@@ -209,6 +209,18 @@
 {% endif %}
 </div>
 </dialog>
+{% if i.site_id in manageable %}
+<dialog class="modal" id="delete-item-{{ i.item_id }}" aria-labelledby="delete-title-{{ i.item_id }}" aria-describedby="delete-note-{{ i.item_id }}">
+<form method="post" action="/schedule/{{ i.item_id }}/delete" class="modal__box">
+<div class="modal__head"><h2 class="h2" id="delete-title-{{ i.item_id }}">작업을 삭제할까요?</h2><button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
+<input type="hidden" name="site_id" value="{{ i.site_id }}">
+<input type="hidden" name="day" value="{{ d.day.isoformat() }}">
+<div class="itemdlg__facts"><strong>{{ i.work_type }}</strong><p class="small muted">{{ d.day_text }} {{ i.start_local.strftime("%H:%M") }}–{{ i.end_local.strftime("%H:%M") }}{% if i.location %} · {{ i.location }}{% endif %}</p></div>
+<p class="small" id="delete-note-{{ i.item_id }}">삭제한 작업은 화면에서 되돌릴 수 없어요.</p>
+<div class="modal__actions"><button class="btn btn--soft" type="button" data-close autofocus>취소</button><button class="btn btn--danger" type="submit">{{ icon("trash", 16) }} 삭제</button></div>
+</form>
+</dialog>
+{% endif %}
 {% endfor %}
 </section>
 
@@ -305,7 +317,7 @@
   const root = document.querySelector("[data-schedule]");
   const addDialog = document.getElementById("add-item");
   // 업체를 등록하고 돌아오면(add=1) 작업 추가 창을 다시 연다
-  if (addDialog && new URLSearchParams(location.search).has("add")) addDialog.showModal();
+  if (new URLSearchParams(location.search).has("add")) (addDialog || document.getElementById("pick-site"))?.showModal();
 
   // ---- 모달 열고 닫기(바깥·취소·Esc). 화면 일부를 바꿔 끼워도 동작하도록 문서에서 한 번만 받는다 ----
   document.addEventListener("click", (e) => {
@@ -314,7 +326,11 @@
     const add = e.target.closest("[data-open-add]");
     if (add && addDialog) { picker?.reset(add.dataset.day ? [add.dataset.day] : []); addDialog.showModal(); return; }
     const copy = e.target.closest("[data-copy]");
-    if (copy && addDialog) { e.target.closest("details")?.removeAttribute("open"); fillCopy(JSON.parse(copy.dataset.copy)); }
+    if (copy) {
+      menuOwner(copy)?.removeAttribute("open");
+      if (addDialog) fillCopy(JSON.parse(copy.dataset.copy));
+      else location.href = copy.dataset.copyHref;
+    }
   });
   document.querySelectorAll("dialog[data-open]").forEach((d) => d.showModal());
 
@@ -448,13 +464,19 @@
   // 작업 복사: 같은 공종·시간·위치·메모·실행 업체로 채우고 날짜만 새로 고르게 한다.
   const fillCopy = (c) => {
     form.querySelectorAll("input[name=work_types]").forEach((b) => { b.checked = b.value === c.workType; });
-    form.elements.start.value = c.start; form.elements.end.value = c.end;
+    form.elements.start.value = c.start;
+    form.elements.start.dispatchEvent(new Event("change", { bubbles: true }));
+    form.elements.end.value = c.end;
     form.elements.location.value = c.location; form.elements.memo.value = c.memo;
     form.elements.performing_participant_id.value = c.performer;
+    form.querySelectorAll("input, select").forEach((input) => input.dispatchEvent(new Event("input", { bubbles: true })));
     picker?.reset([]);
     form.dispatchEvent(new Event("change"));
     addDialog.showModal();
   };
+  const copyId = new URLSearchParams(location.search).get("copy_id");
+  const sourceCopy = copyId && /^\d+$/.test(copyId) ? document.querySelector(`#item-${copyId} [data-copy]`) : null;
+  if (sourceCopy && addDialog) fillCopy(JSON.parse(sourceCopy.dataset.copy));
 
   // ---- 날짜·달을 눌러도 화면을 새로 띄우지 않고 달력·상세만 바꾼다(스크롤 유지) ----
   const swap = async (url, push = true) => {
@@ -510,10 +532,11 @@
   document.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-edit-toggle]");
     if (!btn) return;
-    const box = btn.closest(".modal__box")?.querySelector(".itemdlg__edit");
+    const box = btn.closest("dialog")?.querySelector(".itemdlg__edit");
     if (!box) return;
+    menuOwner(btn)?.removeAttribute("open");
     box.open = !box.open;
-    if (box.open) box.querySelector("input[name=work_date]")?.focus();
+    if (box.open) box.querySelector(".pickfield, input:not([type=hidden])")?.focus();
   });
   // 달 고르기: 한 해의 달만 3줄 4칸으로 보이고, 위의 연도를 누르면 연도를 4줄 3칸으로 고른다.
   // 스크립트가 없으면 모든 해의 달이 이어서 보인다(달력을 바꿔 끼워도 문서 단위로 동작).

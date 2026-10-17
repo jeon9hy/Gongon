@@ -126,6 +126,25 @@ def test_today_change_must_start_after_now(
         assert "이후 시작" in response.text
 
 
+def test_proposal_modal_keeps_errors_inside_and_moves_to_the_saved_change(
+    client: TestClient, session: Session, item: WorkItem
+) -> None:
+    page = client.get(f"/changes/new?site_id={item.site_id}&item_id={item.id}&embed=1")
+    assert page.status_code == 200
+    assert 'class="embedbody"' in page.text and 'aria-label="주 메뉴"' not in page.text
+    assert 'name="embed" value="1"' in page.text
+
+    invalid = propose(client, item, embed="1", title="")
+    assert invalid.status_code == 422
+    assert 'class="embedbody"' in invalid.text and "제안하지 못했습니다" in invalid.text
+    assert session.scalars(select(ChangeCase)).all() == []
+
+    saved = propose(client, item, embed="1")
+    case = session.scalars(select(ChangeCase)).one()
+    assert saved.status_code == 200
+    assert f'window.top.location.href = "/changes/{case.id}?done=proposed"' in saved.text
+
+
 def test_confirm_rechecks_start_when_time_has_passed(
     client: TestClient, session: Session, item: WorkItem
 ) -> None:

@@ -256,16 +256,17 @@
       if (!openPop || openPop.anchor !== input || !["ArrowDown", "ArrowUp"].includes(e.key)) return;
       e.preventDefault();
       const opts = [...openPop.pop.querySelectorAll(".timeopt:not(:disabled)")];
-      const i = opts.findIndex((o) => o.classList.contains("is-active"));
+      const active = opts.findIndex((o) => o.classList.contains("is-active"));
+      const i = active >= 0 ? active : opts.findIndex((o) => o.getAttribute("aria-selected") === "true");
       const next = opts[Math.max(0, Math.min(opts.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)))];
       opts.forEach((o) => o.classList.toggle("is-active", o === next));
-      if (next) { next.scrollIntoView({ block: "nearest" }); input.value = next.firstChild.textContent; }
+      if (next) { next.scrollIntoView({ block: "nearest" }); set(next.firstChild.textContent); }
     });
     // 시작이 바뀌면 종료를 같은 길이만큼 옮긴다(구글 캘린더와 같다). 길이를 모르면 그대로 둔다.
     if (!input.dataset.after) {
       input.addEventListener("change", () => {
         const ends = form ? [...form.querySelectorAll(`[data-after="${input.name}"]`)] : [];
-        const before = toMin(previous), now = toMin(input.value);
+        const before = toMin(parseTime(previous)), now = toMin(parseTime(input.value));
         ends.forEach((end) => {
           const e = toMin(end.value);
           if (before !== null && now !== null && e !== null && e > before && now + (e - before) < 24 * 60) {

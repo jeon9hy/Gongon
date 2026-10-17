@@ -1,10 +1,11 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, verdict_badge, verdict_class, site_menu %}
+{% from "_macros.html" import icon, verdict_badge, verdict_class, site_menu, refresh_button %}
 {% block title %}홈{% endblock %}
 {% block content %}
 
 {% set today_board, tomorrow_board = view.boards %}
 {% set managed_count = view.sites | selectattr("site_id", "in", manageable) | list | length %}
+{% set can_add = view.selected_site_id in manageable if view.selected_site_id else managed_count > 0 %}
 {% if managed_count %}
 {# 점검 새로 하기: 휴대폰은 화면을 아래로 당겨서, 큰 화면은 날짜 옆 작은 버튼으로(D-065) #}
 <div class="ptr" aria-hidden="true"><span class="ptr__spin"></span><span class="ptr__text">당겨서 새로 점검</span></div>
@@ -16,11 +17,8 @@
 </div>
 {% if managed_count %}
 <form method="post" action="/judgments/run-all" class="refresh" data-refresh>
-<button type="submit" class="refresh__btn" title="새 예보로 다시 점검{% if view.forecast_issued %} · 예보 {{ view.forecast_issued }} 발표{% endif %} · 수집 {{ view.forecast_status }}">
-<span class="logo-toggle" aria-hidden="true"></span>
-<span class="refresh__text"><small>공온 점검</small><b>{{ view.checked_short or "아직 점검 전" }}</b></span>
-<span class="refresh__go" aria-label="새로 점검">{{ icon("history", 16, 2.2) }}</span>
-</button>
+{% set refresh_title = "새 예보로 다시 점검" ~ (" · 예보 " ~ view.forecast_issued ~ " 발표" if view.forecast_issued else "") ~ " · 수집 " ~ view.forecast_status %}
+{{ refresh_button(view.checked_short, refresh_title) }}
 </form>
 {% elif view.sites %}<a class="btn btn--accent btn--sm" href="/schedule">{{ icon("calendar", 15) }} 일정 보기</a>{% endif %}
 </section>
@@ -106,17 +104,16 @@
 {% if done_items %}<button type="button" class="jobs__toggle" data-more-toggle aria-expanded="false"><span class="when-closed">끝난 작업 {{ done_items | length }}건 보기</span><span class="when-open">접기</span> {{ icon("chevron-down", 14, 2.2) }}</button>{% endif %}
 
 {% else %}
-<p class="hsec__empty">오늘 등록한 작업이 없어요. 내일 준비를 봐 둘까요?</p>
+<p class="hsec__empty">오늘 등록한 작업이 없어요.{% if can_add %} <a href="{{ today_board.add_href }}">작업을 추가할까요?</a>{% endif %}</p>
 {% endif %}
 </section>
 
-{# 7일 공온지수(개발자 요청 2026-10-17): 날마다 원을 누르면 그날 판정 요약이 슬라이드처럼 바뀐다. 화살표·좌우 밀기로도 넘긴다 #}
+{# 7일 공온지수: 날짜를 누르거나 좌우로 밀면 그날 판정 요약이 바뀐다. #}
 {% set others = namespace(by_type={}) %}
 {% for w in tomorrow_board.items %}{% for x in w.issues if x.key != "weather" %}{% set _ = others.by_type.update({w.work_type: (others.by_type.get(w.work_type, []) + [x.label]) | unique | list}) %}{% endfor %}{% endfor %}
 <section class="hsec hsec--tomorrow reveal" aria-labelledby="tomorrow-title" style="--i: 1" data-weekslides>
 <div class="hsec__head">
 <h2 class="hsec__title" id="tomorrow-title">7일 공온지수 <span data-slide-label>{{ view.day_panels[0].label if view.day_panels else "" }}</span></h2>
-<span class="weekslides__nav"><button type="button" class="iconbtn" data-slide-step="-1" aria-label="이전 날">{{ icon("arrow-left", 16, 2.2) }}</button><button type="button" class="iconbtn" data-slide-step="1" aria-label="다음 날">{{ icon("arrow-right", 16, 2.2) }}</button></span>
 </div>
 <ol class="idxweek" role="tablist" aria-label="날짜">
 {% for d in view.index_days %}
@@ -152,7 +149,7 @@
 {% endfor %}
 </ul>
 {% else %}
-<p class="hsec__empty">{% if loop.first %}내일 일정이 비어 있어요. 미리 올려 둘까요?{% else %}이날은 등록한 작업이 없어요.{% endif %}</p>
+<p class="hsec__empty">{% if loop.first %}내일 일정이 비어 있어요.{% else %}이날은 등록한 작업이 없어요.{% endif %}{% if can_add %} <a href="{{ p.add_href }}">{% if loop.first %}미리 추가할까요?{% else %}작업을 추가할까요?{% endif %}</a>{% endif %}</p>
 {% endif %}
 </div>
 {% endfor %}
@@ -176,11 +173,8 @@
     panels.forEach((p, i) => { p.hidden = i !== n; });
     panels[n].classList.remove("is-enter"); void panels[n].offsetWidth; panels[n].classList.add("is-enter");
     label.textContent = panels[n].dataset.label;
-    box.querySelector('[data-slide-step="-1"]').disabled = n === 0;
-    box.querySelector('[data-slide-step="1"]').disabled = n === panels.length - 1;
   };
   tabs.forEach((t) => t.addEventListener("click", () => show(Number(t.dataset.slide))));
-  box.querySelectorAll("[data-slide-step]").forEach((b) => b.addEventListener("click", () => show(current + Number(b.dataset.slideStep))));
   let x0 = null;
   box.addEventListener("touchstart", (e) => { x0 = e.touches[0].clientX; }, { passive: true });
   box.addEventListener("touchend", (e) => {
