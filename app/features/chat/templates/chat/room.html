@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}현장 대화{% endblock %}
+{% block content %}
+{% if view is none %}
+<section class="hsec"><p class="hsec__empty">참여 중인 현장이 없어요. 현장을 추가하거나 조정자에게 초대를 부탁해 주세요.</p></section>
+{% else %}
+<div class="chat">
+<aside class="chat__rooms" aria-label="현장 방">
+<p class="chat__rooms-title">현장 방</p>
+{% for r in view.rooms %}<a class="chat__room{% if r.selected %} is-current{% endif %}" href="/chat/{{ r.site_id }}"{% if r.selected %} aria-current="page"{% endif %}><span class="chat__room-dot" aria-hidden="true">{{ (r.name | replace("[가상] ", ""))[:1] }}</span><span>{{ r.name }}</span></a>{% endfor %}
+</aside>
+<section class="chat__panel" aria-labelledby="chat-title">
+<header class="chat__head">
+<div><h1 class="chat__title" id="chat-title">{{ view.site_name }}</h1><p class="small muted">이 현장 참여자만 보여요 · 메시지는 작업 승인·조치 완료가 아니에요</p></div>
+<a class="btn btn--soft btn--sm" href="/schedule?site_id={{ view.site_id }}">{{ icon("calendar", 15) }} 작업 일정</a>
+</header>
+<div class="chat__scroll" data-chat-scroll>
+{% if view.has_older %}<a class="chat__older" href="/chat/{{ view.site_id }}?before={{ view.messages[0].message_id }}">이전 메시지 보기</a>{% endif %}
+{% if not view.messages %}<p class="chat__empty" data-chat-empty>첫 메시지를 남겨 볼까요? 변경 건을 함께 붙이면 지금 상태가 카드로 보여요.</p>{% endif %}
+<ol class="msgs" data-chat-list data-site="{{ view.site_id }}" data-last="{{ view.last_id }}">
+{% set messages = view.messages %}{% set site_id = view.site_id %}
+{% include "chat/_messages.html" %}
+</ol>
+<span id="end"></span>
+</div>
+<form class="chat__composer" method="post" action="/chat/{{ view.site_id }}/messages" data-chat-form>
+{% if view.errors %}<div class="alert alert--error" role="alert"><ul>{% for e in view.errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+<div class="chat__compose-row">
+<select name="case_id" class="chat__case" aria-label="관련 변경 건">
+<option value="">변경 건 붙이기(선택)</option>
+{% for c in view.case_choices %}<option value="{{ c.case_id }}">{{ c.title }} · {{ c.state_text }}</option>{% endfor %}
+</select>
+</div>
+<div class="chat__compose-row">
+<textarea name="body" rows="1" maxlength="1000" required placeholder="메시지 입력 · Enter 보내기, Shift+Enter 줄바꿈" data-chat-input>{{ view.draft }}</textarea>
+<button class="btn btn--accent chat__send" type="submit" aria-label="보내기">{{ icon("arrow-right", 18, 2.4) }}</button>
+</div>
+</form>
+</section>
+</div>
+<script>
+(() => {
+  const list = document.querySelector("[data-chat-list]");
+  const scroller = document.querySelector("[data-chat-scroll]");
+  const form = document.querySelector("[data-chat-form]");
+  const input = document.querySelector("[data-chat-input]");
+  if (!list) return;
+  const site = list.dataset.site;
+  const toBottom = () => { scroller.scrollTop = scroller.scrollHeight; };
+  // 날짜가 바뀌는 곳에 구분선을 넣는다
+  const dividers = () => {
+    list.querySelectorAll(".msgs__day").forEach((d) => d.remove());
+    let prev = "";
+    list.querySelectorAll(".msg").forEach((m) => {
+      if (m.dataset.day !== prev) {
+        const li = document.createElement("li");
+        li.className = "msgs__day";
+        li.textContent = m.dataset.day;
+        m.before(li);
+        prev = m.dataset.day;
+      }
+    });
+  };
+  dividers();
+  toBottom();
+  let busy = false;
+  const poll = async () => {
+    if (busy || document.hidden) return;
+    busy = true;
+    try {
+      const res = await fetch(`/chat/${site}/messages?after=${list.dataset.last}`, { headers: { Accept: "text/html" } });
+      if (res.ok) {
+        const html = (await res.text()).trim();
+        if (html) {
+          const near = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 120;
+          const tmp = document.createElement("ol");
+          tmp.innerHTML = html;
+          const items = [...tmp.querySelectorAll(".msg")];
+          items.forEach((li) => { if (!list.querySelector(`[data-id="${li.dataset.id}"]`)) list.append(li); });
+          if (items.length) { list.dataset.last = items[items.length - 1].dataset.id; document.querySelector("[data-chat-empty]")?.remove(); }
+          dividers();
+          if (near) toBottom();
+        }
+      }
+    } finally { busy = false; }
+  };
+  setInterval(poll, 4000);
+  document.addEventListener("visibilitychange", poll);
+  // 보내기: 화면을 다시 그리지 않고 보낸 뒤 새 메시지를 불러온다(스크립트가 없으면 일반 전송)
+  form.addEventListener("submit", async (e) => {
+    if (!input.value.trim()) return;
+    e.preventDefault();
+    const res = await fetch(form.action, { method: "POST", body: new FormData(form) });
+    if (res.ok || res.redirected) { input.value = ""; form.case_id.value = ""; input.style.height = ""; await poll(); toBottom(); }
+    else { form.submit(); }
+  });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit(); }
+  });
+  input.addEventListener("input", () => { input.style.height = ""; input.style.height = Math.min(input.scrollHeight, 160) + "px"; });
+})();
+</script>
+{% endif %}
+{% endblock %}

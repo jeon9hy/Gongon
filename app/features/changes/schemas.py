@@ -70,6 +70,17 @@ class ChangeFormView:
 
 
 @dataclass(frozen=True, slots=True)
+class CaseCard:
+    """다른 화면(대화방 등)에 붙이는 변경 건 카드. 늘 현재 상태를 읽어 만든다."""
+
+    case_id: int
+    title: str
+    href: str
+    state_text: str  # "v2 확정" · "v3 영향 검토" · "종료"
+    state: str  # 최신 버전 상태 또는 "closed"
+
+
+@dataclass(frozen=True, slots=True)
 class ChangeListItem:
     href: str
     title: str

@@ -31,6 +31,7 @@ from app.features.changes.schemas import (
     OPEN_STATUSES,
     REASON_LABELS,
     STATUS_LABELS,
+    CaseCard,
     ChangeDetailView,
     ChangeForm,
     ChangeFormView,
@@ -504,6 +505,46 @@ def withdraw(
 
 
 # ---------- 화면 ----------
+
+
+def case_cards(session: Session, site_id: int, case_ids: list[int]) -> dict[int, CaseCard]:
+    """이 현장 변경 건들의 현재 상태 카드(쿼리 1회). 다른 현장 ID는 빠진다."""
+    if not case_ids:
+        return {}
+    rows = session.execute(
+        select(ChangeCase, ChangeRevision)
+        .join(ChangeRevision, ChangeRevision.case_id == ChangeCase.id)
+        .where(ChangeCase.id.in_(case_ids), ChangeCase.site_id == site_id)
+        .order_by(ChangeCase.id, ChangeRevision.number)
+    ).all()
+    latest: dict[int, tuple[ChangeCase, ChangeRevision]] = {}
+    for case, rev in rows:
+        latest[case.id] = (case, rev)  # 번호 순이라 마지막이 최신 버전
+    cards = {}
+    for case_id, (case, rev) in latest.items():
+        closed = case.closed_at is not None
+        cards[case_id] = CaseCard(
+            case_id=case_id,
+            title=case.title,
+            href=f"/changes/{case_id}",
+            state_text="종료" if closed else f"v{rev.number} {STATUS_LABELS[rev.status]}",
+            state="closed" if closed else rev.status,
+        )
+    return cards
+
+
+def case_choices(session: Session, site_id: int, limit: int = 30) -> tuple[CaseCard, ...]:
+    """대화방에서 고를 수 있는 이 현장의 최근 변경 건(종료 포함)."""
+    ids = list(
+        session.scalars(
+            select(ChangeCase.id)
+            .where(ChangeCase.site_id == site_id)
+            .order_by(ChangeCase.id.desc())
+            .limit(limit)
+        )
+    )
+    cards = case_cards(session, site_id, ids)
+    return tuple(cards[i] for i in ids if i in cards)
 
 
 def build_list(

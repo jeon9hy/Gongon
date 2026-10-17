@@ -23,7 +23,7 @@
 {# 주 메뉴는 핵심 4개(D-063). 공온 판정·판정 내역은 작업 일정 안의 하위 메뉴다. #}
 {% set nav_group = {"dashboard": "schedule", "history": "schedule"}.get(nav_active, nav_active) %}
 {# 현장은 메뉴 대신 '현장 추가' 버튼과 현장마다 설정 아이콘(모달)으로 다룬다(개발자 요청 2026-10-16) #}
-{% for key, href, label in [("home", "/", "홈"), ("schedule", "/schedule", "작업 일정"), ("changes", "/changes", "변경"), ("actions", "/actions", "내 조치")] %}
+{% for key, href, label in [("home", "/", "홈"), ("schedule", "/schedule", "작업 일정"), ("changes", "/changes", "변경"), ("actions", "/actions", "내 조치"), ("chat", "/chat", "대화")] %}
 <a href="{{ href }}{% if key == 'schedule' and current_site_id %}?site_id={{ current_site_id }}{% endif %}"{% if nav_group == key %} aria-current="page"{% endif %}>{{ label }}</a>
 {% endfor %}
 </nav>
@@ -67,6 +67,7 @@
 <a href="/schedule">작업 일정</a>
 <a href="/changes">변경</a>
 <a href="/actions">내 조치</a>
+<a href="/chat">현장 대화</a>
 </div>
 <div class="sitefoot__col">
 <p class="sitefoot__head">도움</p>

@@ -1,0 +1,21 @@
+{% from "_macros.html" import icon %}
+{% for m in messages %}
+<li class="msg{% if m.mine %} msg--mine{% endif %}{% if m.body is none %} msg--deleted{% endif %}" data-id="{{ m.message_id }}" data-day="{{ m.day_text }}">
+{% if not m.mine %}<span class="msg__avatar" aria-hidden="true">{{ (m.author_name | replace("[가상] ", ""))[:1] }}</span>{% endif %}
+<div class="msg__main">
+{% if not m.mine %}<p class="msg__who"><strong>{{ m.author_name }}</strong>{% if m.author_company %} · {{ m.author_company }}{% endif %}</p>{% endif %}
+<div class="msg__row">
+<div class="msg__bubble">
+{% if m.body is none %}<span class="muted">삭제된 메시지예요.</span>{% else %}<span class="msg__text">{{ m.body }}</span>{% endif %}
+{% if m.case %}
+<a class="msg__case msg__case--{{ m.case.state }}" href="{{ m.case.href }}">{{ icon("history", 14) }}<span><strong>{{ m.case.title }}</strong><small>지금 {{ m.case.state_text }}</small></span></a>
+{% endif %}
+</div>
+<span class="msg__time">{{ m.time_text }}</span>
+{% if m.can_delete %}
+<form method="post" action="/chat/{{ site_id }}/messages/{{ m.message_id }}/delete" class="msg__del"><button type="submit" class="iconbtn" aria-label="메시지 삭제" title="삭제">{{ icon("trash", 13) }}</button></form>
+{% endif %}
+</div>
+</div>
+</li>
+{% endfor %}

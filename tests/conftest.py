@@ -37,6 +37,7 @@ from tests.fakes import FakeKma
 # 14:10 이후라 14시 발표를 받고, 판정 대상은 내일(2026-10-05)이다.
 FIXED_NOW = datetime(2026, 10, 4, 15, 0, tzinfo=KST)
 TABLES = (
+    "site_messages",
     "action_events",
     "action_delegations",
     "action_items",

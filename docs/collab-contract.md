@@ -106,6 +106,12 @@ C01 [공개 조사](research/C01-public-research.md)의 설계 가정 A1~A7과 �
 - `dispatches`: 고유키 (site, revision, action, recipient, channel, kind, round). 상태 `pending → sent | failed | unknown`(공급자 응답 유실). 초기 채널은 `web`·`preview`뿐이며 미리보기를 "발송됨"으로 표시하지 않는다.
 - 새 버전 확정 시: 이전 버전의 `requested`/`accepted`/`blocked` 조치 → `replaced` + 새 조치 연결, `reported`/`verified` 조치 → 새 버전에 `보완 필요` 조치 후보로 제시(조정자가 확정). 자동 원복 없음.
 
+## 6-2. C12 현장 대화방 (D-071)
+
+- `site_messages`(0018): site_id, author_user_id, body(1~1000자), linked_case_id(같은 현장 변경 건, 선택), created_at, deleted_at. 현장당 방 하나, 활성 멤버십만 읽기·쓰기(비참여 404). 지우기는 작성자만, 행은 남기고 '삭제된 메시지'로 보인다.
+- 변경 건 카드는 저장한 글이 아니라 지금 상태(최신 버전·종료)를 읽어 보인다. 메시지·읽음은 조치 상태를 바꾸지 않는다. 새 메시지는 4초마다 `after_id` 뒤만 불러온다.
+- 아직 없음: 메시지에서 조치·변경 제안 바로 만들기(지금은 작업 일정에서 제안), 읽음 표시, 푸시 알림.
+
 ## 6-1. C11 현장 게시 화면 (D-067)
 
 - 역할 `board` 추가(project_memberships.role). 화면 `/board?site_id=` 한 장만 열 수 있고 다른 모든 화면·쓰기는 403.
