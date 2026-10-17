@@ -24,6 +24,7 @@
 <section class="hsec" id="g-{{ key }}" aria-labelledby="g-{{ key }}-title">
 <div class="hsec__head"><h2 class="hsec__title" id="g-{{ key }}-title">{{ title }} <span>{{ rows | length }}건 · 기한 지난 것부터</span></h2></div>
 {% if rows %}
+<div class="jobs__head" aria-hidden="true"><span>기한</span><span>조치</span><span>현장</span><span>상태</span></div>
 <ul class="jobs">
 {% for a in rows %}
 <li><a class="job myact" href="{{ a.href }}">

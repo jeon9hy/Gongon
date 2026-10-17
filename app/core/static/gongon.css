@@ -2021,3 +2021,31 @@ textarea:focus-visible { outline: 0; border-color: var(--ink); box-shadow: 0 0 0
 .dashtools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 /* 작업 추가 창: '실행 업체' 라벨은 다른 칸 라벨과 같은 글자·글자선, 오른쪽에 업체 등록 */
 .fieldhead { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; text-indent: 0; padding-left: var(--label-inset); }
+/* 오늘 목록 진행률 칸(개발자 요청 2026-10-17): 업체 뒤에 얇은 막대와 % */
+.job--today { grid-template-columns: 104px minmax(0, 1fr) 160px minmax(120px, 200px) 168px; }
+.job__prog { display: flex; align-items: center; gap: 8px; width: 100%; }
+.job__progbar { flex: 1; height: 6px; border-radius: 999px; background: var(--line-soft); overflow: hidden; }
+.job__progbar span { display: block; height: 100%; border-radius: 999px; background: var(--c, var(--accent)); }
+.job__prog b { flex: 0 0 44px; font-size: 12px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; text-align: right; }
+.job--before .job__prog b { color: var(--muted); font-weight: 500; }
+.job--now, .job--before { background: transparent; }
+@media (max-width: 760px) {
+  .job--today { grid-template-columns: minmax(0, 1fr) auto; }
+  .job--today .job__prog { grid-column: 1 / -1; grid-row: 3; }
+}
+/* 작업 목록 칸은 같은 너비로 나눈다(개발자 요청 2026-10-17) */
+.job { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.job--today { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.job__prog { max-width: 180px; }
+@media (max-width: 760px) {
+  .job, .job--today { grid-template-columns: minmax(0, 1fr) auto; }
+  .job__prog { max-width: none; }
+}
+/* 작업 목록 표 머리(칸 이름) */
+.jobs__head { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; justify-items: center; padding: 8px; margin: 0 -8px; border-radius: var(--radius-sm); background: var(--surface); font-size: 12px; font-weight: 700; color: var(--muted); }
+.jobs__head--today { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (max-width: 760px) { .jobs__head { display: none; } }
+/* 홈 카드 안 블록(먼저 챙길 것·표 머리·작업 줄)은 모두 같은 좌우 선에 맞춘다 */
+.hsec .job, .hsec .jobs__head, .hsec .gantt__row { margin-left: 0; margin-right: 0; }
+.hsec .job, .hsec .jobs__head { padding-left: 12px; padding-right: 12px; }
+.jobs__more > summary { margin: 0; }

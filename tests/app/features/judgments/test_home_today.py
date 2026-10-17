@@ -58,7 +58,7 @@ def board(page: str, key: str) -> str:
 
 def rows(section: str) -> list[tuple[str, str]]:
     """오늘 일정의 (단계, 시간) 목록(화면 순서)."""
-    pattern = r'class="job job--(\w+)".*?<span class="job__time">([^<]+)</span>'
+    pattern = r'class="job job--today job--(\w+)".*?<span class="job__time">([^<]+)</span>'
     return re.findall(pattern, section, re.S)
 
 
