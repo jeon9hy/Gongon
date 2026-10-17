@@ -2315,3 +2315,11 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 @media (min-width: 761px) {
   .chat__room span:last-child { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 }
+/* 자료실(개발용, D-079) */
+.srcs { margin-top: 16px; }
+.srcs td { vertical-align: top; padding-top: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--line-soft); }
+.srcs td .tag { white-space: nowrap; }
+.srcs code { font-size: 12px; }
+.srcs td:first-child { white-space: nowrap; }
+.srcs td { word-break: keep-all; }
+.srcs table { min-width: 760px; } /* 휴대폰에서는 좁혀 쓰지 않고 표를 가로로 밀어 본다 */

@@ -109,6 +109,7 @@ uv run python -m uvicorn app.main:app --reload
 | `TEST_DATABASE_URL` | DB 테스트(선택) | S04 | 개발자 PC 설정됨. CI에서는 워크플로가 설정 |
 | `KAKAO_REST_API_KEY` | 현장 위치 찾기(선택) | S05 | 설정됨, 주소 검색 실제 호출 200 확인(2026-10-08, 도로명·지번·도로명 없는 지번) |
 | `LAW_OC` | 법령 원문 발췌·실검증 스크립트(앱은 안 씀) | S01 | 설정됨(2026-10-08). `uv run python -m scripts.verify_law_sources`로 저장 발췌 ↔ 현행 원문 확인(D-029) |
+| `KCSC_API_KEY` | KCS 원문 발췌 스크립트(앱은 안 씀) | C04-23 | 설정됨(2026-10-17). `uv run python -m scripts.fetch_kcs --codes 142040 414700 414001 414006 445010 --out rules/sources/kcs_weather.json` (D-079) |
 
 ## DB 적용 절차
 ```bash

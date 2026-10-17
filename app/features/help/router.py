@@ -13,6 +13,7 @@ from app.core.templating import register_template_dir, templates
 from app.features.auth import service as auth_service
 from app.features.auth.schemas import CurrentUser
 from app.features.auth.service import CurrentUserDep, require_user
+from app.features.help.service import build_sources_view
 from app.features.sites import service as sites_service
 from app.features.teams import service as teams_service
 from app.features.teams.schemas import ROLE_LABELS, Role
@@ -34,6 +35,14 @@ class MySite:
 @router.get("/guide", response_class=HTMLResponse)
 def guide(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(request, "help/guide.html", {"nav_active": "guide"})
+
+
+@router.get("/sources", response_class=HTMLResponse)
+def sources(request: Request) -> HTMLResponse:
+    """자료실(개발용, D-079). 판정 자료의 출처·받는 방법을 확인한다. 출시 전에 뺀다."""
+    return templates.TemplateResponse(
+        request, "help/sources.html", {"nav_active": "sources", "view": build_sources_view()}
+    )
 
 
 @router.get("/me", response_class=HTMLResponse)

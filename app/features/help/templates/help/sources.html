@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}자료실{% endblock %}
+{% block content %}
+{# 개발용 자료실(D-079). 출시 전에 이 화면·바닥글 링크·help/service.py를 함께 뺀다. #}
+<section class="hero" aria-labelledby="sources-title">
+<div class="hero__main">
+<p class="hero__date">{{ icon("info", 15) }} 자료실 · 개발용</p>
+<h1 class="hero__title" id="sources-title">판정 자료는 어디서 오나요</h1>
+</div>
+</section>
+
+<section class="panel srcs">
+<h2 class="h2">API로 받아 쓰는 자료</h2>
+<div class="table-wrap table-wrap--plain"><table>
+<thead><tr><th>자료</th><th>제공처</th><th>방식</th><th>쓰는 곳</th><th>상태</th></tr></thead>
+<tbody>
+{% for f in view.feeds %}<tr><td><b>{{ f.name }}</b></td><td>{{ f.provider }}</td><td>{{ f.method }}</td><td>{{ f.used_for }}</td><td><span class="tag {{ 'tag--go' if f.ok else 'tag--unknown' }}">{{ f.status }}</span></td></tr>{% endfor %}
+</tbody>
+</table></div>
+</section>
+
+<section class="panel srcs">
+<h2 class="h2">공종별 판정 기준</h2>
+<div class="table-wrap table-wrap--plain"><table>
+<thead><tr><th>공종</th><th>상태</th><th>기준 출처</th><th>원문 받은 방법</th><th>메모</th></tr></thead>
+<tbody>
+{% for b in view.bases %}<tr><td><b>{{ b.label }}</b></td><td><span class="tag tag--{{ b.tone }}">{{ b.status }}</span></td><td>{{ b.source }}</td><td>{{ b.method }}</td><td class="small muted">{{ b.note }}</td></tr>{% endfor %}
+</tbody>
+</table></div>
+</section>
+
+<section class="panel srcs">
+<h2 class="h2">받아 둔 원문 발췌</h2>
+<p class="small muted">원본 전체는 저장소에 넣지 않고 판정에 쓸 문장만 rules/sources/에 발췌해 둡니다(D-033).</p>
+<div class="table-wrap table-wrap--plain"><table>
+<thead><tr><th>파일</th><th>받은 방법</th><th>받은 때</th><th>문서 · 발췌 수</th></tr></thead>
+<tbody>
+{% for f in view.files %}<tr><td><code>{{ f.file_name }}</code></td><td>{{ f.method }}</td><td>{{ f.retrieved_at[:10] }}</td><td>{% for d in f.documents %}<div>{{ d.title }} <span class="muted">· {{ d.excerpt_count }}</span></div>{% endfor %}</td></tr>{% endfor %}
+</tbody>
+</table></div>
+</section>
+
+<section class="panel srcs">
+<h2 class="h2">아직 연결하지 않은 자료</h2>
+<div class="table-wrap table-wrap--plain"><table>
+<thead><tr><th>자료</th><th>제공처</th><th>방식</th><th>쓸 곳</th><th>상태</th></tr></thead>
+<tbody>
+{% for f in view.not_yet %}<tr><td><b>{{ f.name }}</b></td><td>{{ f.provider }}</td><td>{{ f.method }}</td><td>{{ f.used_for }}</td><td><span class="tag tag--unknown">{{ f.status }}</span></td></tr>{% endfor %}
+</tbody>
+</table></div>
+</section>
+{% endblock %}
