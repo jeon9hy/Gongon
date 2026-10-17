@@ -16,7 +16,7 @@
 <div class="alert alert--ok" role="status">{{ icon("check", 16, 2.4) }} 저장했습니다. 대시보드에서 판정할 수 있습니다.</div>
 {% endif %}
 {% if view.site_id is not none %}
-<p class="sitelinks"><a class="btn btn--soft btn--sm" href="/schedule?site_id={{ view.site_id }}"{{ top | safe }}>{{ icon("calendar", 16) }} 작업 일정</a><a class="btn btn--soft btn--sm" href="/sites/{{ view.site_id }}/members"{{ top | safe }}>{{ icon("users", 16) }} 참여 업체·담당자</a>{% if not view.can_edit %} <span class="small muted">열람 중</span>{% endif %}</p>
+<p class="sitelinks"><a class="btn btn--soft btn--sm" href="/schedule?site_id={{ view.site_id }}"{{ top | safe }}>{{ icon("calendar", 16) }} 작업 일정</a><a class="btn btn--soft btn--sm" href="/board/{{ view.site_id }}"{{ top | safe }}>{{ icon("dashboard", 16) }} 게시 화면</a><a class="btn btn--soft btn--sm" href="/sites/{{ view.site_id }}/members"{{ top | safe }}>{{ icon("users", 16) }} 참여 업체·담당자</a>{% if not view.can_edit %} <span class="small muted">열람 중</span>{% endif %}</p>
 {% endif %}
 
 <fieldset>

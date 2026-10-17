@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session
 
 from app.core.clock import now_kst
@@ -27,15 +27,18 @@ SessionDep = Annotated[Session, Depends(get_session)]
 NowDep = Annotated[datetime, Depends(now_kst)]
 
 
-@router.get("/", response_class=HTMLResponse)
+@router.get("/", response_model=None)
 def home(
     request: Request,
     session: SessionDep,
+    user: CurrentUserDep,
     scope: AccessibleSitesDep,
     manageable: ManagedSitesDep,
     now: NowDep,
     ran: RunResult | None = None,
-) -> HTMLResponse:
+) -> Response:
+    if not scope and teams_service.board_site_ids(session, user.user_id):
+        return RedirectResponse("/board", status_code=303)  # 현장 TV 계정은 게시 화면만(D-067)
     view = service.build_home(session, scope, now, ran)
     return templates.TemplateResponse(
         request,

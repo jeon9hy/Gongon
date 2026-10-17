@@ -1,0 +1,48 @@
+{# 현장 게시 화면(C11, D-067): 큰 글씨·가로 화면, 1분마다 스스로 새로 고침. 메뉴 없음. #}
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}게시 · {{ view.site_name }}{% endblock %}
+{% block body_class %} class="boardbody"{% endblock %}
+{% block page %}
+<meta http-equiv="refresh" content="60">
+<main class="board" id="main" tabindex="-1">
+<header class="board__head">
+<div class="board__brand"><img src="/static/brand/logo.png" alt="" width="40" height="40"><div><p class="board__site">{{ view.site_name }}</p><p class="board__updated">{{ view.updated_text }} · 1분마다 새로 고침</p></div></div>
+<p class="board__clock" data-clock>{{ view.updated_text[:5] }}</p>
+</header>
+<p class="board__notice">{{ icon("info", 22) }} 작업 여부는 반장·소장 지시를 따릅니다.</p>
+{% if view.changes %}
+<section class="board__changes" aria-label="오늘 확정된 변경">
+<p class="board__label">오늘 바뀐 일정</p>
+<ul>{% for c in view.changes %}<li>{{ c }}</li>{% endfor %}</ul>
+</section>
+{% endif %}
+<div class="board__cols">
+{% for title, day, rows in [("오늘", view.today_text, view.today), ("내일", view.tomorrow_text, view.tomorrow)] %}
+<section class="board__col" aria-label="{{ title }} 작업">
+<h2 class="board__title">{{ title }} <span>{{ day }}</span></h2>
+{% if rows %}
+<ul class="board__list">
+{% for r in rows %}
+<li class="board__row{% if r.phase == '진행 중' %} is-now{% elif r.phase == '끝남' %} is-done{% endif %}">
+<span class="board__time">{{ r.time_text }}</span>
+<span class="board__what"><strong>{{ r.work_type }}</strong>{% if r.location %}<span>{{ r.location }}</span>{% endif %}</span>
+<span class="board__who">{{ r.company }}</span>
+{% if r.phase %}<span class="board__phase">{{ r.phase }}</span>{% endif %}
+</li>
+{% endfor %}
+</ul>
+{% else %}<p class="board__empty">등록된 작업이 없어요.</p>{% endif %}
+{% if title == "내일" and view.weather_text %}<p class="board__weather">{{ view.weather_text }} · 작업 여부는 반장·소장 지시를 따릅니다.</p>{% endif %}
+</section>
+{% endfor %}
+</div>
+</main>
+<script>
+(() => {
+  const el = document.querySelector("[data-clock]");
+  const tick = () => { const d = new Date(); el.textContent = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
+  tick(); setInterval(tick, 10000);
+})();
+</script>
+{% endblock %}

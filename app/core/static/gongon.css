@@ -1949,3 +1949,35 @@ textarea:focus-visible { outline: 0; border-color: var(--ink); box-shadow: 0 0 0
   .msg { max-width: 92%; }
 }
 .msg__text { white-space: pre-wrap; }
+
+/* 현장 게시 화면(C11, D-067): 휴게실 TV용 큰 글씨·가로 화면 */
+.boardbody { background: var(--dark); color: var(--dark-text); }
+.board { min-height: 100vh; display: flex; flex-direction: column; gap: 20px; padding: 28px 36px; }
+.board__head { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.board__brand { display: flex; align-items: center; gap: 14px; }
+.board__site { font-size: 30px; font-weight: 800; color: #FFFFFF; letter-spacing: -0.03em; }
+.board__updated { font-size: 15px; color: var(--dark-muted); }
+.board__clock { font-size: 56px; font-weight: 800; color: #FFFFFF; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.board__notice { display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-radius: var(--radius-lg); background: #FFF0D2; color: #5C3300; font-size: 22px; font-weight: 700; }
+.board__changes { padding: 16px 20px; border-radius: var(--radius-lg); background: var(--accent); color: #FFFFFF; }
+.board__label { font-size: 16px; font-weight: 700; opacity: 0.85; }
+.board__changes ul { margin: 6px 0 0; padding-left: 22px; font-size: 24px; font-weight: 700; line-height: 1.5; }
+.board__cols { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.board__col { display: flex; flex-direction: column; gap: 12px; padding: 20px; border-radius: var(--radius-lg); background: var(--dark-2); }
+.board__title { margin: 0; font-size: 32px; font-weight: 800; color: #FFFFFF; }
+.board__title span { margin-left: 8px; font-size: 20px; font-weight: 600; color: var(--dark-muted); }
+.board__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.board__row { display: grid; grid-template-columns: 200px minmax(0, 1fr) auto auto; align-items: center; gap: 16px; padding: 14px 16px; border-radius: var(--radius-md); background: #FFFFFF14; font-size: 24px; }
+.board__row.is-now { background: var(--accent); }
+.board__row.is-done { opacity: 0.45; }
+.board__time { font-weight: 800; color: #FFFFFF; font-variant-numeric: tabular-nums; }
+.board__what { display: flex; flex-direction: column; min-width: 0; }
+.board__what strong { color: #FFFFFF; font-weight: 800; }
+.board__what span { font-size: 18px; color: var(--dark-muted); }
+.board__row.is-now .board__what span { color: #FFFFFFCC; }
+.board__who { font-size: 20px; color: var(--dark-text); }
+.board__phase { padding: 4px 12px; border-radius: 999px; background: #FFFFFF22; font-size: 16px; font-weight: 700; color: #FFFFFF; }
+.board__empty { font-size: 22px; color: var(--dark-muted); }
+.board__weather { margin-top: auto; padding-top: 12px; border-top: 1px solid #FFFFFF22; font-size: 20px; color: var(--dark-text); }
+@media (max-width: 900px) { .board__cols { grid-template-columns: 1fr; } .board__row { grid-template-columns: 1fr auto; font-size: 20px; } .board__who { display: none; } }
+.boardbody .board { background: transparent; border: 0; border-radius: 0; } /* 옛 홈의 .board 카드 규칙과 이름이 겹친다 */

@@ -533,6 +533,30 @@ def case_cards(session: Session, site_id: int, case_ids: list[int]) -> dict[int,
     return cards
 
 
+def confirmed_between(
+    session: Session, site_id: int, start: datetime, end: datetime
+) -> tuple[str, ...]:
+    """이 현장에서 [start, end)에 확정된 변경(게시 화면용 한 줄씩, 최근 먼저)."""
+    rows = session.execute(
+        select(ChangeCase, ChangeRevision)
+        .join(ChangeRevision, ChangeRevision.case_id == ChangeCase.id)
+        .where(
+            ChangeCase.site_id == site_id,
+            ChangeRevision.confirmed_at >= start,
+            ChangeRevision.confirmed_at < end,
+        )
+        .order_by(ChangeRevision.confirmed_at.desc())
+    ).all()
+    labels = _work_labels(session, [case.work_item_id for case, _ in rows])
+    lines = []
+    for case, r in rows:
+        before = _plan_text(r.before_work_date, r.before_start_local, r.before_end_local, "")
+        after = _plan_text(r.after_work_date, r.after_start_local, r.after_end_local,
+                           r.after_location)  # fmt: skip
+        lines.append(f"{labels.get(case.work_item_id, '작업')} · {before} → {after}")
+    return tuple(lines)
+
+
 def case_choices(session: Session, site_id: int, limit: int = 30) -> tuple[CaseCard, ...]:
     """대화방에서 고를 수 있는 이 현장의 최근 변경 건(종료 포함)."""
     ids = list(

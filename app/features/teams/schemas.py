@@ -1,11 +1,16 @@
 from dataclasses import dataclass
 from typing import Literal
 
-Role = Literal["coordinator", "assignee", "viewer"]
+Role = Literal["coordinator", "assignee", "viewer", "board"]
 ParticipantKind = Literal["prime", "subcontractor"]
 Category = Literal["subcontractor", "supplier", "equipment", "supervision"]
 
-ROLE_LABELS: dict[Role, str] = {"coordinator": "조정자", "assignee": "담당자", "viewer": "열람자"}
+ROLE_LABELS: dict[Role, str] = {
+    "coordinator": "조정자",
+    "assignee": "담당자",
+    "viewer": "열람자",
+    "board": "게시(현장 TV)",
+}
 KIND_LABELS: dict[ParticipantKind, str] = {"prime": "원청", "subcontractor": "협력업체"}
 # 참여 업체 구분(D-066). 원청이 아닌 업체의 구분이며 순서가 선택 목록 순서다.
 CATEGORY_LABELS: dict[Category, str] = {
@@ -21,6 +26,9 @@ CONTACT_DETAIL_ROLES: tuple[Role, ...] = ("coordinator", "assignee")
 # 현장 수정·작업 일정·판정 실행·참여자 관리(D-057). 조치 처리 권한은 C06에서 따로 정한다.
 MANAGE_ROLES: tuple[Role, ...] = ("coordinator",)
 ALL_ROLES: tuple[Role, ...] = ("coordinator", "assignee", "viewer")
+# 게시(D-067): 현장 공용 화면 계정. 게시 화면만 열고 다른 화면은 ALL_ROLES 범위라 열리지 않는다.
+BOARD_ROLES: tuple[Role, ...] = ("board", *ALL_ROLES)
+ASSIGNABLE_ROLES: tuple[Role, ...] = (*ALL_ROLES, "board")
 # 변경 제안(초안·영향 검토로 보내기). 확정·철회(남의 제안)는 조정자만(D-057 A2, C05).
 PROPOSE_ROLES: tuple[Role, ...] = ("coordinator", "assignee")
 # 후속 조치 수행·검증을 맡을 수 있는 역할(C06). 열람자는 맡지 않는다.

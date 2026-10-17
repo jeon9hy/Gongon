@@ -40,6 +40,14 @@ def participants_for_sites(session: Session, site_ids: list[int]) -> list[Projec
     return list(session.scalars(query))
 
 
+def prime_participant(session: Session, site_id: int) -> ProjectParticipant | None:
+    return session.scalar(
+        select(ProjectParticipant).where(
+            ProjectParticipant.site_id == site_id, ProjectParticipant.kind == "prime"
+        )
+    )
+
+
 def participant_of(
     session: Session, site_id: int, organization_id: int
 ) -> ProjectParticipant | None:

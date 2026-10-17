@@ -21,6 +21,7 @@ from app.features.teams import repository
 from app.features.teams.models import ParticipantContact, ProjectMembership, ProjectParticipant
 from app.features.teams.schemas import (
     ALL_ROLES,
+    ASSIGNABLE_ROLES,
     CATEGORY_LABELS,
     CONTACT_DETAIL_ROLES,
     KIND_LABELS,
@@ -53,6 +54,11 @@ SAME_NAME_PARTICIPANT = "같은 이름의 업체가 이미 있어요. 다른 업
 def site_ids_for(session: Session, user_id: int) -> frozenset[int]:
     """활성 멤버십이 있는 현장. 다른 기능은 이 범위로 목록·조회를 제한한다."""
     return repository.active_site_ids(session, user_id, ALL_ROLES)
+
+
+def board_site_ids(session: Session, user_id: int) -> frozenset[int]:
+    """게시 역할로 참여한 현장(현장 TV 계정)."""
+    return repository.active_site_ids(session, user_id, ("board",))
 
 
 def managed_site_ids(session: Session, user_id: int) -> frozenset[int]:
@@ -216,7 +222,7 @@ def add_member(
     업체 명부의 사람과 계정을 연결한다.
     """
     require_role(session, actor, site_id, MANAGE_ROLES)
-    if role_raw not in ALL_ROLES:
+    if role_raw not in ASSIGNABLE_ROLES:
         return ("역할을 고르세요.",)
     role: Role = role_raw
     target = auth_service.find_user(session, email)
@@ -228,6 +234,9 @@ def add_member(
     if repository.active_membership(session, target.user_id, site_id) is not None:
         return ("이미 이 현장에 참여 중입니다. 역할을 바꾸려면 회수한 뒤 다시 추가하세요.",)
     participant = repository.participant_of(session, site_id, target.organization_id)
+    if role == "board":
+        # 게시 계정은 현장 공용 화면이라 업체를 따로 만들지 않고 원청 아래에 둔다(D-067)
+        participant = repository.prime_participant(session, site_id)
     if participant is None:
         matches = _same_name(session, site_id, target.organization_name)
         if matches and not same_name:
@@ -645,7 +654,9 @@ def build_members_view(
         my_role_label=ROLE_LABELS[my_role],
         can_manage=can_manage,
         participants=views,
-        role_options=tuple(RoleOption(r, ROLE_LABELS[r], r == member_form.role) for r in ALL_ROLES),
+        role_options=tuple(
+            RoleOption(r, ROLE_LABELS[r], r == member_form.role) for r in ASSIGNABLE_ROLES
+        ),
         category_options=tuple(
             Option(c, label, c == participant_form.category) for c, label in CATEGORY_LABELS.items()
         ),
