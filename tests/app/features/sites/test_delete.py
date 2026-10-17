@@ -43,9 +43,9 @@ def test_deleted_site_leaves_lists_but_its_judgments_stay_in_history(
 
     assert response.status_code == 303
     assert "현장을 삭제했습니다" in client.get(response.headers["location"]).text
-    home = client.get("/").text
-    assert "지울현장" not in home  # 현장 목록과 최근 판정 모두에서 빠진다
-    assert "남길현장" in home
+    assert "지울현장" not in client.get("/").text  # 홈 현장 칸·작업에서 빠진다
+    dashboard = client.get("/dashboard").text  # 남은 현장 하나라 바로 그 현장 판정
+    assert "지울현장" not in dashboard and "남길현장" in dashboard
     assert "지울현장" not in client.get("/sites").text
     assert "지울현장" not in client.get("/schedule").text
     assert client.get("/dashboard", params={"site_id": gone}).status_code == 404

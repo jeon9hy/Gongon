@@ -280,12 +280,12 @@ def test_home_summarizes_each_site_and_links_to_its_dashboard(
              work_types=["철골 작업"])  # fmt: skip
     run(client, stop_site)
 
-    page = client.get("/").text
+    page = client.get("/dashboard").text  # 현장별 표는 공온 판정 전체 화면(홈에서는 뺐다)
 
     assert f'href="/dashboard?site_id={stop_site}"' in page
     assert "철골 작업 · 15:00–16:00 · 강우 최대 2.0 mm/h (15:00)" in page
     assert "아직 판정하지 않았습니다" in page  # 두 번째 현장
-    assert page.count("siterow--stop") == 1
+    assert page.count("siteline--stop") == 1
 
 
 def test_run_all_judges_every_site_and_fetches_shared_grid_once(
@@ -380,7 +380,7 @@ def test_run_all_skips_sites_outside_period_and_home_counts_them(
 
     assert location == "/?ran=all_done"
     assert count(session, Judgment) == 3
-    assert "작업 기간이 아닙니다 · 2026-11-01~2026-11-30" in home
+    assert "작업 기간이 아닙니다 · 2026-11-01~2026-11-30" in client.get("/dashboard").text
     assert "작업 없음" in home
 
 

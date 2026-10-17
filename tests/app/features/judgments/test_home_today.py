@@ -122,10 +122,9 @@ def test_tomorrow_board_counts_weather_before_judgment_and_open_change(
 
     tomorrow = board(client.get("/").text, "tomorrow")
 
-    assert 'aria-label="준비 끝 0건 / 1건"' in tomorrow
-    # 작업 줄의 알약: 판정 전 날씨와 진행 중 변경이 확인할 것으로 걸린다
-    pill = tomorrow.split('<span class="pill pill--warn"')[1].split("</span>")[0]
-    assert "날씨" in pill and "변경 중" in pill
+    # 작업 줄: 판정 칸은 그 작업의 판정(판정 전), 다른 확인할 것(변경 검토 중)은 ! 표시
+    assert '<span class="badge badge--unknown">판정 전</span>' in tomorrow
+    assert 'title="변경 검토 중"' in tomorrow
     assert "일정 ›" not in tomorrow
 
 
@@ -157,8 +156,8 @@ def test_week_index_scores_mid_forecast_days_as_reference(
     week = client.get("/").text.split('class="idxweek"')[1].split("</ol>")[0]
     mid_day = week.split("</li>")[3]  # 내일(10/5)부터 네 번째 칸
 
-    assert 'aria-label="공온지수 75"' in mid_day
-    assert '<span class="idxday__sub">중기 참고</span>' in mid_day
+    assert 'aria-label="공온지수 75(먼 날 예보로 계산)"' in mid_day
+    assert "ring--ref" in mid_day and "중기 참고" not in mid_day  # 글 대신 점선 원(D-078)
 
 
 def test_home_without_any_work_says_so(client: TestClient) -> None:
@@ -166,7 +165,7 @@ def test_home_without_any_work_says_so(client: TestClient) -> None:
 
     page = client.get("/").text
 
-    assert "오늘은 쉬어 가는 날" in page and 'class="job job--' not in page
+    assert "오늘은 쉬어 가는 날" in page and 'class="job job--today' not in page
 
 
 def test_home_switches_between_sites(client: TestClient, session: Session) -> None:

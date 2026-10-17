@@ -120,7 +120,7 @@ def test_site_without_work_is_not_judged_and_no_forecast_is_fetched(
     dashboard = client.get(location).text
     assert "등록한 작업이 없어 판정하지 않았습니다" in dashboard
     assert "‘지금 판정하기’를 누르면" not in dashboard
-    assert "내일 등록한 작업이 없습니다" in home
+    assert "내일 일정이 비어 있어요" in home
 
 
 def test_notice_keeps_check_for_work_without_rules_even_when_heat_is_go(

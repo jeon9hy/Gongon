@@ -5,7 +5,7 @@
 
 <section class="hero" aria-labelledby="schedule-title" data-swap="header">
 <div class="hero__main">
-<p class="hero__date">{{ icon("calendar", 15) }} 작업 일정{% if view.site_name %} · {{ view.site_name }}{% endif %}</p>
+<p class="hero__date">{{ icon("calendar", 15) }} 작업 일정{% if view.site_name %} · {{ view.site_name }}{% endif %}{% if view.period_text %} · 작업 기간 {{ view.period_text }}{% endif %}</p>
 <h1 class="hero__title" id="schedule-title">{{ view.month_title.split(" ")[-1] if view.site_id is not none or view.all_mode else "이번 달" }} 작업 일정</h1>
 </div>
 {% if view.sites %}
@@ -31,6 +31,9 @@
 {% else %}
 <div class="split" data-schedule>
 <section class="panel split__main calendar-panel" aria-labelledby="month-title" data-swap="calendar">
+{# 범례는 달력 머리 오른쪽에(개발자 요청 2026-10-17): 그려지기 전에 이 달 공종을 모은다 #}
+{% set legend_types = namespace(items=[]) %}
+{% for week in view.weeks %}{% for c in week %}{% for i in c.items %}{% if i.work_type not in legend_types.items %}{% set legend_types.items = legend_types.items + [i.work_type] %}{% endif %}{% endfor %}{% endfor %}{% endfor %}
 <div class="calhead">
 <div class="calhead__nav">
 {% if view.prev_href %}<a class="btn btn--sm" href="{{ view.prev_href }}" aria-label="이전 달" data-nav>{{ icon("arrow-left", 14, 2.2) }}</a>{% else %}<span class="btn btn--sm is-disabled" aria-disabled="true" aria-label="이전 달(작업 기간 밖)">{{ icon("arrow-left", 14, 2.2) }}</span>{% endif %}
@@ -56,7 +59,7 @@
 {% if view.next_href %}<a class="btn btn--sm" href="{{ view.next_href }}" aria-label="다음 달" data-nav>{{ icon("arrow-right", 14, 2.2) }}</a>{% else %}<span class="btn btn--sm is-disabled" aria-disabled="true" aria-label="다음 달(작업 기간 밖)">{{ icon("arrow-right", 14, 2.2) }}</span>{% endif %}
 <a class="today-btn" href="{{ view.this_month_href }}" aria-label="오늘로 이동" data-nav>{{ icon("calendar", 18) }}<span>오늘</span></a>
 </div>
-{% if view.period_text %}<span class="small muted">작업 기간 {{ view.period_text }}</span>{% endif %}
+{% if legend_types.items %}<ul class="legend legend--top" aria-label="공종 색">{% for t in legend_types.items %}<li><span class="dot" style="--c: {{ work_color(t) }}"></span>{{ t }}</li>{% endfor %}</ul>{% endif %}
 </div>
 
 <table class="calendar">
@@ -77,9 +80,6 @@
 {% endfor %}
 </tbody>
 </table>
-{% if legend.types %}
-<ul class="legend" aria-label="공종 색">{% for t in legend.types %}<li><span class="dot" style="--c: {{ work_color(t) }}"></span>{{ t }}</li>{% endfor %}</ul>
-{% endif %}
 </section>
 
 <aside class="stack split__side" id="day-detail">

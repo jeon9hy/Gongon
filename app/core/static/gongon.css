@@ -2049,3 +2049,108 @@ textarea:focus-visible { outline: 0; border-color: var(--ink); box-shadow: 0 0 0
 .hsec .job, .hsec .jobs__head, .hsec .gantt__row { margin-left: 0; margin-right: 0; }
 .hsec .job, .hsec .jobs__head { padding-left: 12px; padding-right: 12px; }
 .jobs__more > summary { margin: 0; }
+/* 먼저 챙길 것은 '오늘' 제목 옆 한 줄(회색 상자 없이, 개발자 요청 2026-10-17) */
+.hsec--today .hsec__head { align-items: center; justify-content: flex-start; gap: 8px 16px; }
+.hsec--today .todo { flex: 1 1 auto; justify-content: flex-start; padding: 0; background: transparent; }
+@media (max-width: 760px) { .hsec--today .todo { flex-basis: 100%; } }
+/* 이번 주 공온지수: 지표 칸 7개(개발자 요청 2026-10-17) */
+.kpis--week { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.kpis--week .kpi { border-radius: 0; }
+.kpis--week .kpi.is-tomorrow { background: var(--accent-soft); }
+.kpis--week .kpi__label { font-weight: 600; }
+.kpis--week .kpi.is-tomorrow .kpi__label { color: var(--accent); }
+@media (max-width: 760px) { .kpis--week { grid-template-columns: repeat(4, minmax(0, 1fr)); } .kpis--week .kpi:nth-child(5) { border-left: 0; } .kpis--week .kpi:nth-child(n+5) { border-top: 1px solid var(--line-soft); } .kpis--week .kpi__sub { display: block; } }
+/* 현장별 날씨: 표 한 장 */
+.jobs__head--sites, .job--site { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.siteline { position: relative; }
+.siteline__go { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; color: var(--accent); }
+.siteline__gear { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); }
+.job--site { padding-right: 52px; }
+@media (max-width: 760px) { .job--site { grid-template-columns: minmax(0, 1fr) auto; } .job--site .job__who, .siteline__go { display: none; } }
+/* 오늘 머리: 제목은 왼쪽, 우선순위는 오른쪽에 작은 글자 라벨 + 한 단계 작은 칩(제목과 같은 줄) */
+.hsec--today .hsec__head { justify-content: space-between; align-items: center; }
+.hsec--today .todo { flex: 0 1 auto; justify-content: flex-end; gap: 6px; }
+.hsec--today .todo__k { margin-right: 2px; font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: 0.02em; }
+.hsec--today .chip { padding: 3px 10px; font-size: 12.5px; }
+@media (max-width: 760px) { .hsec--today .todo { flex-basis: 100%; justify-content: flex-start; } }
+.siteline__name { display: flex; flex-direction: column; align-items: center; min-width: 0; max-width: 100%; }
+.siteline__name strong { color: var(--ink); max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.siteline__name small { max-width: 100%; font-size: 12px; color: var(--muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+@media (max-width: 760px) { .siteline__name { align-items: flex-start; } }
+/* 현장별 날씨 줄: 판정 색 왼쪽 띠 */
+.siteline .job--site { box-shadow: inset 3px 0 0 var(--verdict-unknown-mark); }
+.siteline--go .job--site { box-shadow: inset 3px 0 0 var(--verdict-go-mark); }
+.siteline--check .job--site { box-shadow: inset 3px 0 0 var(--verdict-check-mark); }
+.siteline--stop .job--site { box-shadow: inset 3px 0 0 var(--verdict-stop-mark); }
+/* 우선순위 라벨: 공온 토글 표식이 붙은 작은 알약 */
+.hsec--today .todo__k { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 6px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: 0; }
+.logo-toggle--sm { width: 22px; height: 13px; padding: 2px; }
+.logo-toggle--sm::after { width: 9px; height: 9px; }
+/* 달력 범례: 머리 오른쪽 위 */
+.legend--top { margin: 0; padding: 0; border-top: 0; justify-content: flex-end; }
+@media (max-width: 760px) { .legend--top { justify-content: flex-start; width: 100%; } }
+/* 현장별 날씨 위 집계 칸: 판정 단계별 내일 작업 수(0건은 흐리게) */
+.kpis--verdicts { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.kpis--verdicts .kpi__label { display: inline-flex; align-items: center; gap: 6px; }
+.vdot { width: 8px; height: 8px; border-radius: 999px; }
+.vdot--go { background: var(--verdict-go-mark); }
+.vdot--check { background: var(--verdict-check-mark); }
+.vdot--stop { background: var(--verdict-stop-mark); }
+.vdot--wait { background: var(--verdict-unknown-mark); }
+.kpi--go .kpi__value { color: var(--verdict-go-fg); }
+.kpi--check .kpi__value { color: var(--verdict-check-fg); }
+.kpi--stop .kpi__value { color: var(--stop-text); }
+.kpi--wait .kpi__value { color: var(--muted); }
+@media (max-width: 760px) { .kpis--verdicts { grid-template-columns: repeat(3, minmax(0, 1fr)); } .kpis--verdicts .kpi:nth-child(4) { border-left: 0; } .kpis--verdicts .kpi:nth-child(n+4) { border-top: 1px solid var(--line-soft); } }
+
+/* 먼 날 예보(중기)로 계산한 점수: 글로 떠넘기지 않고 옅은 점선 원으로만 구분(D-078) */
+.ring--ref { opacity: 0.78; }
+.ring--ref::after { content: ""; position: absolute; inset: -3px; border-radius: 50%; border: 1.5px dashed var(--line); }
+/* 내일 요약 칸(개발자 참고 화면 2026-10-17): 공온지수 원 + 판정별 작업 수, 수가 있으면 판정 색 바탕 */
+.hsec__meta { font-size: 13px; color: var(--muted); }
+.vtiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.vtile { display: flex; flex-direction: column; justify-content: space-between; gap: 14px; min-height: 104px; padding: 14px 16px; border: 1px solid var(--line-soft); border-radius: var(--radius-lg); background: var(--card); text-decoration: none; color: var(--text); }
+.vtile--index { flex-direction: row; align-items: center; justify-content: flex-start; gap: 14px; transition: border-color var(--ease), transform var(--ease); }
+.vtile--index:hover { border-color: var(--accent); transform: translateY(-1px); color: var(--text); }
+.vtile--index .ring { margin: 0; width: 64px; height: 64px; flex: 0 0 auto; }
+.vtile__text { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.vtile__text small { font-size: 12px; color: var(--muted); }
+.vpill { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; padding: 3px 10px; border-radius: 999px; background: #FFFFFFCC; font-size: 12px; font-weight: 700; }
+.vpill i { width: 7px; height: 7px; border-radius: 999px; background: currentColor; }
+.vpill--index { background: var(--accent-soft); color: var(--accent); }
+.vpill--stop { color: var(--stop-text); background: var(--stop-soft); }
+.vpill--check { color: var(--verdict-check-fg); }
+.vpill--go { color: var(--verdict-go-fg); }
+.vpill--wait { color: var(--verdict-unknown-fg); }
+.vtile__num { font-size: 30px; font-weight: 800; line-height: 1; color: var(--placeholder); font-variant-numeric: tabular-nums; }
+.vtile__num small { margin-left: 3px; font-size: 14px; font-weight: 600; }
+.vtile.is-on .vtile__num { color: var(--ink); }
+.vtile--stop.is-on { background: var(--stop-soft); border-color: transparent; }
+.vtile--stop.is-on .vtile__num { color: var(--stop-text); }
+.vtile--stop.is-on .vpill { background: #FFFFFFCC; }
+.vtile--check.is-on { background: var(--verdict-check-bg); border-color: transparent; }
+.vtile--check.is-on .vtile__num { color: var(--verdict-check-fg); }
+.vtile--go.is-on { background: var(--verdict-go-bg); border-color: transparent; }
+.vtile--go.is-on .vtile__num { color: var(--verdict-go-fg); }
+.vtile--wait.is-on { background: var(--surface); border-color: transparent; }
+@media (max-width: 760px) { .vtiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .vtile--index { grid-column: 1 / -1; } }
+.vpill--total { background: var(--surface); color: var(--ink); }
+.vtiles { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (max-width: 900px) { .vtiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .vtile--index { grid-column: 1 / -1; } }
+/* 내일 칸은 모두 눌러서 공온 판정으로. 공온지수 칸은 원만 가운데 */
+a.vtile { transition: transform var(--ease), box-shadow var(--ease), border-color var(--ease); }
+a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color: var(--text); }
+.vtile--index { flex-direction: column; justify-content: center; gap: 6px; }
+.vtile--index .ring { width: 72px; height: 72px; }
+.vtile__sub { font-size: 12px; color: var(--muted); }
+/* 내일 칸: 낮고 가운데 정렬(빈 여백·한쪽 쏠림 없이) */
+.vtile { min-height: 0; padding: 12px; gap: 8px; align-items: center; justify-content: center; text-align: center; }
+.vtile .vpill { align-self: center; }
+.vtile__num { font-size: 26px; }
+.vtile--index { flex-direction: row; gap: 0; padding: 8px; }
+.vtile--index .ring { width: 58px; height: 58px; }
+.vtile--index .ring b { font-size: 18px; }
+/* 더보기로 펼친 줄은 위 표에 바로 이어지게(틈·끊김 없이) */
+.jobs__more { gap: 0; }
+.jobs__more > .jobs { border-top: 1px solid var(--line-soft); }
+.jobs__more > summary { margin-top: 6px; }

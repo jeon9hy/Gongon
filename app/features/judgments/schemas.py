@@ -177,14 +177,15 @@ class DayBoard:
 
 @dataclass(frozen=True, slots=True)
 class HomeIndexDay:
-    """홈의 이번 주 공온지수 한 칸. 현장이 여럿이면 그날 가장 낮은 점수를 보인다(가장 조심할 곳)."""
+    """홈의 이번 주 공온지수 한 칸. 현장이 여럿이면 점수가 있는 현장의 평균(D-078)."""
 
     label: str  # "10/17(토)"
     short: str  # "토 17" (좁은 화면)
     is_tomorrow: bool
-    score: int | None  # None: 점수 없음(판정 전·중기 참고·작업 없음)
-    sub: str  # 점수가 없을 때 이유, 있으면 현장 이름(여럿일 때)
+    score: int | None  # None: 점수 없음(판정 전·예보 전·작업 없음)
+    sub: str  # 점수가 없을 때 이유, 현장이 여럿이면 '현장 n곳'
     href: str
+    reference: bool = False  # 먼 날 예보(중기)로 계산한 참고 점수: 글 대신 점선 원으로 구분
 
 
 @dataclass(frozen=True, slots=True)

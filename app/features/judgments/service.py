@@ -641,7 +641,7 @@ WEEK_DAYS_HOME = 7
 _WEATHER_OK = {Verdict.GO.value}
 
 
-_NO_SCORE = {"낮음": "중기 참고", "높음": "점수 없음", "보통": "점수 없음"}
+_NO_SCORE = {"낮음": "예보 전", "높음": "점수 없음", "보통": "점수 없음"}
 
 
 def _site_tabs(
@@ -682,18 +682,18 @@ def _index_days(
     for n, first in enumerate(weeks[0][1].days):
         scored = [(index, s) for s, w in weeks if (index := w.days[n].index) is not None]
         if scored:
-            index, site = min(scored, key=lambda pair: pair[0].score)
+            # 현장이 여럿이면 점수가 있는 현장의 평균(개발자 요청 2026-10-17, D-078)
+            several = len(weeks) > 1
+            score = round(sum(i.score for i, _ in scored) / len(scored))
             days.append(
                 HomeIndexDay(
                     label=first.label,
                     short=f"{_WEEKDAYS[first.day.weekday()]} {first.day.day}",
                     is_tomorrow=first.is_tomorrow,
-                    score=index.score,
-                    sub=" · ".join(
-                        ([site.name] if len(weeks) > 1 else [])
-                        + (["중기 참고"] if index.mid_reference else [])
-                    ),
-                    href=dashboard_href(site.site_id),
+                    score=score,
+                    sub=f"현장 {len(scored)}곳" if several else "",
+                    href="/dashboard" if several else dashboard_href(scored[0][1].site_id),
+                    reference=any(i.mid_reference for i, _ in scored),
                 )
             )
         else:
@@ -1150,7 +1150,10 @@ def _index_note(index: GongonIndex | None, confidence: str) -> str:
     if index is None:
         return detail
     if index.mid_reference:
-        parts = [f"공온지수 {index.score}(중기 참고)", "하루 강수확률·날씨만 봄, 먼 예보 10점 감점"]
+        parts = [
+            f"공온지수 {index.score}(먼 날 예보)",
+            "하루 강수확률·날씨만 봄, 먼 예보 10점 감점",
+        ]
         if index.rainy_hours:
             parts.append(f"강수확률 30% 이상 작업 {index.rainy_hours}")
         if index.capped_by is not None:

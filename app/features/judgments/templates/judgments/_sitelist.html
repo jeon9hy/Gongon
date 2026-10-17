@@ -1,40 +1,22 @@
-{# 현장별 날씨 · 내일(홈·공온 판정 전체가 함께 쓴다). view.sites·forecast_*·manageable을 쓴다 #}
+{# 현장별 날씨 · 내일(홈·공온 판정 전체가 함께 쓴다). 표 한 장: 현장·내일 작업·판정·확인·자세히 #}
 {% from "_macros.html" import icon, verdict_badge, verdict_class, site_menu %}
-<section class="panel sitewx reveal" style="--i: 3" aria-labelledby="sites-title">
-<div class="panel__head">
-<h2 class="h2" id="sites-title">현장별 날씨 · 내일</h2>
+<section class="hsec sitewx2 reveal" style="--i: 3" aria-labelledby="sites-title">
+<div class="hsec__head">
+<h2 class="hsec__title" id="sites-title">현장별 날씨 <span>내일</span></h2>
 <p class="sitewx__src">{% if view.forecast_issued %}예보 {{ view.forecast_issued }} 발표 · {% endif %}수집 {{ view.forecast_status }}</p>
 </div>
-<ul class="sitelist">
+<div class="jobs__head jobs__head--sites" aria-hidden="true"><span>현장</span><span>내일 작업</span><span>판정</span><span>확인</span><span></span></div>
+<ul class="jobs">
 {% for s in view.sites %}
-<li class="siterow siterow--{{ verdict_class.get(s.verdict, 'unknown') }}">
-<div class="siterow__head">
-<div class="siterow__title">
-<a class="siterow__name" href="{{ s.detail_href }}">{{ s.name }}</a>
-<p class="siterow__meta">{{ icon("history", 13) }} {{ s.work_hours or "내일 작업 없음" }}<span aria-hidden="true">·</span>{% if s.checked_short %}{{ s.checked_short }}{% else %}판정 기록 없음{% endif %}</p>
-</div>
-<div class="siterow__status">
-{% if s.verdict %}{{ verdict_badge(s.verdict) }}{% elif not s.working %}<span class="badge badge--unknown">작업 없음</span>{% else %}<span class="badge badge--unknown">판정 전</span>{% endif %}
-{{ site_menu(s.site_id, s.name, can_delete=s.site_id in manageable) }}
-</div>
-</div>
-{% if s.cards %}
-<ul class="checks" aria-label="작업별 판정">
-{% for c in s.cards %}<li class="check check--{{ verdict_class.get(c.verdict, 'unknown') }}"><span class="check__name">{{ c.work_type }}</span><span class="check__verdict">{{ c.verdict or "판정 전" }}</span></li>{% endfor %}
-</ul>
-{% else %}
-<div class="tag-scroll" aria-label="공종">{% for w in s.work_types %}<span class="tag">{{ w }}</span>{% else %}<span class="tag">등록한 작업 없음</span>{% endfor %}</div>
-{% endif %}
-<p class="siterow__reason">{% if s.verdict %}<span class="siterow__reason-label">가장 높은 단계</span>{% endif %}{{ s.reason }}</p>
-<div class="siterow__foot">
-{% if s.working and s.site_id in manageable %}
-<form method="post" action="/judgments/run">
-<input type="hidden" name="site_id" value="{{ s.site_id }}">
-<button class="btn btn--soft btn--sm" type="submit">{{ icon("recheck", 15) }} {% if s.verdict %}다시 판정{% else %}판정하기{% endif %}</button>
-</form>
-{% endif %}
-<a class="siterow__link" href="{{ s.detail_href }}" aria-label="{{ s.name }} 자세히">자세히 {{ icon("arrow-right", 15, 2.2) }}</a>
-</div>
+<li class="siteline siteline--{{ verdict_class.get(s.verdict, 'unknown') }}">
+<a class="job job--site" href="{{ s.detail_href }}">
+<span class="siteline__name"><strong>{{ s.name }}</strong><small title="{{ s.reason }}">{{ s.reason }}</small></span>
+<span class="job__who">{{ s.work_hours or "작업 없음" }}</span>
+<span>{% if s.verdict %}{{ verdict_badge(s.verdict) }}{% elif not s.working %}<span class="badge badge--unknown">작업 없음</span>{% else %}<span class="badge badge--unknown">판정 전</span>{% endif %}</span>
+<span class="job__who">{{ s.checked_short or "기록 없음" }}</span>
+<span class="siteline__go">자세히 {{ icon("arrow-right", 14, 2.2) }}</span>
+</a>
+<span class="siteline__gear">{{ site_menu(s.site_id, s.name, can_delete=s.site_id in manageable) }}</span>
 </li>
 {% endfor %}
 </ul>

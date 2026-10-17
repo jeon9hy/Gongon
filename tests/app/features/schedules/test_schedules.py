@@ -517,4 +517,6 @@ def test_judgment_menu_entry_shows_all_sites_summary(client: TestClient) -> None
 
     page = client.get("/dashboard").text
 
-    assert "전체 현장</h1>" in page and "둘째현장" in page and "현장별 날씨 · 내일" in page
+    assert (
+        "전체 현장</h1>" in page and "둘째현장" in page and ">현장별 날씨 <span>내일</span>" in page
+    )

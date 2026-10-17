@@ -148,13 +148,13 @@ def test_days_beyond_short_forecast_show_mid_forecast_reference(
     # 중기예보 참고는 판정 내역에 저장하지 않는다
     assert {d.isoformat() for d in session.scalars(select(Judgment.target_date))} == {"2026-10-05"}
     week = week_html(client.get("/dashboard", params={"site_id": site_id}).text)
-    assert week.count('class="week__sub week__sub--mid"') == 2  # 10/8, 10/9: 중기 참고
+    assert "중기 참고" not in week  # 사용자에게 떠넘기는 문구 대신 점선 원·풀이로 구분(D-078)
     # 중기 참고 점수(D-069): 철골은 비 기준이 있어 그날 최고 강수확률로 낮추고 먼 예보 10점 감점.
     # 10/8: 30% → 85 - 10 = 75. 10/9: 60% → 70 - 10 = 60(비 예보 '확인 필요' 상한 70보다 낮음).
     scores = day_scores(week)
     assert set(scores) == {"10/05", "10/08", "10/09"}
     assert (scores["10/08"], scores["10/09"]) == (75, 60)
-    assert "공온지수 75(중기 참고)" in week
+    assert "공온지수 75(먼 날 예보)" in week
     assert week.count(">작업 없음<") == 4  # 10/6·10/7·10/10·10/11: 등록한 작업 없음
     assert "오후 흐리고 비 60%" in week  # 철골(강우 기준) → 확인 필요 사유
     assert "wv--ref" in week
