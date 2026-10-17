@@ -1,4 +1,11 @@
-from engine.judgment.judge import ESTIMATED_NOTE, OPERATOR_TEXT, highest, judge
+from engine.judgment.judge import (
+    ESTIMATED_NOTE,
+    OPERATOR_TEXT,
+    criterion_text,
+    highest,
+    judge,
+    lower_is_worse,
+)
 from engine.judgment.mid_reference import MidPart, mid_reference
 from engine.judgment.rule_set import RuleSetError, load_rule_set, parse_rule_set
 from engine.judgment.types import (
@@ -35,9 +42,11 @@ __all__ = [
     "TimeWindow",
     "Verdict",
     "WeatherInput",
+    "criterion_text",
     "highest",
     "judge",
     "load_rule_set",
+    "lower_is_worse",
     "mid_reference",
     "parse_rule_set",
 ]

@@ -23,7 +23,8 @@ conditions:
     threshold: 0.0
     verdict: 중지 검토
     forecast_comparable: true
-    action: 담당원 승인 전 도장 금지(KCS 41 47 00 3.2.17) · 방수는 담당원과 협의, 젖은 바탕엔 원칙적으로 시공 안 함(KCS 41 40 01 3.5(1))
+    cite: KCS 41 47 00 3.2.17
+    action: 담당원 승인 전 도장 금지 · 방수는 협의
     quote: 주위의 기온이 5 ℃ 미만이거나 상대습도가 85%를 초과할 때 눈, 비가 올 때
   - id: paint_snow
     element: snowfall_cm_per_h
@@ -31,7 +32,8 @@ conditions:
     threshold: 0.0
     verdict: 중지 검토
     forecast_comparable: true
-    action: 담당원 승인 전 도장 금지(KCS 41 47 00 3.2.17) · 방수는 담당원과 협의(KCS 41 40 01 3.5(1))
+    cite: KCS 41 47 00 3.2.17
+    action: 담당원 승인 전 도장 금지 · 방수는 협의
     quote: 주위의 기온이 5 ℃ 미만이거나 상대습도가 85%를 초과할 때 눈, 비가 올 때
   - id: paint_cold
     element: temperature_c
@@ -39,7 +41,8 @@ conditions:
     threshold: 5.0
     verdict: 중지 검토
     forecast_comparable: true
-    action: 담당원 승인 전 도장 금지(KCS 41 47 00 3.2.17) · 방수는 바탕이 얼면 원칙적으로 시공 안 함(KCS 41 40 01 3.5(2))
+    cite: KCS 41 47 00 3.2.17
+    action: 담당원 승인 전 도장 금지
     quote: 주위의 기온이 5 ℃ 미만이거나 상대습도가 85%를 초과할 때 눈, 비가 올 때
   - id: paint_humid
     element: humidity_pct
@@ -47,5 +50,6 @@ conditions:
     threshold: 85.0
     verdict: 중지 검토
     forecast_comparable: true
-    action: 담당원 승인 전 도장 금지(KCS 41 47 00 3.2.17) · 제조사 설계도서에 따로 정한 재료는 예외
+    cite: KCS 41 47 00 3.2.17
+    action: 담당원 승인 전 도장 금지
     quote: 주위의 기온이 5 ℃ 미만이거나 상대습도가 85%를 초과할 때 눈, 비가 올 때

@@ -77,13 +77,14 @@ from engine.judgment import (
     ELEMENT_LABEL,
     ELEMENT_UNIT,
     ESTIMATED_NOTE,
-    OPERATOR_TEXT,
     Element,
     JudgmentResult,
     MidPart,
     RuleSet,
     Verdict,
+    criterion_text,
     judge,
+    lower_is_worse,
     mid_reference,
 )
 from engine.judgment.index import (
@@ -117,6 +118,8 @@ _ICON = {
     Element.WIND_SPEED_MPS: "wind",
     Element.SNOWFALL_CM_PER_H: "snow",
     Element.SENSIBLE_TEMPERATURE_C: "thermometer",
+    Element.TEMPERATURE_C: "thermometer",
+    Element.HUMIDITY_PCT: "cloud-sun",
     Element.DAILY_MEAN_TEMPERATURE_C: "thermometer",
     Element.MAX_TEMPERATURE_NEXT_24H_C: "thermometer",
     Element.MIN_TEMPERATURE_NEXT_24H_C: "thermometer",
@@ -1422,7 +1425,7 @@ def _chart(
                 href=href_for(site_id, key, t.hour, work),
             )
         )
-    threshold_text = f"{threshold:g} {unit} {OPERATOR_TEXT[operator]}"
+    threshold_text = criterion_text(element, operator, threshold)
     return Chart(
         title=f"시간대별 예보 · {judgment.work_type} 기준",
         tabs=tuple(
@@ -1521,7 +1524,9 @@ def _window_reason(hours: list[dict[str, Any]], window: dict[str, Any]) -> str:
             if c["verdict"] != verdict:
                 continue
             best = hits.get(c["element"])
-            if best is None or (c["lower"] or 0) > (best[1]["lower"] or 0):
+            # 낮을수록 위험한 기준(5 °C 미만 등)은 가장 낮은 값을, 나머지는 가장 높은 값을 보인다.
+            sign = -1 if lower_is_worse(c["operator"]) else 1
+            if best is None or sign * (c["lower"] or 0) > sign * (best[1]["lower"] or 0):
                 hits[c["element"]] = (t, c)
     if not hits:
         return str(verdict)
@@ -1531,10 +1536,9 @@ def _window_reason(hours: list[dict[str, Any]], window: dict[str, Any]) -> str:
     for element_value, (t, c) in hits.items():
         element = Element(element_value)
         unit = ELEMENT_UNIT[element]
-        parts.append(
-            f"{ELEMENT_LABEL[element]} 최대 {_value_text(c, unit)} ({t:%H:%M}) · "
-            f"기준 {float(c['threshold']):g} {unit} {OPERATOR_TEXT[c['operator']]}"
-        )
+        word = "최저" if lower_is_worse(c["operator"]) else "최대"
+        rule = criterion_text(element, c["operator"], float(c["threshold"]))
+        parts.append(f"{ELEMENT_LABEL[element]} {word} {_value_text(c, unit)} ({t:%H:%M}) · {rule}")
     return " / ".join(parts)
 
 
@@ -1671,13 +1675,22 @@ def _criterion(judgment: Judgment, element: Element) -> CriterionCard:
     verdict = max((Verdict(e["verdict"]) for _, e in present), key=lambda v: v.severity)
     known = [(t, e) for t, e in present if e["lower"] is not None]
     unit = ELEMENT_UNIT[element]
-    peak = max(known, key=lambda te: te[1]["lower"]) if known else None
     rules = {
         c["condition_id"]: c
         for h in judgment.hours
         for c in h["conditions"]
         if c["element"] == element.value
     }
+    low_bad = any(lower_is_worse(c["operator"]) for c in rules.values())
+    pick = min if low_bad else max
+    peak = pick(known, key=lambda te: te[1]["lower"]) if known else None
+    # 카드에는 이 요소 조건의 조항만 짧게 보인다. 기준표가 바뀐 옛 판정은 저장된 출처 전체.
+    rule_set = rule_sets_by_label().get(judgment.work_type)
+    cites = (
+        [c.cite for c in rule_set.conditions if c.id in rules and c.cite]
+        if rule_set is not None and rule_set.rule_version == judgment.rule_version
+        else []
+    )
     return CriterionCard(
         label=ELEMENT_LABEL[element],
         icon=_ICON[element],
@@ -1685,12 +1698,12 @@ def _criterion(judgment: Judgment, element: Element) -> CriterionCard:
         peak_value="없음" if peak is None else _value_text(peak[1], unit).removesuffix(f" {unit}"),
         unit=unit,
         peak_time=None if peak is None else f"{peak[0]:%H:%M}",
+        peak_label="구간 최솟값" if low_bad else "구간 최댓값",
         rule_text="기준: "
         + " / ".join(
-            f"{float(c['threshold']):g} {unit} {OPERATOR_TEXT[c['operator']]}"
-            for c in rules.values()
+            criterion_text(element, c["operator"], float(c["threshold"])) for c in rules.values()
         ),
-        source=judgment.rule_source,
+        source=" · ".join(dict.fromkeys(cites)) or judgment.rule_source,
         source_verified=judgment.rule_source_verified,
     )
 

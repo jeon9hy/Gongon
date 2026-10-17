@@ -41,11 +41,11 @@
 {{ verdict_badge(c.verdict) }}
 </div>
 <div>
-<p class="small muted">구간 최댓값{% if c.peak_time %} ({{ c.peak_time }}){% endif %}</p>
+<p class="small muted">{{ c.peak_label }}{% if c.peak_time %} ({{ c.peak_time }}){% endif %}</p>
 <p class="big-number" style="margin-top: 4px;">{{ c.peak_value }} <small>{{ c.unit }}</small></p>
 </div>
 <p class="criterion">{{ c.rule_text }}</p>
-<p class="small" style="color: var(--verdict-unknown-fg);">{{ c.source }}{% if c.source_verified %} · 원문 확인{% else %} <span class="todo">원문 대조 필요</span>{% endif %}</p>
+<p class="small criterion-source">{{ c.source }}{% if c.source_verified %} · 원문 확인{% else %} <span class="todo">원문 대조 필요</span>{% endif %}</p>
 </article>
 {% endfor %}
 </div>

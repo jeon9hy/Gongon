@@ -2323,3 +2323,5 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .srcs td:first-child { white-space: nowrap; }
 .srcs td { word-break: keep-all; }
 .srcs table { min-width: 760px; } /* 휴대폰에서는 좁혀 쓰지 않고 표를 가로로 밀어 본다 */
+/* 판정 근거 카드의 조항 표기: 한 줄로 짧게 */
+.criterion-source { color: var(--verdict-unknown-fg); word-break: keep-all; }

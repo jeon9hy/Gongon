@@ -19,7 +19,8 @@ conditions:
     threshold: 0.0
     verdict: 중지 검토
     forecast_comparable: true
-    action: 비가 내리는 날은 시공하지 않음 · 시공 중 비가 오면 즉시 중지(KCS 44 50 10 3.4.7)
+    cite: KCS 44 50 10 3.4.7
+    action: 시공 금지 · 시공 중이면 즉시 중지
     quote: 비가 내리거나 안개가 낀 날은 시공하지 않아야 한다.
   - id: asphalt_cold
     element: temperature_c
@@ -27,7 +28,8 @@ conditions:
     threshold: 5.0
     verdict: 중지 검토
     forecast_comparable: true
-    action: 기온 5 ℃ 이하에서는 시공 금지(KCS 44 50 10 3.4.7(2))
+    cite: KCS 44 50 10 3.4.7
+    action: 시공 금지
     quote: 기온이 5℃ 이하일 때는 시공하여서는 안 된다.
   - id: asphalt_snow
     element: snowfall_cm_per_h
@@ -35,5 +37,6 @@ conditions:
     threshold: 0.0
     verdict: 확인 필요
     forecast_comparable: true
-    action: 포설할 표면이 얼어 있거나 젖어 있으면 시공하지 않음(KCS 44 50 10 3.4.7(1)) · 현장 확인
+    cite: KCS 44 50 10 3.4.7
+    action: 표면이 얼거나 젖으면 시공 안 함
     quote: 아스팔트 혼합물은 포설할 표면이 얼어있거나 습윤상태이거나 불결할 때

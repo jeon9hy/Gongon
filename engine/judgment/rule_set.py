@@ -82,6 +82,7 @@ def _condition(item: Any) -> Condition:
         raise RuleSetError(f"{condition_id}: threshold가 숫자가 아님")
     quote = _optional_text(item, "quote", condition_id)
     action = _optional_text(item, "action", condition_id)
+    cite = _optional_text(item, "cite", condition_id)
     lower_bound = item.get("forecast_lower_bound", False)
     if not isinstance(lower_bound, bool):
         raise RuleSetError(f"{condition_id}: forecast_lower_bound가 true/false가 아님")
@@ -100,6 +101,7 @@ def _condition(item: Any) -> Condition:
         quote=quote,
         forecast_lower_bound=lower_bound,
         action=action,
+        cite=cite,
     )
 
 

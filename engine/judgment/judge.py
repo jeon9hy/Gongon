@@ -22,6 +22,25 @@ from engine.judgment.types import (
 
 _HOUR = timedelta(hours=1)
 OPERATOR_TEXT = {">=": "이상", ">": "초과", "<=": "이하", "<": "미만"}
+# 기준값 0 초과(비·눈이 오면)는 숫자 대신 현상으로 읽는다. '0 mm/h 초과'는 사람이 읽기 어렵다.
+_PRESENCE_TEXT = {
+    Element.PRECIPITATION_MM_PER_H: "비가 오면",
+    Element.SNOWFALL_CM_PER_H: "눈이 오면",
+}
+
+
+def criterion_text(element: Element, operator: str, threshold: float) -> str:
+    """화면·사유에 쓰는 기준 한 줄. 예: '10 m/s 이상', '5 °C 미만', '비가 오면'."""
+    if threshold == 0 and operator == ">" and element in _PRESENCE_TEXT:
+        return _PRESENCE_TEXT[element]
+    return f"{threshold:g} {ELEMENT_UNIT[element]} {OPERATOR_TEXT[operator]}"
+
+
+def lower_is_worse(operator: str) -> bool:
+    """기준이 '낮을수록 위험'(이하·미만)인지. 화면은 최댓값 대신 최솟값을 보여 준다."""
+    return operator in ("<=", "<")
+
+
 # 1시간 누적값. 활용가이드·기상청 공개 자료에 예보 시각 h가 h-1~h인지 h~h+1인지 정의가 없다(D-030).
 # 그래서 h~h+1 구간은 h 예보와 h+1 예보 둘 다로 판정하고, 결과가 다르면 확인 필요로 둔다.
 ACCUMULATED = frozenset({Element.PRECIPITATION_MM_PER_H, Element.SNOWFALL_CM_PER_H})
@@ -157,9 +176,9 @@ def _either_window(
 
 def _judge_condition(condition: Condition, value: ForecastValue | None) -> ConditionResult:
     label = ELEMENT_LABEL[condition.element]
-    rule_text = (
-        f"{condition.threshold:g} {ELEMENT_UNIT[condition.element]} "
-        f"{OPERATOR_TEXT[condition.operator]}"
+    rule_text = criterion_text(condition.element, condition.operator, condition.threshold)
+    presence = (
+        condition.element in _PRESENCE_TEXT and rule_text == _PRESENCE_TEXT[condition.element]
     )
 
     def result(verdict: Verdict, reason: str) -> ConditionResult:
@@ -179,6 +198,8 @@ def _judge_condition(condition: Condition, value: ForecastValue | None) -> Condi
     over, below = _compare(value, condition.operator, condition.threshold)
     if over:
         action = f" · {condition.action}" if condition.action else ""
+        if presence:  # '강우 1mm 미만 예보 · 조치' (기준 문구 '비가 오면'은 되풀이하지 않는다)
+            return result(condition.verdict, f"{label} {value.raw} 예보{action}")
         return result(condition.verdict, f"{label} {value.raw} → 기준 {rule_text}에 해당{action}")
     if below and condition.forecast_lower_bound:  # 평균이 기준 아래여도 순간값은 넘을 수 있다
         return result(
@@ -187,6 +208,8 @@ def _judge_condition(condition: Condition, value: ForecastValue | None) -> Condi
             " · 현장 측정 확인",
         )
     if below:
+        if presence:
+            return result(Verdict.GO, f"{label} 없음")
         return result(Verdict.GO, f"{label} {value.raw} → 기준 {rule_text}에 해당하지 않음")
     # 범주 예보가 기준값에 걸쳐 있어 넘는지 알 수 없다. 넘는다고 단정하지 않는다.
     return result(Verdict.CHECK, f"{label} {value.raw}: 예보 범주가 기준 {rule_text}에 걸쳐 있음")

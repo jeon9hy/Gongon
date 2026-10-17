@@ -70,6 +70,14 @@ def test_rule_names_fit_judgment_columns(path: Path) -> None:
     assert len(rules.source) <= 200
 
 
+@pytest.mark.parametrize("path", sorted(RULES_DIR.glob("*.yaml")), ids=lambda p: p.name)
+def test_screen_texts_are_short(path: Path) -> None:
+    # 카드·요약 줄에 그대로 붙는 문구다. 길면 판정 화면이 빽빽해진다(개발자 피드백 2026-10-17).
+    for c in load_rule_set(path).conditions:
+        assert c.cite and len(c.cite) <= 24, c.id
+        assert c.action is None or len(c.action) <= 24, c.id
+
+
 def test_every_rule_file_is_verified() -> None:
     names = {load_rule_set(path).work_type for path in VERIFIED}
     assert names == set(ALL_RULES)

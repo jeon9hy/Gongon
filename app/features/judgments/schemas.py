@@ -290,6 +290,7 @@ class CriterionCard:
     peak_value: str
     unit: str
     peak_time: str | None
+    peak_label: str
     rule_text: str
     source: str
     source_verified: bool

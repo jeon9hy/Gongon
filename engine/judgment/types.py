@@ -103,6 +103,7 @@ class Condition:
     # 예보값이 기준을 넘으면 대상도 넘지만, 넘지 않으면 대상이 넘는지 알 수 없다.
     forecast_lower_bound: bool = False
     action: str | None = None  # 기준에 해당할 때 법령이 요구하는 조치(사유에 덧붙인다)
+    cite: str | None = None  # 화면에 보일 짧은 조항 표기(예: 'KCS 14 20 40 1.1(2)')
 
 
 @dataclass(frozen=True, slots=True)

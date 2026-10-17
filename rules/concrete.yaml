@@ -26,7 +26,8 @@ conditions:
     threshold: 3.0
     verdict: 중지 검토
     forecast_comparable: true
-    action: 수분 유입 방지 조치 없이는 타설 즉시 중지·보호조치(가이드라인 2.1(2))
+    cite: 강우 타설 가이드라인 2.1(2)
+    action: 보호조치 없으면 즉시 중지
     quote: 시간당 강우량이 3mm를 초과하는 경우에는 구조체 콘크리트의 강도저하가 허용치를 초과하므로 적절한 수분 유입 방지 조치를 취하지 않는 한 타설을 즉시 중지하고 적절한 보호조치를 취하여야 한다.
   - id: concrete_rain
     element: precipitation_mm_per_h
@@ -34,7 +35,8 @@ conditions:
     threshold: 0.0
     verdict: 확인 필요
     forecast_comparable: true
-    action: 강우 시 타설은 원칙적으로 금지 · 부득이하면 가이드라인 조치(타설 계획서·수분 유입 방지)
+    cite: 강우 타설 가이드라인 1.1(1)
+    action: 강우 시 타설 원칙 금지
     quote: 강우 시 콘크리트 타설은 수분의 유입에 의한 강도저하가 우려되므로 금지하는 것이 원칙이다.
   - id: concrete_hot_mean
     element: daily_mean_temperature_c
@@ -42,7 +44,8 @@ conditions:
     threshold: 25.0
     verdict: 확인 필요
     forecast_comparable: true
-    action: 서중 콘크리트로 시공(KCS 14 20 41)
+    cite: KCS 14 20 41 1.1(2)
+    action: 서중 콘크리트로 시공
     quote: 타설일의 일 평균기온이 25 ℃를 초과하거나, 콘크리트 타설 완료 후 24시간 이내에 일 최고기온이 30 ℃를 초과할 것이예상되는 경우 서중 콘크리트로 시공하여야 한다.
   - id: concrete_hot_max
     element: max_temperature_next_24h_c
@@ -50,7 +53,8 @@ conditions:
     threshold: 30.0
     verdict: 확인 필요
     forecast_comparable: true
-    action: 서중 콘크리트로 시공(KCS 14 20 41)
+    cite: KCS 14 20 41 1.1(2)
+    action: 서중 콘크리트로 시공
     quote: 타설일의 일 평균기온이 25 ℃를 초과하거나, 콘크리트 타설 완료 후 24시간 이내에 일 최고기온이 30 ℃를 초과할 것이예상되는 경우 서중 콘크리트로 시공하여야 한다.
   - id: concrete_cold_mean
     element: daily_mean_temperature_c
@@ -58,7 +62,8 @@ conditions:
     threshold: 4.0
     verdict: 확인 필요
     forecast_comparable: true
-    action: 한중 콘크리트로 시공(KCS 14 20 40)
+    cite: KCS 14 20 40 1.1(2)
+    action: 한중 콘크리트로 시공
     quote: 타설일의 일평균기온이 4 ℃ 이하 또는 콘크리트 타설 완료 후 24시간 동안 일최저기온 0 ℃ 이하가 예상되는 조건이거나 그 이후라도 초기동해 위험이 있는 경우 한중 콘크리트로 시공하여야 한다.
   - id: concrete_cold_min
     element: min_temperature_next_24h_c
@@ -66,5 +71,6 @@ conditions:
     threshold: 0.0
     verdict: 확인 필요
     forecast_comparable: true
-    action: 한중 콘크리트로 시공(KCS 14 20 40)
+    cite: KCS 14 20 40 1.1(2)
+    action: 한중 콘크리트로 시공
     quote: 타설일의 일평균기온이 4 ℃ 이하 또는 콘크리트 타설 완료 후 24시간 동안 일최저기온 0 ℃ 이하가 예상되는 조건이거나 그 이후라도 초기동해 위험이 있는 경우 한중 콘크리트로 시공하여야 한다.

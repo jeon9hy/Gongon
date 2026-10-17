@@ -104,8 +104,8 @@ def test_site_with_only_unconfirmed_work_types_gets_only_common_heat_judgment(
     ("tmp", "reh", "verdict", "reason"),
     [
         ("20", "50", "진행", None),
-        ("32", "60", "확인 필요", "폭염작업 조치 확인"),
-        ("34", "60", "확인 필요", "매 2시간 이내 20분 이상 휴식"),
+        ("32", "60", "확인 필요", "폭염작업 조치"),
+        ("34", "60", "확인 필요", "2시간마다 20분 이상 휴식"),
     ],
 )
 def test_heat_is_judged_for_every_site_with_required_action(
@@ -217,7 +217,7 @@ def test_detail_shows_basis_issue_time_and_source_check(
     page = client.get(f"/judgments/{judgment_id}").text
 
     assert "예보 발표 2026-10-04 14:00 KST" in page
-    assert "산업안전보건기준에 관한 규칙 제383조" in page
+    assert "안전보건규칙 제383조" in page  # 근거 카드는 그 조건의 조항만 짧게
     assert source_note in page
     assert ("원문 대조 필요" in page) is not verified
     assert "풍속 10.0 → 기준 10 m/s 이상에 해당" in page
