@@ -260,14 +260,19 @@ const fitMenu = (panel) => {
   const right = document.documentElement.clientWidth - 8;
   if (panel.classList.contains("radial-menu")) {
     const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-    const radius = Math.max(40, Math.min(48, (cx - 22) / 0.866,
-      cy - top - 22, bottom - cy - 22));
+    // 위 공간이 모자라면(모달 머리가 화면 위에 붙음) 원 모양 그대로 아래쪽 호로 돌린다.
+    // 항목을 하나씩 화면 안으로 밀면 원이 찌그러져 ···와 겹치고 눌리지 않는다.
+    // 아래쪽 호는 오른쪽 닫기 버튼을 피해 간격이 좁으므로 반지름을 늘려 아이콘이 겹치지 않게 한다.
+    const up = cy - top >= 48 + 22 || cy - top >= bottom - cy;
+    const radius = up ? 48 : 58;
+    const angles = up ? [-90, -150, 150, 90] : [180, 135, 90, 45];
     panel.style.left = `${cx}px`;
     panel.style.top = `${cy}px`;
     [...panel.children].forEach((item, i) => {
-      const angle = (-90 - i * 60) * Math.PI / 180;
-      const x = Math.max(22 - cx, Math.min(radius * Math.cos(angle), right - cx - 22));
-      const y = Math.max(top + 22 - cy, Math.min(radius * Math.sin(angle), bottom - cy - 22));
+      const angle = angles[i % angles.length] * Math.PI / 180;
+      const x = radius * Math.cos(angle), y = radius * Math.sin(angle);
+      // 설명은 ···의 바깥쪽에 띄워 옆 아이콘을 가리지 않는다
+      item.dataset.side = Math.abs(x) > Math.abs(y) ? (x < 0 ? "left" : "right") : (y < 0 ? "top" : "bottom");
       item.style.setProperty("--radial-x", `${x.toFixed(2)}px`);
       item.style.setProperty("--radial-y", `${y.toFixed(2)}px`);
       item.style.setProperty("--radial-entry-x", `${(radius * Math.cos(angle + 0.25)).toFixed(2)}px`);

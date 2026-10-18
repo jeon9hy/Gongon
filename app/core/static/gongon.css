@@ -1844,6 +1844,10 @@ details.hmore { padding: 0; } /* 판정 내역의 옛 .hmore 여백이 접힌 �
 .radial-menu .menu__item:nth-child(4) { --radial-x: 0px; --radial-y: 48px; }
 .radial-menu .menu__item svg { color: var(--accent); }
 .radial-menu .menu__item > span { position: absolute; right: calc(100% + 7px); top: 50%; padding: 3px 8px; border-radius: 999px; background: var(--card); box-shadow: var(--shadow-sm); visibility: hidden; opacity: 0; pointer-events: none; transform: translateY(-50%); transition: opacity 120ms ease; }
+.radial-menu .menu__item[data-side="right"] > span { right: auto; left: calc(100% + 7px); }
+.radial-menu .menu__item:is([data-side="top"], [data-side="bottom"]) > span { right: auto; left: 50%; transform: translateX(-50%); }
+.radial-menu .menu__item[data-side="top"] > span { top: auto; bottom: calc(100% + 6px); }
+.radial-menu .menu__item[data-side="bottom"] > span { top: calc(100% + 6px); }
 .radial-menu .menu__item:is(:hover, :focus-visible) { z-index: 1; background: var(--accent-soft); border-color: var(--accent); }
 .radial-menu .menu__item:is(:hover, :focus-visible) > span { visibility: visible; opacity: 1; }
 .modal:has(.radial-menu:popover-open) { overflow: visible; }
