@@ -200,8 +200,9 @@ document.addEventListener("invalid", (e) => {
   if (e.target.classList?.contains("is-invalid") && e.target.checkValidity()) clearInvalid(e.target);
 }, true));
 // 작은 화면에서는 날짜를 고른 직후 상세가 보이도록 링크에 문서 앵커를 붙인다.
+// 작업 기간 밖 날짜는 href 없는 span이다. 그 칸에서 오류가 나면 아래 메뉴·모달 스크립트가 모두 멈춘다.
 const calendarMedia = window.matchMedia("(max-width: 760px)");
-const updateCalendarLinks = () => document.querySelectorAll(".calcell__link").forEach((link) => {
+const updateCalendarLinks = () => document.querySelectorAll("a.calcell__link[href]").forEach((link) => {
   const url = new URL(link.href);
   url.hash = calendarMedia.matches ? "day-detail" : "";
   link.href = url.href;
@@ -275,8 +276,6 @@ const fitMenu = (panel) => {
       item.dataset.side = Math.abs(x) > Math.abs(y) ? (x < 0 ? "left" : "right") : (y < 0 ? "top" : "bottom");
       item.style.setProperty("--radial-x", `${x.toFixed(2)}px`);
       item.style.setProperty("--radial-y", `${y.toFixed(2)}px`);
-      item.style.setProperty("--radial-entry-x", `${(radius * Math.cos(angle + 0.25)).toFixed(2)}px`);
-      item.style.setProperty("--radial-entry-y", `${(radius * Math.sin(angle + 0.25)).toFixed(2)}px`);
     });
     return;
   }
