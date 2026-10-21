@@ -1,6 +1,6 @@
 """판정 화면이 쓰는 표시용 모델. 판정 계산은 engine/judgment가 하고, 여기서는 보여줄 값만 담는다."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from typing import Literal
 
@@ -227,8 +227,22 @@ class CountTile:
 
 
 @dataclass(frozen=True, slots=True)
+class DayTypeItem:
+    """날 패널 묶음을 펼쳤을 때의 작업 한 건."""
+
+    time_text: str
+    location: str
+    company: str
+    verdict: str | None
+    href: str
+
+
+@dataclass(frozen=True, slots=True)
 class DayTypeRow:
-    """7일 공온지수 날 패널의 공종 한 줄(공종별로 모아 가장 높은 판정 단계)."""
+    """7일 공온지수 날 패널의 공종 한 줄(공종별로 모아 가장 높은 판정 단계).
+
+    2건 이상이면 눌러서 하위 작업(items)을 펼친다. 중지 검토가 있으면 처음부터 펼친다(D-085).
+    """
 
     work_type: str
     time_text: str  # "07:00-17:00"(그날 그 공종의 가장 이른 시작~가장 늦은 끝)
@@ -236,6 +250,7 @@ class DayTypeRow:
     count: int
     verdict: str | None  # 판정 4단계 이름, None은 판정 전·점수 없음
     href: str  # 가장 높은 단계 판정의 상세. 판정이 없으면 작업 일정 그날
+    items: tuple[DayTypeItem, ...] = ()  # 시작 시각 순
 
 
 @dataclass(frozen=True, slots=True)
@@ -428,6 +443,8 @@ class WeekRow:
 class WeekView:
     days: tuple[WeekDay, ...]
     rows: tuple[WeekRow, ...]
+    # (날짜, 작업 id) → 그 작업의 칸. 홈 날 패널에서 묶음을 펼친 하위 작업 줄에 쓴다(D-085).
+    items: dict[tuple[date, int], WeekCell] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)

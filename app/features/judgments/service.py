@@ -28,6 +28,7 @@ from app.features.judgments.schemas import (
     DashboardView,
     DayBoard,
     DayPanel,
+    DayTypeItem,
     DayTypeRow,
     DetailView,
     ElementKey,
@@ -700,6 +701,7 @@ def _week_overview(
             for n, cell in enumerate(row.cells):
                 if cell.verdict:
                     verdicts.setdefault((n, row.work_type), []).append((cell.verdict, cell.href))
+    item_cells = {key: cell for _, week in weeks for key, cell in week.items.items()}
     single = len(sites) == 1
     panels: list[DayPanel] = []
     for n, day in enumerate(days):
@@ -716,6 +718,10 @@ def _week_overview(
             found = verdicts.get((n, work_type), [])
             worst_pair = min(found, key=lambda v: _VERDICT_RANK.get(v[0], 9)) if found else None
             worst = worst_pair[0] if worst_pair else None
+            subs = tuple(
+                _day_item(i, item_cells.get((day, i.item_id)), companies, schedule_href)
+                for i in sorted(group, key=lambda i: (i.start_local, i.item_id))
+            )
             rows.append(
                 DayTypeRow(
                     work_type=work_type,
@@ -727,10 +733,12 @@ def _week_overview(
                     count=len(group),
                     verdict=worst,
                     href=(worst_pair[1] if worst_pair and worst_pair[1] else schedule_href),
+                    items=subs,
                 )
             )
         rows.sort(key=lambda r: (_VERDICT_RANK.get(r.verdict or "", 2.5), r.work_type))
-        tally = {v: sum(r.count for r in rows if r.verdict == v) for v in _VERDICT_RANK}
+        # 칸 숫자는 작업 건수다. 펼친 하위 줄과 맞도록 묶음 단계가 아니라 작업마다 센다.
+        tally = {v: sum(s.verdict == v for r in rows for s in r.items) for v in _VERDICT_RANK}
         panels.append(
             DayPanel(
                 label="내일" if n == 0 else index_days[n].label,
@@ -1055,6 +1063,7 @@ def _week(
 ) -> WeekView:
     """작업(공종)별 7일. 칸은 그날 그 공종 대상들 중 가장 높은 단계(쿼리: 판정·작업·예보 각 1회)."""
     dates = horizon_dates(now)
+    item_cells: dict[tuple[date, int], WeekCell] = {}
     latest: dict[tuple[date, str], Judgment] = {}
     previous: dict[
         tuple[date, str], Judgment
@@ -1107,6 +1116,8 @@ def _week(
                 )
                 cell = _week_cell(card, state)
             day_cells.append(cell)
+            if target.item_id is not None:
+                item_cells[(day, target.item_id)] = cell
             current = by_type.setdefault(target.work_type, {}).get(day)
             if current is None or _rank(cell) > _rank(current):
                 by_type[target.work_type][day] = cell
@@ -1137,7 +1148,7 @@ def _week(
     rows = tuple(
         WeekRow(work_type, tuple(cell_for(work_type, d) for d in days)) for work_type in by_type
     )
-    return WeekView(days=tuple(days), rows=rows)
+    return WeekView(days=tuple(days), rows=rows, items=item_cells)
 
 
 def _mid_cell(
@@ -1189,6 +1200,19 @@ def _confidence(
     # 추정 시각은 값(가까운 시각의 값)이 있어도 직접 비교가 아니다(C04-1, D-053).
     estimated = any(ESTIMATED_NOTE in c["reason"] for h in hours for c in h["conditions"])
     return "높음" if all(has_value) and not estimated else "보통"
+
+
+def _day_item(
+    item: WorkItemRecord, cell: WeekCell | None, companies: Mapping[int, str], fallback: str
+) -> DayTypeItem:
+    """날 패널 묶음의 하위 작업 줄. 판정이 없으면 작업 일정 그날로 간다."""
+    return DayTypeItem(
+        time_text=f"{item.start_local:%H:%M}–{item.end_local:%H:%M}",
+        location=item.location,
+        company=companies.get(item.performing_participant_id or -1, "업체 미정"),
+        verdict=None if cell is None else cell.verdict,
+        href=cell.href if cell is not None and cell.href else fallback,
+    )
 
 
 def _week_cell(card: WorkCard, empty_state: Literal["none", "pending"]) -> WeekCell:

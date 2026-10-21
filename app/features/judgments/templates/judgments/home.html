@@ -134,18 +134,36 @@
 <a class="vtile vtile--{{ key }}{% if count %} is-on{% endif %}" href="{{ p.href }}"><span class="vpill vpill--{{ key }}"><i></i>{{ label }}</span><span class="vtile__num">{{ count }}<small>건</small></span></a>
 {% endfor %}
 </div>
-<div class="jobs__head jobs__head--types" aria-hidden="true"><span>공종</span><span>시간</span><span>업체</span><span>작업</span><span>판정</span></div>
+<div class="jobs__head jobs__head--types" aria-hidden="true"><span>작업</span><span>시간</span><span>업체</span><span>건수</span><span>판정</span></div>
 <ul class="jobs">
 {% set first_panel = loop.first %}
 {% for r in p.rows %}
 {% set warn = others.by_type.get(r.work_type, []) if first_panel else [] %}
-<li><a class="job job--type" href="{{ r.href }}">
-<span class="job__what"><span class="job__dot" style="--c: {{ work_color(r.work_type) }}"></span><strong>{{ r.work_type }}</strong></span>
+{% set state %}<span class="job__state">{% if warn %}<span class="job__warn" title="{{ warn | join(', ') }}" aria-label="확인할 것: {{ warn | join(', ') }}">!</span>{% else %}<span class="job__warn job__warn--none" aria-hidden="true"></span>{% endif %}{% if r.verdict %}{{ verdict_badge(r.verdict) }}{% else %}<span class="badge badge--unknown">판정 전</span>{% endif %}</span>{% endset %}
+{% set what %}<span class="job__what"><span class="job__dot" style="--c: {{ work_color(r.work_type) }}"></span><strong>{{ r.work_type }}</strong></span>
 <span class="job__time">{{ r.time_text }}</span>
-<span class="job__who">{{ r.companies_text }}</span>
+<span class="job__who">{{ r.companies_text }}</span>{% endset %}
+{% if r.items | length > 1 %}
+{# 2건 이상은 눌러서 하위 작업을 펼친다. 중지 검토가 있으면 처음부터 펼친다(D-085) #}
+<li><details class="jobgroup"{% if r.verdict == "중지 검토" %} open{% endif %}>
+<summary class="job job--type">{{ what }}
+<span class="job__count">{{ r.count }}건 {{ icon("chevron-down", 14, 2.2) }}</span>
+{{ state }}</summary>
+<ul class="jobs jobs--sub">
+{% for s in r.items %}<li><a class="job job--type job--sub" href="{{ s.href }}">
+<span class="job__what">{{ s.location or "위치 없음" }}</span>
+<span class="job__time">{{ s.time_text }}</span>
+<span class="job__who">{{ s.company }}</span>
+<span class="job__count" aria-hidden="true"></span>
+<span class="job__state">{% if s.verdict %}{{ verdict_badge(s.verdict) }}{% else %}<span class="badge badge--unknown">판정 전</span>{% endif %}</span>
+</a></li>{% endfor %}
+</ul>
+</details></li>
+{% else %}
+<li><a class="job job--type" href="{{ r.href }}">{{ what }}
 <span class="job__count">{{ r.count }}건</span>
-<span class="job__state">{% if warn %}<span class="job__warn" title="{{ warn | join(', ') }}" aria-label="확인할 것: {{ warn | join(', ') }}">!</span>{% else %}<span class="job__warn job__warn--none" aria-hidden="true"></span>{% endif %}{% if r.verdict %}{{ verdict_badge(r.verdict) }}{% else %}<span class="badge badge--unknown">판정 전</span>{% endif %}</span>
-</a></li>
+{{ state }}</a></li>
+{% endif %}
 {% endfor %}
 </ul>
 {% else %}

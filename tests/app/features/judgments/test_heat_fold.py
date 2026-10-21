@@ -197,3 +197,25 @@ def test_work_without_weather_rule_is_go_when_heat_is_go(
     assert rebar_card(session, site_id).verdict == "진행"
     assert view is not None and view.notice is not None
     assert not any("벽체 철근" in i.work and i.verdict != "진행" for i in view.notice.items)
+
+
+def test_home_day_panel_groups_same_work_and_expands_to_each_item(
+    client: TestClient, session: Session, fake_kma: FakeKma
+) -> None:
+    fake_kma.set_hour("20261005", 10, WSD="12.0")  # 09-12 철골만 풍속 중지 검토
+    site_id = site_with_work(client)  # 철골 09-12
+    second = {"site_id": site_id, "work_types": STEEL, "work_dates": "2026-10-05",
+                           "start": "13:00", "end": "16:00"}  # fmt: skip
+    assert client.post("/schedule", data=second).status_code in (200, 303)
+    run(client, site_id)
+
+    panel = service.build_home(session, None, FIXED_NOW).day_panels[0]
+
+    row = next(r for r in panel.rows if r.work_type == STEEL)
+    assert row.count == 2 and row.verdict == "중지 검토"
+    assert [(s.time_text, s.verdict) for s in row.items] == [
+        ("09:00–12:00", "중지 검토"),
+        ("13:00–16:00", "진행"),
+    ]
+    assert (panel.stop, panel.go) == (1, 1)  # 칸 숫자는 묶음이 아니라 작업마다 센다
+    assert '<details class="jobgroup" open>' in client.get("/").text  # 중지 검토는 펼쳐 둔다
