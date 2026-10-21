@@ -141,6 +141,21 @@
 <div class="sitepick">{% for s in view.sites if s.site_id in manageable %}<a class="sitepick__item" href="/schedule?site_id={{ s.site_id }}&day={{ d.day.isoformat() }}&add=1"><span class="sitetab__dot" aria-hidden="true">{{ s.name[:1] }}</span><span>{{ s.name }}</span>{{ icon("arrow-right", 16, 2.2) }}</a>{% endfor %}</div>
 </div>
 </dialog>{% endif %}
+{% if not view.all_mode and view.site_id in manageable %}
+{# 공정표 파일(엑셀·CSV)로 한꺼번에 등록(C04-30, D-086). 형식 설명은 공온 가이드에 둔다 #}
+<button class="btn btn--soft daypanel__import" type="button" data-open-dialog="import-schedule">{{ icon("upload", 16, 2.2) }} 공정표 가져오기</button>
+<dialog class="modal" id="import-schedule" aria-labelledby="import-title"{% if view.import_errors %} data-open{% endif %}>
+<form class="modal__box" method="post" action="/schedule/import" enctype="multipart/form-data">
+<div class="modal__head"><h2 class="h2" id="import-title">공정표 가져오기</h2><button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
+{% if view.import_errors %}<div class="alert alert--error" role="alert"><strong>아무것도 등록하지 않았어요. 고쳐서 다시 올려 주세요.</strong><ul>{% for e in view.import_errors[:20] %}<li>{{ e }}</li>{% endfor %}{% if view.import_errors | length > 20 %}<li>외 {{ view.import_errors | length - 20 }}개</li>{% endif %}</ul></div>{% endif %}
+<input type="hidden" name="site_id" value="{{ view.site_id }}">
+<div class="importcols" aria-label="첫 줄 열 이름"><span>날짜</span><span>시작</span><span>종료</span><span>작업</span><span class="is-optional">위치</span><span>실행업체</span><span class="is-optional">메모</span></div>
+<label class="field">엑셀·CSV 파일<input type="file" name="file" accept=".xlsx,.csv" required></label>
+<p class="small muted importhelp"><a href="/static/samples/gongon-schedule-sample.xlsx" download="공온_공정표_샘플.xlsx">샘플 엑셀 받기</a> · <a href="/guide#import">형식 안내</a></p>
+<div class="modal__actions"><button class="btn btn--soft" type="button" data-close>취소</button><button class="btn btn--accent" type="submit">{{ icon("upload", 16, 2.2) }} 가져오기</button></div>
+</form>
+</dialog>
+{% endif %}
 
 {% for i in d.items %}
 {% set history = view.revisions.get(i.item_id, ()) %}

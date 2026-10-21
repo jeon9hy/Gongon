@@ -697,7 +697,7 @@ def item_verdicts(
         if site is None:
             continue
         for (_, item_id), cell in _week(session, site, rule_sets, now).items.items():
-            if cell.verdict:
+            if cell.verdict and cell.state == "verdict":  # 중기예보 참고 칸은 판정이 아니다
                 found[item_id] = (cell.verdict, cell.href)
     return found
 
@@ -1212,7 +1212,7 @@ def _day_groups(
                 item_id=i.item_id,
                 work_type=i.work_type,
                 where=(i.location or schedules_service.NO_PLACE) if by == "company"
-                else companies.get(i.performing_participant_id or -1, schedules_service.NO_COMPANY),
+                else companies.get(i.performing_participant_id or -1, schedules_service.UNASSIGNED),
                 time_text=f"{i.start_local:%H:%M}–{i.end_local:%H:%M}",
                 verdict=None if (cell := cells.get(i.item_id)) is None else cell.verdict,
                 href=cell.href if cell is not None and cell.href else fallback,
@@ -1236,7 +1236,7 @@ def _day_groups(
             verdict=worst.verdict,
             href=worst.href,
             items=subs,
-            unassigned=by == "company" and label == schedules_service.NO_COMPANY,
+            unassigned=by == "company" and label == schedules_service.UNASSIGNED,
         ))  # fmt: skip
     order = {id(r): n for n, r in enumerate(rows)}
     rows.sort(

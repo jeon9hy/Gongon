@@ -2,6 +2,7 @@
 
 import re
 from collections.abc import Callable, Iterable, Mapping
+from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 
 from sqlalchemy.orm import Session
@@ -11,6 +12,7 @@ from app.core.work_kinds import WORK_KIND_NAMES, WORK_TRADES
 from app.features.auth import service as auth_service
 from app.features.auth.schemas import CurrentUser
 from app.features.schedules import repository
+from app.features.schedules.importer import ImportRow
 from app.features.schedules.models import WorkItem, WorkItemRevision
 from app.features.schedules.schemas import (
     CalendarDay,
@@ -37,7 +39,7 @@ from app.features.teams.schemas import MANAGE_ROLES, ParticipantOption
 from engine.kst import KST
 
 # 업체별·위치별 묶음(D-085). 묶음 이름이 없을 때 쓰는 이름.
-NO_COMPANY = "업체 미정"
+UNASSIGNED = "업체 미정"
 NO_PLACE = "위치 없음"
 _BUILDING = re.compile(r"(\d+)\s*동")
 _FLOOR = re.compile(r"(지하\s*|[Bb])?(\d+)(\s*~\s*\d+)?\s*층")
@@ -294,13 +296,13 @@ def _detail_groups(
             sub = "" if first is None else trades.get(first, "")
         else:
             who = list(dict.fromkeys(
-                names.get(i.performing_participant_id, NO_COMPANY)
-                if i.performing_participant_id is not None else NO_COMPANY
+                names.get(i.performing_participant_id, UNASSIGNED)
+                if i.performing_participant_id is not None else UNASSIGNED
                 for i in group
             ))  # fmt: skip
             sub = who[0] + (f" 외 {len(who) - 1}" if len(who) > 1 else "")
         groups.append(DetailGroup(label, sub, tuple(group), by == "company" and first is None
-                                  and label == NO_COMPANY,
+                                  and label == UNASSIGNED,
                                   frozenset(i.item_id for i in group) & warned))  # fmt: skip
     return tuple(groups)
 
@@ -817,11 +819,11 @@ def group_items(
             key = place_key(item.location)
         else:
             pid = item.performing_participant_id
-            key = companies.get(pid, NO_COMPANY) if pid is not None else NO_COMPANY
+            key = companies.get(pid, UNASSIGNED) if pid is not None else UNASSIGNED
         groups.setdefault(key, []).append(item)
     if by == "place":
         return sorted(groups.items(), key=lambda g: place_order(g[0]))
-    return sorted(groups.items(), key=lambda g: (g[0] != NO_COMPANY, g[0]))
+    return sorted(groups.items(), key=lambda g: (g[0] != UNASSIGNED, g[0]))
 
 
 def overlapping_ids(items: Iterable[WorkItemRecord]) -> set[int]:
@@ -835,3 +837,77 @@ def overlapping_ids(items: Iterable[WorkItemRecord]) -> set[int]:
             ):
                 found |= {a.item_id, b.item_id}
     return found
+
+
+@dataclass(frozen=True, slots=True)
+class ImportResult:
+    """공정표 가져오기 결과(C04-30). errors가 있으면 아무것도 저장하지 않았다."""
+
+    added: int
+    skipped: int  # 이미 같은 작업이 있거나 파일 안에서 같은 줄이 반복돼 건너뜀
+    first_day: date | None
+    errors: tuple[str, ...]
+
+
+def import_items(
+    session: Session,
+    user: CurrentUser,
+    site_id: int,
+    rows: list[ImportRow],
+    now: datetime,
+) -> ImportResult:
+    """공정표 행을 작업으로 등록한다(D-086). 행마다 작업 추가와 같은 검사를 한다.
+
+    한 줄이라도 틀리면 아무것도 저장하지 않는다(줄 번호와 이유를 돌려준다). 같은 작업(날짜·시간·
+    작업·위치·실행 업체)이 이미 있거나 파일 안에서 반복되면 건너뛴다. 그래서 같은 파일을 두 번
+    올려도 작업이 두 벌 생기지 않는다. 실행 업체는 이 현장 참여 업체의 이름과 똑같아야 한다.
+    """
+    teams_service.require_role(session, user, site_id, MANAGE_ROLES)
+    site = sites_service.get_site(session, site_id, None)
+    if site is None:
+        return ImportResult(0, 0, None, ("현장을 찾을 수 없습니다.",))
+    if not rows:
+        return ImportResult(0, 0, None, ("등록할 줄이 없습니다.",))
+    companies: dict[str, list[int]] = {}
+    for option in teams_service.participant_choices(session, site_id):
+        companies.setdefault(option.name.strip(), []).append(option.participant_id)
+    errors: list[str] = []
+    planned: list[WorkItem] = []
+    for row in rows:
+        form = WorkItemForm(
+            work_types=(row.work_type,), work_dates=(row.work_date,), start=row.start,
+            end=row.end, location=row.location, memo=row.memo,
+        )  # fmt: skip
+        items, row_errors = _validate(site, form, now)
+        found = companies.get(row.company.strip(), [])
+        problems = list(row_errors)
+        if not row.company.strip():
+            problems.append("실행업체를 적어 주세요.")
+        elif not found:
+            problems.append(f"'{row.company}'은(는) 이 현장 참여 업체가 아닙니다(이름을 똑같이).")
+        elif len(found) > 1:
+            problems.append(f"'{row.company}' 이름의 참여 업체가 여럿입니다.")
+        if problems:
+            errors.extend(f"{row.line}행: {p}" for p in problems)
+            continue
+        for item in items:
+            item.performing_participant_id = found[0]
+        planned.extend(items)
+    if errors:
+        return ImportResult(0, 0, None, tuple(errors))
+
+    def key(i: WorkItem) -> tuple[object, ...]:
+        return (i.work_type, i.work_date, i.start_local, i.end_local, i.location,
+                i.performing_participant_id)  # fmt: skip
+
+    days = [i.work_date for i in planned]
+    seen = {key(i) for i in repository.list_between(session, [site_id], min(days), max(days))}
+    new: list[WorkItem] = []
+    for item in planned:
+        if key(item) in seen:
+            continue
+        seen.add(key(item))
+        new.append(item)
+    repository.add_all(session, new)
+    first = min((i.work_date for i in new), default=None)
+    return ImportResult(len(new), len(planned) - len(new), first, ())

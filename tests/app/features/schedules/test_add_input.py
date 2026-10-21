@@ -147,12 +147,12 @@ def test_frequently_used_work_kinds_come_first_without_site_setting(
 ) -> None:
     before = client.get(f"/schedule?site_id={site_id}").text
     post(client, site_id, work_types=["아스팔트 포장"], work_dates=days(2))
-    post(client, site_id, work_types=["벽체 철근"], work_dates=days(1))
+    post(client, site_id, work_types=["벽체 철근 배근"], work_dates=days(1))
 
     after = client.get(f"/schedule?site_id={site_id}").text
 
     assert 'data-trade="recent"' not in before  # 쓴 적 없으면 '자주 쓴 작업' 없음
-    assert kind_values(after, "recent-f0") == ["아스팔트 포장", "벽체 철근"]  # 많이 쓴 순
+    assert kind_values(after, "recent-f0") == ["아스팔트 포장", "벽체 철근 배근"]  # 많이 쓴 순
     assert set(kind_values(after)) == set(kind_values(before)) == set(WORK_KIND_NAMES)
 
 
@@ -169,7 +169,9 @@ def test_work_kind_is_picked_by_trade_then_field(client: TestClient, site_id: in
 def test_work_kind_outside_the_weather_list_is_saved(
     client: TestClient, site_id: int, session: Session
 ) -> None:
-    response = post(client, site_id, work_types=["벽체 철근", "벽체 철근"], work_dates=days(1))
+    response = post(
+        client, site_id, work_types=["벽체 철근 배근", "벽체 철근 배근"], work_dates=days(1)
+    )
 
     assert response.status_code == 303
     assert count(session) == 1  # 같은 작업이 여러 칸에서 함께 체크돼도 한 건
@@ -203,8 +205,8 @@ def test_copy_button_carries_the_item_to_the_add_form(client: TestClient, site_i
 def test_picked_work_comes_back_as_removable_tokens_after_an_error(
     client: TestClient, site_id: int
 ) -> None:
-    response = post(client, site_id, work_types=["벽체 철근"], work_dates=days(1), start="9시")
+    response = post(client, site_id, work_types=["벽체 철근 배근"], work_dates=days(1), start="9시")
 
     assert response.status_code == 422
     # 폼 칩과 작업 고르기 아래 토큰 두 곳에, 하나씩 빼는 버튼과 함께 다시 보인다.
-    assert response.text.count('data-unpick="벽체 철근"') == 2
+    assert response.text.count('data-unpick="벽체 철근 배근"') == 2

@@ -208,5 +208,6 @@ class ScheduleView:
     edit_item_id: int | None = None  # 수정에 실패한 작업(그 카드의 수정 칸을 연다)
     edit_errors: tuple[str, ...] = ()
     work_picker: tuple[PickerTrade, ...] = ()  # 업종 → 업무분야 → 작업(D-085)
+    import_errors: tuple[str, ...] = ()  # 공정표 가져오기 실패 이유(줄 번호 포함, C04-30)
     all_mode: bool = False  # 현장 전체 달력(작업 추가는 현장을 먼저 고른다)
     site_names: dict[int, str] = field(default_factory=dict)  # 전체에서 작업 카드에 현장 이름

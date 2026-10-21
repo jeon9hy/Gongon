@@ -154,7 +154,7 @@ def add_work(client: TestClient, site_id: int, work_type: str) -> None:
 def rebar_card(session: Session, site_id: int) -> WorkCard:
     view = service.build_dashboard(session, None, site_id, None, None, FIXED_NOW)
     assert view is not None
-    return next(c for c in view.cards if c.work_type == "벽체 철근")
+    return next(c for c in view.cards if c.work_type == "벽체 철근 배근")
 
 
 def test_work_without_weather_rule_is_not_check_by_default(
@@ -162,7 +162,7 @@ def test_work_without_weather_rule_is_not_check_by_default(
 ) -> None:
     # 판정 공종이 아닌 작업(D-085)을 '기준 미확인'처럼 확인 필요로 올리지 않는다.
     site_id = site_with_work(client)
-    add_work(client, site_id, "벽체 철근")
+    add_work(client, site_id, "벽체 철근 배근")
 
     card = rebar_card(session, site_id)
 
@@ -174,14 +174,14 @@ def test_work_without_weather_rule_takes_only_the_heat_level(
 ) -> None:
     fake_kma.set_hour("20261005", 10, TMP="34", REH="60", WSD="12.0")  # 폭염 + 철골 중지 풍속
     site_id = site_with_work(client)
-    add_work(client, site_id, "벽체 철근")
+    add_work(client, site_id, "벽체 철근 배근")
 
     run(client, site_id)
     card = rebar_card(session, site_id)
 
     assert card.verdict == "확인 필요" and card.reason.startswith("폭염 · ")  # 풍속 기준 없음
     assert card.detail_href is not None and card.time_range == "09:00–12:00"
-    assert session.scalar(select(Judgment.id).where(Judgment.work_type == "벽체 철근")) is None
+    assert session.scalar(select(Judgment.id).where(Judgment.work_type == "벽체 철근 배근")) is None
 
 
 def test_work_without_weather_rule_is_go_when_heat_is_go(
@@ -189,14 +189,14 @@ def test_work_without_weather_rule_is_go_when_heat_is_go(
 ) -> None:
     fake_kma.set_hour("20261005", 10, WSD="12.0")
     site_id = site_with_work(client)
-    add_work(client, site_id, "벽체 철근")
+    add_work(client, site_id, "벽체 철근 배근")
 
     run(client, site_id)
     view = service.build_dashboard(session, None, site_id, None, None, FIXED_NOW)
 
     assert rebar_card(session, site_id).verdict == "진행"
     assert view is not None and view.notice is not None
-    assert not any("벽체 철근" in i.work and i.verdict != "진행" for i in view.notice.items)
+    assert not any("벽체 철근 배근" in i.work and i.verdict != "진행" for i in view.notice.items)
 
 
 def test_home_day_panel_groups_same_work_and_expands_to_each_item(
@@ -225,8 +225,8 @@ def test_home_day_panel_groups_by_company_and_by_floor(
     client: TestClient, session: Session, fake_kma: FakeKma
 ) -> None:
     site_id = site_with_work(client)  # 철골 09-12, 위치 없음, 기본 협력업체
-    for kind, place in (("벽체 철근", "101동 9층 2구역"),
-                        ("감리 검측", "101동 9층")):  # fmt: skip
+    for kind, place in (("벽체 철근 배근", "101동 9층 2구역"),
+                        ("검측(감리 입회)", "101동 9층")):  # fmt: skip
         data = {"site_id": site_id, "work_types": kind, "work_dates": "2026-10-05",
                 "start": "13:00", "end": "15:00", "location": place}  # fmt: skip
         assert client.post("/schedule", data=data).status_code in (200, 303)

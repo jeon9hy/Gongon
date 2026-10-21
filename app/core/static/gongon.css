@@ -2495,3 +2495,17 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .dgroup[open] > summary .dgroup__meta svg { transform: rotate(180deg); }
 .dgroup > .worklist { padding: 0 8px 8px; }
 .workcard__time .badge { margin-left: 6px; transform: scale(0.9); transform-origin: left center; }
+
+/* 공정표 가져오기(C04-30) */
+.daypanel__import { width: 100%; margin-top: 8px; }
+.importcols { display: flex; flex-wrap: wrap; gap: 6px; }
+.importcols span { padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--ink); background: var(--card); }
+.importcols span.is-optional { border-style: dashed; color: var(--muted); font-weight: 500; }
+.importhelp { margin: 0; padding-left: var(--label-inset); }
+.importhelp a { color: var(--accent); font-weight: 600; }
+/* 작업 이름이 길어도 단어 중간에서 끊지 않고, 위치는 이름 뒤에 이어 줄바꿈한다(C04-30) */
+.workcard__title { flex-wrap: wrap; align-items: baseline; row-gap: 0; }
+.workcard__title .dot { align-self: center; }
+.workcard__title { word-break: keep-all; }
+.workcard__place { white-space: normal; overflow: visible; }
+
