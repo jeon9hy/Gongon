@@ -140,6 +140,8 @@ class CalendarDay:
     item_ids: tuple[int, ...] = ()
     warn: bool = False  # 업체 미지정·같은 곳 같은 시간 겹침이 있다(공온 점검과 같은 기준)
     holiday: str | None = None  # 공휴일 이름(특일 정보, 대체공휴일 포함)
+    # 업체별 작업 수(C04-34): (업체 색, 건수), 많은 순. 업체 미정은 색 대신 빈 문자열
+    companies: tuple[tuple[str, int], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -212,3 +214,5 @@ class ScheduleView:
     import_errors: tuple[str, ...] = ()  # 공정표 가져오기 실패 이유(줄 번호 포함, C04-30)
     all_mode: bool = False  # 현장 전체 달력(작업 추가는 현장을 먼저 고른다)
     site_names: dict[int, str] = field(default_factory=dict)  # 전체에서 작업 카드에 현장 이름
+    # 달력 위 업체 색 범례(C04-34): (업체 이름, 색). 이 달 달력에 작업이 있는 업체만
+    company_legend: tuple[tuple[str, str], ...] = ()

@@ -284,7 +284,11 @@ def test_cell_shows_the_count_instead_of_dots(client: TestClient) -> None:
         add_item(client, site_id, start=f"{hour:02d}:00", end=f"{hour:02d}:30")
     page = client.get(f"/schedule?site_id={site_id}&day=2026-10-05").text
     cell = page.split('aria-label="10월 5일, 작업 6건"')[1].split("</td>")[0]
-    assert 'class="calsum__count">6건<' in cell and "dot--btn" not in cell
+    assert 'class="calring">6<' in cell and "dot--btn" not in cell  # 큰 원에 숫자만(C04-34)
+    # 업체 색 막대: 여섯 건 모두 한 업체라 한 칸, 그 업체는 위 범례에 같은 색으로
+    (bar,) = re.findall(r'<span class="cobar"[^>]*>(.*?)</span>', cell)
+    (color,) = re.findall(r"flex-grow: 6; --c: (#[0-9A-F]{6})", bar)
+    assert f'class="colegend__dot" style="--c: {color}"' in page
     company = page.split('data-groupview="company"')[1].split('data-groupview="place"')[0]
     assert company.count('class="workcard"') == 6  # 상세 패널에는 여섯 건 모두
     assert "11:00–11:30" in page
@@ -303,7 +307,7 @@ def test_day_detail_groups_by_company_and_by_floor_and_marks_problems(
     names = re.findall(r'class="grp__title"><strong>([^<]+)</strong>', place)
     assert names == ["101동 9층", "102동 지하1층"]  # 동 → 층 순, 같은 동·층은 한 묶음
     cell = page.split('aria-label="10월 5일, 작업 3건"')[1].split("</td>")[0]
-    assert 'class="calsum__warn"' in cell  # 같은 곳 같은 시간 겹침
+    assert 'class="calring__warn"' in cell  # 같은 곳 같은 시간 겹침
 
 
 @pytest.mark.parametrize("query", ["month=2026-13", "month=abc", "day=2026-02-30", "day=x"])
@@ -601,3 +605,14 @@ def test_all_sites_calendar_spans_2020_to_2100(client: TestClient) -> None:
     # 달 고르기는 보고 있는 해 앞뒤만 넣고 나머지 해는 화면에서 만든다(페이지가 무거워지지 않게)
     assert 'data-range-from="2020" data-range-to="2100"' in first
     assert first.count('class="monthpick__year"') == 2  # 2020·2021
+
+
+def test_company_colors_follow_registration_order_and_skip_verdict_colors() -> None:
+    # C04-34: 같은 업체는 달을 넘겨도 같은 색(ID 순), 판정 색과 겹치지 않는다
+    from app.features.schedules.service import COMPANY_COLORS, company_colors
+
+    colors = company_colors({30: "나중 업체", 7: "먼저 업체", 12: "가운데 업체"})
+    assert list(colors.items()) == [(7, COMPANY_COLORS[0]), (12, COMPANY_COLORS[1]),
+                                    (30, COMPANY_COLORS[2])]  # fmt: skip
+    verdict_marks = {"#2E9E5B", "#E89A00", "#D9483B", "#A3ABB8"}  # gongon.css 판정 표시 색
+    assert not verdict_marks & set(COMPANY_COLORS)
