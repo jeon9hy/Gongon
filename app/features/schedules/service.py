@@ -1,6 +1,7 @@
 """작업 일정(S08-1). 판정 기능은 items_on·items_on_for_sites·items_between으로 작업을 읽는다."""
 
-from collections.abc import Callable, Mapping
+import re
+from collections.abc import Callable, Iterable, Mapping
 from datetime import date, datetime, time, timedelta
 
 from sqlalchemy.orm import Session
@@ -14,6 +15,7 @@ from app.features.schedules.models import WorkItem, WorkItemRevision
 from app.features.schedules.schemas import (
     CalendarDay,
     DayDetail,
+    DetailGroup,
     MonthChoice,
     ParticipantChoice,
     PickerField,
@@ -34,7 +36,11 @@ from app.features.teams import service as teams_service
 from app.features.teams.schemas import MANAGE_ROLES, ParticipantOption
 from engine.kst import KST
 
-CELL_ITEMS = 5  # 달력 칸에 점으로 보이는 작업 수(나머지는 +N, D-064)
+# 업체별·위치별 묶음(D-085). 묶음 이름이 없을 때 쓰는 이름.
+NO_COMPANY = "업체 미정"
+NO_PLACE = "위치 없음"
+_BUILDING = re.compile(r"(\d+)\s*동")
+_FLOOR = re.compile(r"(지하\s*|[Bb])?(\d+)(\s*~\s*\d+)?\s*층")
 MONTH_PICK_SPAN = 6  # 달 고르기 목록에 늘 넣는 보고 있는 달 앞뒤 개월 수
 MONTH_PICK_MAX = 24  # 달 고르기 목록은 보고 있는 달에서 앞뒤 최대 이 개월까지
 # 전체 달력은 이 해들 사이를 고를 수 있다(개발자 요청 2026-10-17)
@@ -162,16 +168,19 @@ def build_view(
                     in_period=_works_on(shown, d),
                     selected=d == selected,
                     addable=d >= today and _works_on(shown, d),
-                    items=tuple(on_day[:CELL_ITEMS]),
-                    more=max(0, len(on_day) - CELL_ITEMS),
                     holiday=holidays_of(d.year).get(d),
+                    item_ids=tuple(i.item_id for i in on_day),
+                    warn=any(i.performing_participant_id is None for i in on_day)
+                    or bool(overlapping_ids(on_day)),
                 )
             )
             d += timedelta(days=1)
         weeks = tuple(tuple(cells[i : i + 7]) for i in range(0, len(cells), 7))
-        detail = _detail(shown, selected, today, tuple(by_day.get(selected, [])))
         for s in shown:  # 전체에서는 현장 수만큼(현장은 몇 곳뿐이다)
             labels |= teams_service.participant_labels(session, s.site_id)
+        names = {pid: label.split(" · ")[0] for pid, label in labels.items()}
+        trades = teams_service.company_trades(session, [s.site_id for s in shown])
+        detail = _detail(shown, selected, today, tuple(by_day.get(selected, [])), names, trades)
         if site is not None:
             choices = teams_service.participant_choices(session, site.site_id)
         revisions = _revision_views(session, [i.item_id for i in detail.items], labels)
@@ -234,7 +243,12 @@ def build_view(
 
 
 def _detail(
-    shown: list[SiteRecord], day: date, today: date, items: tuple[WorkItemRecord, ...]
+    shown: list[SiteRecord],
+    day: date,
+    today: date,
+    items: tuple[WorkItemRecord, ...],
+    names: Mapping[int, str],
+    trades: Mapping[int, str],
 ) -> DayDetail:
     if day < today:
         note: str | None = "지난 날짜는 작업을 추가할 수 없습니다."
@@ -258,7 +272,37 @@ def _detail(
         can_add=day >= today and _works_on(shown, day),
         note=note,
         items=items,
+        by_company=_detail_groups(items, "company", names, trades),
+        by_place=_detail_groups(items, "place", names, trades),
     )
+
+
+def _detail_groups(
+    items: tuple[WorkItemRecord, ...],
+    by: str,
+    names: Mapping[int, str],
+    trades: Mapping[int, str],
+) -> tuple[DetailGroup, ...]:
+    """날 상세 묶음(D-085). 업체별은 업종 메모, 위치별은 참여 업체를 작은 글자로."""
+    warned = overlapping_ids(items) | {
+        i.item_id for i in items if i.performing_participant_id is None
+    }
+    groups: list[DetailGroup] = []
+    for label, group in group_items(items, by, names):
+        first = group[0].performing_participant_id
+        if by == "company":
+            sub = "" if first is None else trades.get(first, "")
+        else:
+            who = list(dict.fromkeys(
+                names.get(i.performing_participant_id, NO_COMPANY)
+                if i.performing_participant_id is not None else NO_COMPANY
+                for i in group
+            ))  # fmt: skip
+            sub = who[0] + (f" 외 {len(who) - 1}" if len(who) > 1 else "")
+        groups.append(DetailGroup(label, sub, tuple(group), by == "company" and first is None
+                                  and label == NO_COMPANY,
+                                  frozenset(i.item_id for i in group) & warned))  # fmt: skip
+    return tuple(groups)
 
 
 def add_item(
@@ -729,3 +773,65 @@ def _date(raw: str) -> date | None:
         return date.fromisoformat(raw.strip())
     except ValueError:
         return None
+
+
+def place_key(location: str) -> str:
+    """작업 위치 → 위치별 묶음 이름(동·층). '101동 9층 2구역' → '101동 9층'.
+
+    동·층을 못 찾으면 적은 위치 그대로('자재 야적장'), 비어 있으면 NO_PLACE. 위치는 자유 입력이라
+    추정하지 않고 글자에 있는 동·층만 쓴다.
+    """
+    text = location.strip()
+    if not text:
+        return NO_PLACE
+    building = _BUILDING.search(text)
+    floor = _FLOOR.search(text)
+    parts = [f"{building.group(1)}동"] if building else []
+    if floor:
+        parts.append(re.sub(r"\s+", "", floor.group(0)))
+    return " ".join(parts) or text
+
+
+def place_order(key: str) -> tuple[float, float, str]:
+    """위치 묶음 순서: 동 번호 → 층(지하는 음수) → 이름. 위치 없음은 맨 뒤."""
+    if key == NO_PLACE:
+        return (float("inf"), float("inf"), key)
+    building = _BUILDING.search(key)
+    floor = _FLOOR.search(key)
+    floor_no = float("inf")
+    if floor:
+        floor_no = -float(floor.group(2)) if floor.group(1) else float(floor.group(2))
+    return (float(building.group(1)) if building else float("inf"), floor_no, key)
+
+
+def group_items(
+    items: Iterable[WorkItemRecord], by: str, companies: Mapping[int, str]
+) -> list[tuple[str, list[WorkItemRecord]]]:
+    """작업을 업체별(by='company') 또는 위치별(by='place')로 묶는다. 묶음 안은 시작 시각 순.
+
+    업체별은 업체 미정을 맨 앞(점검 문제), 나머지는 이름 순. 위치별은 동·층 순.
+    """
+    groups: dict[str, list[WorkItemRecord]] = {}
+    for item in sorted(items, key=lambda i: (i.start_local, i.item_id)):
+        if by == "place":
+            key = place_key(item.location)
+        else:
+            pid = item.performing_participant_id
+            key = companies.get(pid, NO_COMPANY) if pid is not None else NO_COMPANY
+        groups.setdefault(key, []).append(item)
+    if by == "place":
+        return sorted(groups.items(), key=lambda g: place_order(g[0]))
+    return sorted(groups.items(), key=lambda g: (g[0] != NO_COMPANY, g[0]))
+
+
+def overlapping_ids(items: Iterable[WorkItemRecord]) -> set[int]:
+    """같은 현장·날짜·위치에서 시간이 겹치는 작업(공온 점검의 겹침과 같은 기준, D-065)."""
+    found: set[int] = set()
+    listed = [i for i in items if i.location]
+    for n, a in enumerate(listed):
+        for b in listed[n + 1 :]:
+            if (a.site_id, a.work_date, a.location) == (b.site_id, b.work_date, b.location) and (
+                a.start_local < b.end_local and b.start_local < a.end_local
+            ):
+                found |= {a.item_id, b.item_id}
+    return found

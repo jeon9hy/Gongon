@@ -11,6 +11,7 @@ from app.core.db import get_session
 from app.core.params import OptionalSiteIdQuery
 from app.core.templating import register_template_dir, templates
 from app.features.auth.service import CurrentUserDep, require_user
+from app.features.judgments import service as judgments_service
 from app.features.schedules import service
 from app.features.schedules.holidays import HolidayLookupDep
 from app.features.schedules.schemas import ScheduleView, WorkItemEditForm, WorkItemForm
@@ -30,11 +31,19 @@ def _render(
     request: Request,
     view: ScheduleView,
     manageable: frozenset[int],
+    session: Session,
+    now: datetime,
     status_code: int = 200,
     proposable: frozenset[int] = frozenset(),
 ) -> HTMLResponse:
+    # 달력 칸·날 상세의 판정 단계(D-085). 판정 범위(내일부터 7일) 작업만 단계가 있다.
+    shown = (
+        [s.site_id for s in view.sites] if view.all_mode else [view.site_id] if view.site_id else []
+    )
+    marks = judgments_service.item_verdicts(session, shown, now)
     context = {"nav_active": "schedule", "view": view, "manageable": manageable,
-               "proposable": proposable or manageable, "categories": CATEGORY_LABELS}  # fmt: skip
+               "proposable": proposable or manageable, "categories": CATEGORY_LABELS,
+               "marks": marks}  # fmt: skip
     return templates.TemplateResponse(
         request, "schedules/index.html", context, status_code=status_code
     )
@@ -81,7 +90,7 @@ def schedule(
     )
     if view is None:
         raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
-    return _render(request, view, manageable, proposable=proposable)
+    return _render(request, view, manageable, session, now, proposable=proposable)
 
 
 @router.post("/schedule")
@@ -129,7 +138,7 @@ def add_item(
         )  # fmt: skip
         if view is None:
             raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
-        return _render(request, view, manageable, status_code=422)
+        return _render(request, view, manageable, session, now, status_code=422)
     return RedirectResponse(
         f"/schedule?site_id={site_id}&day={first_day.isoformat()}&saved=1", status_code=303
     )
@@ -172,7 +181,8 @@ def edit_item(
         )  # fmt: skip
         if view is None:
             raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
-        return _render(request, view, manageable, status_code=409 if result == "conflict" else 422)
+        status = 409 if result == "conflict" else 422
+        return _render(request, view, manageable, session, now, status_code=status)
     flag = "edited" if result == "saved" else "unchanged"
     return RedirectResponse(
         f"/schedule?site_id={site_id}&day={work_date or day}&{flag}=1", status_code=303

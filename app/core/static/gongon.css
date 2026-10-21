@@ -2447,3 +2447,51 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
   .job--sub .job__time { display: block; grid-column: 1; grid-row: 2; font-size: 12px; font-weight: 500; color: var(--muted); }
   .job--sub .job__state { grid-column: 2; grid-row: 1 / span 2; }
 }
+
+/* 묶어 보기 전환(D-085): 업체별이 기본, html[data-group="place"]면 위치별 */
+:root:not([data-group="place"]) [data-groupview="place"],
+:root[data-group="place"] [data-groupview="company"] { display: none; }
+.groupseg { display: inline-flex; gap: 2px; padding: 3px; margin: 4px 0 10px; border-radius: 999px; background: var(--surface); }
+.groupseg__btn { min-height: 30px; padding: 0 14px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.groupseg__btn[aria-pressed="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px #0E1E4514, inset 0 0 0 1px var(--line); }
+.groupseg__btn:focus-visible { outline: 3px solid var(--ink); outline-offset: 1px; }
+.job--unassigned .job__what strong { color: var(--stop-text); }
+
+
+/* 달력 칸 요약(D-085): 점 대신 건수 + 챙길 것. 칸 전체가 링크라 요약은 누름을 통과시킨다 */
+.calsum { position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; pointer-events: none; }
+.calsum__count { margin-right: auto; font-size: 13px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.calsum__chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px 1px 5px; border-radius: 999px; font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.calsum__chip--stop { background: var(--stop-soft); color: var(--stop-text); }
+.calsum__chip--check { background: #FFF4DB; color: #8A5A00; }
+.calsum__mark { display: inline-block; width: 7px; height: 7px; border-radius: 999px; }
+.calsum__mark--stop { background: var(--verdict-stop-mark); }
+.calsum__mark--check { background: var(--verdict-check-mark); }
+.calsum__warn { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 999px; background: var(--verdict-check-mark); color: #fff; font-size: 10px; font-weight: 800; }
+.legend--top .calsum__mark { margin-right: 6px; vertical-align: 1px; }
+.legend--top .calsum__warn { margin-right: 6px; }
+.calcell.is-outside .calsum, .calcell.is-off .calsum { opacity: 0.45; }
+@media (max-width: 760px) {
+  .calsum { left: 3px; right: 3px; bottom: 5px; justify-content: center; gap: 2px; }
+  .calsum__count { margin: 0; width: 100%; text-align: center; font-size: 11px; }
+  .calsum__chip { padding: 0 4px; font-size: 10px; gap: 2px; }
+  .calsum__chip .calsum__mark { display: none; }
+}
+
+/* 날 상세 묶음(D-085) */
+.dgroups { display: grid; gap: 8px; }
+.dgroup { border: 1px solid var(--line-soft); border-radius: var(--radius-md); background: var(--card); }
+.dgroup > summary { list-style: none; cursor: pointer; }
+.dgroup > summary::-webkit-details-marker { display: none; }
+.dgroup__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: var(--radius-md); }
+.dgroup__head:hover { background: var(--surface); }
+.dgroup__name { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 8px; min-width: 0; }
+.dgroup__name strong { font-size: 14px; color: var(--ink); }
+.dgroup__name small { font-size: 12px; color: var(--muted); }
+.dgroup__head--unassigned .dgroup__name strong { color: var(--stop-text); }
+.dgroup__meta { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; color: var(--muted); }
+.dgroup__count { font-size: 12px; font-weight: 600; color: var(--muted); }
+.dgroup__meta svg { transition: transform var(--ease); }
+.dgroup[open] > summary .dgroup__meta svg { transform: rotate(180deg); }
+.dgroup > .worklist { padding: 0 8px 8px; }
+.workcard__time .badge { margin-left: 6px; transform: scale(0.9); transform-origin: left center; }

@@ -211,11 +211,30 @@ def test_home_day_panel_groups_same_work_and_expands_to_each_item(
 
     panel = service.build_home(session, None, FIXED_NOW).day_panels[0]
 
-    row = next(r for r in panel.rows if r.work_type == STEEL)
-    assert row.count == 2 and row.verdict == "중지 검토"
-    assert [(s.time_text, s.verdict) for s in row.items] == [
-        ("09:00–12:00", "중지 검토"),
-        ("13:00–16:00", "진행"),
+    (row,) = panel.rows  # 업체별: 두 작업 모두 같은 업체
+    assert row.count == 2 and row.verdict == "중지 검토" and row.href.startswith("/judgments/")
+    assert [(s.work_type, s.time_text, s.verdict) for s in row.items] == [
+        (STEEL, "09:00–12:00", "중지 검토"),
+        (STEEL, "13:00–16:00", "진행"),
     ]
     assert (panel.stop, panel.go) == (1, 1)  # 칸 숫자는 묶음이 아니라 작업마다 센다
     assert '<details class="jobgroup" open>' in client.get("/").text  # 중지 검토는 펼쳐 둔다
+
+
+def test_home_day_panel_groups_by_company_and_by_floor(
+    client: TestClient, session: Session, fake_kma: FakeKma
+) -> None:
+    site_id = site_with_work(client)  # 철골 09-12, 위치 없음, 기본 협력업체
+    for kind, place in (("벽체 철근", "101동 9층 2구역"),
+                        ("감리 검측", "101동 9층")):  # fmt: skip
+        data = {"site_id": site_id, "work_types": kind, "work_dates": "2026-10-05",
+                "start": "13:00", "end": "15:00", "location": place}  # fmt: skip
+        assert client.post("/schedule", data=data).status_code in (200, 303)
+    run(client, site_id)
+
+    panel = service.build_home(session, None, FIXED_NOW).day_panels[0]
+
+    assert [(r.label, r.count) for r in panel.place_rows] == [("101동 9층", 2), ("위치 없음", 1)]
+    assert sum(r.count for r in panel.rows) == 3
+    page = client.get("/").text
+    assert 'data-groupview="company"' in page and 'data-groupview="place"' in page

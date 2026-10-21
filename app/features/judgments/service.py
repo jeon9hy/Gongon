@@ -27,9 +27,9 @@ from app.features.judgments.schemas import (
     CriterionCard,
     DashboardView,
     DayBoard,
+    DayGroupRow,
     DayPanel,
     DayTypeItem,
-    DayTypeRow,
     DetailView,
     ElementKey,
     FilterLink,
@@ -682,6 +682,26 @@ def _site_tabs(
 _VERDICT_RANK = {"중지 검토": 0, "확인 필요": 1, "판정 불가": 2, "진행": 3}
 
 
+def item_verdicts(
+    session: Session, site_ids: Sequence[int], now: datetime
+) -> dict[int, tuple[str, str | None]]:
+    """작업 id → (판정 단계, 판정 상세 주소). 판정 범위(내일부터 7일)에서 단계가 있는 작업만.
+
+    작업 일정 화면의 달력 칸·날 상세 배지에 쓴다(D-085). 홈·판정 화면과 같은 계산(_week)이라
+    폭염 합치기·재판정 필요 표시가 같다. 호출하는 화면이 현장 접근 권한을 이미 확인했다.
+    """
+    rule_sets = rule_sets_by_label()
+    found: dict[int, tuple[str, str | None]] = {}
+    for site_id in site_ids:
+        site = sites_service.get_site(session, site_id, None)
+        if site is None:
+            continue
+        for (_, item_id), cell in _week(session, site, rule_sets, now).items.items():
+            if cell.verdict:
+                found[item_id] = (cell.verdict, cell.href)
+    return found
+
+
 def _week_overview(
     session: Session, sites: Sequence[SiteRecord], rule_sets: Mapping[str, RuleSet], now: datetime
 ) -> tuple[tuple[HomeIndexDay, ...], tuple[DayPanel, ...]]:
@@ -694,13 +714,7 @@ def _week_overview(
     site_ids = [s.site_id for s in sites]
     items = schedules_service.items_between_for_sites(session, site_ids, days[0], days[-1])
     companies = teams_service.company_names(session, site_ids)
-    # (날, 공종) → [(판정, 판정 상세 주소)]. 줄을 누르면 가장 높은 단계 판정의 상세로 간다.
-    verdicts: dict[tuple[int, str], list[tuple[str, str | None]]] = {}
-    for _, week in weeks:
-        for row in week.rows:
-            for n, cell in enumerate(row.cells):
-                if cell.verdict:
-                    verdicts.setdefault((n, row.work_type), []).append((cell.verdict, cell.href))
+    trades = teams_service.company_trades(session, site_ids)
     item_cells = {key: cell for _, week in weeks for key, cell in week.items.items()}
     single = len(sites) == 1
     panels: list[DayPanel] = []
@@ -708,37 +722,11 @@ def _week_overview(
         on_day = [i for i in items if i.work_date == day]
         prefix = f"/schedule?site_id={site_ids[0]}&" if single else "/schedule?"
         schedule_href = f"{prefix}month={day:%Y-%m}&day={day.isoformat()}"
-        rows: list[DayTypeRow] = []
-        for work_type in sorted({i.work_type for i in on_day}):
-            group = [i for i in on_day if i.work_type == work_type]
-            names = list(dict.fromkeys(
-                companies[i.performing_participant_id] for i in group
-                if i.performing_participant_id in companies
-            ))  # fmt: skip
-            found = verdicts.get((n, work_type), [])
-            worst_pair = min(found, key=lambda v: _VERDICT_RANK.get(v[0], 9)) if found else None
-            worst = worst_pair[0] if worst_pair else None
-            subs = tuple(
-                _day_item(i, item_cells.get((day, i.item_id)), companies, schedule_href)
-                for i in sorted(group, key=lambda i: (i.start_local, i.item_id))
-            )
-            rows.append(
-                DayTypeRow(
-                    work_type=work_type,
-                    time_text=f"{min(i.start_local for i in group):%H:%M}–"
-                    f"{max(i.end_local for i in group):%H:%M}",
-                    companies_text="업체 미정"
-                    if not names
-                    else names[0] + (f" 외 {len(names) - 1}" if len(names) > 1 else ""),
-                    count=len(group),
-                    verdict=worst,
-                    href=(worst_pair[1] if worst_pair and worst_pair[1] else schedule_href),
-                    items=subs,
-                )
-            )
-        rows.sort(key=lambda r: (_VERDICT_RANK.get(r.verdict or "", 2.5), r.work_type))
+        cells = {i.item_id: item_cells.get((day, i.item_id)) for i in on_day}
+        by_company = _day_groups(on_day, "company", cells, companies, trades, schedule_href)
+        by_place = _day_groups(on_day, "place", cells, companies, trades, schedule_href)
         # 칸 숫자는 작업 건수다. 펼친 하위 줄과 맞도록 묶음 단계가 아니라 작업마다 센다.
-        tally = {v: sum(s.verdict == v for r in rows for s in r.items) for v in _VERDICT_RANK}
+        tally = {v: sum(s.verdict == v for r in by_company for s in r.items) for v in _VERDICT_RANK}
         panels.append(
             DayPanel(
                 label="내일" if n == 0 else index_days[n].label,
@@ -746,7 +734,8 @@ def _week_overview(
                 go=tally["진행"],
                 check=tally["확인 필요"],
                 stop=tally["중지 검토"],
-                rows=tuple(rows),
+                rows=by_company,
+                place_rows=by_place,
                 href=index_days[n].href,
                 add_href=f"{schedule_href}&add=1",
             )
@@ -1202,17 +1191,58 @@ def _confidence(
     return "높음" if all(has_value) and not estimated else "보통"
 
 
-def _day_item(
-    item: WorkItemRecord, cell: WeekCell | None, companies: Mapping[int, str], fallback: str
-) -> DayTypeItem:
-    """날 패널 묶음의 하위 작업 줄. 판정이 없으면 작업 일정 그날로 간다."""
-    return DayTypeItem(
-        time_text=f"{item.start_local:%H:%M}–{item.end_local:%H:%M}",
-        location=item.location,
-        company=companies.get(item.performing_participant_id or -1, "업체 미정"),
-        verdict=None if cell is None else cell.verdict,
-        href=cell.href if cell is not None and cell.href else fallback,
+def _day_groups(
+    items: list[WorkItemRecord],
+    by: str,
+    cells: Mapping[int, WeekCell | None],
+    companies: Mapping[int, str],
+    trades: Mapping[int, str],
+    fallback: str,
+) -> tuple[DayGroupRow, ...]:
+    """날 패널 묶음(D-085): 업체별(by='company') 또는 위치별(by='place').
+
+    묶음 단계는 하위 작업 중 가장 높은 단계, 줄을 누르면 그 작업의 판정 상세로 간다. 챙길 묶음이
+    먼저다(업체별에서 업체 미정은 점검 문제라 맨 앞). 하위 줄의 '어디'는 업체별이면 위치,
+    위치별이면 업체.
+    """
+    rows: list[DayGroupRow] = []
+    for label, group in schedules_service.group_items(items, by, companies):
+        subs = tuple(
+            DayTypeItem(
+                item_id=i.item_id,
+                work_type=i.work_type,
+                where=(i.location or schedules_service.NO_PLACE) if by == "company"
+                else companies.get(i.performing_participant_id or -1, schedules_service.NO_COMPANY),
+                time_text=f"{i.start_local:%H:%M}–{i.end_local:%H:%M}",
+                verdict=None if (cell := cells.get(i.item_id)) is None else cell.verdict,
+                href=cell.href if cell is not None and cell.href else fallback,
+            )
+            for i in group
+        )  # fmt: skip
+        worst = min(subs, key=lambda s: _VERDICT_RANK.get(s.verdict or "", 2.5))
+        first = group[0].performing_participant_id
+        names = list(dict.fromkeys(s.where for s in subs))
+        sub = (
+            trades.get(first, "") if by == "company" and first is not None
+            else names[0] + (f" 외 {len(names) - 1}" if len(names) > 1 else "") if by == "place"
+            else ""
+        )  # fmt: skip
+        rows.append(DayGroupRow(
+            label=label,
+            sub=sub,
+            time_text=f"{min(i.start_local for i in group):%H:%M}–"
+                      f"{max(i.end_local for i in group):%H:%M}",
+            count=len(group),
+            verdict=worst.verdict,
+            href=worst.href,
+            items=subs,
+            unassigned=by == "company" and label == schedules_service.NO_COMPANY,
+        ))  # fmt: skip
+    order = {id(r): n for n, r in enumerate(rows)}
+    rows.sort(
+        key=lambda r: (not r.unassigned, _VERDICT_RANK.get(r.verdict or "", 2.5), order[id(r)])
     )
+    return tuple(rows)
 
 
 def _week_cell(card: WorkCard, empty_state: Literal["none", "pending"]) -> WeekCell:

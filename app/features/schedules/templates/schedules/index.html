@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, site_menu %}
+{% from "_macros.html" import icon, site_menu, verdict_badge, groupseg %}
 {% block title %}작업 일정{% endblock %}
 {% block schedule_tools %}
 {% if view.site_id is not none and not view.all_mode %}{{ site_menu(view.site_id, view.site_name, can_delete=view.site_id in manageable) }}{% endif %}
@@ -34,9 +34,6 @@
 {% else %}
 <div class="split" data-schedule>
 <section class="panel split__main calendar-panel" aria-labelledby="month-title" data-swap="calendar">
-{# 범례는 달력 머리 오른쪽에(개발자 요청 2026-10-17): 그려지기 전에 이 달 공종을 모은다 #}
-{% set legend_types = namespace(items=[]) %}
-{% for week in view.weeks %}{% for c in week %}{% for i in c.items %}{% if i.work_type not in legend_types.items %}{% set legend_types.items = legend_types.items + [i.work_type] %}{% endif %}{% endfor %}{% endfor %}{% endfor %}
 <div class="calhead">
 <div class="calhead__nav">
 {% if view.prev_href %}<a class="btn btn--sm" href="{{ view.prev_href }}" aria-label="이전 달" data-nav>{{ icon("arrow-left", 14, 2.2) }}</a>{% else %}<span class="btn btn--sm is-disabled" aria-disabled="true" aria-label="이전 달(작업 기간 밖)">{{ icon("arrow-left", 14, 2.2) }}</span>{% endif %}
@@ -62,21 +59,22 @@
 {% if view.next_href %}<a class="btn btn--sm" href="{{ view.next_href }}" aria-label="다음 달" data-nav>{{ icon("arrow-right", 14, 2.2) }}</a>{% else %}<span class="btn btn--sm is-disabled" aria-disabled="true" aria-label="다음 달(작업 기간 밖)">{{ icon("arrow-right", 14, 2.2) }}</span>{% endif %}
 <a class="today-btn" href="{{ view.this_month_href }}" aria-label="오늘로 이동" data-nav>{{ icon("calendar", 18) }}<span>오늘</span></a>
 </div>
-{% if legend_types.items %}<ul class="legend legend--top" aria-label="공종 색">{% for t in legend_types.items %}<li><span class="dot" style="--c: {{ work_color(t) }}"></span>{{ t }}</li>{% endfor %}</ul>{% endif %}
+{# 달력 칸은 점 대신 건수와 챙길 것(중지 검토·확인 필요·점검 문제)만 보인다(D-085) #}
+<ul class="legend legend--top" aria-label="달력 표시"><li><span class="calsum__mark calsum__mark--stop"></span>중지 검토</li><li><span class="calsum__mark calsum__mark--check"></span>확인 필요</li><li><span class="calsum__warn" aria-hidden="true">!</span>업체 미지정·겹침</li></ul>
 </div>
 
 <table class="calendar">
 <thead><tr>{% for w in "일월화수목금토" %}<th scope="col"{% if loop.first %} class="is-sun"{% elif loop.last %} class="is-sat"{% endif %}>{{ w }}</th>{% endfor %}</tr></thead>
 <tbody>
-{% set legend = namespace(types=[]) %}
 {% for week in view.weeks %}
 <tr>
 {% for c in week %}
 <td class="calcell{% if c.is_today %} is-today{% endif %}{% if not c.in_month %} is-outside{% endif %}{% if not c.in_period %} is-off{% endif %}{% if c.selected %} is-selected{% endif %}{% if c.holiday or c.day.weekday() == 6 %} is-sun{% elif c.day.weekday() == 5 %} is-sat{% endif %}">
-{% if c.in_period %}<a class="calcell__link" href="{{ c.href }}" aria-label="{{ c.day.month }}월 {{ c.day.day }}일{% if c.holiday %} {{ c.holiday }}{% endif %}, 작업 {{ c.items | length + c.more }}건"{% if c.selected %} aria-current="date"{% endif %}>
+{% if c.in_period %}<a class="calcell__link" href="{{ c.href }}" aria-label="{{ c.day.month }}월 {{ c.day.day }}일{% if c.holiday %} {{ c.holiday }}{% endif %}, 작업 {{ c.item_ids | length }}건"{% if c.selected %} aria-current="date"{% endif %}>
 <span class="calcell__day">{{ c.day.day }}{% if c.is_today %}<span class="calcell__flag">오늘</span>{% endif %}</span>{% if c.holiday %}<span class="calcell__holiday" title="{{ c.holiday }}">{{ c.holiday }}</span>{% endif %}
 </a>{% else %}<span class="calcell__link" aria-disabled="true" aria-label="{{ c.day.month }}월 {{ c.day.day }}일, 작업 기간 밖"><span class="calcell__day">{{ c.day.day }}{% if c.is_today %}<span class="calcell__flag">오늘</span>{% endif %}</span>{% if c.holiday %}<span class="calcell__holiday" title="{{ c.holiday }}">{{ c.holiday }}</span>{% endif %}</span>{% endif %}
-{% if c.items %}<span class="caldots">{% for i in c.items %}{% if i.work_type not in legend.types %}{% set legend.types = legend.types + [i.work_type] %}{% endif %}<button type="button" class="dot dot--btn" style="--c: {{ work_color(i.work_type) }}" data-item="{{ i.item_id }}" data-href="{{ c.href }}" aria-label="{{ c.day.month }}/{{ c.day.day }} {{ i.start_local.strftime('%H:%M') }} {{ i.work_type }} 상세" title="{{ i.start_local.strftime('%H:%M') }} {{ i.work_type }}"></button>{% endfor %}{% if c.more %}<a class="caldots__more" href="{{ c.href }}">+{{ c.more }}</a>{% endif %}</span>{% endif %}
+{% if c.item_ids %}{% set ns = namespace(stop=0, check=0) %}{% for id in c.item_ids %}{% set m = marks.get(id) %}{% if m and m[0] == "중지 검토" %}{% set ns.stop = ns.stop + 1 %}{% elif m and m[0] == "확인 필요" %}{% set ns.check = ns.check + 1 %}{% endif %}{% endfor %}
+<span class="calsum"><span class="calsum__count">{{ c.item_ids | length }}건</span>{% if ns.stop %}<span class="calsum__chip calsum__chip--stop" title="중지 검토 {{ ns.stop }}건"><i class="calsum__mark calsum__mark--stop"></i>{{ ns.stop }}</span>{% endif %}{% if ns.check %}<span class="calsum__chip calsum__chip--check" title="확인 필요 {{ ns.check }}건"><i class="calsum__mark calsum__mark--check"></i>{{ ns.check }}</span>{% endif %}{% if c.warn %}<span class="calsum__warn" title="업체 미지정 또는 같은 곳 같은 시간 겹침">!</span>{% endif %}</span>{% endif %}
 </td>
 {% endfor %}
 </tr>
@@ -113,18 +111,23 @@
 </div>
 {% if d.items %}
 {% macro workcard(i) %}{% set history = view.revisions.get(i.item_id, ()) %}<li><button type="button" class="workcard" style="--c: {{ work_color(i.work_type) }}" data-open-dialog="item-{{ i.item_id }}">
-<span class="workcard__time">{{ i.start_local.strftime("%H:%M") }}<span>–</span>{{ i.end_local.strftime("%H:%M") }}</span>
+<span class="workcard__time">{{ i.start_local.strftime("%H:%M") }}<span>–</span>{{ i.end_local.strftime("%H:%M") }}{% set m = marks.get(i.item_id) %}{% if m %} {{ verdict_badge(m[0]) }}{% endif %}</span>
 <span class="workcard__title"><span class="dot"></span>{{ i.work_type }}{% if i.location %}<span class="workcard__place"> · {{ i.location }}</span>{% endif %}</span>
 <span class="workcard__meta">{% if view.all_mode %}<b class="workcard__site">{{ view.site_names.get(i.site_id, "") }}</b> · {% endif %}{{ view.participant_names.get(i.performing_participant_id, "업체 미지정").split(" · ")[0] if i.performing_participant_id else "업체 미지정" }} · v{{ i.plan_version }}{% if history %} · 변경 {{ history | length }}번{% endif %}</span>
 </button></li>{% endmacro %}
-{# 하루 작업이 많으면 3건만 보이고 나머지는 더보기(개발자 요청 2026-10-16) #}
-<ul class="worklist">{% for i in d.items[:3] %}{{ workcard(i) }}{% endfor %}</ul>
-{% if d.items | length > 3 %}
-<details class="worklist__more">
-<summary><span class="when-closed">{{ d.items | length - 3 }}건 더보기</span><span class="when-open">접기</span> {{ icon("chevron-down", 14, 2.2) }}</summary>
-<ul class="worklist">{% for i in d.items[3:] %}{{ workcard(i) }}{% endfor %}</ul>
+{# 업체별·위치별로 묶는다(D-085). 작업이 5건 이하이거나 챙길 것(중지 검토·확인 필요·점검 문제)이 있는 묶음은 펼쳐 둔다 #}
+{{ groupseg() }}
+{% for mode, groups in [("company", d.by_company), ("place", d.by_place)] %}
+<div class="dgroups" data-groupview="{{ mode }}">
+{% for g in groups %}
+{% set ns = namespace(stop=0, check=0) %}{% for i in g.items %}{% set m = marks.get(i.item_id) %}{% if m and m[0] == "중지 검토" %}{% set ns.stop = ns.stop + 1 %}{% elif m and m[0] == "확인 필요" %}{% set ns.check = ns.check + 1 %}{% endif %}{% endfor %}
+<details class="dgroup"{% if d.items | length <= 5 or ns.stop or ns.check or g.warn_ids %} open{% endif %}>
+<summary class="dgroup__head{% if g.unassigned %} dgroup__head--unassigned{% endif %}"><span class="dgroup__name"><strong>{{ g.label }}</strong>{% if g.sub %}<small>{{ g.sub }}</small>{% endif %}</span><span class="dgroup__meta">{% if g.warn_ids %}<span class="calsum__warn" title="업체 미지정 또는 같은 곳 같은 시간 겹침">!</span>{% endif %}{% if ns.stop %}<span class="calsum__chip calsum__chip--stop"><i class="calsum__mark calsum__mark--stop"></i>{{ ns.stop }}</span>{% endif %}{% if ns.check %}<span class="calsum__chip calsum__chip--check"><i class="calsum__mark calsum__mark--check"></i>{{ ns.check }}</span>{% endif %}<span class="dgroup__count">{{ g.items | length }}건</span>{{ icon("chevron-down", 14, 2.2) }}</span></summary>
+<ul class="worklist">{% for i in g.items %}{{ workcard(i) }}{% endfor %}</ul>
 </details>
-{% endif %}
+{% endfor %}
+</div>
+{% endfor %}
 {% else %}
 <div class="empty-art empty-art--sm"><img class="mascot" src="/static/brand/mascot-schedule.png" alt="" width="120" height="95"><p>{% if d.can_add %}이날은 한가해요. 작업을 올려 볼까요?{% else %}{{ d.note or "이날은 작업이 없어요." }}{% endif %}</p></div>
 {% endif %}

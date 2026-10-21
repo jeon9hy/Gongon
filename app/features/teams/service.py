@@ -195,6 +195,16 @@ def company_names(session: Session, site_ids: list[int]) -> dict[int, str]:
     return {p.id: names.get(p.organization_id, "이름 없음") for p in participants}
 
 
+def company_trades(session: Session, site_ids: list[int]) -> dict[int, str]:
+    """참여 업체 ID → 업종 메모(없으면 원청·협력업체 같은 구분). 업체별 묶음 줄에 쓴다(D-085)."""
+    if not site_ids:
+        return {}
+    return {
+        p.id: p.trade_note or _group_label(p)
+        for p in repository.participants_for_sites(session, site_ids)
+    }
+
+
 def add_founder(session: Session, site_id: int, user: CurrentUser, now: datetime) -> None:
     """현장을 만든 사람의 회사를 원청, 본인을 조정자로 둔다. 커밋은 호출한 현장 서비스가 한다."""
     participant = ProjectParticipant(

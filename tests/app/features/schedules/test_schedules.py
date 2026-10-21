@@ -277,15 +277,33 @@ def test_month_outside_work_period_opens_the_nearest_period_month(client: TestCl
     assert "2026년 12월" in after and 'aria-label="다음 달(작업 기간 밖)"' in after
 
 
-def test_cell_shows_five_dots_and_counts_the_rest(client: TestClient) -> None:
+def test_cell_shows_the_count_instead_of_dots(client: TestClient) -> None:
+    # 작업이 쌓여도 칸은 건수와 챙길 것만 보인다(D-085)
     site_id = add_site(client)
     for hour in (8, 9, 10, 11, 12, 13):
         add_item(client, site_id, start=f"{hour:02d}:00", end=f"{hour:02d}:30")
     page = client.get(f"/schedule?site_id={site_id}&day=2026-10-05").text
     cell = page.split('aria-label="10월 5일, 작업 6건"')[1].split("</td>")[0]
-    assert cell.count('class="dot dot--btn"') == 5 and ">+1</a>" in cell  # 점 5개 + 나머지
-    assert page.count('class="workcard"') == 6  # 상세 패널에는 여섯 건 모두
+    assert 'class="calsum__count">6건<' in cell and "dot--btn" not in cell
+    company = page.split('data-groupview="company"')[1].split('data-groupview="place"')[0]
+    assert company.count('class="workcard"') == 6  # 상세 패널에는 여섯 건 모두
     assert "11:00–11:30" in page
+
+
+def test_day_detail_groups_by_company_and_by_floor_and_marks_problems(
+    client: TestClient,
+) -> None:
+    site_id = add_site(client)
+    add_item(client, site_id, start="08:00", end="10:00", location="101동 9층 2구역")
+    add_item(client, site_id, start="09:00", end="11:00", location="101동 9층 2구역")  # 겹침
+    add_item(client, site_id, start="13:00", end="14:00", location="102동 지하 1층")
+    page = client.get(f"/schedule?site_id={site_id}&day=2026-10-05").text
+
+    place = page.split('data-groupview="place"')[1].split("</aside>")[0]
+    names = re.findall(r'class="dgroup__name"><strong>([^<]+)</strong>', place)
+    assert names == ["101동 9층", "102동 지하1층"]  # 동 → 층 순, 같은 동·층은 한 묶음
+    cell = page.split('aria-label="10월 5일, 작업 3건"')[1].split("</td>")[0]
+    assert 'class="calsum__warn"' in cell  # 같은 곳 같은 시간 겹침
 
 
 @pytest.mark.parametrize("query", ["month=2026-13", "month=abc", "day=2026-02-30", "day=x"])

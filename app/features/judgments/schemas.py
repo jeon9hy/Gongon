@@ -230,27 +230,29 @@ class CountTile:
 class DayTypeItem:
     """날 패널 묶음을 펼쳤을 때의 작업 한 건."""
 
+    item_id: int
+    work_type: str
+    where: str  # 업체별 묶음이면 위치, 위치별 묶음이면 업체
     time_text: str
-    location: str
-    company: str
     verdict: str | None
     href: str
 
 
 @dataclass(frozen=True, slots=True)
-class DayTypeRow:
-    """7일 공온지수 날 패널의 공종 한 줄(공종별로 모아 가장 높은 판정 단계).
+class DayGroupRow:
+    """7일 공온지수 날 패널의 묶음 한 줄(D-085): 업체별(현장 공종 단위) 또는 위치별(동·층).
 
-    2건 이상이면 눌러서 하위 작업(items)을 펼친다. 중지 검토가 있으면 처음부터 펼친다(D-085).
+    2건 이상이면 눌러서 하위 작업(items)을 펼친다. 중지 검토가 있으면 처음부터 펼친다.
     """
 
-    work_type: str
-    time_text: str  # "07:00-17:00"(그날 그 공종의 가장 이른 시작~가장 늦은 끝)
-    companies_text: str  # "우진철강 외 1"
+    label: str  # 업체 이름 · 동·층
+    sub: str  # 업체별: 업종 메모, 위치별: "대성골조 외 1"
+    time_text: str  # 묶음의 가장 이른 시작~가장 늦은 끝
     count: int
-    verdict: str | None  # 판정 4단계 이름, None은 판정 전·점수 없음
-    href: str  # 가장 높은 단계 판정의 상세. 판정이 없으면 작업 일정 그날
-    items: tuple[DayTypeItem, ...] = ()  # 시작 시각 순
+    verdict: str | None  # 하위 작업 중 가장 높은 단계. None은 판정 전
+    href: str  # 그 작업의 판정 상세. 판정이 없으면 작업 일정 그날
+    items: tuple[DayTypeItem, ...]  # 시작 시각 순
+    unassigned: bool = False  # 업체 미정 묶음(점검 문제)
 
 
 @dataclass(frozen=True, slots=True)
@@ -262,9 +264,10 @@ class DayPanel:
     go: int
     check: int
     stop: int
-    rows: tuple[DayTypeRow, ...]
+    rows: tuple[DayGroupRow, ...]  # 업체별
     href: str  # 공온 판정(대시보드)
     add_href: str = ""  # 같은 현장·날짜의 작업 추가 모달
+    place_rows: tuple[DayGroupRow, ...] = ()  # 위치별(동·층)
 
 
 @dataclass(frozen=True, slots=True)

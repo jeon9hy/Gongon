@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, verdict_badge, verdict_class, site_menu, refresh_button %}
+{% from "_macros.html" import icon, verdict_badge, verdict_class, site_menu, refresh_button, groupseg %}
 {% block title %}홈{% endblock %}
 {% block content %}
 
@@ -109,8 +109,8 @@
 </section>
 
 {# 7일 공온지수: 날짜를 누르거나 좌우로 밀면 그날 판정 요약이 바뀐다. #}
-{% set others = namespace(by_type={}) %}
-{% for w in tomorrow_board.items %}{% for x in w.issues if x.key != "weather" %}{% set _ = others.by_type.update({w.work_type: (others.by_type.get(w.work_type, []) + [x.label]) | unique | list}) %}{% endfor %}{% endfor %}
+{% set others = namespace(by_item={}) %}
+{% for w in tomorrow_board.items %}{% for x in w.issues if x.key != "weather" %}{% set _ = others.by_item.update({w.item_id: (others.by_item.get(w.item_id, []) + [x.label]) | unique | list}) %}{% endfor %}{% endfor %}
 <section class="hsec hsec--tomorrow reveal" aria-labelledby="tomorrow-title" style="--i: 1" data-weekslides>
 <div class="hsec__head">
 <h2 class="hsec__title" id="tomorrow-title">7일 공온지수 <span data-slide-label>{{ view.day_panels[0].label if view.day_panels else "" }}</span></h2>
@@ -134,38 +134,37 @@
 <a class="vtile vtile--{{ key }}{% if count %} is-on{% endif %}" href="{{ p.href }}"><span class="vpill vpill--{{ key }}"><i></i>{{ label }}</span><span class="vtile__num">{{ count }}<small>건</small></span></a>
 {% endfor %}
 </div>
-<div class="jobs__head jobs__head--types" aria-hidden="true"><span>작업</span><span>시간</span><span>업체</span><span>건수</span><span>판정</span></div>
-<ul class="jobs">
 {% set first_panel = loop.first %}
-{% for r in p.rows %}
-{% set warn = others.by_type.get(r.work_type, []) if first_panel else [] %}
-{% set state %}<span class="job__state">{% if warn %}<span class="job__warn" title="{{ warn | join(', ') }}" aria-label="확인할 것: {{ warn | join(', ') }}">!</span>{% else %}<span class="job__warn job__warn--none" aria-hidden="true"></span>{% endif %}{% if r.verdict %}{{ verdict_badge(r.verdict) }}{% else %}<span class="badge badge--unknown">판정 전</span>{% endif %}</span>{% endset %}
-{% set what %}<span class="job__what"><span class="job__dot" style="--c: {{ work_color(r.work_type) }}"></span><strong>{{ r.work_type }}</strong></span>
-<span class="job__time">{{ r.time_text }}</span>
-<span class="job__who">{{ r.companies_text }}</span>{% endset %}
-{% if r.items | length > 1 %}
-{# 2건 이상은 눌러서 하위 작업을 펼친다. 중지 검토가 있으면 처음부터 펼친다(D-085) #}
+{{ groupseg() }}
+{% for mode, rows in [("company", p.rows), ("place", p.place_rows)] %}
+<div data-groupview="{{ mode }}">
+<div class="jobs__head jobs__head--types" aria-hidden="true">{% if mode == "company" %}<span>업체</span><span>시간</span><span>업종</span>{% else %}<span>위치</span><span>시간</span><span>업체</span>{% endif %}<span>건수</span><span>판정</span></div>
+<ul class="jobs">
+{% for r in rows %}
+{# 묶음 줄을 누르면 하위 작업이 펼쳐진다. 중지 검토가 있으면 처음부터 펼친다(D-085) #}
+{% set warn = namespace(labels=[]) %}{% if first_panel %}{% for s in r.items %}{% set warn.labels = (warn.labels + others.by_item.get(s.item_id, [])) | unique | list %}{% endfor %}{% endif %}
 <li><details class="jobgroup"{% if r.verdict == "중지 검토" %} open{% endif %}>
-<summary class="job job--type">{{ what }}
+<summary class="job job--type{% if r.unassigned %} job--unassigned{% endif %}">
+<span class="job__what"><strong>{{ r.label }}</strong></span>
+<span class="job__time">{{ r.time_text }}</span>
+<span class="job__who">{{ r.sub }}</span>
 <span class="job__count">{{ r.count }}건 {{ icon("chevron-down", 14, 2.2) }}</span>
-{{ state }}</summary>
+<span class="job__state">{% if warn.labels %}<span class="job__warn" title="{{ warn.labels | join(', ') }}" aria-label="확인할 것: {{ warn.labels | join(', ') }}">!</span>{% else %}<span class="job__warn job__warn--none" aria-hidden="true"></span>{% endif %}{% if r.verdict %}{{ verdict_badge(r.verdict) }}{% else %}<span class="badge badge--unknown">판정 전</span>{% endif %}</span>
+</summary>
 <ul class="jobs jobs--sub">
 {% for s in r.items %}<li><a class="job job--type job--sub" href="{{ s.href }}">
-<span class="job__what">{{ s.location or "위치 없음" }}</span>
+<span class="job__what"><span class="job__dot" style="--c: {{ work_color(s.work_type) }}"></span>{{ s.work_type }}</span>
 <span class="job__time">{{ s.time_text }}</span>
-<span class="job__who">{{ s.company }}</span>
+<span class="job__who">{{ s.where }}</span>
 <span class="job__count" aria-hidden="true"></span>
 <span class="job__state">{% if s.verdict %}{{ verdict_badge(s.verdict) }}{% else %}<span class="badge badge--unknown">판정 전</span>{% endif %}</span>
 </a></li>{% endfor %}
 </ul>
 </details></li>
-{% else %}
-<li><a class="job job--type" href="{{ r.href }}">{{ what }}
-<span class="job__count">{{ r.count }}건</span>
-{{ state }}</a></li>
-{% endif %}
 {% endfor %}
 </ul>
+</div>
+{% endfor %}
 {% else %}
 <p class="hsec__empty">{% if loop.first %}내일 일정이 비어 있어요.{% else %}이날은 등록한 작업이 없어요.{% endif %}{% if can_add %} <a href="{{ p.add_href }}">{% if loop.first %}미리 추가할까요?{% else %}작업을 추가할까요?{% endif %}</a>{% endif %}</p>
 {% endif %}

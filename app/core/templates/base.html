@@ -9,6 +9,10 @@
 <link rel="icon" type="image/png" href="/static/brand/favicon.png">
 <link rel="apple-touch-icon" href="/static/brand/logo.png">
 <link rel="stylesheet" href="{{ static_url('gongon.css') }}">
+<script data-boot>
+// 묶어 보기(업체별·위치별, D-085)를 그리기 전에 정해 깜빡임을 막는다. 저장이 막혀도 업체별로 보인다.
+try { if (localStorage.getItem("gongon.group") === "place") document.documentElement.dataset.group = "place"; } catch (e) {}
+</script>
 </head>
 <body{% block body_class %}{% endblock %}>
 <a class="skip-link" href="#main">본문으로 바로 가기</a>
@@ -138,6 +142,20 @@ if (FLASH_PARAMS.some((key) => flashUrl.searchParams.has(key))) {
     if (e.target.closest("[data-close-top]")) window.parent.document.getElementById("site-dialog")?.close();
   });
 })();
+// 묶어 보기 전환: 누른 값을 html[data-group]에 두고 이 브라우저에 기억한다(D-085).
+const syncGroupseg = () => {
+  const mode = document.documentElement.dataset.group === "place" ? "place" : "company";
+  document.querySelectorAll("[data-groupseg]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.groupseg === mode)));
+};
+document.addEventListener("click", (e) => {
+  const seg = e.target.closest("[data-groupseg]");
+  if (!seg) return;
+  if (seg.dataset.groupseg === "place") document.documentElement.dataset.group = "place";
+  else delete document.documentElement.dataset.group;
+  try { localStorage.setItem("gongon.group", seg.dataset.groupseg); } catch (err) {}
+  syncGroupseg();
+});
+syncGroupseg();
 // 모달 공통: [data-open-dialog]로 열고, 닫기 버튼·바깥 누름으로 닫는다. 오류로 다시 그린 화면은 data-open을 연다.
 document.addEventListener("click", (e) => {
   const opener = e.target.closest("[data-open-dialog]");

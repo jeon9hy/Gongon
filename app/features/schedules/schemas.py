@@ -135,8 +135,9 @@ class CalendarDay:
     in_period: bool  # 현장 작업 기간 안
     selected: bool
     addable: bool  # 작업을 추가할 수 있는 날(오늘 이후·작업 기간 안)
-    items: tuple[WorkItemRecord, ...]  # 칸에 보이는 작업(최대 CELL_ITEMS개)
-    more: int  # 칸에 다 못 보인 작업 수
+    # 칸에는 점 대신 건수와 챙길 것만 보인다(D-085). 판정 단계는 화면에서 item_ids로 찾는다.
+    item_ids: tuple[int, ...] = ()
+    warn: bool = False  # 업체 미지정·같은 곳 같은 시간 겹침이 있다(공온 점검과 같은 기준)
     holiday: str | None = None  # 공휴일 이름(특일 정보, 대체공휴일 포함)
 
 
@@ -150,6 +151,19 @@ class DayDetail:
     can_add: bool  # 오늘 이후·작업 기간 안이면 작업을 추가할 수 있다
     note: str | None  # 추가할 수 없는 이유 등
     items: tuple[WorkItemRecord, ...]
+    by_company: tuple["DetailGroup", ...] = ()  # 업체별 묶음(D-085)
+    by_place: tuple["DetailGroup", ...] = ()  # 위치별(동·층) 묶음
+
+
+@dataclass(frozen=True, slots=True)
+class DetailGroup:
+    """날 상세의 묶음 하나: 업체(업종 메모) 또는 동·층."""
+
+    label: str
+    sub: str
+    items: tuple[WorkItemRecord, ...]  # 시작 시각 순
+    unassigned: bool = False  # 업체 미정 묶음
+    warn_ids: frozenset[int] = frozenset()  # 그중 업체 미지정·겹침이 있는 작업
 
 
 @dataclass(frozen=True, slots=True)

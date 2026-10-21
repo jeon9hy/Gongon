@@ -47,6 +47,14 @@
 <span class="badge badge--{{ verdict_class[label] }}{% if large %} badge--lg{% endif %}">{{ label }}</span>
 {%- endmacro %}
 
+{# 업체별·위치별 묶어 보기 전환(D-085). 고른 값은 이 브라우저에 남고 모든 화면에 같이 쓴다(base.html). #}
+{% macro groupseg() -%}
+<div class="groupseg" role="group" aria-label="묶어 보기">
+<button type="button" class="groupseg__btn" data-groupseg="company" aria-pressed="true">업체별</button>
+<button type="button" class="groupseg__btn" data-groupseg="place" aria-pressed="false">위치별</button>
+</div>
+{%- endmacro %}
+
 {% macro refresh_button(checked_short, title="새 예보로 다시 점검") -%}
 <button type="submit" class="refresh__btn" title="{{ title }}">
 <span class="logo-toggle" aria-hidden="true"></span>
