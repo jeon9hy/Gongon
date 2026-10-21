@@ -140,10 +140,11 @@ def register_participant(
     joined_on: Annotated[str, Form()] = "",
     confirm_same_name: Annotated[str, Form()] = "",
     return_to: Annotated[str, Form()] = "",
+    work_trades: Annotated[list[str] | None, Form()] = None,
 ) -> Response:
     name = _site_name(session, site_id, scope)
     form = ParticipantForm(organization_name, category, trade_note, business_no, joined_on,
-                           confirm_same_name == "1")  # fmt: skip
+                           confirm_same_name == "1", tuple(work_trades or ()))  # fmt: skip
     errors, same_names = service.register_participant(session, site_id, user, form)
     if errors:
         return _failed(request, session, user, site_id, name, errors,
@@ -166,9 +167,11 @@ def edit_participant(
     trade_note: Annotated[str, Form()] = "",
     business_no: Annotated[str, Form()] = "",
     joined_on: Annotated[str, Form()] = "",
+    work_trades: Annotated[list[str] | None, Form()] = None,
 ) -> Response:
     name = _site_name(session, site_id, scope)
-    form = ParticipantForm("", category, trade_note, business_no, joined_on)
+    form = ParticipantForm("", category, trade_note, business_no, joined_on,
+                           work_trades=tuple(work_trades or ()))  # fmt: skip
     errors = service.edit_participant(session, site_id, user, participant_id, form)
     if errors:
         return _failed(request, session, user, site_id, name, errors)

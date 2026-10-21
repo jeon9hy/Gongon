@@ -6,6 +6,8 @@ from pathlib import Path
 from fastapi.templating import Jinja2Templates
 from jinja2 import FileSystemLoader
 
+from app.core.work_kinds import WORK_TRADES
+
 CORE_DIR = Path(__file__).parent
 STATIC_DIR = CORE_DIR / "static"
 
@@ -37,6 +39,8 @@ def work_color(label: str) -> str:
 
 
 templates.env.globals["work_color"] = work_color
+# 업체가 맡는 업종 고르기(D-088): (이름, 법령 업종인가)
+templates.env.globals["work_trade_options"] = tuple((t.name, t.legal) for t in WORK_TRADES)
 
 
 def as_time(hm: str) -> time:

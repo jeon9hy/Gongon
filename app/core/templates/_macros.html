@@ -101,3 +101,26 @@
 </form>
 </dialog>
 {%- endmacro %}
+
+{# 맡은 업종 고르기(D-088): 업체 등록·수정 폼 안의 겹친 모달. 체크 상자가 폼과 함께 전송된다 #}
+{% macro trade_pick(dlg_id, selected=()) -%}
+<div class="field tpick" data-tpick>
+<span class="fieldhead">맡은 업종 <small>여러 개 선택</small></span>
+<div class="tpick__row">
+<ul class="wsel__chips" data-tpick-chips>{% for name in selected %}<li class="wsel__chip">{{ name }}</li>{% else %}<li class="wsel__empty">아직 고르지 않았어요</li>{% endfor %}</ul>
+<button type="button" class="btn btn--sm tpick__open" data-open-dialog="{{ dlg_id }}">{{ icon("plus", 14, 2.2) }} 업종 고르기</button>
+</div>
+<dialog class="modal tpick__dlg" id="{{ dlg_id }}" aria-labelledby="{{ dlg_id }}-title">
+<div class="modal__box">
+<div class="modal__head"><h2 class="h2" id="{{ dlg_id }}-title">맡은 업종</h2><button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
+<ul class="tpick__list">
+{% set sep = namespace(done=false) %}{% for name, legal in work_trade_options %}
+{% if not legal and not sep.done %}{% set sep.done = true %}<li class="wpick__sep">법령 업종 밖</li>{% endif %}
+<li><label class="checkline"><input type="checkbox" name="work_trades" value="{{ name }}"{% if name in selected %} checked{% endif %}> {{ name }}</label></li>
+{% endfor %}
+</ul>
+<div class="modal__actions"><button class="btn btn--accent" type="button" data-close>선택 완료</button></div>
+</div>
+</dialog>
+</div>
+{%- endmacro %}

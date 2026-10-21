@@ -44,7 +44,7 @@ C01 [공개 조사](research/C01-public-research.md)의 설계 가정 A1~A7과 �
 
 | 테이블 | 필드 | 규칙 |
 | --- | --- | --- |
-| project_participants(확장) | category(`subcontractor`/`supplier`/`equipment`/`supervision`, 원청은 NULL), trade_note(맡은 공종 60), business_no(선택 20, 검증 안 함), joined_on, ended_at, ended_by_user_id, created_by_user_id | 원청 조정자만 등록·수정·종료·재개. 종료한 업체는 작업 실행 업체·조치 담당 선택에서 빠지고 기존 연결은 유지. 원청은 종료 불가 |
+| project_participants(확장) | category(`subcontractor`/`supplier`/`equipment`/`supervision`, 원청은 NULL), trade_note(공종 메모 60), work_trades(맡은 업종 목록, `app/core/work_kinds.WORK_TRADE_NAMES`의 이름만, 목록 순서·중복 없음, 기본 빈 목록, D-088), business_no(선택 20, 검증 안 함), joined_on, ended_at, ended_by_user_id, created_by_user_id | 원청 조정자만 등록·수정·종료·재개. 종료한 업체는 작업 실행 업체·조치 담당 선택에서 빠지고 기존 연결은 유지. 원청은 종료 불가 |
 | organizations | 명부로 만든 업체도 organizations 행을 만든다(사용자 0명 허용) | 같은 현장에 같은 이름 업체가 있으면 경고하고 조정자가 고른다(자동 병합 없음) |
 | participant_contacts(새) | id, site_id, participant_id(복합 FK), name(40), job_title(40), phone(30, 선택), memo(200), user_id(NULL=계정 미연결), created_at, created_by_user_id, removed_at | 같은 현장 참여자만 조회. 열람자에게는 phone·memo 숨김. user_id 연결은 그 사용자의 회사 = 업체 회사일 때만, 현장당 사용자 1명 1연결 |
 

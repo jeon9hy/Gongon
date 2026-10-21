@@ -93,6 +93,7 @@ class ParticipantView:
     is_ended: bool
     members: tuple[MemberView, ...]
     contacts: tuple[ContactView, ...]
+    work_trades: tuple[str, ...] = ()  # 맡은 업종(D-088)
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,6 +117,7 @@ class ParticipantOption:
     participant_id: int
     name: str
     group_label: str  # 원청·협력업체·자재 공급·장비 임대·감리·CM
+    work_trades: tuple[str, ...] = ()  # 맡은 업종(D-088)
 
 
 @dataclass(frozen=True, slots=True)
@@ -126,6 +128,7 @@ class ParticipantForm:
     business_no: str = ""
     joined_on: str = ""
     confirm_same_name: bool = False  # 같은 이름 업체가 있어도 따로 등록
+    work_trades: tuple[str, ...] = ()  # 맡은 업종(D-088), 업종 목록의 이름만
 
 
 @dataclass(frozen=True, slots=True)

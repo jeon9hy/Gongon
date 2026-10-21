@@ -15,6 +15,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.db import get_session
+from app.core.work_kinds import WORK_TRADE_NAMES
 from app.features.auth import service as auth_service
 from app.features.auth.schemas import CurrentUser, UserInfo
 from app.features.teams import repository
@@ -179,7 +180,12 @@ def participant_choices(session: Session, site_id: int) -> tuple[ParticipantOpti
     participants = [p for p in repository.participants(session, site_id) if p.ended_at is None]
     names = auth_service.organization_names(session, (p.organization_id for p in participants))
     options = [
-        ParticipantOption(p.id, names.get(p.organization_id, "이름 없음"), _group_label(p))
+        ParticipantOption(
+            p.id,
+            names.get(p.organization_id, "이름 없음"),
+            _group_label(p),
+            tuple(p.work_trades or ()),
+        )
         for p in participants
     ]
     order = {label: i for i, label in enumerate(("원청", *CATEGORY_LABELS.values()))}
@@ -196,11 +202,11 @@ def company_names(session: Session, site_ids: list[int]) -> dict[int, str]:
 
 
 def company_trades(session: Session, site_ids: list[int]) -> dict[int, str]:
-    """참여 업체 ID → 업종 메모(없으면 원청·협력업체 같은 구분). 업체별 묶음 줄에 쓴다(D-085)."""
+    """참여 업체 ID → 맡은 업종(D-088), 없으면 업종 메모·구분. 업체별 묶음 줄에 쓴다(D-085)."""
     if not site_ids:
         return {}
     return {
-        p.id: p.trade_note or _group_label(p)
+        p.id: " · ".join(p.work_trades or ()) or p.trade_note or _group_label(p)
         for p in repository.participants_for_sites(session, site_ids)
     }
 
@@ -509,6 +515,8 @@ def _participant_errors(
         errors.append(f"업체 이름은 {auth_service.ORGANIZATION_MAX}자 이내로 입력하세요.")
     if not prime and form.category not in CATEGORY_LABELS:
         errors.append("업체 구분을 고르세요.")
+    if any(name not in WORK_TRADE_NAMES for name in form.work_trades):
+        errors.append("업종은 목록에서 골라 주세요.")
     if len(form.trade_note.strip()) > 60:
         errors.append("맡은 공종은 60자 이내로 입력하세요.")
     if len(form.business_no.strip()) > 20:
@@ -521,6 +529,8 @@ def _participant_errors(
 def _apply_participant_values(participant: ProjectParticipant, form: ParticipantForm) -> None:
     participant.category = form.category
     participant.trade_note = form.trade_note.strip() or None
+    picked = set(form.work_trades)
+    participant.work_trades = [name for name in WORK_TRADE_NAMES if name in picked]  # 목록 순서
     participant.business_no = form.business_no.strip() or None
     participant.joined_on = _date(form.joined_on)
 
@@ -632,6 +642,7 @@ def build_members_view(
             is_prime=p.kind == "prime",
             category="" if p.kind == "prime" else (p.category or "subcontractor"),
             trade_note=p.trade_note or "",
+            work_trades=tuple(p.work_trades or ()),
             business_no=(p.business_no or "") if can_manage else None,
             joined_on="" if p.joined_on is None else p.joined_on.isoformat(),
             status_text=_status_text(p),

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, site_menu, verdict_badge, groupseg %}
+{% from "_macros.html" import icon, site_menu, verdict_badge, groupseg, trade_pick %}
 {% block title %}작업 일정{% endblock %}
 {% block schedule_tools %}
 {% if view.site_id is not none and not view.all_mode %}{{ site_menu(view.site_id, view.site_name, can_delete=view.site_id in manageable) }}{% endif %}
@@ -258,8 +258,8 @@
 <label class="field">업체 이름<input type="text" name="organization_name" maxlength="60" required></label>
 <div class="modal__grid">
 <label class="field">구분<select name="category">{% for value, label in categories.items() %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></label>
-<label class="field">맡은 공종<input type="text" name="trade_note" maxlength="60" placeholder="예: 철근콘크리트"></label>
 </div>
+{{ trade_pick("quick-trades") }}
 <div class="modal__actions"><button class="btn btn--soft" type="button" data-close>취소</button><button class="btn btn--accent" type="submit">등록</button></div>
 </form>
 </div>
@@ -302,12 +302,15 @@
 <div class="wpick__cols">
 <div class="wpick__col" data-col="1">
 <p class="wpick__colhead">업종</p>
+<p class="wpick__filter" data-wpick-note hidden></p>
 <ul class="wpick__list">
 {% set sep = namespace(done=false) %}{% for t in view.work_picker %}
 {% if not t.legal and t.key != "recent" and not sep.done %}{% set sep.done = true %}<li class="wpick__sep">법령 업종 밖</li>{% endif %}
 <li><button type="button" class="wpick__row" data-trade="{{ t.key }}" aria-pressed="false"><span class="wpick__name">{{ t.name }}</span><span class="wpick__count" data-wcount="{{ t.key }}"></span>{{ icon("chevron-right", 16, 2.2) }}</button></li>
 {% endfor %}
 </ul>
+{# 실행 업체가 맡은 업종만 먼저 보인다(D-088). 거르기일 뿐 다른 업종 작업도 고를 수 있다 #}
+<button type="button" class="linkbtn wpick__all" data-wpick-all hidden>모든 업종 보기</button>
 </div>
 <div class="wpick__col" data-col="2">
 <p class="wpick__colhead">업무분야</p>
@@ -353,7 +356,7 @@
 <div class="field"><span class="fieldhead"><label for="add-performer">실행 업체</label> <button type="button" class="linkbtn" data-open-dialog="quick-participant">{{ icon("building", 14) }} 업체 등록</button></span>
 <select id="add-performer" name="performing_participant_id" required>
 <option value="">업체 고르기</option>
-{% set ns = namespace(g="") %}{% for p in view.participants %}{% if p.group_label != ns.g %}{% if ns.g %}</optgroup>{% endif %}<optgroup label="{{ p.group_label }}">{% set ns.g = p.group_label %}{% endif %}<option value="{{ p.participant_id }}"{% if p.selected %} selected{% endif %}>{{ p.name }}</option>{% endfor %}{% if ns.g %}</optgroup>{% endif %}
+{% set ns = namespace(g="") %}{% for p in view.participants %}{% if p.group_label != ns.g %}{% if ns.g %}</optgroup>{% endif %}<optgroup label="{{ p.group_label }}">{% set ns.g = p.group_label %}{% endif %}<option value="{{ p.participant_id }}"{% if p.selected %} selected{% endif %}{% if p.trade_keys %} data-trades="{{ p.trade_keys }}"{% endif %}>{{ p.name }}</option>{% endfor %}{% if ns.g %}</optgroup>{% endif %}
 </select>
 </div>
 </div>
@@ -605,10 +608,33 @@
         wpick.dataset.step = wpick.dataset.step === "3" && fieldCount(trade) > 1 ? "2" : "1";
       }
     });
-    // 열 때: 고른 작업이 있는 업종(없으면 첫 업종)을 펼치고, 좁은 화면은 업종 목록부터.
+    // 실행 업체가 맡은 업종만 보이기(D-088). '모든 업종 보기'로 풀고, 업체를 바꾸면 다시 거른다.
+    const performer = form.elements.performing_participant_id;
+    const note = wpick.querySelector("[data-wpick-note]");
+    const allBtn = wpick.querySelector("[data-wpick-all]");
+    let showAll = false;
+    const applyFilter = () => {
+      const opt = performer?.selectedOptions[0];
+      const keys = (opt?.dataset.trades || "").split(" ").filter(Boolean);
+      const on = keys.length > 0 && !showAll;
+      wpick.querySelectorAll("[data-trade]").forEach((b) => {
+        b.closest("li").hidden = on && b.dataset.trade !== "recent" && !keys.includes(b.dataset.trade);
+      });
+      wpick.querySelectorAll(".wpick__sep").forEach((s) => { s.hidden = on; });
+      note.hidden = !on;
+      if (on) note.textContent = `${opt.textContent} 업종만 보여요`;
+      allBtn.hidden = !keys.length;
+      allBtn.textContent = showAll ? `${opt?.textContent} 업종만 보기` : "모든 업종 보기";
+      return on ? keys : [];
+    };
+    performer?.addEventListener("change", () => { showAll = false; applyFilter(); });
+    allBtn.addEventListener("click", () => { showAll = !showAll; applyFilter(); });
+    // 열 때: 고른 작업이 있는 업종(보이는 것만), 없으면 업체의 첫 업종·첫 업종을 펼치고, 좁은 화면은 업종 목록부터.
     form.querySelector(".wsel__open").addEventListener("click", () => {
-      const first = boxes.find((b) => b.checked)?.closest("[data-kinds]")?.dataset.kinds;
-      showTrade(first ? first.split("-f")[0] : wpick.querySelector("[data-trade]").dataset.trade);
+      const keys = applyFilter();
+      const visible = [...wpick.querySelectorAll("[data-trade]")].filter((b) => !b.closest("li").hidden).map((b) => b.dataset.trade);
+      const first = boxes.find((b) => b.checked && visible.includes(b.closest("[data-kinds]").dataset.kinds.split("-f")[0]))?.closest("[data-kinds]").dataset.kinds;
+      showTrade(first ? first.split("-f")[0] : keys[0] || visible[0]);
       if (first) showField(first);
       wpick.dataset.step = "1";
     });

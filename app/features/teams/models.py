@@ -1,6 +1,7 @@
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, ForeignKeyConstraint, Integer, String, func
+from sqlalchemy import Date, DateTime, ForeignKey, ForeignKeyConstraint, Integer, String, func, text
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -19,6 +20,10 @@ class ProjectParticipant(Base):
     # 명부(C04-9, D-066). 원청은 category NULL·종료 불가. 기존 협력업체 행은 category NULL.
     category: Mapped[str | None] = mapped_column(String(20))
     trade_note: Mapped[str | None] = mapped_column(String(60))
+    # 맡은 업종(D-088): 작업 고르기 업종 목록의 이름. 작업 고르기를 이 업종부터 보인다
+    work_trades: Mapped[list[str]] = mapped_column(
+        ARRAY(String(60)), default=list, server_default=text("'{}'::varchar[]")
+    )
     business_no: Mapped[str | None] = mapped_column(String(20))  # 선택 입력, 검증하지 않는다
     joined_on: Mapped[date | None] = mapped_column(Date)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

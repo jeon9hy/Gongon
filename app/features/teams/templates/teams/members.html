@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon %}
+{% from "_macros.html" import icon, trade_pick %}
 {% block title %}참여 업체 · {{ view.site_name }}{% endblock %}
 {% block content %}
 
@@ -32,7 +32,7 @@
 <section class="card card--tight roster{% if p.is_ended %} roster--ended{% endif %}" aria-label="{{ p.organization_name }}">
 <div class="roster__head">
 <h2 class="h2">{{ p.organization_name }} <span class="tag">{{ p.kind_label }}</span>{% if p.is_ended %} <span class="tag tag--unknown">참여 종료</span>{% endif %}</h2>
-<p class="small muted">{{ p.status_text }}{% if p.trade_note %} · {{ p.trade_note }}{% endif %}{% if p.business_no %} · 사업자 {{ p.business_no }}{% endif %}</p>
+<p class="small muted">{{ p.status_text }}{% if p.work_trades %} · {{ p.work_trades | join(" · ") }}{% endif %}{% if p.trade_note %} · {{ p.trade_note }}{% endif %}{% if p.business_no %} · 사업자 {{ p.business_no }}{% endif %}</p>
 </div>
 
 <h3 class="roster__label small muted">담당자</h3>
@@ -120,8 +120,9 @@
 <select name="category">{% for o in view.category_options %}<option value="{{ o.value }}"{% if o.value == p.category %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
 </label>
 {% endif %}
+{{ trade_pick("dlg-trades-" ~ p.participant_id, p.work_trades) }}
 <div class="modal__grid">
-<label class="field">맡은 공종<input type="text" name="trade_note" maxlength="60" value="{{ p.trade_note }}"></label>
+<label class="field">공종 메모<input type="text" name="trade_note" maxlength="60" value="{{ p.trade_note }}" placeholder="선택 · 예: 지하 골조"></label>
 <label class="field">참여 시작일<input type="date" name="joined_on" value="{{ p.joined_on }}"></label>
 </div>
 <label class="field">사업자번호<input type="text" name="business_no" maxlength="20" value="{{ p.business_no or '' }}" placeholder="선택"></label>
@@ -160,8 +161,9 @@
 <select name="category">{% for o in view.category_options %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
 </label>
 </div>
+{{ trade_pick("dlg-trades-new", view.participant_form.work_trades) }}
 <div class="modal__grid">
-<label class="field">맡은 공종<input type="text" name="trade_note" value="{{ view.participant_form.trade_note }}" maxlength="60" placeholder="예: 철근콘크리트"></label>
+<label class="field">공종 메모<input type="text" name="trade_note" value="{{ view.participant_form.trade_note }}" maxlength="60" placeholder="선택 · 예: 지하 골조"></label>
 <label class="field">참여 시작일<input type="date" name="joined_on" value="{{ view.participant_form.joined_on }}"></label>
 </div>
 <label class="field">사업자번호<input type="text" name="business_no" value="{{ view.participant_form.business_no }}" maxlength="20" placeholder="선택"></label>

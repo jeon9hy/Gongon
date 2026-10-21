@@ -2558,3 +2558,14 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .grp > .grp__jobs { padding: 4px 0; border-top: 1px solid var(--line-soft); background: var(--surface); }
 .grp > .grp__jobs .job { background: transparent; }
 .hsec--today .grps + .jobs__head { margin-top: 12px; }
+
+/* 맡은 업종(D-088): 업체 폼의 업종 고르기, 작업 고르기의 업체 업종 거르기 */
+.tpick__row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.tpick__row .wsel__chips { flex: 1 1 auto; }
+.tpick__list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; max-height: min(60vh, 520px); overflow-y: auto; }
+.tpick__list .checkline { padding: 8px 6px; border-radius: var(--radius-sm); }
+.tpick__list .checkline:hover { background: var(--surface); }
+.wpick__filter { margin: 0 0 6px; padding: 6px 10px; border-radius: var(--radius-sm); background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 600; }
+.wpick__all { margin: 8px 0 0 10px; }
+.wpick__all[hidden], .wpick__filter[hidden] { display: none; }
+.tpick__open { flex: 0 0 auto; }

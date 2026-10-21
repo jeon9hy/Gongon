@@ -169,6 +169,15 @@ document.addEventListener("click", (e) => {
   if (e.target.matches?.("dialog.modal")) e.target.close();
 });
 document.querySelectorAll("dialog.modal[data-open]").forEach((d) => { if (!d.open) d.showModal(); });
+// 맡은 업종 고르기(D-088): 고른 업종을 폼의 토큰으로 다시 그린다
+document.addEventListener("change", (e) => {
+  const box = e.target.closest?.("[data-tpick]");
+  if (!box || e.target.name !== "work_trades") return;
+  const names = [...box.querySelectorAll("input[name=work_trades]:checked")].map((b) => b.value);
+  const items = names.map((n) => { const li = document.createElement("li"); li.className = "wsel__chip"; li.textContent = n; return li; });
+  if (!items.length) { const li = document.createElement("li"); li.className = "wsel__empty"; li.textContent = "아직 고르지 않았어요"; items.push(li); }
+  box.querySelector("[data-tpick-chips]").replaceChildren(...items);
+});
 // 필수 입력: 비워 두고 보내면 칸 아래에 빨간 안내를 띄운다(브라우저 기본 말풍선 대신).
 // 문구는 라벨에서 만든다: 받침이 있으면 '을', 없으면 '를'. 고르는 칸은 '골라 주세요'.
 const fieldName = (input) => {

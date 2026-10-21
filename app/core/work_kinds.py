@@ -99,3 +99,11 @@ WORK_TRADES = (
 WORK_KIND_NAMES = tuple(
     dict.fromkeys(kind for trade in WORK_TRADES for field in trade.fields for kind in field.kinds)
 )
+
+# 업체가 맡는 업종으로 고를 수 있는 이름(D-088). 작업 고르기의 업종 칸과 같은 순서·글자.
+WORK_TRADE_NAMES = tuple(trade.name for trade in WORK_TRADES)
+
+
+def trade_key(name: str) -> str | None:
+    """업종 이름 → 작업 고르기의 업종 칸 키(t0, t1…). 목록에 없으면 None."""
+    return f"t{WORK_TRADE_NAMES.index(name)}" if name in WORK_TRADE_NAMES else None

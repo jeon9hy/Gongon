@@ -77,6 +77,7 @@ class ParticipantChoice:
     name: str  # 회사 이름
     selected: bool = False
     group_label: str = ""  # 원청·협력업체·자재 공급·장비 임대·감리·CM(선택 목록 묶음)
+    trade_keys: str = ""  # 맡은 업종의 작업 고르기 칸 키(공백 구분, D-088). 비면 거르지 않음
 
 
 @dataclass(frozen=True, slots=True)

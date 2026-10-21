@@ -8,7 +8,7 @@ from datetime import date, datetime, time, timedelta
 from sqlalchemy.orm import Session
 
 from app.core.rules import basis_status, judges_weather
-from app.core.work_kinds import WORK_KIND_NAMES, WORK_TRADES
+from app.core.work_kinds import WORK_KIND_NAMES, WORK_TRADES, trade_key
 from app.features.auth import service as auth_service
 from app.features.auth.schemas import CurrentUser
 from app.features.schedules import repository
@@ -226,6 +226,7 @@ def build_view(
                 c.name,
                 str(c.participant_id) == shown_form.performing_participant_id,
                 c.group_label,
+                " ".join(k for name in c.work_trades if (k := trade_key(name))),
             )
             for c in choices
         ),
