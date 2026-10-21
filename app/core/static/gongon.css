@@ -2570,24 +2570,30 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .wpick__all[hidden], .wpick__filter[hidden] { display: none; }
 .tpick__open { flex: 0 0 auto; }
 
-/* 달력 칸(C04-34): 큰 건수 원 + 업체 색 막대. 원 테두리는 그날 가장 높은 판정(중지 검토 빨강·확인 필요 주황) */
-.calsum { flex-direction: column; align-items: center; justify-content: flex-end; gap: 7px; }
-.calring { position: relative; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 999px; border: 2.5px solid var(--line); background: var(--card); font-size: 15px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
-.calring--check { border-color: var(--verdict-check-mark); }
-.calring--stop { border-color: var(--verdict-stop-mark); background: var(--stop-soft); color: var(--stop-text); }
-.calring__warn { position: absolute; top: -5px; right: -7px; display: grid; place-items: center; width: 16px; height: 16px; border-radius: 999px; border: 2px solid var(--card); background: var(--verdict-check-mark); color: #fff; font-size: 9px; font-style: normal; font-weight: 800; }
-.cobar { display: flex; gap: 2px; width: 100%; height: 5px; }
-.cobar i { flex: 1 1 0; min-width: 4px; border-radius: 999px; background: var(--c); }
-.cobar .cobar__none { background: repeating-linear-gradient(135deg, var(--verdict-stop-mark) 0 2px, transparent 2px 4px); }
-.calring__key { display: inline-block; width: 11px; height: 11px; margin-right: 6px; border-radius: 999px; border: 2.5px solid; vertical-align: -1px; }
-.calring__key--stop { border-color: var(--verdict-stop-mark); background: var(--stop-soft); }
-.calring__key--check { border-color: var(--verdict-check-mark); }
+/* 달력 칸(D-089): 구글·네이버 달력 같은 업종 색 막대. 오른쪽 위에 챙길 판정·점검 표시 */
+.calevs { position: absolute; left: 6px; right: 6px; top: 34px; z-index: 1; display: flex; flex-direction: column; gap: 3px; pointer-events: none; }
+.calev { display: flex; align-items: center; gap: 4px; min-width: 0; height: 20px; padding: 0 6px 0 5px; border-left: 3px solid var(--c); border-radius: 4px; background: var(--bg); color: color-mix(in srgb, var(--c) 78%, #0E1E45); font-size: 11.5px; font-weight: 600; line-height: 1; }
+.calev__name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.calev b { flex: 0 0 auto; font-weight: 700; font-variant-numeric: tabular-nums; }
+.calev__more { padding-left: 4px; font-size: 11px; font-weight: 600; color: var(--muted); }
+.calmark { position: absolute; top: 9px; right: 8px; z-index: 1; display: flex; align-items: center; gap: 4px; pointer-events: none; }
+.calpill { display: inline-flex; align-items: center; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; line-height: 16px; white-space: nowrap; }
+.calpill--stop { background: var(--stop-soft); color: var(--stop-text); }
+.calpill--check { background: #FFF4DB; color: #8A5A00; }
+.legend--top .calpill { margin-right: 6px; }
 .colegend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 6px 0 0; padding: 0; list-style: none; font-size: 12px; font-weight: 600; color: var(--muted); }
 .colegend li { display: inline-flex; align-items: center; gap: 6px; }
-.colegend__dot { width: 10px; height: 10px; border-radius: 3px; background: var(--c); }
+.colegend__dot { width: 11px; height: 11px; border-radius: 3px; background: var(--bg); border: 1.5px solid var(--c); }
+.calcell.is-outside .calevs, .calcell.is-outside .calmark { opacity: 0.45; }
 @media (max-width: 760px) {
-  .calsum { gap: 4px; }
-  .calring { width: 26px; height: 26px; border-width: 2px; font-size: 12px; }
-  .calring__warn { width: 13px; height: 13px; font-size: 8px; top: -4px; right: -6px; }
-  .cobar { height: 4px; gap: 1px; }
+  /* 좁은 칸: 막대는 글자 없이 색 띠, 건수만 */
+  .calevs { left: 2px; right: 2px; top: 26px; gap: 2px; }
+  .calev { height: 14px; padding: 0 3px 0 2px; border-left-width: 2px; border-radius: 3px; font-size: 9px; justify-content: flex-end; }
+  .calev__name { display: none; }
+  .calev__more { padding: 0; font-size: 9px; text-align: center; }
+  .calmark { top: auto; bottom: 2px; right: 50%; transform: translateX(50%); }
+  .calmark .calpill { padding: 0 4px; font-size: 9px; line-height: 12px; }
+  .calmark .calsum__warn { width: 13px; height: 13px; font-size: 8px; }
 }
+
+.calcell:has(.calcell__holiday) .calevs { top: 48px; }

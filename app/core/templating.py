@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi.templating import Jinja2Templates
 from jinja2 import FileSystemLoader
 
-from app.core.work_kinds import WORK_TRADES
+from app.core.work_kinds import TRADE_OF_KIND, WORK_TRADES, short_trade_name
 
 CORE_DIR = Path(__file__).parent
 STATIC_DIR = CORE_DIR / "static"
@@ -22,22 +22,51 @@ def static_url(name: str) -> str:
 
 templates.env.globals["static_url"] = static_url
 
-# 공종별 색(D-064). 판정 4단계 색(초록·주황·빨강·회색)과 겹치지 않게 고른다.
-# 색만으로 구분하지 않도록 이름을 함께 쓴다.
-WORK_TYPE_COLORS = {
-    "철골 작업": "#2563EB",
-    "콘크리트 타설": "#7C3AED",
-    "이동식 크레인": "#0891B2",
-    "고소작업대": "#DB2777",
-    "도장·방수": "#EA580C",
-    "아스팔트 포장": "#475569",
+# 업종(최상위 공종) 색(D-089, D-064 대체): (옅은 바탕, 같은 색상의 진한 색).
+# 달력 막대는 옅은 바탕에 진한 글자·왼쪽 선, 작업 점은 진한 색이다.
+# 판정 표시 색과 겹치지 않고 갈색·올리브 같은 탁한 색은 쓰지 않는다.
+TRADE_COLORS = {
+    "지반조성ㆍ포장공사업": ("#FCE6D6", "#C2662F"),
+    "실내건축공사업": ("#FADDEB", "#B83A72"),
+    "금속ㆍ창호ㆍ지붕ㆍ건축물조립공사업": ("#D8ECFA", "#2F7BB0"),
+    "도장ㆍ습식ㆍ방수ㆍ석공사업": ("#FFE0DA", "#C4523F"),
+    "조경식재ㆍ시설물공사업": ("#D9F2E4", "#2E8A5E"),
+    "철근ㆍ콘크리트공사업": ("#DFE4FB", "#4655C2"),
+    "구조물해체ㆍ비계공사업": ("#EBE0FA", "#7B48C4"),
+    "상ㆍ하수도설비공사업": ("#D4F0EE", "#1F8A82"),
+    "철도ㆍ궤도공사업": ("#E8E6EF", "#625C85"),
+    "철강구조물공사업": ("#D6E6FE", "#2B63D9"),
+    "수중ㆍ준설공사업": ("#D3F2F8", "#16849A"),
+    "승강기ㆍ삭도공사업": ("#F5DDF5", "#A33D9B"),
+    "기계설비ㆍ가스공사업": ("#DFE8F1", "#4A6B8F"),
+    "가스ㆍ난방공사업": ("#EAF3D2", "#62841E"),
+    "전기·정보통신·소방": ("#FDE2C4", "#B5650F"),
+    "공사관리(원청·감리)": ("#E9ECF0", "#5A6577"),
 }
+OTHER_COLORS = ("#EEF0F3", "#8A93A3")
+
+
+def trade_colors(trade: str) -> tuple[str, str]:
+    """업종 → (옅은 바탕, 진한 색). 목록에 없으면 회색."""
+    return TRADE_COLORS.get(trade, OTHER_COLORS)
+
+
+def trade_color(trade: str) -> str:
+    return trade_colors(trade)[1]
+
+
+def trade_bg(trade: str) -> str:
+    return trade_colors(trade)[0]
 
 
 def work_color(label: str) -> str:
-    return WORK_TYPE_COLORS.get(label, "#8A93A3")
+    """작업 점 색 = 그 작업 업종의 진한 색(달력 막대의 글자·선과 같다)."""
+    return trade_color(TRADE_OF_KIND.get(label, ""))
 
 
+templates.env.globals["trade_bg"] = trade_bg
+templates.env.globals["trade_color"] = trade_color
+templates.env.globals["short_trade"] = short_trade_name
 templates.env.globals["work_color"] = work_color
 # 업체가 맡는 업종 고르기(D-088): (이름, 법령 업종인가)
 templates.env.globals["work_trade_options"] = tuple((t.name, t.legal) for t in WORK_TRADES)

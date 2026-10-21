@@ -107,3 +107,20 @@ WORK_TRADE_NAMES = tuple(trade.name for trade in WORK_TRADES)
 def trade_key(name: str) -> str | None:
     """업종 이름 → 작업 고르기의 업종 칸 키(t0, t1…). 목록에 없으면 None."""
     return f"t{WORK_TRADE_NAMES.index(name)}" if name in WORK_TRADE_NAMES else None
+
+
+# 작업 이름 → 처음 나오는 업종(D-089). 달력 막대·작업 색은 이 최상위 공종으로 묶는다.
+TRADE_OF_KIND: dict[str, str] = {}
+for _trade in WORK_TRADES:
+    for _field in _trade.fields:
+        for _kind in _field.kinds:
+            TRADE_OF_KIND.setdefault(_kind, _trade.name)
+OTHER_TRADE = "기타"  # 목록에 없는 옛 작업 이름
+
+
+def short_trade_name(name: str) -> str:
+    """달력 막대의 짧은 업종 이름: 괄호 설명과 끝의 공사업을 뗀다.
+
+    예: 철근ㆍ콘크리트공사업 → 철근ㆍ콘크리트, 공사관리(원청·감리) → 공사관리
+    """
+    return name.split("(")[0].removesuffix("공사업")

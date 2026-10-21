@@ -8,7 +8,14 @@ from datetime import date, datetime, time, timedelta
 from sqlalchemy.orm import Session
 
 from app.core.rules import basis_status, judges_weather
-from app.core.work_kinds import WORK_KIND_NAMES, WORK_TRADES, trade_key
+from app.core.work_kinds import (
+    OTHER_TRADE,
+    TRADE_OF_KIND,
+    WORK_KIND_NAMES,
+    WORK_TRADE_NAMES,
+    WORK_TRADES,
+    trade_key,
+)
 from app.features.auth import service as auth_service
 from app.features.auth.schemas import CurrentUser
 from app.features.schedules import repository
@@ -140,7 +147,7 @@ def build_view(
     labels: dict[int, str] = {}
     choices: tuple[ParticipantOption, ...] = ()
     revisions: dict[int, tuple[RevisionView, ...]] = {}
-    legend: tuple[tuple[str, str], ...] = ()
+    legend: tuple[str, ...] = ()
     site_names = {s.site_id: s.name for s in shown}
     if shown:
         items = [
@@ -155,7 +162,6 @@ def build_view(
 
         for s in shown:  # 전체에서는 현장 수만큼(현장은 몇 곳뿐이다)
             labels |= teams_service.participant_labels(session, s.site_id)
-        colors = company_colors(labels)
 
         def href(d: date) -> str:
             prefix = "/schedule?" if site is None else f"/schedule?site_id={site.site_id}&"
@@ -179,15 +185,14 @@ def build_view(
                     item_ids=tuple(i.item_id for i in on_day),
                     warn=any(i.performing_participant_id is None for i in on_day)
                     or bool(overlapping_ids(on_day)),
-                    companies=_company_counts(on_day, colors),
+                    trades=_trade_counts(on_day),
                 )
             )
             d += timedelta(days=1)
         weeks = tuple(tuple(cells[i : i + 7]) for i in range(0, len(cells), 7))
-        in_month = {i.performing_participant_id for i in items}
-        legend = tuple(
-            (labels[pid].split(" · ")[0], color) for pid, color in colors.items() if pid in in_month
-        )
+        # 달력 위 범례: 이 달 작업이 있는 업종(업종 목록 순, 기타는 맨 뒤)
+        found = {TRADE_OF_KIND.get(i.work_type, OTHER_TRADE) for i in items}
+        legend = tuple(t for t in (*WORK_TRADE_NAMES, OTHER_TRADE) if t in found)
         names = {pid: label.split(" · ")[0] for pid, label in labels.items()}
         trades = teams_service.company_trades(session, [s.site_id for s in shown])
         detail = _detail(shown, selected, today, tuple(by_day.get(selected, [])), names, trades)
@@ -221,7 +226,7 @@ def build_view(
         month_groups=() if not shown else _month_groups(shown, first, tomorrow, base, all_mode),
         pick_years=(ALL_MODE_FIRST_YEAR, ALL_MODE_LAST_YEAR) if all_mode else None,
         weeks=weeks,
-        company_legend=legend,
+        trade_legend=legend,
         detail=detail,
         work_types=kinds,
         work_picker=_work_picker(kinds),
@@ -836,26 +841,14 @@ def group_items(
     return sorted(groups.items(), key=lambda g: (g[0] != UNASSIGNED, g[0]))
 
 
-# 업체 색(C04-34). 판정 4단계 색(초록·주황·빨강·회색)과 겹치지 않는 색만 돌려 쓴다.
-# 이웃한 색끼리 색상이 크게 다르도록 늘어놓았다(파랑·분홍·하늘·보라·남색·갈색·자홍·회청).
-COMPANY_COLORS = ("#2563EB", "#DB2777", "#06B6D4", "#7C3AED", "#1E3A8A", "#8B5E34", "#C026D3",
-                  "#475569")  # fmt: skip
-
-
-def company_colors(labels: Mapping[int, str]) -> dict[int, str]:
-    """참여 업체 ID → 색. 등록 순(ID 순)으로 정해 달을 넘겨도 같은 업체는 같은 색이다."""
-    return {pid: COMPANY_COLORS[n % len(COMPANY_COLORS)] for n, pid in enumerate(sorted(labels))}
-
-
-def _company_counts(
-    items: Iterable[WorkItemRecord], colors: Mapping[int, str]
-) -> tuple[tuple[str, int], ...]:
-    """그날 업체별 작업 수(많은 순). 업체 미정은 색 없이(빈 문자열) 맨 뒤."""
-    counts: dict[int | None, int] = {}
+def _trade_counts(items: Iterable[WorkItemRecord]) -> tuple[tuple[str, int], ...]:
+    """그날 (업종, 작업 수), 많은 순(같으면 업종 목록 순). 달력 막대(D-089)."""
+    counts: dict[str, int] = {}
     for i in items:
-        counts[i.performing_participant_id] = counts.get(i.performing_participant_id, 0) + 1
-    ordered = sorted(counts.items(), key=lambda kv: (kv[0] is None, -kv[1]))
-    return tuple(("" if pid is None else colors.get(pid, "#8A93A3"), n) for pid, n in ordered)
+        trade = TRADE_OF_KIND.get(i.work_type, OTHER_TRADE)
+        counts[trade] = counts.get(trade, 0) + 1
+    order = {t: n for n, t in enumerate((*WORK_TRADE_NAMES, OTHER_TRADE))}
+    return tuple(sorted(counts.items(), key=lambda kv: (-kv[1], order[kv[0]])))
 
 
 def overlapping_ids(items: Iterable[WorkItemRecord]) -> set[int]:

@@ -284,11 +284,13 @@ def test_cell_shows_the_count_instead_of_dots(client: TestClient) -> None:
         add_item(client, site_id, start=f"{hour:02d}:00", end=f"{hour:02d}:30")
     page = client.get(f"/schedule?site_id={site_id}&day=2026-10-05").text
     cell = page.split('aria-label="10월 5일, 작업 6건"')[1].split("</td>")[0]
-    assert 'class="calring">6<' in cell and "dot--btn" not in cell  # 큰 원에 숫자만(C04-34)
-    # 업체 색 막대: 여섯 건 모두 한 업체라 한 칸, 그 업체는 위 범례에 같은 색으로
-    (bar,) = re.findall(r'<span class="cobar"[^>]*>(.*?)</span>', cell)
-    (color,) = re.findall(r"flex-grow: 6; --c: (#[0-9A-F]{6})", bar)
-    assert f'class="colegend__dot" style="--c: {color}"' in page
+    # 구글·네이버 달력처럼 업종 막대 하나에 건수(D-089). 철골 작업 → 철강구조물공사업
+    assert re.findall(r'class="calev__name">([^<]+)</span><b>(\d+)</b>', cell) == [
+        ("철강구조물", "6")
+    ]
+    assert "dot--btn" not in cell
+    legend = '<span class="colegend__dot" style="--c: #2B63D9; --bg: #D6E6FE"></span>철강구조물'
+    assert legend in page
     company = page.split('data-groupview="company"')[1].split('data-groupview="place"')[0]
     assert company.count('class="workcard"') == 6  # 상세 패널에는 여섯 건 모두
     assert "11:00–11:30" in page
@@ -307,7 +309,7 @@ def test_day_detail_groups_by_company_and_by_floor_and_marks_problems(
     names = re.findall(r'class="grp__title"><strong>([^<]+)</strong>', place)
     assert names == ["101동 9층", "102동 지하1층"]  # 동 → 층 순, 같은 동·층은 한 묶음
     cell = page.split('aria-label="10월 5일, 작업 3건"')[1].split("</td>")[0]
-    assert 'class="calring__warn"' in cell  # 같은 곳 같은 시간 겹침
+    assert 'class="calsum__warn"' in cell  # 같은 곳 같은 시간 겹침
 
 
 @pytest.mark.parametrize("query", ["month=2026-13", "month=abc", "day=2026-02-30", "day=x"])
@@ -607,12 +609,32 @@ def test_all_sites_calendar_spans_2020_to_2100(client: TestClient) -> None:
     assert first.count('class="monthpick__year"') == 2  # 2020·2021
 
 
-def test_company_colors_follow_registration_order_and_skip_verdict_colors() -> None:
-    # C04-34: 같은 업체는 달을 넘겨도 같은 색(ID 순), 판정 색과 겹치지 않는다
-    from app.features.schedules.service import COMPANY_COLORS, company_colors
+def test_cell_bars_are_trades_by_count_and_show_at_most_three(client: TestClient) -> None:
+    # D-089: 칸 막대는 최상위 공종(업종)별 건수, 많은 순 3개까지. 나머지는 +n건
+    site_id = add_site(client)
+    kinds = ["철골 작업", "볼트 본조임", "콘크리트 타설", "먹매김", "미장", "터파기", "전기 입선"]
+    for n, kind in enumerate(kinds):
+        add_item(client, site_id, work_types=kind, start=f"{8 + n:02d}:00", end=f"{8 + n:02d}:30")
+    page = client.get(f"/schedule?site_id={site_id}&day=2026-10-05").text
+    cell = page.split('aria-label="10월 5일, 작업 7건"')[1].split("</td>")[0]
 
-    colors = company_colors({30: "나중 업체", 7: "먼저 업체", 12: "가운데 업체"})
-    assert list(colors.items()) == [(7, COMPANY_COLORS[0]), (12, COMPANY_COLORS[1]),
-                                    (30, COMPANY_COLORS[2])]  # fmt: skip
+    bars = re.findall(r'class="calev__name">([^<]+)</span><b>(\d+)</b>', cell)
+    # 같은 건수(2)면 업종 목록 순: 철근ㆍ콘크리트가 철강구조물보다 앞
+    assert bars == [("철근ㆍ콘크리트", "2"), ("철강구조물", "2"), ("지반조성ㆍ포장", "1")]
+    assert 'class="calev__more">+2건<' in cell  # 도장ㆍ습식(미장)·전기(입선)
+
+
+def test_trade_colors_cover_every_trade_and_work_dots_use_them() -> None:
+    from app.core.templating import TRADE_COLORS, trade_color, work_color
+    from app.core.work_kinds import TRADE_OF_KIND, WORK_TRADE_NAMES
+
+    assert set(TRADE_COLORS) == set(WORK_TRADE_NAMES)
+    backs = {bg for bg, _ in TRADE_COLORS.values()}
+    fronts = {fg for _, fg in TRADE_COLORS.values()}
+    assert len(backs) == len(fronts) == len(TRADE_COLORS)  # 업종마다 다른 색
     verdict_marks = {"#2E9E5B", "#E89A00", "#D9483B", "#A3ABB8"}  # gongon.css 판정 표시 색
-    assert not verdict_marks & set(COMPANY_COLORS)
+    assert not verdict_marks & fronts
+    # 작업 점 색 = 그 작업의 업종 색(달력 막대와 맞음). 여러 업종에 있는 작업은 처음 나온 업종
+    assert work_color("콘크리트 타설") == trade_color("철근ㆍ콘크리트공사업")
+    assert TRADE_OF_KIND["이동식 크레인"] == "구조물해체ㆍ비계공사업"
+    assert work_color("목록에 없는 옛 작업") == trade_color("기타")
