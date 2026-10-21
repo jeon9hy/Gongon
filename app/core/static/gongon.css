@@ -2378,6 +2378,11 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .wsel { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .wsel__chips { flex: 1 1 240px; display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; min-width: 0; }
 .wsel__chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid color-mix(in srgb, var(--c) 40%, white); border-radius: 999px; background: color-mix(in srgb, var(--c) 8%, white); font-size: 13px; font-weight: 600; color: var(--ink); }
+.wsel__chip { padding-right: 4px; }
+.wsel__x { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin-left: -2px; padding: 0; border: 0; border-radius: 999px; background: transparent; color: var(--muted); cursor: pointer; }
+.wsel__x:hover { background: color-mix(in srgb, var(--c) 18%, white); color: var(--ink); }
+.wsel__x:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+.wpick__tokens { flex: 1 1 auto; max-height: 76px; overflow-y: auto; }
 .wsel__empty { padding-left: var(--label-inset); font-size: 13px; color: var(--muted); }
 .wsel.is-invalid .wsel__empty { color: var(--stop-text); font-weight: 600; }
 .wsel__open { flex: 0 0 auto; }
@@ -2409,7 +2414,6 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .wpick__kind:has(input:checked) { background: color-mix(in srgb, var(--c) 9%, white); color: var(--ink); font-weight: 600; }
 .wpick__tag { flex: 0 0 auto; padding: 2px 7px; border-radius: 999px; background: var(--surface); color: var(--muted); font-size: 11px; font-weight: 500; white-space: nowrap; }
 .wpick__foot { position: sticky; bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 0 var(--card-pad); background: var(--card); }
-.wpick__summary { margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wpick__foot .btn { flex: 0 0 auto; }
 @media (max-width: 760px) {
   .wpick__cols { grid-template-columns: minmax(0, 1fr); min-height: 0; }

@@ -198,3 +198,13 @@ def test_copy_button_carries_the_item_to_the_add_form(client: TestClient, site_i
     expected = {"workType": "철골 작업", "start": "08:00", "end": "17:00", "location": "A구역",
                 "memo": "양중"}  # fmt: skip
     assert copied == expected and performer.isdigit()  # 실행 업체도 함께 옮긴다
+
+
+def test_picked_work_comes_back_as_removable_tokens_after_an_error(
+    client: TestClient, site_id: int
+) -> None:
+    response = post(client, site_id, work_types=["벽체 철근"], work_dates=days(1), start="9시")
+
+    assert response.status_code == 422
+    # 폼 칩과 작업 고르기 아래 토큰 두 곳에, 하나씩 빼는 버튼과 함께 다시 보인다.
+    assert response.text.count('data-unpick="벽체 철근"') == 2
