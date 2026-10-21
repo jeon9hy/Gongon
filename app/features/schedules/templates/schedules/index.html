@@ -258,15 +258,49 @@
 <input type="hidden" name="date_mode" value="pick">
 
 <fieldset class="addform__group">
-<legend class="addform__label">공종 <small>여러 개 선택</small></legend>
-<div class="typegrid">
-{% for w in view.work_types %}
-<label class="typecard" style="--c: {{ work_color(w.label) }}">
-<input type="checkbox" name="work_types" value="{{ w.label }}"{% if w.selected %} checked{% endif %}>
-<span class="typecard__body"><span class="dot"></span><span class="typecard__name">{{ w.label }}</span>{% if w.basis == "기준 미확인" %}<small class="typecard__note">판정 기준 준비 중</small>{% endif %}</span>
-</label>
-{% endfor %}
+<legend class="addform__label">작업 <small>여러 개 선택</small></legend>
+{# 업종 → 업무분야 → 작업(D-085). 고르는 칸은 폼 안의 겹친 모달이라 체크 상자가 그대로 전송된다. #}
+{% set picked = view.work_types | selectattr("selected") | list %}
+<div class="wsel" data-wsel>
+<ul class="wsel__chips" data-wsel-chips>{% for w in picked %}<li class="wsel__chip" style="--c: {{ work_color(w.label) }}"><span class="dot"></span>{{ w.label }}</li>{% else %}<li class="wsel__empty">아직 고른 작업이 없어요</li>{% endfor %}</ul>
+<button type="button" class="btn btn--sm wsel__open" data-open-dialog="pick-work">{{ icon("plus", 14, 2.2) }} <span data-wsel-label>{{ "작업 바꾸기" if picked else "작업 고르기" }}</span></button>
 </div>
+<dialog class="modal wpick" id="pick-work" aria-labelledby="pick-work-title" data-step="1">
+<div class="modal__box wpick__box">
+<div class="modal__head">
+<button type="button" class="wpick__back" data-wpick-back aria-label="뒤로">{{ icon("chevron-left", 18, 2.2) }}</button>
+<h2 class="h2" id="pick-work-title">작업 고르기</h2>
+<button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button>
+</div>
+<div class="wpick__cols">
+<div class="wpick__col" data-col="1">
+<p class="wpick__colhead">업종</p>
+<ul class="wpick__list">
+{% set sep = namespace(done=false) %}{% for t in view.work_picker %}
+{% if not t.legal and t.key != "recent" and not sep.done %}{% set sep.done = true %}<li class="wpick__sep">법령 업종 밖</li>{% endif %}
+<li><button type="button" class="wpick__row" data-trade="{{ t.key }}" aria-pressed="false"><span class="wpick__name">{{ t.name }}</span><span class="wpick__count" data-wcount="{{ t.key }}"></span>{{ icon("chevron-right", 16, 2.2) }}</button></li>
+{% endfor %}
+</ul>
+</div>
+<div class="wpick__col" data-col="2">
+<p class="wpick__colhead">업무분야</p>
+{% for t in view.work_picker %}<ul class="wpick__list" data-fields="{{ t.key }}" hidden>
+{% for f in t.fields %}<li><button type="button" class="wpick__row" data-field="{{ f.key }}" aria-pressed="false"><span class="wpick__name">{{ f.name }}</span><span class="wpick__count" data-wcount="{{ f.key }}"></span>{{ icon("chevron-right", 16, 2.2) }}</button></li>{% endfor %}
+</ul>{% endfor %}
+</div>
+<div class="wpick__col" data-col="3">
+<p class="wpick__colhead">작업</p>
+{% for t in view.work_picker %}{% for f in t.fields %}<div class="wpick__kinds" data-kinds="{{ f.key }}" hidden>
+{% for k in f.kinds %}<label class="wpick__kind" style="--c: {{ work_color(k.label) }}"><input type="checkbox" name="work_types" value="{{ k.label }}"{% if k.selected %} checked{% endif %}><span class="wpick__name">{{ k.label }}</span>{% if k.weather %}<small class="wpick__tag">날씨 판정</small>{% endif %}</label>{% endfor %}
+</div>{% endfor %}{% endfor %}
+</div>
+</div>
+<div class="wpick__foot">
+<p class="small muted wpick__summary" data-wpick-summary>{% if picked %}{{ picked | length }}개 · {{ picked | map(attribute="label") | join(", ") }}{% else %}고른 작업 없음{% endif %}</p>
+<button type="button" class="btn btn--accent" data-close>선택 완료</button>
+</div>
+</div>
+</dialog>
 </fieldset>
 
 <fieldset class="addform__group">
@@ -441,10 +475,10 @@
     const hint = form.querySelector("[data-today-hint]");
     const startInput = form.elements.start;
     const update = () => {
-      const types = form.querySelectorAll("input[name=work_types]:checked").length;
+      const types = new Set([...form.querySelectorAll("input[name=work_types]:checked")].map((b) => b.value)).size;
       const days = picker ? picker.count() : 1;
       const total = types * days;
-      count.textContent = total ? `작업 ${total}건 추가` + (types > 1 && days > 1 ? ` (공종 ${types} × ${days}일)` : "") : "공종과 날짜를 골라 주세요";
+      count.textContent = total ? `작업 ${total}건 추가` + (types > 1 && days > 1 ? ` (작업 ${types} × ${days}일)` : "") : "작업과 날짜를 골라 주세요";
       count.classList.toggle("is-over", total > MAX_ITEMS);
       if (total > MAX_ITEMS) count.textContent += ` · 한 번에 ${MAX_ITEMS}건까지`;
       const today = picker && picker.has(dbox.dataset.min);
@@ -455,13 +489,86 @@
     form.addEventListener("input", update);
     form.addEventListener("dates", update);
     form.addEventListener("submit", (e) => {
+      const wsel = form.querySelector("[data-wsel]");
+      if (wsel && !form.querySelector("input[name=work_types]:checked")) {
+        e.preventDefault(); wsel.classList.add("is-invalid");
+        wsel.querySelector(".wsel__empty")?.replaceChildren("작업을 골라 주세요");
+        wsel.querySelector(".wsel__open").focus(); return;
+      }
       if (picker && !picker.count()) { e.preventDefault(); dbox.querySelector(".dpick__summary").textContent = "날짜를 하나 이상 골라 주세요"; return; }
       const s = startInput.value, min = startInput.dataset.min;
       if (min && s && s <= min) { e.preventDefault(); startInput.setAttribute("aria-invalid", "true"); hint.hidden = false; startInput.focus(); }
     });
     update();
   }
-  // 작업 복사: 같은 공종·시간·위치·메모·실행 업체로 채우고 날짜만 새로 고르게 한다.
+  // ---- 작업 고르기(D-085): 업종 → 업무분야 → 작업. 좁은 화면은 한 칸씩(data-step) 넘긴다.
+  // 같은 작업이 여러 업무분야에 있으면 함께 체크해 한 번만 보인다(서버도 중복을 하나로 본다).
+  const wpick = document.getElementById("pick-work");
+  if (wpick && form) {
+    const boxes = [...wpick.querySelectorAll("input[name=work_types]")];
+    const wsel = form.querySelector("[data-wsel]");
+    const chosen = (scope = wpick) => [...new Set([...scope.querySelectorAll("input[name=work_types]:checked")].map((b) => b.value))];
+    const colorOf = (value) => boxes.find((b) => b.value === value)?.closest("label").style.getPropertyValue("--c") || "";
+    let trade = null;
+    const fieldCount = (t) => wpick.querySelectorAll(`[data-fields="${t}"] [data-field]`).length;
+    const press = (attr, key) => wpick.querySelectorAll(`[${attr}]`).forEach((b) => b.setAttribute("aria-pressed", String(b.getAttribute(attr) === key)));
+    const showField = (key) => {
+      press("data-field", key);
+      wpick.querySelectorAll("[data-kinds]").forEach((k) => { k.hidden = k.dataset.kinds !== key; });
+    };
+    const showTrade = (key) => {
+      trade = key;
+      press("data-trade", key);
+      wpick.querySelectorAll("[data-fields]").forEach((f) => { f.hidden = f.dataset.fields !== key; });
+      showField(wpick.querySelector(`[data-fields="${key}"] [data-field]`)?.dataset.field);
+    };
+    const refresh = () => {
+      const picked = chosen();
+      wpick.querySelectorAll("[data-wcount]").forEach((c) => {
+        const key = c.dataset.wcount;
+        const scope = key.includes("-f") ? wpick.querySelector(`[data-kinds="${key}"]`) : null;
+        const n = scope ? chosen(scope).length
+          : new Set([...wpick.querySelectorAll(`[data-kinds^="${key}-"] input:checked`)].map((b) => b.value)).size;
+        c.textContent = n ? String(n) : "";
+      });
+      const chips = picked.map((v) => {
+        const li = document.createElement("li");
+        li.className = "wsel__chip"; li.style.setProperty("--c", colorOf(v));
+        const dot = document.createElement("span"); dot.className = "dot";
+        li.append(dot, v);
+        return li;
+      });
+      if (!chips.length) { const li = document.createElement("li"); li.className = "wsel__empty"; li.textContent = "아직 고른 작업이 없어요"; chips.push(li); }
+      wsel.querySelector("[data-wsel-chips]").replaceChildren(...chips);
+      wsel.querySelector("[data-wsel-label]").textContent = picked.length ? "작업 바꾸기" : "작업 고르기";
+      if (picked.length) wsel.classList.remove("is-invalid");
+      wpick.querySelector("[data-wpick-summary]").textContent = picked.length ? `${picked.length}개 · ${picked.join(", ")}` : "고른 작업 없음";
+    };
+    wpick.addEventListener("change", (e) => {
+      if (e.target.name !== "work_types") return;
+      boxes.forEach((b) => { if (b.value === e.target.value) b.checked = e.target.checked; });
+    });
+    form.addEventListener("change", refresh);
+    wpick.addEventListener("click", (e) => {
+      const t = e.target.closest("[data-trade]");
+      if (t) { showTrade(t.dataset.trade); wpick.dataset.step = fieldCount(t.dataset.trade) > 1 ? "2" : "3"; return; }
+      const f = e.target.closest("[data-field]");
+      if (f) { showField(f.dataset.field); wpick.dataset.step = "3"; return; }
+      if (e.target.closest("[data-wpick-back]")) {
+        wpick.dataset.step = wpick.dataset.step === "3" && fieldCount(trade) > 1 ? "2" : "1";
+      }
+    });
+    // 열 때: 고른 작업이 있는 업종(없으면 첫 업종)을 펼치고, 좁은 화면은 업종 목록부터.
+    form.querySelector(".wsel__open").addEventListener("click", () => {
+      const first = boxes.find((b) => b.checked)?.closest("[data-kinds]")?.dataset.kinds;
+      showTrade(first ? first.split("-f")[0] : wpick.querySelector("[data-trade]").dataset.trade);
+      if (first) showField(first);
+      wpick.dataset.step = "1";
+    });
+    showTrade(wpick.querySelector("[data-trade]").dataset.trade);
+    refresh();
+  }
+  // 작업 복사: 같은 작업·시간·위치·메모·실행 업체로 채우고 날짜만 새로 고르게 한다.
   const fillCopy = (c) => {
     form.querySelectorAll("input[name=work_types]").forEach((b) => { b.checked = b.value === c.workType; });
     form.elements.start.value = c.start;

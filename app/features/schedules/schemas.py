@@ -29,7 +29,7 @@ class WorkItemRecord:
 class WorkItemForm:
     """화면 입력값 그대로(검증 실패 시 다시 보여주기 위해 문자열로 둔다)."""
 
-    work_types: tuple[str, ...] = ()  # 고른 공종들. 공종마다 작업을 따로 만든다(D-059)
+    work_types: tuple[str, ...] = ()  # 고른 작업들. 작업마다 따로 만든다(D-059·D-085)
     work_date: str = ""  # 스크립트 없는 화면의 날짜 하나
     start: str = ""
     end: str = ""
@@ -85,6 +85,26 @@ class WorkTypeChoice:
     basis: BasisStatus
     selected: bool
     used: int  # 이 현장에 등록한 작업 수(많이 쓴 공종을 앞에 둔다)
+    weather: bool = True  # 공종 날씨 판정이 있는 작업인가(아니면 폭염만, D-085)
+
+
+@dataclass(frozen=True, slots=True)
+class PickerField:
+    """작업 고르기의 업무분야 한 칸과 그 안의 작업들."""
+
+    key: str  # 화면 안에서만 쓰는 이름표(예: t3-f1)
+    name: str
+    kinds: tuple[WorkTypeChoice, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class PickerTrade:
+    """작업 고르기의 업종 한 줄(D-085). legal=False는 법령 업종이 아닌 묶음(자주 쓴 작업 포함)."""
+
+    key: str
+    name: str
+    legal: bool
+    fields: tuple[PickerField, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -159,7 +179,7 @@ class ScheduleView:
     pick_years: tuple[int, int] | None
     weeks: tuple[tuple[CalendarDay, ...], ...]  # 월요일 시작 7칸씩
     detail: DayDetail | None
-    work_types: tuple[WorkTypeChoice, ...]  # 고를 수 있는 공종(자주 쓴 순)
+    work_types: tuple[WorkTypeChoice, ...]  # 고를 수 있는 작업 전체(자주 쓴 순)
     form: WorkItemForm
     errors: tuple[str, ...]
     message: str | None
@@ -173,5 +193,6 @@ class ScheduleView:
     revisions: dict[int, tuple[RevisionView, ...]] = field(default_factory=dict)  # 고른 날 작업
     edit_item_id: int | None = None  # 수정에 실패한 작업(그 카드의 수정 칸을 연다)
     edit_errors: tuple[str, ...] = ()
+    work_picker: tuple[PickerTrade, ...] = ()  # 업종 → 업무분야 → 작업(D-085)
     all_mode: bool = False  # 현장 전체 달력(작업 추가는 현장을 먼저 고른다)
     site_names: dict[int, str] = field(default_factory=dict)  # 전체에서 작업 카드에 현장 이름

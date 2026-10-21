@@ -25,6 +25,7 @@ API 포털의 기본 선택 기능은 초단기실황일 수 있으므로 단기
 - S07: Render·Supabase·GitHub Actions 공식 운영/요금/예약 실행 문서. 계정 개설·배포 시 휴면·용량·예약 지연·비용을 다시 확인한다. 이전에 적힌 무료 조건을 현재 보장으로 쓰지 않는다.
 - S08~S10: 옛 총정리 §2.4·4.2(삭제, D-068) + 익명화된 실제 현장 일정 변경 사례. 작업·변경·공유·결과 필드를 사례에 대조한다. 현장 자료는 허락 없이 외부 서비스에 업로드하지 않는다.
 - UI 참고: 먼저 현재 화면과 brand.md를 사용한다. [Procore 공식 Site Diary 설명](https://en-gb.support.procore.com/products/online/user-guide/project-level/daily-log/tutorials/daily-log-overview)은 날씨·일일 기록 흐름을 비교하는 참고만으로 사용한다. 2026-10-07 평가에서 검색 확인. 국내 기준·현장 요구의 근거로 사용하지 않는다.
+- 작업 고르기 업종(C04-29): 국가법령정보센터 Open API `lawService.do` MST 287349(건설산업기본법 시행령, 시행 2026-06-23) 별표 1을 2026-10-21 발췌해 `rules/sources/construction_industry_enforcement_mst287349.json`에 저장. 제2호 전문공사 14개 업종·업무분야를 `tests/app/core/test_work_kinds.py`가 대조.
 - 공정표 구조: [특허 KR102619713B1](https://patents.google.com/patent/KR102619713B1/ko)의 기준층 골조 일차(종래 9일·4구역 4일)를 2026-10-21 확인해 합성 레퍼런스 `docs/research/weekly-schedule-reference.md`에 썼다. 실제 건설사 공정표·리드타임은 미확보(C08).
 - 추가 공종: 해당 작업 승인 후 국가건설기준센터의 KCS 원문·국가법령정보센터·장비 제조사 매뉴얼을 확보한다. 블로그 표나 다른 서비스의 판정값을 기준표에 옮기지 않는다.
 

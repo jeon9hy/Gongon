@@ -97,8 +97,8 @@ def test_navigation_keeps_the_selected_site_through_judgment_detail(
 @pytest.mark.parametrize(
     ("changes", "message"),
     [
-        ({"work_types": "고소작업대 아님"}, "목록에 있는 공종"),
-        ({"work_types": ""}, "공종을 하나 이상"),
+        ({"work_types": "고소작업대 아님"}, "목록에 있는 작업"),
+        ({"work_types": ""}, "작업을 하나 이상"),
         ({"work_date": "2026-10-03"}, "지난 날짜"),  # 어제(오늘은 허용, C04-4)
         ({"work_date": "2027-01-01"}, "작업 기간"),  # 현장 기간 밖
         ({"start": "12:00", "end": "12:00"}, "종료는 시작보다"),

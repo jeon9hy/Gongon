@@ -11,7 +11,7 @@ from urllib.parse import urlencode
 
 from sqlalchemy.orm import Session
 
-from app.core.rules import COMMON_LABELS, judged_labels, rule_sets_by_label
+from app.core.rules import COMMON_LABELS, judged_labels, judges_weather, rule_sets_by_label
 from app.features.auth.schemas import CurrentUser
 from app.features.changes import service as changes_service
 from app.features.forecasts import service as forecasts_service
@@ -977,6 +977,11 @@ def _targets(items: tuple[WorkItemRecord, ...]) -> list[_Target]:
     return targets
 
 
+# 판정 공종이 아닌 작업(먹매김·철근 등)의 카드 사유. 판정 4단계가 아니다.
+# 폭염 판정이 있으면 그 단계를 보인다(_folded).
+NO_WEATHER_RULE = "날씨 기준 없는 작업 · 폭염만 판정"
+
+
 def _folded(
     triples: list[tuple[_Target, Judgment | None, str | None]],
     rule_sets: Mapping[str, RuleSet],
@@ -984,7 +989,8 @@ def _folded(
     """작업마다 (작업 대상, 공통 기준을 합친 카드, 카드 단계를 정한 판정).
 
     작업 판정이 아직 없거나 재판정이 필요하면 그 상태를 그대로 보인다. 공통 기준이 더 높은 단계면
-    그 단계와 사유('폭염 · …')로 바꾼다. 같은 단계면 작업 쪽을 보인다.
+    그 단계와 사유('폭염 · …')로 바꾼다. 같은 단계면 작업 쪽을 보인다. 날씨 기준이 없는
+    작업(D-085)은 폭염 판정이 있으면 그 단계를, 없으면 단계 없이 그 사실만 보인다.
     """
     folded: list[tuple[_Target, WorkCard, Judgment | None]] = []
     for target, judgment, stale in triples:
@@ -992,17 +998,20 @@ def _folded(
             continue
         card = _card_for(target, judgment, stale, rule_sets)
         backing = judgment
-        if card.verdict is not None:
+        heat_only = not judges_weather(target.work_type)
+        if card.verdict is not None or heat_only:
             for companion, extra, extra_stale in triples:
                 if companion.companion_of != target.key or extra is None:
                     continue
                 extra_card = _card_for(companion, extra, extra_stale, rule_sets)
-                if extra_card.verdict is not None and Verdict(extra_card.verdict).severity > (
-                    Verdict(card.verdict).severity
+                if extra_card.verdict is not None and (
+                    card.verdict is None
+                    or Verdict(extra_card.verdict).severity > Verdict(card.verdict).severity
                 ):
                     name = companion.work_type.removesuffix("(공통)")
                     card = replace(
                         card,
+                        time_range=card.time_range or extra_card.time_range,
                         verdict=extra_card.verdict,
                         reason=f"{name} · {extra_card.reason}",
                         detail_href=extra_card.detail_href,
@@ -1090,7 +1099,8 @@ def _week(
         for target, card, _ in folded:
             if confidence == "낮음" and mid_parts:
                 cell = _mid_cell(target, rule_sets, mid_parts)
-                mid_works.append(_mid_work(target, rule_sets, mid_parts, cell))
+                if judges_weather(target.work_type):  # 날씨 기준 없는 작업은 지수에 넣지 않는다
+                    mid_works.append(_mid_work(target, rule_sets, mid_parts, cell))
             else:
                 state: Literal["none", "pending"] = (
                     "pending" if confidence in ("예보 없음", "판정 전") else "none"
@@ -1134,6 +1144,8 @@ def _mid_cell(
     target: "_Target", rule_sets: Mapping[str, RuleSet], parts: tuple[MidHalfDay, ...]
 ) -> WeekCell:
     rule_set = rule_sets.get(target.work_type)
+    if rule_set is None and not judges_weather(target.work_type):
+        return WeekCell(None, "none", None, f"{target.label} · {NO_WEATHER_RULE}")
     if rule_set is None:
         return WeekCell(Verdict.CHECK.value, "reference", None,
                         f"{target.label} · 판정 기준 확인 전 · 현장에서 직접 판단")  # fmt: skip
@@ -1344,6 +1356,9 @@ def _card_for(
     stale: str | None,
     rule_sets: Mapping[str, RuleSet],
 ) -> WorkCard:
+    if target.companion_of is None and not judges_weather(target.work_type):
+        # 날씨 기준이 없는 작업(D-085): 단계는 공통 기준(폭염)에서만 온다(_folded).
+        return WorkCard(target.label, "", None, NO_WEATHER_RULE, None)
     if stale is None or target.work_type not in rule_sets:
         return _card(target.label, judgment, target.work_type in rule_sets)
     time_range = f"{target.start_local:%H:%M}–{target.end_local:%H:%M}"

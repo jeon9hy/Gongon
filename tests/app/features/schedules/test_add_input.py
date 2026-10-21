@@ -14,6 +14,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.rules import WORK_TYPE_LABELS
+from app.core.work_kinds import WORK_KIND_NAMES, WORK_TRADES
 from app.features.schedules.models import WorkItem
 
 SITE: dict[str, Any] = {
@@ -134,22 +135,44 @@ def test_range_reaching_outside_the_site_period_saves_nothing(
     assert count(session) == 0
 
 
-def chip_order(page: str) -> list[str]:
+def kind_values(page: str, field_key: str | None = None) -> list[str]:
+    """작업 고르기의 체크 상자 값(field_key를 주면 그 업무분야 칸만)."""
+    if field_key is not None:
+        page = page.split(f'data-kinds="{field_key}"')[1].split("</div>")[0]
     return re.findall(r'name="work_types" value="([^"]+)"', page)
 
 
-def test_frequently_used_work_types_come_first_without_site_setting(
+def test_frequently_used_work_kinds_come_first_without_site_setting(
     client: TestClient, site_id: int
 ) -> None:
-    before = chip_order(client.get(f"/schedule?site_id={site_id}").text)
+    before = client.get(f"/schedule?site_id={site_id}").text
     post(client, site_id, work_types=["아스팔트 포장"], work_dates=days(2))
-    post(client, site_id, work_types=["도장·방수"], work_dates=days(1))
+    post(client, site_id, work_types=["벽체 철근"], work_dates=days(1))
 
-    after = chip_order(client.get(f"/schedule?site_id={site_id}").text)
+    after = client.get(f"/schedule?site_id={site_id}").text
 
-    assert before[0] == "철골 작업"  # 쓴 적 없으면 기본 순서
-    assert after[:2] == ["아스팔트 포장", "도장·방수"]
-    assert sorted(after) == sorted(before)  # 전체 공종을 늘 고를 수 있다
+    assert 'data-trade="recent"' not in before  # 쓴 적 없으면 '자주 쓴 작업' 없음
+    assert kind_values(after, "recent-f0") == ["아스팔트 포장", "벽체 철근"]  # 많이 쓴 순
+    assert set(kind_values(after)) == set(kind_values(before)) == set(WORK_KIND_NAMES)
+
+
+def test_work_kind_is_picked_by_trade_then_field(client: TestClient, site_id: int) -> None:
+    page = client.get(f"/schedule?site_id={site_id}").text
+
+    trades = re.findall(r'data-trade="(t\d+)"[^>]*><span class="wpick__name">([^<]+)', page)
+    assert [name for _, name in trades] == [t.name for t in WORK_TRADES]
+    rebar = next(key for key, name in trades if name == "철근ㆍ콘크리트공사업")
+    assert "콘크리트 타설" in kind_values(page, f"{rebar}-f0")
+    assert page.index("법령 업종 밖") < page.index("전기·정보통신·소방")
+
+
+def test_work_kind_outside_the_weather_list_is_saved(
+    client: TestClient, site_id: int, session: Session
+) -> None:
+    response = post(client, site_id, work_types=["벽체 철근", "벽체 철근"], work_dates=days(1))
+
+    assert response.status_code == 303
+    assert count(session) == 1  # 같은 작업이 여러 칸에서 함께 체크돼도 한 건
 
 
 def test_add_form_times_are_not_prefilled(client: TestClient, site_id: int) -> None:

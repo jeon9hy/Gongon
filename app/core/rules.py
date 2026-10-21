@@ -10,7 +10,8 @@ from engine.judgment import RuleSet, load_rule_set
 
 RULES_DIR = REPO_ROOT / "rules"
 
-# 화면에서 고를 수 있는 공종(D-017). 기준표가 없는 공종은 판정하지 않는다.
+# 날씨 판정 공종(D-017). 작업 이름이 이 중 하나면 그 기준으로 판정한다.
+# 고를 수 있는 작업 전체는 app/core/work_kinds.py(D-085).
 # 타워크레인 운전은 예보로 순간풍속을 알 수 없어 늘 확인 필요만 나오므로 뺐다(D-032).
 WORK_TYPE_LABELS = (
     "철골 작업",
@@ -45,6 +46,11 @@ def basis_status(label: str) -> BasisStatus:
     if rule_set is None:
         return "기준 미확인"
     return "판정 · 원문 확인됨" if rule_set.source_verified else "판정 · 원문 대조 필요"
+
+
+def judges_weather(work_type: str) -> bool:
+    """이 작업에 공종 날씨 판정이 있나. 아니면 공통 기준(폭염)만 판정한다(D-085)."""
+    return work_type in WORK_TYPE_LABELS
 
 
 def judged_labels(work_types: Iterable[str]) -> tuple[str, ...]:

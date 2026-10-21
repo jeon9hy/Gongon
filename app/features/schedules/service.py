@@ -5,7 +5,8 @@ from datetime import date, datetime, time, timedelta
 
 from sqlalchemy.orm import Session
 
-from app.core.rules import WORK_TYPE_LABELS, basis_status
+from app.core.rules import basis_status, judges_weather
+from app.core.work_kinds import WORK_KIND_NAMES, WORK_TRADES
 from app.features.auth import service as auth_service
 from app.features.auth.schemas import CurrentUser
 from app.features.schedules import repository
@@ -15,6 +16,8 @@ from app.features.schedules.schemas import (
     DayDetail,
     MonthChoice,
     ParticipantChoice,
+    PickerField,
+    PickerTrade,
     PlanChangeResult,
     PlanValues,
     RevisionView,
@@ -180,6 +183,7 @@ def build_view(
         range_end=selected.isoformat(),
     )
     shown_form = form or default_form
+    kinds = () if site is None else _work_type_choices(session, site.site_id, shown_form)
     base = "/schedule?month=" if site is None else f"/schedule?site_id={site.site_id}&month="
     return ScheduleView(
         sites=tuple(
@@ -199,7 +203,8 @@ def build_view(
         pick_years=(ALL_MODE_FIRST_YEAR, ALL_MODE_LAST_YEAR) if all_mode else None,
         weeks=weeks,
         detail=detail,
-        work_types=() if site is None else _work_type_choices(session, site.site_id, shown_form),
+        work_types=kinds,
+        work_picker=_work_picker(kinds),
         form=shown_form,
         errors=errors,
         message=message,
@@ -494,9 +499,9 @@ def _validate(
     today = local_now.date()
     work_types = tuple(dict.fromkeys(w for w in form.work_types if w))
     if not work_types:
-        errors.append("공종을 하나 이상 고르세요.")
-    elif any(w not in WORK_TYPE_LABELS for w in work_types):
-        errors.append("목록에 있는 공종을 고르세요.")
+        errors.append("작업을 하나 이상 고르세요.")
+    elif any(w not in WORK_KIND_NAMES for w in work_types):
+        errors.append("목록에 있는 작업을 고르세요.")
     days, date_error = _form_days(form)
     if date_error:
         errors.append(date_error)
@@ -509,7 +514,7 @@ def _validate(
     elif len(work_types) * len(days) > MAX_ITEMS:
         errors.append(
             f"한 번에 작업 {MAX_ITEMS}건까지 추가할 수 있습니다"
-            f"(공종 {len(work_types)}개 × {len(days)}일 = {len(work_types) * len(days)}건)."
+            f"(작업 {len(work_types)}개 × {len(days)}일 = {len(work_types) * len(days)}건)."
         )
     start, end = _time(form.start), _time(form.end)
     if start is None or end is None:
@@ -573,12 +578,32 @@ def _form_days(form: WorkItemForm) -> tuple[list[date], str | None]:
 def _work_type_choices(
     session: Session, site_id: int, form: WorkItemForm
 ) -> tuple[WorkTypeChoice, ...]:
-    """고를 수 있는 공종 전체. 이 현장에서 많이 쓴 공종을 앞에, 나머지는 기본 순서."""
+    """고를 수 있는 작업 전체. 이 현장에서 많이 쓴 작업을 앞에, 나머지는 목록 순서."""
     usage = repository.work_type_usage(session, site_id)
-    order = sorted(WORK_TYPE_LABELS, key=lambda w: (-usage.get(w, 0), WORK_TYPE_LABELS.index(w)))
+    order = sorted(WORK_KIND_NAMES, key=lambda w: (-usage.get(w, 0), WORK_KIND_NAMES.index(w)))
     return tuple(
-        WorkTypeChoice(w, basis_status(w), w in form.work_types, usage.get(w, 0)) for w in order
+        WorkTypeChoice(w, basis_status(w), w in form.work_types, usage.get(w, 0), judges_weather(w))
+        for w in order
     )
+
+
+def _work_picker(choices: tuple[WorkTypeChoice, ...]) -> tuple[PickerTrade, ...]:
+    """업종 → 업무분야 → 작업(D-085). 이 현장에서 쓴 작업이 있으면 맨 앞에 '자주 쓴 작업'."""
+    if not choices:
+        return ()
+    by_name = {c.label: c for c in choices}
+    trades = [
+        PickerTrade(f"t{n}", trade.name, trade.legal, tuple(
+            PickerField(f"t{n}-f{m}", field.name, tuple(by_name[k] for k in field.kinds))
+            for m, field in enumerate(trade.fields)
+        ))
+        for n, trade in enumerate(WORK_TRADES)
+    ]  # fmt: skip
+    used = tuple(c for c in choices if c.used)  # choices는 많이 쓴 순
+    if used:
+        recent = PickerField("recent-f0", "이 현장에서 쓴 순", used)
+        trades.insert(0, PickerTrade("recent", "자주 쓴 작업", False, (recent,)))
+    return tuple(trades)
 
 
 def _pick(sites: tuple[SiteRecord, ...], site_id: int | None) -> SiteRecord | None:

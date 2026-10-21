@@ -2373,3 +2373,51 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
   .caldots { gap: 3px; }
   .dot--btn { width: 11px; height: 11px; }
 }
+
+/* ---- 작업 고르기(D-085): 업종 → 업무분야 → 작업 3단. 좁은 화면은 한 단씩(data-step) ---- */
+.wsel { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.wsel__chips { flex: 1 1 240px; display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; min-width: 0; }
+.wsel__chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid color-mix(in srgb, var(--c) 40%, white); border-radius: 999px; background: color-mix(in srgb, var(--c) 8%, white); font-size: 13px; font-weight: 600; color: var(--ink); }
+.wsel__empty { padding-left: var(--label-inset); font-size: 13px; color: var(--muted); }
+.wsel.is-invalid .wsel__empty { color: var(--stop-text); font-weight: 600; }
+.wsel__open { flex: 0 0 auto; }
+.wpick { width: min(880px, calc(100vw - 32px)); }
+.wpick__back { display: none; align-items: center; justify-content: center; width: 36px; height: 36px; flex: 0 0 auto; border: 1px solid var(--line-soft); border-radius: 999px; background: var(--card); color: var(--muted); cursor: pointer; }
+.wpick .modal__head .h2 { flex: 1 1 auto; }
+.wpick__cols { display: grid; grid-template-columns: 1.2fr 1fr 1fr; min-height: 380px; border: 1px solid var(--line-soft); border-radius: var(--radius-md); overflow: hidden; }
+.wpick__col { min-width: 0; max-height: min(58vh, 500px); overflow-y: auto; overscroll-behavior: contain; padding: 8px; }
+.wpick__col + .wpick__col { border-left: 1px solid var(--line-soft); }
+.wpick__col[data-col="1"] { background: var(--surface); }
+/* 칸 제목은 줄(둥근 면) 테두리와 줄 안 첫 글자의 가운데에 맞춘다: 줄 안쪽 여백 10px의 절반 */
+.wpick__colhead { margin: 6px 5px 6px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.wpick__list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.wpick__row { width: 100%; display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 6px 8px 6px 10px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--text); font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
+.wpick__row:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.wpick__row[aria-pressed="true"] { background: var(--card); color: var(--ink); font-weight: 700; box-shadow: inset 0 0 0 1px var(--line); }
+.wpick__col[data-col="2"] .wpick__row[aria-pressed="true"] { background: var(--accent-soft); box-shadow: none; }
+.wpick__row:focus-visible, .wpick__kind:has(input:focus-visible) { outline: 3px solid var(--ink); outline-offset: -3px; }
+.wpick__row svg { flex: 0 0 auto; color: var(--muted); }
+.wpick__name { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.wpick__count { flex: 0 0 auto; min-width: 20px; padding: 0 6px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; }
+.wpick__count:empty { display: none; }
+.wpick__sep { margin: 8px 5px 2px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 11px; font-weight: 600; color: var(--muted); }
+.wpick__kinds { display: grid; gap: 2px; }
+.wpick__list[hidden], .wpick__kinds[hidden] { display: none; }  /* display: grid가 hidden을 덮지 않게 */
+.wpick__kind { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 6px 10px; border-radius: var(--radius-md); font-size: 14px; color: var(--text); cursor: pointer; }
+.wpick__kind:hover { background: var(--surface); }
+.wpick__kind input { width: 18px; height: 18px; margin: 0; flex: 0 0 auto; accent-color: var(--accent); }
+.wpick__kind:has(input:checked) { background: color-mix(in srgb, var(--c) 9%, white); color: var(--ink); font-weight: 600; }
+.wpick__tag { flex: 0 0 auto; padding: 2px 7px; border-radius: 999px; background: var(--surface); color: var(--muted); font-size: 11px; font-weight: 500; white-space: nowrap; }
+.wpick__foot { position: sticky; bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 0 var(--card-pad); background: var(--card); }
+.wpick__summary { margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wpick__foot .btn { flex: 0 0 auto; }
+@media (max-width: 760px) {
+  .wpick__cols { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  .wpick__col { display: none; max-height: none; }
+  .wpick__col + .wpick__col { border-left: 0; }
+  .wpick[data-step="1"] .wpick__col[data-col="1"],
+  .wpick[data-step="2"] .wpick__col[data-col="2"],
+  .wpick[data-step="3"] .wpick__col[data-col="3"] { display: block; }
+  .wpick:not([data-step="1"]) .wpick__back { display: inline-flex; }
+  .wpick__col[data-col="1"] { background: var(--card); }
+}
