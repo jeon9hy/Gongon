@@ -21,18 +21,25 @@ try { if (localStorage.getItem("gongon.group") === "place") document.documentEle
 <div class="appbar__inner">
 {% set me = request.state.user if request is defined else none %}
 <span class="appbar__brand"><a class="logo-word" href="/" aria-label="공온 홈"><img class="logo-mark" src="/static/brand/logo.png" alt="" width="32" height="32">공온</a>
-<a class="appbar__about" href="/about">소개</a></span>
+<a class="appbar__about" href="/about">소개</a>
+{% if me %}
+{% set current_site_id = view.site_id | default(view.selected_site_id | default(none)) if view is defined and view else none %}
+{% set current_site_name = (view.site_name | default("")) if view is defined and view and current_site_id else "" %}
+{# 현장 고르기 칩(C04-33 안 A): 고른 현장은 모든 탭에 같이 쓴다. 목록은 처음 누를 때 불러온다 #}
+<details class="siteswitch" data-siteswitch data-site-id="{{ current_site_id or '' }}" data-site-name="{{ current_site_name }}">
+<summary aria-label="현장 고르기"><span class="siteswitch__live" aria-hidden="true"></span><span class="siteswitch__label" data-siteswitch-label>{{ current_site_name or "현장 고르기" }}</span>{{ icon("chevron-down", 14, 2.2) }}</summary>
+<div class="siteswitch__panel" data-siteswitch-panel><p class="siteswitch__loading">불러오는 중…</p></div>
+</details>
+{% endif %}</span>
 {% if me %}
 <nav class="appnav" aria-label="주 메뉴">
-{% set current_site_id = view.site_id | default(view.selected_site_id | default(none)) if view is defined else none %}
-{# 주 메뉴는 핵심 4개(D-084). 공온 판정·판정 내역은 작업 일정, 변경·내 조치는 내 정보에서 연다. #}
-{% set nav_group = {"dashboard": "schedule", "history": "schedule", "changes": "me", "actions": "me"}.get(nav_active, nav_active) %}
-{% for key, href, label in [("home", "/", "홈"), ("schedule", "/schedule", "작업 일정"), ("sites", "/sites", "내 현장"), ("chat", "/chat", "대화")] %}
-<a href="{{ href }}{% if key in ('schedule', 'sites') and current_site_id %}?site_id={{ current_site_id }}{% endif %}"{% if nav_group == key %} aria-current="page"{% endif %}>{{ label }}</a>
+{# 주 메뉴 5개(C04-33 안 A): 공온 판정·판정 내역은 일정, 변경 건·내 조치는 변경·조치, 참여 업체는 업체 #}
+{% set nav_group = {"dashboard": "schedule", "history": "schedule", "actions": "changes"}.get(nav_active, nav_active) %}
+{% for key, href, label, short, ic in [("home", "/", "홈", "홈", "home"), ("schedule", "/schedule", "일정", "일정", "calendar"), ("changes", "/changes", "변경·조치", "조치", "clipboard"), ("team", "/team", "업체", "업체", "building"), ("chat", "/chat", "대화", "대화", "chat")] %}
+<a href="{{ href }}{% if key != 'chat' and current_site_id %}?site_id={{ current_site_id }}{% endif %}" data-site-link="{{ key }}"{% if nav_group == key %} aria-current="page"{% endif %}><span class="appnav__icon" aria-hidden="true">{{ icon(ic, 20, 2) }}</span><span class="appnav__long">{{ label }}</span><span class="appnav__short">{{ short }}</span></a>
 {% endfor %}
 </nav>
 <div class="appbar__actions">
-<button type="button" class="btn btn--accent btn--sm" data-site-dialog="/sites?embed=1" data-title="현장 추가">{{ icon("plus", 14, 2.4) }} 현장 추가</button>
 <details class="menu usermenu">
 <summary class="usermenu__trigger" aria-label="{{ me.display_name }} 메뉴"><span class="usermenu__avatar" aria-hidden="true">{{ me.display_name[:1] }}</span><span class="usermenu__name">{{ me.display_name }}</span>{{ icon("chevron-down", 14, 2.2) }}</summary>
 <div class="menu__panel usermenu__panel">
@@ -48,6 +55,16 @@ try { if (localStorage.getItem("gongon.group") === "place") document.documentEle
 </header>
 
 <main class="page page--{{ nav_active }}" id="main" tabindex="-1">
+{% if me and nav_active in ("changes", "actions") %}
+{# 변경·조치 탭의 하위 메뉴(C04-33 안 A) #}
+<div class="subnavrow">
+<nav class="subnav" aria-label="변경·조치 메뉴">
+{% for key, href, label in [("changes", "/changes", "변경 건"), ("actions", "/actions", "내 조치")] %}
+<a href="{{ href }}"{% if nav_active == key %} aria-current="page"{% endif %}>{{ label }}</a>
+{% endfor %}
+</nav>
+</div>
+{% endif %}
 {% if me and nav_active in ("schedule", "dashboard", "history") %}
 {% set site_q = "?site_id=" ~ current_site_id if current_site_id else "" %}
 <div class="subnavrow">
@@ -71,9 +88,11 @@ try { if (localStorage.getItem("gongon.group") === "place") document.documentEle
 <div class="sitefoot__col">
 <p class="sitefoot__head">서비스</p>
 <a href="/">홈</a>
-<a href="/schedule">작업 일정</a>
-<a href="/sites">내 현장</a>
+<a href="/schedule">일정</a>
+<a href="/changes">변경·조치</a>
+<a href="/team">업체</a>
 <a href="/chat">현장 대화</a>
+<a href="/sites">현장 설정</a>
 </div>
 <div class="sitefoot__col">
 <p class="sitefoot__head">도움</p>
@@ -169,6 +188,63 @@ document.addEventListener("click", (e) => {
   if (e.target.matches?.("dialog.modal")) e.target.close();
 });
 document.querySelectorAll("dialog.modal[data-open]").forEach((d) => { if (!d.open) d.showModal(); });
+// 현장 고르기 칩(C04-33 안 A): 목록은 처음 열 때 불러오고, 고른 현장으로 지금 화면을 다시 연다.
+// 현장이 정해지지 않은 화면에서는 이 브라우저에서 마지막으로 본 현장을 탭 주소에 이어 붙인다.
+(() => {
+  const box = document.querySelector("[data-siteswitch]");
+  if (!box) return;
+  const KEY = "gongon.site";
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) {}
+  const here = box.dataset.siteId ? { id: box.dataset.siteId, name: box.dataset.siteName } : null;
+  const label = box.querySelector("[data-siteswitch-label]");
+  // 현장 이름이 없는 화면(변경 건 등)은 같은 현장으로 기억해 둔 이름을 쓴다
+  if (here && !here.name && saved && String(saved.id) === here.id) { here.name = saved.name; label.textContent = saved.name; }
+  if (here && here.name) { try { localStorage.setItem(KEY, JSON.stringify(here)); } catch (e) {} }
+  const current = here || saved;
+  if (!here && saved) {
+    label.textContent = saved.name;
+    document.querySelectorAll("[data-site-link]").forEach((a) => {
+      if (a.dataset.siteLink === "chat") a.href = `/chat/${saved.id}`;
+      else if (!a.href.includes("site_id=")) a.href += `?site_id=${saved.id}`;
+    });
+  }
+  const path = location.pathname;
+  const ALL_OK = ["/", "/schedule", "/dashboard", "/judgments"];
+  const target = (id) => {
+    if (path.startsWith("/chat")) return `/chat/${id}`;
+    if (/^\/sites\/\d+\/members/.test(path) || path === "/team") return `/sites/${id}/members`;
+    const root = path.startsWith("/changes") ? "/changes" : path.startsWith("/judgments") ? "/judgments"
+      : path.startsWith("/actions") ? "/actions" : path;
+    return id ? `${root}?site_id=${id}` : root;
+  };
+  let loaded = false;
+  box.addEventListener("toggle", async () => {
+    if (!box.open || loaded) return;
+    const panel = box.querySelector("[data-siteswitch-panel]");
+    try {
+      const res = await fetch("/sites/switcher", { headers: { Accept: "text/html" } });
+      if (!res.ok) throw new Error(String(res.status));
+      panel.innerHTML = await res.text();
+      loaded = true;
+    } catch (e) { panel.querySelector("p").textContent = "현장 목록을 불러오지 못했어요"; return; }
+    panel.querySelectorAll("[data-switch-site]").forEach((a) => {
+      a.href = target(a.dataset.switchSite);
+      if (current && a.dataset.switchSite === String(current.id)) {
+        a.setAttribute("aria-current", "true");
+        if (!current.name) label.textContent = a.dataset.name;
+      }
+      a.addEventListener("click", () => { try { localStorage.setItem(KEY, JSON.stringify({ id: a.dataset.switchSite, name: a.dataset.name })); } catch (e) {} });
+    });
+    // 모든 현장 보기는 홈·일정·판정에서만 고를 수 있다
+    const all = panel.querySelector("[data-switch-all]");
+    if (all) { if (ALL_OK.includes(path)) all.href = target(""); else all.closest("li").remove(); }
+    const settings = panel.querySelector("[data-switch-settings]");
+    if (settings && current) settings.href = `/sites?site_id=${current.id}`;
+  });
+  // 바깥을 누르면 닫는다
+  document.addEventListener("click", (e) => { if (box.open && !box.contains(e.target)) box.open = false; });
+})();
 // 맡은 업종 고르기(D-088): 고른 업종을 폼의 토큰으로 다시 그린다
 document.addEventListener("change", (e) => {
   const box = e.target.closest?.("[data-tpick]");

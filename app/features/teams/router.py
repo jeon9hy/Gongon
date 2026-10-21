@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.clock import now_kst
 from app.core.db import get_session
+from app.core.params import OptionalSiteIdQuery
 from app.core.templating import register_template_dir, templates
 from app.features.auth.schemas import CurrentUser
 from app.features.auth.service import CurrentUserDep, require_user
@@ -35,9 +36,27 @@ def _render(request: Request, view: MembersView, status_code: int = 200) -> HTML
     return templates.TemplateResponse(
         request,
         "teams/members.html",
-        {"nav_active": "sites", "view": view},
+        {"nav_active": "team", "view": view},
         status_code=status_code,
     )
+
+
+@router.get("/team")
+def team(
+    session: SessionDep, scope: AccessibleSitesDep, site_id: OptionalSiteIdQuery = None
+) -> Response:
+    """주 메뉴 업체 탭(C04-33): 고른 현장(없으면 첫 참여 현장)의 참여 업체 화면으로 보낸다."""
+    sites = sites_service.list_sites(session, scope)
+    site = next((s for s in sites if s.site_id == site_id), sites[0] if sites else None)
+    target = "/sites" if site is None else f"/sites/{site.site_id}/members"
+    return RedirectResponse(target, status_code=303)
+
+
+@router.get("/sites/switcher", response_class=HTMLResponse)
+def site_switcher(request: Request, session: SessionDep, scope: AccessibleSitesDep) -> HTMLResponse:
+    """머리줄 현장 고르기 칩의 목록 조각(C04-33). 참여한 현장만."""
+    sites = sites_service.list_sites(session, scope)
+    return templates.TemplateResponse(request, "teams/_switcher.html", {"sites": sites})
 
 
 @router.get("/sites/{site_id}/members", response_class=HTMLResponse)

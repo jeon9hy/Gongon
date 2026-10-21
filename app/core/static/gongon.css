@@ -2597,3 +2597,44 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 }
 
 .calcell:has(.calcell__holiday) .calevs { top: 48px; }
+
+/* 주 메뉴 5탭 + 현장 고르기 칩(C04-33 안 A) */
+.appnav__icon { display: none; }
+.siteswitch { position: relative; flex: 0 1 auto; min-width: 0; }
+.siteswitch > summary { list-style: none; display: inline-flex; align-items: center; gap: 6px; max-width: 240px; min-height: 34px; padding: 0 12px 0 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); font-size: 13px; font-weight: 600; color: var(--ink); cursor: pointer; }
+.siteswitch > summary::-webkit-details-marker { display: none; }
+.siteswitch > summary:hover { background: var(--surface); }
+.siteswitch > summary:focus-visible { outline: 3px solid var(--ink); outline-offset: 1px; }
+.siteswitch__live { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 999px; background: #2E9E5B; }
+.siteswitch__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.siteswitch__panel { position: absolute; top: calc(100% + 8px); left: 0; z-index: 30; width: 280px; padding: 6px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--card); box-shadow: 0 12px 32px #0E1E4524; }
+.siteswitch__list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; max-height: 50vh; overflow-y: auto; }
+.siteswitch__item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius-md); text-decoration: none; color: var(--ink); font-size: 14px; font-weight: 600; }
+.siteswitch__item:hover, .siteswitch__item[aria-current="true"] { background: var(--accent-soft); }
+.siteswitch__item--all { color: var(--muted); }
+.siteswitch__dot { display: grid; place-items: center; width: 26px; height: 26px; flex: 0 0 auto; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; }
+.siteswitch__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.siteswitch__empty, .siteswitch__loading { padding: 10px; font-size: 13px; color: var(--muted); }
+.siteswitch__foot { display: grid; gap: 2px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line-soft); }
+.siteswitch__action { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 0; border-radius: var(--radius-md); background: none; font: inherit; font-size: 13px; font-weight: 600; color: var(--muted); text-decoration: none; cursor: pointer; text-align: left; }
+.siteswitch__action:hover { background: var(--surface); color: var(--ink); }
+@media (max-width: 760px) {
+  /* 휴대폰: 주 메뉴는 화면 아래 탭 막대 5칸(아이콘 + 이름) */
+  .appnav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; order: initial; margin: 0; padding: 4px 4px calc(6px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; background: var(--card); border-top: 1px solid var(--line); box-shadow: 0 -4px 16px #0E1E450F; overflow: visible; }
+  .appnav a { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0 4px; border-radius: var(--radius-md); font-size: 11px; font-weight: 600; color: var(--muted); background: none; }
+  .appnav a[aria-current="page"] { color: var(--accent); background: none; }
+  .appnav__icon { display: block; }
+  body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+  .siteswitch > summary { max-width: 46vw; }
+  .siteswitch__panel { position: fixed; left: 12px; right: 12px; top: 56px; width: auto; }
+}
+.appnav__short { display: none; }
+@media (max-width: 760px) { .appnav__long { display: none; } .appnav__short { display: inline; } }
+@media (max-width: 760px) {
+  /* 휴대폰 머리줄: 로고 · 현장 칩 · 내 이름 한 줄. 소개는 바닥 메뉴·로그인 전 화면에서 */
+  .appbar__brand:has(.siteswitch) .appbar__about { display: none; }
+  .appbar__brand { flex: 1 1 auto; min-width: 0; }
+  .siteswitch > summary { max-width: calc(100vw - 200px); }
+  .appbar__inner { flex-wrap: nowrap; }
+  .appbar__actions { flex: 0 0 auto; }
+}

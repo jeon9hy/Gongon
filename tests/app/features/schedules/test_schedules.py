@@ -81,10 +81,13 @@ def test_navigation_keeps_the_selected_site_through_judgment_detail(
         response = client.get(path)
         assert response.status_code == 200
         navigation = response.text.split('<nav class="appnav"')[1].split("</nav>")[0]
-        assert f'href="/schedule?site_id={site_id}"' in navigation
+        # 주 메뉴 5탭(C04-33 안 A): 고른 현장을 이어받는다(대화는 대화방 목록으로)
+        for tab in ("/", "/schedule", "/changes", "/team"):
+            assert f'href="{tab}?site_id={site_id}"' in navigation
+        assert 'href="/chat"' in navigation
         assert "/dashboard" not in navigation and "/judgments" not in navigation  # 하위 메뉴로
-        assert f'href="/sites?site_id={site_id}"' in navigation  # 내 현장도 선택을 이어받는다
-        assert "/changes" not in navigation and "/actions" not in navigation  # 내 정보로 이동
+        assert "/sites" not in navigation  # 현장 설정은 머리줄 현장 고르기 칩으로
+        assert f'data-siteswitch data-site-id="{site_id}"' in response.text
     for path in (f"/dashboard?site_id={site_id}", f"/schedule?site_id={site_id}"):
         page = client.get(path).text
         subnav = page.split('<nav class="subnav"')[1].split("</nav>")[0]
@@ -501,7 +504,8 @@ def test_site_form_opens_inside_the_modal_and_saving_moves_the_page(client: Test
     assert created.status_code == 200
     assert 'window.top.location.href = "/schedule?site_id=' in created.text
     # 앱의 모든 화면 머리에는 모달로 여는 '현장 추가' 버튼이 있다
-    assert 'data-site-dialog="/sites?embed=1"' in client.get("/").text
+    # 현장 추가는 머리줄 현장 고르기 칩의 목록 안에 있다(C04-33)
+    assert 'data-site-dialog="/sites?embed=1"' in client.get("/sites/switcher").text
 
 
 def test_site_modal_shows_errors_in_place(client: TestClient) -> None:

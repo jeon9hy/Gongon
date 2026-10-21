@@ -1,5 +1,6 @@
 """현장 등록 → 예보 수집 → 판정 저장 → 화면 조회 흐름. 기상청은 가짜(FakeKma)다."""
 
+import re
 import urllib.error
 from collections.abc import Callable
 from dataclasses import replace
@@ -266,10 +267,14 @@ def test_home_is_separate_from_site_dashboard_in_menu(client: TestClient) -> Non
     home = client.get("/").text
     dashboard = client.get("/dashboard").text
 
-    assert '<a href="/" aria-current="page">홈</a>' in home
+    def current_tab(page: str) -> list[str]:
+        nav = page.split('<nav class="appnav"')[1].split("</nav>")[0]
+        return re.findall(r'aria-current="page">.*?class="appnav__long">([^<]+)<', nav, re.S)
+
+    assert current_tab(home) == ["홈"]
     assert '<nav class="subnav"' not in home
-    # 공온 판정은 작업 일정의 하위 메뉴다(D-063)
-    assert '<a href="/schedule" aria-current="page">작업 일정</a>' in dashboard
+    # 공온 판정은 일정 탭의 하위 메뉴다(D-063, C04-33)
+    assert current_tab(dashboard) == ["일정"]
     assert '<a href="/dashboard" aria-current="page">공온 판정</a>' in dashboard
 
 
