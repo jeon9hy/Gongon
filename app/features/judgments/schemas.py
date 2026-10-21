@@ -135,6 +135,9 @@ class DashboardView:
     work_options: "tuple[WorkOption, ...]" = ()  # 상세 카드에서 고를 수 있는 작업(2개 이상일 때)
     detail_open: bool = False  # 작업·요소·시각을 골라 들어왔으면 시간대별 예보 모달을 바로 연다
     can_run: bool = True  # 7일 중 작업일이 있어 판정할 수 있는가
+    # 7일 표 묶음(C04-31): 업체별(기본)·위치별. 묶음 줄을 누르면 작업 종류별 줄이 펼쳐진다.
+    week_groups: "tuple[WeekGroupRow, ...]" = ()
+    week_place_groups: "tuple[WeekGroupRow, ...]" = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -164,6 +167,19 @@ class BoardItem:
 
 
 @dataclass(frozen=True, slots=True)
+class BoardGroup:
+    """홈 오늘 보드의 묶음 카드(C04-31): 업체별 또는 위치별. 끝나지 않은 작업만 담는다."""
+
+    label: str  # 업체 이름 · 동·층
+    sub: str  # 업체별: 업종 메모, 위치별: "대성골조 외 1"
+    time_text: str  # 묶음의 가장 이른 시작~가장 늦은 끝
+    items: tuple[BoardItem, ...]  # 시작 시각 순
+    issues: tuple[str, ...]  # 하위 작업에서 걸린 점검 항목(중복 없이)
+    phase: Literal["before", "now"]  # 하나라도 진행 중이면 now
+    unassigned: bool = False  # 업체 미정 묶음(점검 문제)
+
+
+@dataclass(frozen=True, slots=True)
 class DayBoard:
     key: Literal["today", "tomorrow"]
     title: str  # "오늘"·"내일"
@@ -171,6 +187,8 @@ class DayBoard:
     items: tuple[BoardItem, ...]
     criteria: tuple[tuple[str, int], ...]  # (점검 항목 이름, 걸린 작업 수), 걸린 것만
     add_href: str = ""  # 같은 현장·날짜의 작업 추가 모달
+    groups: tuple[BoardGroup, ...] = ()  # 오늘만: 업체별
+    place_groups: tuple[BoardGroup, ...] = ()  # 오늘만: 위치별(동·층)
 
     @property
     def ready(self) -> int:
@@ -440,6 +458,18 @@ class WeekCell:
 class WeekRow:
     work_type: str
     cells: tuple[WeekCell, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class WeekGroupRow:
+    """7일 표의 묶음 한 줄(C04-31). 칸은 그날 묶음 안 작업 중 가장 높은 단계."""
+
+    label: str  # 업체 이름 · 동·층
+    sub: str  # 업체별: 업종 메모, 위치별: 업체 이름들
+    count: int  # 7일 동안 묶음 안 작업 건수
+    cells: tuple[WeekCell, ...]
+    types: tuple[WeekRow, ...]  # 펼치면 보이는 작업 종류별 줄
+    unassigned: bool = False
 
 
 @dataclass(frozen=True, slots=True)

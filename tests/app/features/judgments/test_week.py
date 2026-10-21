@@ -8,8 +8,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.features.judgments import service
 from app.features.judgments.models import Judgment
 from app.features.schedules.models import WorkItem
+from tests.conftest import FIXED_NOW
 from tests.fakes import FakeKma
 from tests.helpers import add_site_with_work
 
@@ -210,3 +212,35 @@ def test_rerun_updates_last_checked_time_without_new_judgments(
     dashboard = client.get("/dashboard", params={"site_id": site_id}).text
     assert "15:50 확인" in home  # 사용자에게는 확인 시각이 갱신된다(홈 카드는 짧게)
     assert "10월 4일 15:50 확인 · 14:00 발표 예보" in dashboard
+
+
+def test_week_groups_take_the_highest_cell_of_each_day_and_expand_to_work_kinds(
+    client: TestClient, session: Session, fake_kma: FakeKma
+) -> None:
+    # C04-31: 7일 표 묶음 줄. 철골만 풍속 기준에 해당 → 같은 묶음의 그날 칸은 중지 검토.
+    fake_kma.set_hour("20261005", 10, WSD="12.0")
+    site_id = add_site(client, work_types=["콘크리트 타설", "철골 작업"])
+    concrete = session.scalars(select(WorkItem).where(WorkItem.work_type == "콘크리트 타설")).one()
+    concrete.location = "101동 9층 2구역"
+    session.commit()
+    client.post("/judgments/run", data={"site_id": site_id})
+
+    view = service.build_dashboard(session, None, site_id, None, None, FIXED_NOW)
+    assert view is not None
+
+    (company,) = view.week_groups  # 두 작업 모두 기본 실행 업체
+    assert company.count == 2 and company.cells[0].verdict == "중지 검토"
+    assert {r.work_type: r.cells[0].verdict for r in company.types} == {
+        "콘크리트 타설": "판정 불가",  # 가짜 예보에 강수 값이 없다
+        "철골 작업": "중지 검토",
+    }
+    # 작업이 없는 날은 묶음 칸도 비운다(판정하지 않음)
+    assert all(c.state == "off" and c.verdict is None for c in company.cells[1:])
+    places = {g.label: g for g in view.week_place_groups}
+    assert list(places) == ["101동 9층", "위치 없음"]
+    assert places["101동 9층"].cells[0].verdict == "판정 불가"
+    assert places["위치 없음"].cells[0].verdict == "중지 검토"
+
+    page = client.get("/dashboard", params={"site_id": site_id}).text
+    assert 'data-groupview="company"' in page and 'data-groupview="place"' in page
+    assert page.count('class="week__kind"') == 4 and 'aria-expanded="false"' in page  # 접힘

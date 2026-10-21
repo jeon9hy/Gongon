@@ -94,14 +94,37 @@
 </div>
 {% if today_board.items %}
 
-{# 끝난 작업은 목록에서 뺀다(개발자 요청 2026-10-17) #}
-<div class="jobs__head jobs__head--today{% if all_done %} jobs__head--alldone{% endif %}" aria-hidden="true"><span>시간</span><span>작업</span><span>업체</span><span>진행률</span><span>상태</span></div>
+{# 남은 작업은 업체별·위치별 묶음 카드(C04-31, 처음엔 접힘), 끝난 작업은 따로 펼친다(개발자 요청 2026-10-17) #}
 {% set done_items = today_board.items | selectattr("phase", "equalto", "done") | list %}
+{% if today_board.groups %}
+{{ groupseg() }}
+{% for mode, groups in [("company", today_board.groups), ("place", today_board.place_groups)] %}
+<ul class="grps" data-groupview="{{ mode }}">
+{% for g in groups %}
+<li><details class="grp grp--{{ mode }}{% if g.unassigned %} grp--unassigned{% endif %}">
+<summary class="grp__head">
+<span class="grp__icon" aria-hidden="true">{{ icon("building" if mode == "company" else "map-pin", 18, 2) }}</span>
+<span class="grp__title"><strong>{{ g.label }}</strong><small>{% if g.sub %}{{ g.sub }} · {% endif %}{{ g.time_text }}</small></span>
+<span class="grp__warn">{% if g.issues %}<span class="job__warn" title="{{ g.issues | join(', ') }}" aria-label="확인할 것: {{ g.issues | join(', ') }}">!</span>{% endif %}</span>
+<span class="grp__count">{{ g.items | length }}건</span>
+<span class="grp__state"><span class="pill pill--{{ g.phase }}">{% if g.phase == "now" %}진행 중{% else %}시작 전{% endif %}</span></span>
+<span class="grp__chev" aria-hidden="true">{{ icon("chevron-down", 16, 2.2) }}</span>
+</summary>
+<ul class="jobs grp__jobs">
+{% for w in g.items %}{{ today_row(w) }}{% endfor %}
+</ul>
+</details></li>
+{% endfor %}
+</ul>
+{% endfor %}
+{% endif %}
+{% if done_items %}
+<div class="jobs__head jobs__head--today jobs__head--alldone" aria-hidden="true"><span>시간</span><span>작업</span><span>업체</span><span>진행률</span><span>상태</span></div>
 <ul class="jobs" data-more-list>
-{% for w in today_board.items if w.phase != "done" %}{{ today_row(w) }}{% endfor %}
 {% for w in done_items %}{{ today_row(w, true) }}{% endfor %}
 </ul>
-{% if done_items %}<button type="button" class="jobs__toggle" data-more-toggle aria-expanded="false"><span class="when-closed">끝난 작업 {{ done_items | length }}건 보기</span><span class="when-open">접기</span> {{ icon("chevron-down", 14, 2.2) }}</button>{% endif %}
+<button type="button" class="jobs__toggle" data-more-toggle aria-expanded="false"><span class="when-closed">끝난 작업 {{ done_items | length }}건 보기</span><span class="when-open">접기</span> {{ icon("chevron-down", 14, 2.2) }}</button>
+{% endif %}
 
 {% else %}
 <p class="hsec__empty">오늘 등록한 작업이 없어요.{% if can_add %} <a href="{{ today_board.add_href }}">작업을 추가할까요?</a>{% endif %}</p>

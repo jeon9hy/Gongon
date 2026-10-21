@@ -19,6 +19,7 @@ from app.features.judgments import repository
 from app.features.judgments.models import Judgment, JudgmentRun
 from app.features.judgments.schemas import (
     Bar,
+    BoardGroup,
     BoardItem,
     Cell,
     Chart,
@@ -54,6 +55,7 @@ from app.features.judgments.schemas import (
     VerdictFilter,
     WeekCell,
     WeekDay,
+    WeekGroupRow,
     WeekRow,
     WeekView,
     WorkCard,
@@ -514,6 +516,12 @@ def build_dashboard(
     ) if len(judged) > 1 else ()  # fmt: skip
 
     last_run = repository.latest_runs(session, [site.site_id]).get(site.site_id)
+    week = _week(session, site, rule_sets, now)
+    week_items = schedules_service.items_between(
+        session, site.site_id, week.days[0].day, week.days[-1].day
+    )
+    companies = teams_service.company_names(session, [site.site_id])
+    trades = teams_service.company_trades(session, [site.site_id])
     return DashboardView(
         sites=tuple(SiteOption(s.site_id, s.name, s.site_id == site.site_id) for s in sites),
         site_id=site.site_id,
@@ -543,7 +551,9 @@ def build_dashboard(
             f"내일({_date_text(target_date)})은 작업 기간({site.period_text()})이 아니라 "
             "판정하지 않습니다."
         ),
-        week=_week(session, site, rule_sets, now),
+        week=week,
+        week_groups=_week_groups(week, week_items, "company", companies, trades),
+        week_place_groups=_week_groups(week, week_items, "place", companies, trades),
         checked=checked_text(last_run),
         checked_short=checked_short_text(last_run, now),
         next_forecast=next_forecast_text(now),
@@ -799,6 +809,8 @@ def _check_boards(
     items = schedules_service.items_between_for_sites(session, list(names), today, last)
     open_changes = changes_service.open_change_item_ids(session, [i.item_id for i in items])
     companies = teams_service.company_names(session, list({i.site_id for i in items}))
+    today_sites = list({i.site_id for i in items if i.work_date == today})
+    trades = teams_service.company_trades(session, today_sites)
     weather: dict[int, str | None] = {}
     for site_id in {i.site_id for i in items if i.work_date == tomorrow}:
         day_items = tuple(i for i in items if i.site_id == site_id and i.work_date == tomorrow)
@@ -870,7 +882,15 @@ def _check_boards(
         )
         prefix = f"/schedule?site_id={sites[0].site_id}&" if len(sites) == 1 else "/schedule?"
         add_href = f"{prefix}day={day.isoformat()}&add=1"
-        return DayBoard(key, title, _date_text(day), rows, criteria, add_href)
+        if key != "today":
+            return DayBoard(key, title, _date_text(day), rows, criteria, add_href)
+        left = [i for i, r in zip(day_items, rows, strict=True) if r.phase != "done"]
+        by_id = {r.item_id: r for r in rows}
+        return DayBoard(
+            key, title, _date_text(day), rows, criteria, add_href,
+            groups=_board_groups(left, "company", by_id, companies, trades),
+            place_groups=_board_groups(left, "place", by_id, companies, trades),
+        )  # fmt: skip
 
     week = tuple(
         HomeDay(
@@ -885,6 +905,100 @@ def _check_boards(
         for d in (today + timedelta(days=n) for n in range(WEEK_DAYS_HOME))
     )
     return (board("today", "오늘", today), board("tomorrow", "내일", tomorrow)), week
+
+
+def _board_groups(
+    items: list[WorkItemRecord],
+    by: str,
+    rows: Mapping[int, BoardItem],
+    companies: Mapping[int, str],
+    trades: Mapping[int, str],
+) -> tuple[BoardGroup, ...]:
+    """오늘 보드 묶음(C04-31). 챙길 묶음이 먼저: 업체 미정 → 점검 문제 → 진행 중 → 나머지."""
+    groups: list[BoardGroup] = []
+    for label, group in schedules_service.group_items(items, by, companies):
+        subs = tuple(rows[i.item_id] for i in group)
+        first = group[0].performing_participant_id
+        names = list(dict.fromkeys(s.company or schedules_service.UNASSIGNED for s in subs))
+        sub = (
+            trades.get(first, "") if by == "company" and first is not None
+            else names[0] + (f" 외 {len(names) - 1}" if len(names) > 1 else "") if by == "place"
+            else ""
+        )  # fmt: skip
+        groups.append(BoardGroup(
+            label=label,
+            sub=sub,
+            time_text=f"{min(i.start_local for i in group):%H:%M}–"
+                      f"{max(i.end_local for i in group):%H:%M}",
+            items=subs,
+            issues=tuple(dict.fromkeys(x.label for s in subs for x in s.issues)),
+            phase="now" if any(s.phase == "now" for s in subs) else "before",
+            unassigned=by == "company" and label == schedules_service.UNASSIGNED,
+        ))  # fmt: skip
+    order = {id(g): n for n, g in enumerate(groups)}
+    groups.sort(key=lambda g: (not g.unassigned, not g.issues, g.phase != "now", order[id(g)]))
+    return tuple(groups)
+
+
+def _week_groups(
+    week: WeekView,
+    items_by_day: Mapping[date, Sequence[WorkItemRecord]],
+    by: str,
+    companies: Mapping[int, str],
+    trades: Mapping[int, str],
+) -> tuple[WeekGroupRow, ...]:
+    """7일 표 묶음(C04-31): 업체별·위치별 줄, 칸은 그날 묶음 안 작업 칸 중 가장 높은 단계.
+
+    작업 칸은 _week가 이미 계산한 것(week.items)을 쓴다. 칸 사유는 같은 규칙으로 고른다:
+    기간 밖·작업 없는 날은 off, 그날 이 묶음 작업이 없으면 none.
+    """
+    items = [i for d in week.days for i in items_by_day.get(d.day, ())]
+
+    def cells_for(group: Sequence[WorkItemRecord], empty_note: str) -> tuple[WeekCell, ...]:
+        cells: list[WeekCell] = []
+        for d in week.days:
+            if not d.in_period:
+                cells.append(WeekCell(None, "off", None, "작업 기간 아님"))
+                continue
+            if d.confidence == "작업 없음":
+                cells.append(WeekCell(None, "off", None, "이날 등록한 작업 없음"))
+                continue
+            found = [c for i in group if i.work_date == d.day
+                     and (c := week.items.get((d.day, i.item_id))) is not None]  # fmt: skip
+            if not found:
+                state: Literal["none", "pending"] = (
+                    "pending" if any(i.work_date == d.day for i in group) else "none"
+                )
+                cells.append(WeekCell(None, state, None, empty_note))
+                continue
+            cells.append(max(found, key=_rank))
+        return tuple(cells)
+
+    rows: list[WeekGroupRow] = []
+    for label, group in schedules_service.group_items(items, by, companies):
+        kinds: dict[str, list[WorkItemRecord]] = {}
+        for i in group:
+            kinds.setdefault(i.work_type, []).append(i)
+        first = group[0].performing_participant_id
+        names = list(dict.fromkeys(
+            companies.get(i.performing_participant_id or -1, schedules_service.UNASSIGNED)
+            for i in group
+        ))  # fmt: skip
+        sub = (
+            trades.get(first, "") if by == "company" and first is not None
+            else names[0] + (f" 외 {len(names) - 1}" if len(names) > 1 else "") if by == "place"
+            else ""
+        )  # fmt: skip
+        rows.append(WeekGroupRow(
+            label=label,
+            sub=sub,
+            count=len(group),
+            cells=cells_for(group, "그날 이 묶음 작업 없음"),
+            types=tuple(WeekRow(kind, cells_for(found, "그날 이 작업 없음"))
+                        for kind, found in kinds.items()),
+            unassigned=by == "company" and label == schedules_service.UNASSIGNED,
+        ))  # fmt: skip
+    return tuple(rows)
 
 
 def _progress(now: time, start: time, end: time) -> int:

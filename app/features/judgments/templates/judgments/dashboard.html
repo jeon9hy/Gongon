@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, verdict_badge, verdict_class, site_menu, refresh_button %}
+{% from "_macros.html" import icon, verdict_badge, verdict_class, site_menu, refresh_button, groupseg %}
 {% block title %}내일 공사 ON?{% endblock %}
 {% block schedule_tools %}
 {% if view.site_id is not none %}{{ site_menu(view.site_id, view.site_name, can_delete=view.site_id in manageable) }}{% endif %}
@@ -88,11 +88,23 @@
 <h2 class="h2" id="week-title">7일 공온지수</h2>
 <a class="small" href="/guide#gongon-index">공온지수란?</a>
 </div>
-<div class="week-wrap">
-<table class="week">
+{% macro week_cell(c, day) -%}
+<td class="week__cell week__cell--{{ c.state }}{% if day.is_tomorrow %} is-tomorrow{% endif %}">
+{% if c.state == "verdict" %}
+{% if c.href %}<a class="wv wv--{{ verdict_class[c.verdict] }}" href="{{ c.href }}" title="{{ c.note }}">{{ c.verdict }}</a>{% else %}<span class="wv wv--{{ verdict_class[c.verdict] }}" title="{{ c.note }}">{{ c.verdict }}</span>{% endif %}
+{% elif c.state == "reference" %}<span class="wv wv--{{ verdict_class[c.verdict] }} wv--ref" title="{{ c.note }}">{{ c.verdict }}</span>
+{% elif c.state == "pending" %}<span class="wv wv--empty" title="{{ c.note }}">예보 대기</span>
+{% else %}<span class="wv wv--blank" title="{{ c.note }}"></span>{% endif %}
+</td>
+{%- endmacro %}
+{{ groupseg() }}
+{# 7일 표 묶음(C04-31): 업체별(기본)·위치별 줄. 줄을 누르면 그 묶음의 작업 종류별 줄이 펼쳐진다 #}
+{% for mode, groups in [("company", view.week_groups), ("place", view.week_place_groups)] %}
+<div class="week-wrap" data-groupview="{{ mode }}">
+<table class="week week--groups">
 <thead>
 <tr>
-<th scope="col" class="week__corner">작업</th>
+<th scope="col" class="week__corner">{% if mode == "company" %}업체{% else %}위치{% endif %}</th>
 {% for d in wk.days %}
 <th scope="col" class="week__day{% if d.is_tomorrow %} is-tomorrow{% endif %}{% if not d.in_period %} is-off{% endif %}">
 <span class="week__date">{% if d.is_tomorrow %}<em>내일</em>{% endif %}{{ d.label }}</span>
@@ -107,24 +119,30 @@
 {% endfor %}
 </tr>
 </thead>
-<tbody>
-{% for r in wk.rows %}
-<tr>
-<th scope="row" class="week__type">{{ r.work_type }}</th>
-{% for c in r.cells %}
-<td class="week__cell week__cell--{{ c.state }}{% if wk.days[loop.index0].is_tomorrow %} is-tomorrow{% endif %}">
-{% if c.state == "verdict" %}
-{% if c.href %}<a class="wv wv--{{ verdict_class[c.verdict] }}" href="{{ c.href }}" title="{{ c.note }}">{{ c.verdict }}</a>{% else %}<span class="wv wv--{{ verdict_class[c.verdict] }}" title="{{ c.note }}">{{ c.verdict }}</span>{% endif %}
-{% elif c.state == "reference" %}<span class="wv wv--{{ verdict_class[c.verdict] }} wv--ref" title="{{ c.note }}">{{ c.verdict }}</span>
-{% elif c.state == "pending" %}<span class="wv wv--empty" title="{{ c.note }}">예보 대기</span>
-{% else %}<span class="wv wv--blank" title="{{ c.note }}"></span>{% endif %}
-</td>
-{% endfor %}
+{% for g in groups %}
+{% set gid = "wg-" ~ mode ~ "-" ~ loop.index %}
+<tbody class="week__grp week__grp--{{ mode }}{% if g.unassigned %} week__grp--unassigned{% endif %}">
+<tr class="week__grprow">
+<th scope="row" class="week__type">
+<button type="button" class="week__toggle" aria-expanded="false" aria-controls="{% for r in g.types %}{{ gid }}-{{ loop.index }}{% if not loop.last %} {% endif %}{% endfor %}" data-week-toggle>
+<span class="week__gicon" aria-hidden="true">{{ icon("building" if mode == "company" else "map-pin", 14, 2.2) }}</span>
+<span class="week__gname"><strong>{{ g.label }}</strong><small>{% if g.sub %}{{ g.sub }} · {% endif %}{{ g.count }}건</small></span>
+<span class="week__chev" aria-hidden="true">{{ icon("chevron-down", 14, 2.2) }}</span>
+</button>
+</th>
+{% for c in g.cells %}{{ week_cell(c, wk.days[loop.index0]) }}{% endfor %}
+</tr>
+{% for r in g.types %}
+<tr class="week__kind" id="{{ gid }}-{{ loop.index }}" hidden>
+<th scope="row" class="week__type week__type--kind"><span class="job__dot" style="--c: {{ work_color(r.work_type) }}"></span>{{ r.work_type }}</th>
+{% for c in r.cells %}{{ week_cell(c, wk.days[loop.index0]) }}{% endfor %}
 </tr>
 {% endfor %}
 </tbody>
+{% endfor %}
 </table>
 </div>
+{% endfor %}
 </article>
 {% endif %}
 
@@ -200,6 +218,14 @@
 </div>
 </dialog>
 <script>
+// 7일 표 묶음 줄: 눌러서 그 묶음의 작업 종류별 줄을 펼치고 접는다(C04-31)
+document.querySelectorAll("[data-week-toggle]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const open = btn.getAttribute("aria-expanded") !== "true";
+    btn.setAttribute("aria-expanded", String(open));
+    btn.getAttribute("aria-controls").split(" ").forEach((id) => { document.getElementById(id).hidden = !open; });
+  });
+});
 // 작업 상세 모달: 공종별 판정 줄을 누르면 그 작업으로 다시 열린다. 닫으면 주소의 작업·요소·시각을 지워
 // 새로고침해도 다시 열리지 않게 한다. 바깥(배경)·Esc·닫기로 닫는다.
 (() => {

@@ -2530,3 +2530,31 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .daypanel .grp__chev { grid-area: 1 / 5; }
 .daypanel .grp__count { display: inline-block; }
 
+
+/* 7일 표 묶음 줄(C04-31): 업체(건물)·위치(핀) 줄을 누르면 작업 종류별 줄이 펼쳐진다 */
+.week--groups .week__corner { width: 168px; }
+.week--groups tbody:not(:last-child) tr:last-child .week__cell.is-tomorrow { border-radius: 0; }
+.week__toggle { display: grid; grid-template-columns: 26px minmax(0, 1fr) 14px; align-items: center; gap: 8px; width: 100%; min-height: 46px; padding: 0 4px 0 0; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.week__toggle:hover .week__gname strong { color: var(--accent); }
+.week__toggle:focus-visible { outline: 3px solid var(--ink); outline-offset: -3px; border-radius: var(--radius-sm); }
+.week__gicon { display: grid; place-items: center; width: 26px; height: 26px; border-radius: var(--radius-sm); background: var(--accent-soft); color: var(--accent); }
+.week__grp--place .week__gicon { background: #E8F6EF; color: #1F7A4D; }
+.week__grp--unassigned .week__gicon { background: var(--stop-soft); color: var(--stop-text); }
+.week__grp--unassigned .week__gname strong { color: var(--stop-text); }
+.week__gname { display: grid; min-width: 0; }
+.week__gname strong { font-size: 13px; font-weight: 700; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.week__gname small { font-size: 11px; font-weight: 500; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.week__chev { display: grid; place-items: center; color: var(--muted); transition: transform var(--ease); }
+.week__toggle[aria-expanded="true"] .week__chev { transform: rotate(180deg); }
+.week__type--kind { padding-left: 34px !important; font-size: 12px; font-weight: 600; color: var(--text); }
+.week__type--kind .job__dot { margin-right: 6px; }
+.week__kind .week__cell, .week__kind .week__type { background: var(--surface); }
+.week__kind .week__cell.is-tomorrow { background: var(--accent-soft); }
+.week__kind .wv { height: 38px; font-size: 11px; }
+.week__kind .week__cell { height: 38px; }
+
+/* 오늘 보드 묶음(C04-31): 펼치면 기존 오늘 작업 줄이 그대로 보인다 */
+.hsec--today .groupseg { margin-top: 0; }
+.grp > .grp__jobs { padding: 4px 0; border-top: 1px solid var(--line-soft); background: var(--surface); }
+.grp > .grp__jobs .job { background: transparent; }
+.hsec--today .grps + .jobs__head { margin-top: 12px; }

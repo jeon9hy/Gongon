@@ -14,8 +14,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.features.judgments import service
 from app.features.schedules.models import WorkItem
 from app.features.teams.models import ProjectParticipant
+from tests.conftest import FIXED_NOW
 from tests.fakes import FakeKma
 
 SITE: dict[str, Any] = {
@@ -78,8 +80,16 @@ def board(page: str, key: str) -> str:
     return page.split(f'class="hsec hsec--{key} reveal"')[1].split("</section>")[0]
 
 
+def company_view(section: str) -> str:
+    """오늘 보드의 기본 보기(업체별 묶음)와 끝난 작업 목록. 위치별 묶음은 같은 줄을 또 그린다."""
+    head, _, rest = section.partition('<ul class="grps" data-groupview="place">')
+    done = rest.find('<div class="jobs__head')
+    return head + (rest[done:] if done >= 0 else "")
+
+
 def rows(section: str) -> list[tuple[str, str]]:
-    """오늘 일정의 (단계, 시간) 목록(화면 순서)."""
+    """오늘 일정의 (단계, 시간) 목록(화면 순서, 업체별 보기)."""
+    section = company_view(section)
     pattern = r'class="job job--today job--(\w+)".*?<span class="job__time">([^<]+)</span>'
     return re.findall(pattern, section, re.S)
 
@@ -137,8 +147,35 @@ def test_checks_flag_missing_company_place_and_true_overlaps_only(
     assert "고소작업대와 같은 곳" not in today and "도장·방수와 같은 곳" not in today  # 끝=시작
     assert ">업체 미지정 · 16:00 콘크리트 타설</a>" in prio
     assert "위치 없음" not in prio  # 위치는 선택 입력이라 점검하지 않는다(D-077)
-    assert today.count('class="job__warn"') == 3  # 철골·크레인·콘크리트 타설
+    shown = company_view(today)
+    # 줄 3개(철골·크레인·콘크리트 타설) + 묶음 머리 2개(업체 미정·원청 묶음)
+    assert shown.count('class="job__warn"') == 5
+    # 업체 미정 묶음이 맨 앞, 그다음 점검 문제가 있는 묶음(C04-31)
+    assert shown.index("grp--unassigned") < shown.index('<details class="grp grp--company">')
     assert ">날씨 ·" not in prio  # 오늘은 날씨를 보지 않는다
+
+
+def test_today_board_groups_left_work_by_company_and_floor_and_keeps_done_apart(
+    client: TestClient, session: Session
+) -> None:
+    site_id = make_site(client)
+    prime = prime_of(session, site_id)
+    put(session, site_id, TODAY, time(15, 0), time(17, 0), "철골 작업", "101동 9층 2구역", prime)
+    put(session, site_id, TODAY, time(16, 0), time(18, 0), "검측(감리 입회)", "101동 9층", None)
+    put(session, site_id, TODAY, time(13, 0), time(15, 0), "먹매김", "102동 3층", prime)  # 끝남
+
+    view = service.build_home(session, None, FIXED_NOW)
+    today_board = view.boards[0]
+
+    # 끝난 작업(먹매김)은 묶음에 넣지 않는다
+    assert [(g.label, len(g.items), g.phase) for g in today_board.place_groups] == [
+        ("101동 9층", 2, "now")
+    ]
+    assert [g.unassigned for g in today_board.groups] == [True, False]
+    assert today_board.groups[0].issues == ("실행 업체 미지정",)
+    assert today_board.groups[1].phase == "now" and today_board.groups[1].issues == ()
+    today = board(client.get("/").text, "today")
+    assert "끝난 작업 1건 보기" in today and today.count('<li class="is-extra">') == 1
 
 
 def test_tomorrow_board_counts_weather_before_judgment_and_open_change(
