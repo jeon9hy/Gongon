@@ -137,33 +137,30 @@
 {% set first_panel = loop.first %}
 {{ groupseg() }}
 {% for mode, rows in [("company", p.rows), ("place", p.place_rows)] %}
-<div data-groupview="{{ mode }}">
-<div class="jobs__head jobs__head--types" aria-hidden="true">{% if mode == "company" %}<span>업체</span><span>시간</span><span>업종</span>{% else %}<span>위치</span><span>시간</span><span>업체</span>{% endif %}<span>건수</span><span>판정</span></div>
-<ul class="jobs">
+{# 묶음 카드: 업체(건물) 또는 위치(핀). 처음엔 모두 접혀 있고 눌러 펼친다(D-085, 개발자 요청) #}
+<ul class="grps" data-groupview="{{ mode }}">
 {% for r in rows %}
-{# 묶음 줄을 누르면 하위 작업이 펼쳐진다. 중지 검토가 있으면 처음부터 펼친다(D-085) #}
 {% set warn = namespace(labels=[]) %}{% if first_panel %}{% for s in r.items %}{% set warn.labels = (warn.labels + others.by_item.get(s.item_id, [])) | unique | list %}{% endfor %}{% endif %}
-<li><details class="jobgroup"{% if r.verdict == "중지 검토" %} open{% endif %}>
-<summary class="job job--type{% if r.unassigned %} job--unassigned{% endif %}">
-<span class="job__what"><strong>{{ r.label }}</strong></span>
-<span class="job__time">{{ r.time_text }}</span>
-<span class="job__who">{{ r.sub }}</span>
-<span class="job__count">{{ r.count }}건 {{ icon("chevron-down", 14, 2.2) }}</span>
-<span class="job__state">{% if warn.labels %}<span class="job__warn" title="{{ warn.labels | join(', ') }}" aria-label="확인할 것: {{ warn.labels | join(', ') }}">!</span>{% else %}<span class="job__warn job__warn--none" aria-hidden="true"></span>{% endif %}{% if r.verdict %}{{ verdict_badge(r.verdict) }}{% else %}<span class="badge badge--unknown">판정 전</span>{% endif %}</span>
+<li><details class="grp grp--{{ mode }}{% if r.unassigned %} grp--unassigned{% endif %}">
+<summary class="grp__head">
+<span class="grp__icon" aria-hidden="true">{{ icon("building" if mode == "company" else "map-pin", 18, 2) }}</span>
+<span class="grp__title"><strong>{{ r.label }}</strong><small>{% if r.sub %}{{ r.sub }} · {% endif %}{{ r.time_text }}</small></span>
+<span class="grp__warn">{% if warn.labels %}<span class="job__warn" title="{{ warn.labels | join(', ') }}" aria-label="확인할 것: {{ warn.labels | join(', ') }}">!</span>{% endif %}</span>
+<span class="grp__count">{{ r.count }}건</span>
+<span class="grp__state">{% if r.verdict %}{{ verdict_badge(r.verdict) }}{% else %}<span class="badge badge--unknown">판정 전</span>{% endif %}</span>
+<span class="grp__chev" aria-hidden="true">{{ icon("chevron-down", 16, 2.2) }}</span>
 </summary>
-<ul class="jobs jobs--sub">
-{% for s in r.items %}<li><a class="job job--type job--sub" href="{{ s.href }}">
-<span class="job__what"><span class="job__dot" style="--c: {{ work_color(s.work_type) }}"></span>{{ s.work_type }}</span>
-<span class="job__time">{{ s.time_text }}</span>
-<span class="job__who">{{ s.where }}</span>
-<span class="job__count" aria-hidden="true"></span>
-<span class="job__state">{% if s.verdict %}{{ verdict_badge(s.verdict) }}{% else %}<span class="badge badge--unknown">판정 전</span>{% endif %}</span>
+<ul class="grp__items">
+{% for s in r.items %}<li><a class="grp__item" href="{{ s.href }}">
+<span class="grp__work"><span class="job__dot" style="--c: {{ work_color(s.work_type) }}"></span>{{ s.work_type }}</span>
+<span class="grp__time">{{ s.time_text }}</span>
+<span class="grp__where">{{ icon("map-pin" if mode == "company" else "building", 13, 2.2) }}{{ s.where }}</span>
+<span class="grp__badge">{% if s.verdict %}{{ verdict_badge(s.verdict) }}{% else %}<span class="badge badge--unknown">판정 전</span>{% endif %}</span>
 </a></li>{% endfor %}
 </ul>
 </details></li>
 {% endfor %}
 </ul>
-</div>
 {% endfor %}
 {% else %}
 <p class="hsec__empty">{% if loop.first %}내일 일정이 비어 있어요.{% else %}이날은 등록한 작업이 없어요.{% endif %}{% if can_add %} <a href="{{ p.add_href }}">{% if loop.first %}미리 추가할까요?{% else %}작업을 추가할까요?{% endif %}</a>{% endif %}</p>

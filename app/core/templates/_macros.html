@@ -21,6 +21,7 @@
   "chevron-right": '<path d="M9 6l6 6-6 6"></path>',
   "chevron-left": '<path d="M15 6l-6 6 6 6"></path>',
   "close": '<path d="M6 6l12 12M18 6L6 18"></path>',
+  "map-pin": '<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"></path><circle cx="12" cy="10" r="2.5"></circle>',
   "upload": '<path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"></path>',
   "plus": '<path d="M12 5v14M5 12h14"></path>',
   "pause": '<path d="M9 6v12M15 6v12"></path>',
@@ -51,8 +52,8 @@
 {# 업체별·위치별 묶어 보기 전환(D-085). 고른 값은 이 브라우저에 남고 모든 화면에 같이 쓴다(base.html). #}
 {% macro groupseg() -%}
 <div class="groupseg" role="group" aria-label="묶어 보기">
-<button type="button" class="groupseg__btn" data-groupseg="company" aria-pressed="true">업체별</button>
-<button type="button" class="groupseg__btn" data-groupseg="place" aria-pressed="false">위치별</button>
+<button type="button" class="groupseg__btn" data-groupseg="company" aria-pressed="true">{{ icon("building", 14, 2.2) }}업체별</button>
+<button type="button" class="groupseg__btn" data-groupseg="place" aria-pressed="false">{{ icon("map-pin", 14, 2.2) }}위치별</button>
 </div>
 {%- endmacro %}
 

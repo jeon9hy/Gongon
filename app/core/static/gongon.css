@@ -2426,36 +2426,13 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
   .wpick__col[data-col="1"] { background: var(--card); }
 }
 
-/* 홈 날 패널: 같은 작업 2건 이상은 묶음 줄을 눌러 하위 작업을 펼친다(D-085) */
-.jobgroup > summary { list-style: none; cursor: pointer; }
-.jobgroup > summary::-webkit-details-marker { display: none; }
-.jobgroup .job__count svg { vertical-align: -2px; color: var(--muted); transition: transform var(--ease); }
-.jobgroup[open] > summary .job__count svg { transform: rotate(180deg); }
-.jobgroup[open] > summary { background: var(--surface); }
-.jobs--sub { margin: 2px 0 8px; padding-left: 16px; border-left: 2px solid var(--line-soft); }
-.jobs--sub li + li { border-top: 0; }
-.job--sub { padding-top: 7px; padding-bottom: 7px; }
-.job--sub .job__what { font-size: 13px; color: var(--text); }
-.job--sub .badge { transform: scale(0.92); transform-origin: right center; }
-@media (max-width: 760px) {
-  .jobs--sub { padding-left: 10px; }
-  .jobgroup > summary.job--type { grid-template-columns: minmax(0, 1fr) auto auto; }
-  .jobgroup > summary.job--type .job__what { grid-column: 1; grid-row: 1; }
-  .jobgroup > summary.job--type .job__count { display: inline-flex; grid-column: 2; grid-row: 1; align-items: center; gap: 2px; font-size: 12px; color: var(--muted); }
-  .jobgroup > summary.job--type .job__state { grid-column: 3; grid-row: 1; }
-  .job--sub .job__what { grid-column: 1; grid-row: 1; }
-  .job--sub .job__time { display: block; grid-column: 1; grid-row: 2; font-size: 12px; font-weight: 500; color: var(--muted); }
-  .job--sub .job__state { grid-column: 2; grid-row: 1 / span 2; }
-}
-
 /* 묶어 보기 전환(D-085): 업체별이 기본, html[data-group="place"]면 위치별 */
 :root:not([data-group="place"]) [data-groupview="place"],
 :root[data-group="place"] [data-groupview="company"] { display: none; }
 .groupseg { display: inline-flex; gap: 2px; padding: 3px; margin: 4px 0 10px; border-radius: 999px; background: var(--surface); }
-.groupseg__btn { min-height: 30px; padding: 0 14px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.groupseg__btn { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 14px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
 .groupseg__btn[aria-pressed="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px #0E1E4514, inset 0 0 0 1px var(--line); }
 .groupseg__btn:focus-visible { outline: 3px solid var(--ink); outline-offset: 1px; }
-.job--unassigned .job__what strong { color: var(--stop-text); }
 
 
 /* 달력 칸 요약(D-085): 점 대신 건수 + 챙길 것. 칸 전체가 링크라 요약은 누름을 통과시킨다 */
@@ -2478,22 +2455,6 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
   .calsum__chip .calsum__mark { display: none; }
 }
 
-/* 날 상세 묶음(D-085) */
-.dgroups { display: grid; gap: 8px; }
-.dgroup { border: 1px solid var(--line-soft); border-radius: var(--radius-md); background: var(--card); }
-.dgroup > summary { list-style: none; cursor: pointer; }
-.dgroup > summary::-webkit-details-marker { display: none; }
-.dgroup__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: var(--radius-md); }
-.dgroup__head:hover { background: var(--surface); }
-.dgroup__name { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 8px; min-width: 0; }
-.dgroup__name strong { font-size: 14px; color: var(--ink); }
-.dgroup__name small { font-size: 12px; color: var(--muted); }
-.dgroup__head--unassigned .dgroup__name strong { color: var(--stop-text); }
-.dgroup__meta { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; color: var(--muted); }
-.dgroup__count { font-size: 12px; font-weight: 600; color: var(--muted); }
-.dgroup__meta svg { transition: transform var(--ease); }
-.dgroup[open] > summary .dgroup__meta svg { transform: rotate(180deg); }
-.dgroup > .worklist { padding: 0 8px 8px; }
 .workcard__time .badge { margin-left: 6px; transform: scale(0.9); transform-origin: left center; }
 
 /* 공정표 가져오기(C04-30) */
@@ -2508,4 +2469,64 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .workcard__title .dot { align-self: center; }
 .workcard__title { word-break: keep-all; }
 .workcard__place { white-space: normal; overflow: visible; }
+
+/* 묶음 카드(D-085): 머리의 아이콘으로 업체(건물)·위치(핀) 묶음을 구분한다. 처음엔 접혀 있다 */
+.grps { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.grp { border: 1px solid var(--line-soft); border-radius: var(--radius-lg); background: var(--card); overflow: hidden; transition: border-color var(--ease), box-shadow var(--ease); }
+.grp[open] { border-color: var(--line); box-shadow: 0 2px 10px #0E1E450D; }
+.grp > summary { list-style: none; cursor: pointer; }
+.grp > summary::-webkit-details-marker { display: none; }
+/* 머리 칸: 아이콘 · 이름 · ! · 건수 · 판정 · 펼침. !·건수·판정 칸은 폭을 고정해 줄마다 밀리지 않는다 */
+.grp__head { display: grid; grid-template-columns: 36px minmax(0, 1fr) 18px 52px 96px 16px; align-items: center; gap: 12px; padding: 12px 14px; }
+.grp__warn { display: grid; place-items: center; }
+.grp__count { justify-self: end; }
+.grp__state { justify-self: end; }
+.grp__head:hover { background: var(--surface); }
+.grp__head:focus-visible { outline: 3px solid var(--ink); outline-offset: -3px; }
+.grp__icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: var(--radius-md); }
+.grp--company .grp__icon { background: var(--accent-soft); color: var(--accent); }
+.grp--place .grp__icon { background: #E8F6EF; color: #1F7A4D; }
+.grp--unassigned .grp__icon { background: var(--stop-soft); color: var(--stop-text); }
+.grp__title { display: grid; gap: 2px; min-width: 0; }
+.grp__title strong { font-size: 15px; font-weight: 700; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.grp--unassigned .grp__title strong { color: var(--stop-text); }
+.grp__title small { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.grp__count { padding: 2px 9px; border-radius: 999px; background: var(--surface); font-size: 12px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.grp__state { display: inline-flex; align-items: center; gap: 6px; }
+.grp__chev { display: grid; place-items: center; color: var(--muted); transition: transform var(--ease); }
+.grp[open] .grp__chev { transform: rotate(180deg); }
+.grp__items { margin: 0; padding: 4px 8px 8px; list-style: none; border-top: 1px solid var(--line-soft); background: var(--surface); }
+.grp__item { display: grid; grid-template-columns: minmax(0, 1.2fr) 96px minmax(0, 1fr) 96px; align-items: center; gap: 12px; padding: 9px 10px; border-radius: var(--radius-md); text-decoration: none; color: var(--text); }
+.grp__item:hover { background: var(--card); }
+.grp__work { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 14px; font-weight: 600; color: var(--ink); }
+.grp__time { font-size: 13px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.grp__where { display: inline-flex; align-items: center; gap: 5px; min-width: 0; font-size: 13px; color: var(--muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.grp__where svg { flex: 0 0 auto; }
+.grp__badge { justify-self: end; }
+.grp > .worklist { padding: 8px; border-top: 1px solid var(--line-soft); background: var(--surface); }
+@media (max-width: 760px) {
+  .grp__head { grid-template-columns: 32px minmax(0, 1fr) 18px 88px 16px; gap: 8px; padding: 10px 12px; }
+  .grp__icon { width: 32px; height: 32px; }
+  .grp__count { display: none; }
+  .grp__item { grid-template-columns: minmax(0, 1fr) auto; row-gap: 2px; }
+  .grp__work { grid-column: 1; grid-row: 1; }
+  .grp__time { grid-column: 1; grid-row: 2; font-size: 12px; font-weight: 500; color: var(--muted); }
+  .grp__where { grid-column: 1; grid-row: 3; font-size: 12px; }
+  .grp__badge { grid-column: 2; grid-row: 1 / span 3; }
+}
+
+/* 오늘 보드·날 패널 표: 작업 칸은 색 점이 한 줄로 서도록 왼쪽 정렬(머리 글자도 점과 같은 자리) */
+.job .job__what { justify-self: stretch; justify-content: flex-start; text-align: left; padding-left: 12px; }
+.jobs__head--today > span:nth-child(2) { justify-self: stretch; text-align: left; padding-left: 12px; }
+/* 작업 일정의 날 상세는 데스크톱에서도 좁다: 판정 칩은 이름 아래 줄로 내리고 이름 칸을 지킨다 */
+.daypanel .grp__head { grid-template-columns: 32px minmax(0, 1fr) 18px auto 16px; gap: 8px; padding: 10px 12px; }
+.daypanel .grp__icon { width: 32px; height: 32px; }
+.daypanel .grp__state { grid-column: 2; grid-row: 2; justify-self: start; }
+.daypanel .grp__state:empty { display: none; }
+.daypanel .grp__icon { grid-area: 1 / 1; }
+.daypanel .grp__title { grid-area: 1 / 2; }
+.daypanel .grp__warn { grid-area: 1 / 3; }
+.daypanel .grp__count { grid-area: 1 / 4; white-space: nowrap; }
+.daypanel .grp__chev { grid-area: 1 / 5; }
+.daypanel .grp__count { display: inline-block; }
 

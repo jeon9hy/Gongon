@@ -115,14 +115,21 @@
 <span class="workcard__title"><span class="dot"></span>{{ i.work_type }}{% if i.location %}<span class="workcard__place"> · {{ i.location }}</span>{% endif %}</span>
 <span class="workcard__meta">{% if view.all_mode %}<b class="workcard__site">{{ view.site_names.get(i.site_id, "") }}</b> · {% endif %}{{ view.participant_names.get(i.performing_participant_id, "업체 미지정").split(" · ")[0] if i.performing_participant_id else "업체 미지정" }} · v{{ i.plan_version }}{% if history %} · 변경 {{ history | length }}번{% endif %}</span>
 </button></li>{% endmacro %}
-{# 업체별·위치별로 묶는다(D-085). 작업이 5건 이하이거나 챙길 것(중지 검토·확인 필요·점검 문제)이 있는 묶음은 펼쳐 둔다 #}
+{# 업체별·위치별로 묶는다(D-085). 처음엔 모두 접혀 있다(개발자 요청) #}
 {{ groupseg() }}
 {% for mode, groups in [("company", d.by_company), ("place", d.by_place)] %}
-<div class="dgroups" data-groupview="{{ mode }}">
+<div class="grps" data-groupview="{{ mode }}">
 {% for g in groups %}
 {% set ns = namespace(stop=0, check=0) %}{% for i in g.items %}{% set m = marks.get(i.item_id) %}{% if m and m[0] == "중지 검토" %}{% set ns.stop = ns.stop + 1 %}{% elif m and m[0] == "확인 필요" %}{% set ns.check = ns.check + 1 %}{% endif %}{% endfor %}
-<details class="dgroup"{% if d.items | length <= 5 or ns.stop or ns.check or g.warn_ids %} open{% endif %}>
-<summary class="dgroup__head{% if g.unassigned %} dgroup__head--unassigned{% endif %}"><span class="dgroup__name"><strong>{{ g.label }}</strong>{% if g.sub %}<small>{{ g.sub }}</small>{% endif %}</span><span class="dgroup__meta">{% if g.warn_ids %}<span class="calsum__warn" title="업체 미지정 또는 같은 곳 같은 시간 겹침">!</span>{% endif %}{% if ns.stop %}<span class="calsum__chip calsum__chip--stop"><i class="calsum__mark calsum__mark--stop"></i>{{ ns.stop }}</span>{% endif %}{% if ns.check %}<span class="calsum__chip calsum__chip--check"><i class="calsum__mark calsum__mark--check"></i>{{ ns.check }}</span>{% endif %}<span class="dgroup__count">{{ g.items | length }}건</span>{{ icon("chevron-down", 14, 2.2) }}</span></summary>
+<details class="grp grp--{{ mode }}{% if g.unassigned %} grp--unassigned{% endif %}">
+<summary class="grp__head">
+<span class="grp__icon" aria-hidden="true">{{ icon("building" if mode == "company" else "map-pin", 18, 2) }}</span>
+<span class="grp__title"><strong>{{ g.label }}</strong>{% if g.sub %}<small>{{ g.sub }}</small>{% endif %}</span>
+<span class="grp__warn">{% if g.warn_ids %}<span class="calsum__warn" title="업체 미지정 또는 같은 곳 같은 시간 겹침">!</span>{% endif %}</span>
+<span class="grp__count">{{ g.items | length }}건</span>
+<span class="grp__state">{% if ns.stop %}<span class="calsum__chip calsum__chip--stop"><i class="calsum__mark calsum__mark--stop"></i>{{ ns.stop }}</span>{% endif %}{% if ns.check %}<span class="calsum__chip calsum__chip--check"><i class="calsum__mark calsum__mark--check"></i>{{ ns.check }}</span>{% endif %}</span>
+<span class="grp__chev" aria-hidden="true">{{ icon("chevron-down", 16, 2.2) }}</span>
+</summary>
 <ul class="worklist">{% for i in g.items %}{{ workcard(i) }}{% endfor %}</ul>
 </details>
 {% endfor %}

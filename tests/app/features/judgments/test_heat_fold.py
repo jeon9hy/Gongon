@@ -218,7 +218,10 @@ def test_home_day_panel_groups_same_work_and_expands_to_each_item(
         (STEEL, "13:00–16:00", "진행"),
     ]
     assert (panel.stop, panel.go) == (1, 1)  # 칸 숫자는 묶음이 아니라 작업마다 센다
-    assert '<details class="jobgroup" open>' in client.get("/").text  # 중지 검토는 펼쳐 둔다
+    page = client.get("/").text
+    assert (
+        '<details class="grp grp--company">' in page and 'grp--company" open' not in page
+    )  # 처음엔 접힘
 
 
 def test_home_day_panel_groups_by_company_and_by_floor(

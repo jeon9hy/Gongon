@@ -435,5 +435,5 @@ def test_home_work_type_row_opens_the_worst_judgment(
     home = client.get("/").text
 
     # 묶음(업체별) 안의 작업 줄이 그 판정 상세로 간다(D-085)
-    links = [h.split('"')[0] for h in home.split('class="job job--type job--sub" href="')[1:]]
+    links = [h.split('"')[0] for h in home.split('class="grp__item" href="')[1:]]
     assert f"/judgments/{steel.id}" in links

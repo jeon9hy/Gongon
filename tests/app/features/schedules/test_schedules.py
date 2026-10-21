@@ -300,7 +300,7 @@ def test_day_detail_groups_by_company_and_by_floor_and_marks_problems(
     page = client.get(f"/schedule?site_id={site_id}&day=2026-10-05").text
 
     place = page.split('data-groupview="place"')[1].split("</aside>")[0]
-    names = re.findall(r'class="dgroup__name"><strong>([^<]+)</strong>', place)
+    names = re.findall(r'class="grp__title"><strong>([^<]+)</strong>', place)
     assert names == ["101동 9층", "102동 지하1층"]  # 동 → 층 순, 같은 동·층은 한 묶음
     cell = page.split('aria-label="10월 5일, 작업 3건"')[1].split("</td>")[0]
     assert 'class="calsum__warn"' in cell  # 같은 곳 같은 시간 겹침
