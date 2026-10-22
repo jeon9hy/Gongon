@@ -24,11 +24,7 @@
 <select id="page-size" name="size" onchange="this.form.submit()">
 {% for n in view.size_options %}<option value="{{ n }}"{% if n == view.size %} selected{% endif %}>{{ n }}개씩</option>{% endfor %}
 </select>
-<label class="visually-hidden" for="history-site">현장</label>
-<select id="history-site" name="site_id" onchange="this.form.submit()">
-<option value=""{% if view.selected_site_id is none %} selected{% endif %}>전체 현장</option>
-{% for s in view.site_options %}<option value="{{ s.site_id }}"{% if s.selected %} selected{% endif %}>{{ s.name }}</option>{% endfor %}
-</select>
+{% if view.selected_site_id is not none %}<input type="hidden" name="site_id" value="{{ view.selected_site_id }}">{% endif %}
 <noscript><button class="btn btn--soft" type="submit">적용</button></noscript>
 </form>
 </div>

@@ -41,15 +41,24 @@ def _render(request: Request, view: MembersView, status_code: int = 200) -> HTML
     )
 
 
-@router.get("/team")
+@router.get("/team", response_model=None)
 def team(
-    session: SessionDep, scope: AccessibleSitesDep, site_id: OptionalSiteIdQuery = None
+    request: Request,
+    session: SessionDep,
+    user: CurrentUserDep,
+    scope: AccessibleSitesDep,
+    site_id: OptionalSiteIdQuery = None,
 ) -> Response:
-    """주 메뉴 업체 탭(C04-33): 고른 현장(없으면 첫 참여 현장)의 참여 업체 화면으로 보낸다."""
+    """주 메뉴 업체 탭(C04-33·C04-36): 전체 현장 업체 표. 현장을 고르면 그 현장 화면으로."""
     sites = sites_service.list_sites(session, scope)
-    site = next((s for s in sites if s.site_id == site_id), sites[0] if sites else None)
-    target = "/sites" if site is None else f"/sites/{site.site_id}/members"
-    return RedirectResponse(target, status_code=303)
+    if not sites:
+        return RedirectResponse("/sites", status_code=303)
+    if site_id in {s.site_id for s in sites}:
+        return RedirectResponse(f"/sites/{site_id}/members", status_code=303)
+    view = service.build_team_all(session, user, sites)
+    return templates.TemplateResponse(
+        request, "teams/all.html", {"nav_active": "team", "view": view}
+    )
 
 
 @router.get("/sites/switcher", response_class=HTMLResponse)

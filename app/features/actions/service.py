@@ -11,6 +11,7 @@
 """
 
 from collections.abc import Callable, Iterable
+from dataclasses import replace
 from datetime import date, datetime, time
 
 from fastapi import HTTPException
@@ -825,6 +826,18 @@ def build_my_actions(
     )
 
 
+def only_site(view: MyActionsView, site_id: int, site_name: str) -> MyActionsView:
+    """머리줄 현장 칩으로 고른 현장의 조치만(D-092). 위임 목록은 그대로 둔다."""
+    return replace(
+        view,
+        to_respond=tuple(i for i in view.to_respond if i.site_id == site_id),
+        blocked=tuple(i for i in view.blocked if i.site_id == site_id),
+        to_verify=tuple(i for i in view.to_verify if i.site_id == site_id),
+        site_id=site_id,
+        site_name=site_name,
+    )
+
+
 def open_action_count(session: Session, user: CurrentUser, now: datetime) -> int:
     """홈의 '내 조치' 건수(목록과 같은 기준)."""
     view = build_my_actions(session, user, now)
@@ -842,6 +855,7 @@ def _my_item(
         due_text=due_text,
         overdue=overdue,
         why=why,
+        site_id=a.site_id,
     )
 
 

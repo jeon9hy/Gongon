@@ -7,17 +7,7 @@
 <p class="hero__date">{{ icon("history", 15) }} 변경 건</p>
 <h1 class="hero__title" id="changes-title">변경 뒤 남은 일</h1>
 </div>
-{% if view.sites %}
-<form method="get" action="/changes" class="hero__action">
-<label class="visually-hidden" for="changes-site">현장</label>
-<select id="changes-site" class="hero__select" name="site_id" onchange="this.form.submit()">
-<option value="">전체 현장</option>
-{% for s in view.sites %}<option value="{{ s.site_id }}"{% if s.selected %} selected{% endif %}>{{ s.name }}</option>{% endfor %}
-</select>
-{% if view.show == "all" %}<input type="hidden" name="show" value="all">{% endif %}
-<noscript><button class="btn btn--soft btn--sm" type="submit">보기</button></noscript>
-</form>
-{% endif %}
+{# 현장 고르기는 머리줄 칩 하나로(C04-36, D-092) #}
 </section>
 
 <section class="card">

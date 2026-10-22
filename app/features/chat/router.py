@@ -22,12 +22,11 @@ NowDep = Annotated[datetime, Depends(now_kst)]
 
 @router.get("/chat", response_model=None)
 def chat_home(request: Request, session: SessionDep, user: CurrentUserDep) -> Response:
-    """참여 중인 첫 현장 방으로 보낸다. 현장이 없으면 빈 화면."""
-    choices = service.rooms(session, user)
-    if choices:
-        return RedirectResponse(f"/chat/{choices[0].site_id}", status_code=303)
+    """방을 미리 고르지 않는다(C04-36): 참여 현장 방 목록만 보이는 빈 화면."""
     return templates.TemplateResponse(
-        request, "chat/room.html", {"nav_active": "chat", "view": None}
+        request,
+        "chat/room.html",
+        {"nav_active": "chat", "view": None, "rooms": service.rooms(session, user)},
     )
 
 

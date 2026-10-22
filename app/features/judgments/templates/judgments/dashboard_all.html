@@ -9,14 +9,7 @@
 <h1 class="homebar__title" id="dash-all-title">전체 현장</h1>
 </div>
 <div class="dashtools">
-<form method="get" action="/dashboard">
-<label class="visually-hidden" for="site-select">현장</label>
-<select id="site-select" class="hero__select" name="site_id" onchange="this.form.submit()">
-<option value="" selected>전체 현장</option>
-{% for s in view.sites %}<option value="{{ s.site_id }}">{{ s.name }}</option>{% endfor %}
-</select>
-<noscript><button class="btn btn--soft btn--sm" type="submit">보기</button></noscript>
-</form>
+{# 현장 고르기는 머리줄 칩 하나로(C04-36, D-092) #}
 {% if manageable %}
 <form method="post" action="/judgments/run-all" class="refresh" data-refresh>
 {{ refresh_button(view.checked_short) }}

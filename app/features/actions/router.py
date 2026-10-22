@@ -8,9 +8,12 @@ from sqlalchemy.orm import Session
 
 from app.core.clock import now_kst
 from app.core.db import get_session
+from app.core.params import OptionalSiteIdQuery
 from app.core.templating import register_template_dir, templates
 from app.features.actions import service
 from app.features.auth.service import CurrentUserDep, require_user
+from app.features.sites import service as sites_service
+from app.features.teams import service as teams_service
 
 register_template_dir(Path(__file__).parent / "templates")
 
@@ -33,8 +36,18 @@ def _page(
     errors: tuple[str, ...] = (),
     message: str | None = None,
     status_code: int = 200,
+    site_id: int | None = None,
 ) -> HTMLResponse:
     view = service.build_my_actions(session, user, now, errors, message)
+    if site_id is not None:
+        names = {
+            s.site_id: s.name
+            for s in sites_service.list_sites(
+                session, teams_service.site_ids_for(session, user.user_id)
+            )
+        }
+        if site_id in names:  # 참여하지 않은 현장 번호는 무시하고 전체를 보인다
+            view = service.only_site(view, site_id, names[site_id])
     return templates.TemplateResponse(
         request, "actions/my.html", {"nav_active": "actions", "view": view}, status_code=status_code
     )
@@ -42,9 +55,14 @@ def _page(
 
 @router.get("/actions", response_class=HTMLResponse)
 def my_actions(
-    request: Request, session: SessionDep, user: CurrentUserDep, now: NowDep, done: str = ""
+    request: Request,
+    session: SessionDep,
+    user: CurrentUserDep,
+    now: NowDep,
+    done: str = "",
+    site_id: OptionalSiteIdQuery = None,
 ) -> HTMLResponse:
-    return _page(request, session, user, now, message=MESSAGES.get(done))
+    return _page(request, session, user, now, message=MESSAGES.get(done), site_id=site_id)
 
 
 @router.post("/actions/delegations")

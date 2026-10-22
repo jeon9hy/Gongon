@@ -1,7 +1,7 @@
 {% from "_macros.html" import icon %}
 {# 머리줄 현장 고르기 칩의 목록(C04-33 N4). 칩을 처음 누를 때 불러온다. 주소는 스크립트가 지금 화면에 맞춘다 #}
 <ul class="siteswitch__list">
-{% if sites | length > 1 %}<li><a class="siteswitch__item siteswitch__item--all" href="/" data-switch-all><span class="siteswitch__dot" aria-hidden="true">{{ icon("site", 14) }}</span><span class="siteswitch__name">전체 현장</span></a></li>{% endif %}
+<li><a class="siteswitch__item siteswitch__item--all" href="/" data-switch-all><span class="siteswitch__dot" aria-hidden="true">{{ icon("site", 14) }}</span><span class="siteswitch__name">전체 현장</span></a></li>
 {% for s in sites %}<li><a class="siteswitch__item" href="/?site_id={{ s.site_id }}" data-switch-site="{{ s.site_id }}" data-name="{{ s.name }}"><span class="siteswitch__dot" aria-hidden="true">{{ s.name[:1] }}</span><span class="siteswitch__name">{{ s.name }}</span></a></li>
 {% else %}<li class="siteswitch__empty">참여한 현장이 없어요</li>{% endfor %}
 </ul>

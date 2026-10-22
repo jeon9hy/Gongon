@@ -11,16 +11,7 @@
 <p class="hero__date">{{ icon("calendar", 15) }} 작업 일정{% if view.site_name %} · {{ view.site_name }}{% endif %}{% if view.period_text %} · 작업 기간 {{ view.period_text }}{% endif %}</p>
 <h1 class="hero__title" id="schedule-title">{{ view.month_title.split(" ")[-1] if view.site_id is not none or view.all_mode else "이번 달" }} 작업 일정</h1>
 </div>
-{% if view.sites %}
-<form method="get" action="/schedule" class="hero__action">
-<label class="visually-hidden" for="schedule-site">현장</label>
-<select id="schedule-site" class="hero__select" name="site_id" onchange="this.form.submit()">
-{% if view.sites | length > 1 %}<option value=""{% if view.all_mode %} selected{% endif %}>전체 현장</option>{% endif %}
-{% for s in view.sites %}<option value="{{ s.site_id }}"{% if s.selected %} selected{% endif %}>{{ s.name }}</option>{% endfor %}
-</select>
-<noscript><button class="btn btn--soft btn--sm" type="submit">보기</button></noscript>
-</form>
-{% endif %}
+{# 현장 고르기는 머리줄 칩 하나로(C04-36, D-092) #}
 </section>
 
 {% if view.message %}<div class="alert alert--ok" role="status">{{ icon("check", 16, 2.4) }} {{ view.message }}</div>{% endif %}

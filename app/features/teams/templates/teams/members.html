@@ -28,36 +28,64 @@
 
 <datalist id="job-titles">{% for t in view.job_titles %}<option value="{{ t }}">{% endfor %}</datalist>
 
+{# 엑셀처럼 표 두 개(C04-36): 업체 한 줄씩, 사람(명부 담당자·로그인 참여자) 한 줄씩 #}
+<section class="card sheet-card" aria-labelledby="sheet-companies">
+<h2 class="h2" id="sheet-companies">참여 업체 <span class="muted">{{ view.participants | length }}</span></h2>
+<div class="sheet-wrap">
+<table class="sheet">
+<thead><tr><th scope="col">업체</th><th scope="col">구분</th><th scope="col">맡은 업종</th><th scope="col">공종 메모</th><th scope="col" class="sheet__num">담당자</th><th scope="col" class="sheet__num">로그인</th><th scope="col">상태</th>{% if view.can_manage %}<th scope="col" class="sheet__acts">관리</th>{% endif %}</tr></thead>
+<tbody>
 {% for p in view.participants %}
-<section class="card card--tight roster{% if p.is_ended %} roster--ended{% endif %}" aria-label="{{ p.organization_name }}">
-<div class="roster__head">
-<h2 class="h2">{{ p.organization_name }} <span class="tag">{{ p.kind_label }}</span>{% if p.is_ended %} <span class="tag tag--unknown">참여 종료</span>{% endif %}</h2>
-<p class="small muted">{{ p.status_text }}{% if p.work_trades %} · {{ p.work_trades | join(" · ") }}{% endif %}{% if p.trade_note %} · {{ p.trade_note }}{% endif %}{% if p.business_no %} · 사업자 {{ p.business_no }}{% endif %}</p>
+<tr{% if p.is_ended %} class="is-ended"{% endif %}>
+<th scope="row">{{ p.organization_name }}{% if p.business_no %}<small class="sheet__sub">사업자 {{ p.business_no }}</small>{% endif %}</th>
+<td>{{ p.kind_label }}</td>
+<td>{% for t in p.work_trades %}<span class="sheet__chip" style="--c: {{ trade_color(t) }}; --bg: {{ trade_bg(t) }}">{{ short_trade(t) }}</span>{% else %}<span class="muted">–</span>{% endfor %}</td>
+<td>{{ p.trade_note or "–" }}</td>
+<td class="sheet__num">{{ p.contacts | length }}</td>
+<td class="sheet__num">{{ p.members | length }}</td>
+<td>{{ p.status_text }}</td>
+{% if view.can_manage %}<td class="sheet__acts">
+<button class="btn btn--soft btn--sm" type="button" data-open-dialog="dlg-org-{{ p.participant_id }}">{{ icon("building", 14) }} 업체 정보</button>
+<button class="btn btn--soft btn--sm" type="button" data-open-dialog="dlg-contact-{{ p.participant_id }}">{{ icon("user-plus", 14) }} 담당자 추가</button>
+{% if not p.is_prime %}{% if p.is_ended %}
+<form method="post" action="/sites/{{ view.site_id }}/participants/{{ p.participant_id }}/resume"><button class="btn btn--soft btn--sm" type="submit">참여 재개</button></form>
+{% else %}
+<details class="delete-action">
+<summary>참여 종료</summary>
+<form method="post" action="/sites/{{ view.site_id }}/participants/{{ p.participant_id }}/end" class="delete-action__confirm">
+<p class="small">새 작업·조치에서 빠져요. 지난 기록은 남아요.</p>
+<button class="btn btn--sm" type="submit">참여 종료</button>
+</form>
+</details>
+{% endif %}{% endif %}
+</td>{% endif %}
+</tr>
+{% endfor %}
+</tbody>
+</table>
 </div>
+</section>
 
-<h3 class="roster__label small muted">담당자</h3>
-<ul class="member-list">
-{% for c in p.contacts %}
-<li class="member-row">
-<span><strong>{{ c.name }}</strong>{% if c.job_title %} <span class="tag">{{ c.job_title }}</span>{% endif %}</span>
-{% if c.phone %}<a class="small roster__tel" href="tel:{{ c.phone }}">{{ icon("phone", 13) }} {{ c.phone }}</a>{% endif %}
-{% if c.memo %}<span class="small muted">{{ c.memo }}</span>{% endif %}
-<span class="small muted">{{ c.account_text or "계정 없음" }}</span>
-{% if view.can_manage %}
-<span class="roster__acts">
+<section class="card sheet-card" aria-labelledby="sheet-people">
+<h2 class="h2" id="sheet-people">담당자·참여자</h2>
+<div class="sheet-wrap">
+<table class="sheet">
+<thead><tr><th scope="col">이름</th><th scope="col">업체</th><th scope="col">직책·역할</th><th scope="col">연락처</th><th scope="col">계정</th>{% if view.can_manage %}<th scope="col" class="sheet__acts">관리</th>{% endif %}</tr></thead>
+<tbody>
+{% set people = namespace(n=0) %}
+{% for p in view.participants %}
+{% for c in p.contacts %}{% set people.n = people.n + 1 %}
+<tr{% if p.is_ended %} class="is-ended"{% endif %}>
+<th scope="row">{{ c.name }}{% if c.memo %}<small class="sheet__sub">{{ c.memo }}</small>{% endif %}</th>
+<td>{{ p.organization_name }}</td>
+<td>{% if c.job_title %}<span class="tag">{{ c.job_title }}</span>{% else %}<span class="muted">–</span>{% endif %}</td>
+<td>{% if c.phone %}<a class="roster__tel" href="tel:{{ c.phone }}">{{ icon("phone", 13) }} {{ c.phone }}</a>{% else %}<span class="muted">–</span>{% endif %}</td>
+<td><span class="small muted">{{ c.account_text or "계정 없음" }}</span></td>
+{% if view.can_manage %}<td class="sheet__acts">
 {% if c.account_text %}
 <form method="post" action="/sites/{{ view.site_id }}/contacts/{{ c.contact_id }}/unlink"><button class="btn btn--soft btn--sm" type="submit">연결 해제</button></form>
 {% else %}
 <button class="btn btn--soft btn--sm" type="button" data-open-dialog="dlg-link-{{ c.contact_id }}">{{ icon("link", 14) }} 계정 연결</button>
-<dialog class="modal" id="dlg-link-{{ c.contact_id }}" aria-labelledby="dlg-link-title-{{ c.contact_id }}">
-<div class="modal__box">
-<div class="modal__head"><h2 class="h2" id="dlg-link-title-{{ c.contact_id }}">{{ c.name }} · 계정 연결</h2><button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
-<form class="modal__form" method="post" action="/sites/{{ view.site_id }}/contacts/{{ c.contact_id }}/link">
-<label class="field">휴대폰 번호 또는 이메일<input type="text" name="email" placeholder="010-0000-0000" maxlength="200" required></label>
-<div class="modal__actions"><button class="btn btn--soft" type="button" data-close>취소</button><button class="btn btn--accent" type="submit">연결</button></div>
-</form>
-</div>
-</dialog>
 {% endif %}
 <details class="delete-action">
 <summary>빼기</summary>
@@ -65,36 +93,33 @@
 <button class="btn btn--sm" type="submit">명부에서 빼기</button>
 </form>
 </details>
-</span>
-{% endif %}
-</li>
-{% else %}
-<li class="small muted">등록한 담당자가 없어요.</li>
+</td>{% endif %}
+</tr>
 {% endfor %}
-</ul>
-
-<h3 class="roster__label small muted">로그인 참여자</h3>
-<ul class="member-list">
-{% for m in p.members %}
-<li class="member-row member-row--account">
-<span class="member-row__who"><strong>{{ m.display_name }}</strong>{% if m.is_me %} (나){% endif %}{% if m.email %} <span class="small muted">{{ m.email }}</span>{% endif %}</span>
-<span class="tag">{{ m.role_label }}</span>
-<span class="small muted">추가 {{ m.granted_text }}</span>
-{% if view.can_manage %}
+{% for m in p.members %}{% set people.n = people.n + 1 %}
+<tr{% if p.is_ended %} class="is-ended"{% endif %}>
+<th scope="row">{{ m.display_name }}{% if m.is_me %} (나){% endif %}{% if m.email %}<small class="sheet__sub">{{ m.email }}</small>{% endif %}</th>
+<td>{{ p.organization_name }}</td>
+<td><span class="tag">{{ m.role_label }}</span></td>
+<td><span class="muted">–</span></td>
+<td><span class="small muted">로그인 · 추가 {{ m.granted_text }}</span></td>
+{% if view.can_manage %}<td class="sheet__acts">
 <form method="post" action="/sites/{{ view.site_id }}/members/{{ m.membership_id }}/revoke">
 <button class="btn btn--danger-line btn--sm" type="submit">권한 회수</button>
 </form>
-{% endif %}
-</li>
-{% else %}
-<li class="small muted">로그인 참여자가 없어요.</li>
+</td>{% endif %}
+</tr>
 {% endfor %}
-</ul>
+{% endfor %}
+{% if not people.n %}<tr><td colspan="6" class="muted">등록한 담당자가 없어요.</td></tr>{% endif %}
+</tbody>
+</table>
+</div>
+</section>
 
 {% if view.can_manage %}
-<div class="roster__tools">
-<button class="btn btn--soft btn--sm" type="button" data-open-dialog="dlg-contact-{{ p.participant_id }}">{{ icon("user-plus", 15) }} 담당자 추가</button>
-<button class="btn btn--soft btn--sm" type="button" data-open-dialog="dlg-org-{{ p.participant_id }}">{{ icon("building", 15) }} 업체 정보</button>
+{# 표의 버튼이 여는 모달: 업체 정보·담당자 추가·계정 연결 #}
+{% for p in view.participants %}
 <dialog class="modal" id="dlg-contact-{{ p.participant_id }}" aria-labelledby="dlg-contact-title-{{ p.participant_id }}">
 <div class="modal__box">
 <div class="modal__head"><h2 class="h2" id="dlg-contact-title-{{ p.participant_id }}">{{ p.organization_name }} · 담당자 추가</h2><button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
@@ -130,23 +155,19 @@
 </form>
 </div>
 </dialog>
-{% if not p.is_prime %}
-{% if p.is_ended %}
-<form method="post" action="/sites/{{ view.site_id }}/participants/{{ p.participant_id }}/resume"><button class="btn btn--soft btn--sm" type="submit">참여 재개</button></form>
-{% else %}
-<details class="delete-action">
-<summary>참여 종료</summary>
-<form method="post" action="/sites/{{ view.site_id }}/participants/{{ p.participant_id }}/end" class="delete-action__confirm">
-<p class="small">새 작업·조치에서 빠져요. 지난 기록은 남아요.</p>
-<button class="btn btn--sm" type="submit">참여 종료</button>
+{% for c in p.contacts if not c.account_text %}
+<dialog class="modal" id="dlg-link-{{ c.contact_id }}" aria-labelledby="dlg-link-title-{{ c.contact_id }}">
+<div class="modal__box">
+<div class="modal__head"><h2 class="h2" id="dlg-link-title-{{ c.contact_id }}">{{ c.name }} · 계정 연결</h2><button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
+<form class="modal__form" method="post" action="/sites/{{ view.site_id }}/contacts/{{ c.contact_id }}/link">
+<label class="field">휴대폰 번호 또는 이메일<input type="text" name="email" placeholder="010-0000-0000" maxlength="200" required></label>
+<div class="modal__actions"><button class="btn btn--soft" type="button" data-close>취소</button><button class="btn btn--accent" type="submit">연결</button></div>
 </form>
-</details>
-{% endif %}
-{% endif %}
 </div>
-{% endif %}
-</section>
+</dialog>
 {% endfor %}
+{% endfor %}
+{% endif %}
 
 {% if view.can_manage %}
 {# 입력 폼은 모달로(개발자 요청 2026-10-16). 저장에 실패하면 그 모달을 다시 연다 #}

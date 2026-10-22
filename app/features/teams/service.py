@@ -6,7 +6,7 @@
 - 참여 업체는 사람 없이 등록·종료·재개하고, 업체별 담당자 명부를 둔다(C04-9, D-066).
 """
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from datetime import date, datetime
 from typing import Annotated, cast
 
@@ -18,6 +18,7 @@ from app.core.db import get_session
 from app.core.work_kinds import WORK_TRADE_NAMES
 from app.features.auth import service as auth_service
 from app.features.auth.schemas import CurrentUser, UserInfo
+from app.features.sites.schemas import SiteRecord
 from app.features.teams import repository
 from app.features.teams.models import ParticipantContact, ProjectMembership, ProjectParticipant
 from app.features.teams.schemas import (
@@ -43,6 +44,8 @@ from app.features.teams.schemas import (
     RoleOption,
     RosterPerson,
     SiteMember,
+    TeamAllView,
+    TeamRow,
 )
 from engine.kst import KST
 
@@ -769,3 +772,18 @@ def _membership(
         granted_by_user_id=granted_by,
         created_at=now,
     )
+
+
+def build_team_all(
+    session: Session, viewer: CurrentUser, sites: Sequence[SiteRecord]
+) -> TeamAllView:
+    """업체 탭 전체 현장(C04-36): 현장마다 업체 화면과 같은 계산으로 줄을 모은다(현장은 몇 곳).
+
+    연락처·사업자번호 노출은 현장별 역할 규칙(build_members_view)을 그대로 따른다.
+    """
+    rows = tuple(
+        TeamRow(s.site_id, s.name, p)
+        for s in sites
+        for p in build_members_view(session, s.site_id, s.name, viewer).participants
+    )
+    return TeamAllView(rows=rows)

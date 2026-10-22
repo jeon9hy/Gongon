@@ -165,3 +165,19 @@ class MembersView:
     member_same_name: tuple[Option, ...] = ()
     errors: tuple[str, ...] = ()
     message: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class TeamRow:
+    """전체 현장 업체 표의 한 줄(C04-36): 현장 + 그 현장의 참여 업체."""
+
+    site_id: int
+    site_name: str
+    participant: ParticipantView
+
+
+@dataclass(frozen=True, slots=True)
+class TeamAllView:
+    """업체 탭의 전체 현장 보기(C04-36, D-092). 고치기는 현장별 화면에서 한다."""
+
+    rows: tuple[TeamRow, ...]

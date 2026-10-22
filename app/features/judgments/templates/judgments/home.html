@@ -23,15 +23,7 @@
 {% elif view.sites %}<a class="btn btn--accent btn--sm" href="/schedule">{{ icon("calendar", 15) }} 일정 보기</a>{% endif %}
 </section>
 
-{% if view.tabs %}
-{# 현장 넘기기(개발자 요청 2026-10-17): 칸을 누르거나 휴대폰에서 좌우로 밀면 그 현장만 보인다 #}
-<nav class="sitetabs" aria-label="현장 고르기" data-sitetabs>
-{% for t in view.tabs %}<a class="sitetab{% if t.selected %} is-current{% endif %}" href="{{ t.href }}"{% if t.selected %} aria-current="page"{% endif %}>
-{% if t.site_id %}<span class="sitetab__dot" aria-hidden="true">{{ t.name[:1] }}</span>{% else %}<span class="sitetab__dot sitetab__dot--all" aria-hidden="true">{{ icon("site", 14) }}</span>{% endif %}
-<span class="sitetab__name">{{ t.name }}</span><span class="sitetab__count">오늘 {{ t.today_count }}</span>
-</a>{% endfor %}
-</nav>
-{% endif %}
+{# 현장 고르기는 머리줄 칩 하나로(C04-36, D-092) #}
 
 {% if view.message %}
 <div class="alert {% if view.message_is_error %}alert--error{% else %}alert--ok{% endif %}" role="status">{{ view.message }}</div>
@@ -230,27 +222,6 @@ document.querySelectorAll("[data-more-toggle]").forEach((btn) => {
     list.classList.toggle("is-open", open);
   });
 });
-// 현장 넘기기: 휴대폰에서 본문을 좌우로 밀면 이웃 현장으로. 고른 칸은 가로 목록 가운데로 보인다
-(() => {
-  const bar = document.querySelector("[data-sitetabs]");
-  if (!bar) return;
-  const tabs = [...bar.querySelectorAll(".sitetab")];
-  const current = tabs.findIndex((t) => t.classList.contains("is-current"));
-  tabs[current]?.scrollIntoView({ inline: "center", block: "nearest" });
-  let x0 = null, y0 = null;
-  addEventListener("touchstart", (e) => {
-    if (e.target.closest("[data-sitetabs], [data-weekslides], .tag-scroll, input, select, textarea")) return;
-    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
-  }, { passive: true });
-  addEventListener("touchend", (e) => {
-    if (x0 === null) return;
-    const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
-    x0 = null;
-    if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-    const next = tabs[current + (dx < 0 ? 1 : -1)];
-    if (next) location.href = next.href;
-  });
-})();
 // 당겨서 새로 점검(휴대폰): 맨 위에서 아래로 당겼다 놓으면 점검(판정 실행)을 다시 한다.
 (() => {
   const form = document.querySelector("[data-refresh]");

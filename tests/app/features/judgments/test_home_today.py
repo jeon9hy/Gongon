@@ -252,7 +252,8 @@ def test_home_switches_between_sites(client: TestClient, session: Session) -> No
     all_page = client.get("/").text
     only_second = client.get(f"/?site_id={second}").text
 
-    assert 'aria-label="현장 고르기"' in all_page and "오늘 2</span>" in all_page
+    # 현장 고르기는 머리줄 칩 하나(D-092). 처음엔 전체
+    assert "data-siteswitch-label>전체 현장<" in all_page and 'class="sitetabs"' not in all_page
     today_all = board(all_page, "today")
     assert "철골 작업" in today_all and "도장·방수" in today_all
     today_second = board(only_second, "today")

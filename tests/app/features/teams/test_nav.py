@@ -1,12 +1,14 @@
-"""주 메뉴 5탭과 현장 고르기 칩(C04-33 안 A, D-090).
+"""주 메뉴 5탭과 현장 고르기(C04-33·C04-35·C04-36, D-090~D-092).
 
-업체 탭(/team)은 고른 현장의 참여 업체 화면으로 보내고, 참여하지 않은 현장은 고를 수 없다.
-현장 고르기 칩의 목록은 참여한 현장만 보인다.
+현장 고르기는 머리줄 칩 하나다(대화 빼고 모든 화면, 전체 포함). 서버가 그리는 탭 주소는 전체이고,
+칩에서 고른 값은 브라우저 쿠키로 다른 탭에도 이어진다(스크립트, 여기서는 서버 쪽만 검사).
+업체 탭의 전체 보기는 현장별 업체를 한 표에 모은다(엑셀처럼). 대화는 방을 미리 고르지 않는다.
+참여하지 않은 현장은 고를 수도, 표에 보일 수도 없다.
 """
 
 from fastapi.testclient import TestClient
 
-from tests.app.features.teams.test_roster import add_site
+from tests.app.features.teams.test_roster import add_site, register
 from tests.conftest import Browser
 
 OTHER = {
@@ -17,36 +19,59 @@ OTHER = {
 }
 
 
-def test_team_tab_opens_the_chosen_or_first_site_members(client: TestClient) -> None:
+def nav_of(page: str) -> str:
+    return page.split('<nav class="appnav"')[1].split("</nav>")[0]
+
+
+def test_team_tab_opens_all_sites_in_one_table_and_a_chosen_site_opens_its_page(
+    client: TestClient,
+) -> None:
     first = add_site(client, "가상A현장")
     second = add_site(client, "가상B현장")
+    register(client, first, "가상펌프")
+    register(client, second, "가상골조")
 
+    all_sites = client.get("/team")
     chosen = client.get(f"/team?site_id={second}", follow_redirects=False)
-    fallback = client.get("/team", follow_redirects=False)
 
+    assert all_sites.status_code == 200
+    table = all_sites.text.split('<table class="sheet">')[1].split("</table>")[0]
+    assert table.count("<tr") == 1 + 4  # 머리줄 + 현장마다 원청·추가 업체
+    assert "가상펌프" in table and "가상골조" in table and "가상A현장" in table
+    assert 'data-site-link="team" aria-current="page"' in nav_of(all_sites.text)
     assert chosen.status_code == 303 and chosen.headers["location"] == f"/sites/{second}/members"
-    assert fallback.headers["location"] in (f"/sites/{first}/members", f"/sites/{second}/members")
-    page = client.get(f"/sites/{second}/members").text
-    nav = page.split('<nav class="appnav"')[1].split("</nav>")[0]
-    assert 'data-site-link="team" aria-current="page"' in nav
 
 
-def test_team_tab_ignores_a_site_the_user_does_not_join(
+def test_team_table_never_shows_a_site_the_user_does_not_join(
     client: TestClient, browser: Browser
 ) -> None:
-    mine = add_site(client, "가상A현장")
+    add_site(client, "가상A현장")
     other = browser(OTHER)
     theirs = add_site(other, "남의현장")
+    register(other, theirs, "남의업체")
 
     response = client.get(f"/team?site_id={theirs}", follow_redirects=False)
 
-    assert response.headers["location"] == f"/sites/{mine}/members"
+    assert response.status_code == 200  # 고를 수 없는 현장이면 전체 표
+    assert "남의현장" not in response.text and "남의업체" not in response.text
 
 
 def test_team_tab_without_any_site_goes_to_site_setup(client: TestClient) -> None:
     response = client.get("/team", follow_redirects=False)
 
     assert response.headers["location"] == "/sites"
+
+
+def test_site_member_page_is_two_tables_and_uses_the_header_chip(client: TestClient) -> None:
+    site_id = add_site(client, "가상A현장")
+    add_site(client, "가상B현장")
+    register(client, site_id, "가상펌프", trade_note="펌프카")
+
+    page = client.get(f"/sites/{site_id}/members").text
+
+    assert page.count('<table class="sheet">') == 2  # 업체 표 · 사람 표
+    assert 'id="team-site"' not in page  # 화면 안 드롭다운 없이 머리줄 칩 하나
+    assert "data-siteswitch-label>가상A현장<" in page
 
 
 def test_switcher_lists_only_joined_sites_with_add_and_settings(
@@ -59,7 +84,7 @@ def test_switcher_lists_only_joined_sites_with_add_and_settings(
     html = client.get("/sites/switcher").text
 
     assert "가상A현장" in html and "남의현장" not in html
-    assert "현장 추가" in html and "현장 설정" in html
+    assert "현장 추가" in html and "현장 설정" in html and "전체 현장" in html
 
 
 def test_changes_and_actions_share_a_sub_menu_and_me_has_no_work_cards(
@@ -68,27 +93,65 @@ def test_changes_and_actions_share_a_sub_menu_and_me_has_no_work_cards(
     add_site(client)
     for path, current in (("/changes", "변경 건"), ("/actions", "내 조치")):
         page = client.get(path).text
-        subnav = page.split('<nav class="subnav" aria-label="변경·조치 메뉴">')[1].split("</nav>")[
-            0
-        ]
-        assert f'aria-current="page">{current}</a>' in subnav
-        nav = page.split('<nav class="appnav"')[1].split("</nav>")[0]
-        assert 'data-site-link="changes" aria-current="page"' in nav
+        subnav = page.split('<nav class="subnav" aria-label="변경·조치 메뉴">')[1]
+        assert f'aria-current="page">{current}</a>' in subnav.split("</nav>")[0]
+        assert 'data-site-link="changes" aria-current="page"' in nav_of(page)
+        assert "data-siteswitch-label>전체 현장<" in page  # 칩 하나로 고른다
+    assert 'id="changes-site"' not in client.get("/changes").text
     assert "profile-link" not in client.get("/me").text
 
 
-def test_home_and_schedule_tabs_always_open_all_sites(client: TestClient) -> None:
-    # C04-35: 처음 들어올 때도, 다른 현장을 보다가 홈·일정 탭을 눌러도 전체 현장
+def test_every_tab_has_the_chip_except_chat_and_chat_opens_no_room(client: TestClient) -> None:
     first = add_site(client, "가상A현장")
     add_site(client, "가상B현장")
-    site_page = client.get(f"/schedule?site_id={first}").text
-    nav = site_page.split('<nav class="appnav"')[1].split("</nav>")[0]
-    assert 'href="/" data-site-link="home"' in nav
-    assert 'href="/schedule" data-site-link="schedule"' in nav
+    nav = nav_of(client.get(f"/schedule?site_id={first}").text)
+    for key, href in (("home", "/"), ("schedule", "/schedule"), ("changes", "/changes"),
+                      ("team", "/team"), ("chat", "/chat")):  # fmt: skip
+        assert f'href="{href}" data-site-link="{key}"' in nav  # 서버 주소는 전체
 
     home = client.get("/").text
-    schedule = client.get("/schedule").text  # 현장이 여럿이면 전체 달력
-    assert "data-siteswitch-label>전체 현장<" in schedule
+    dashboard = client.get(f"/dashboard?site_id={first}").text
+    team = client.get("/team").text
+    chat = client.get("/chat", follow_redirects=False)
 
-    assert "data-siteswitch-label>전체 현장<" in home and "data-all" in home
-    assert "가상A현장" in home and "가상B현장" in home  # 두 현장 모두 보인다
+    assert "data-siteswitch-label>전체 현장<" in home and "data-siteswitch-label>전체 현장<" in team
+    assert "data-siteswitch-label>가상A현장<" in dashboard
+    assert 'class="sitetabs"' not in home and 'id="site-select"' not in dashboard
+    # 대화는 칩이 없고, 방을 고르지 않으면 방 목록만 있는 빈 화면(처음 방을 열지 않는다)
+    assert chat.status_code == 200
+    assert '<details class="siteswitch"' not in chat.text
+    assert "왼쪽에서 현장 방을 골라 주세요." in chat.text
+    assert f'href="/chat/{first}"' in chat.text and 'id="chat-title"' not in chat.text
+
+
+def test_my_actions_follow_the_chip_and_ignore_a_site_not_joined(
+    client: TestClient, browser: Browser
+) -> None:
+    mine = add_site(client, "가상A현장")
+    add_site(client, "가상B현장")
+    theirs = add_site(browser(OTHER), "남의현장")
+
+    chosen = client.get(f"/actions?site_id={mine}").text
+    foreign = client.get(f"/actions?site_id={theirs}").text
+
+    assert "data-siteswitch-label>가상A현장<" in chosen
+    assert "data-siteswitch-label>전체 현장<" in foreign and "남의현장" not in foreign
+
+
+def test_only_site_keeps_that_sites_actions_in_every_group() -> None:
+    from app.features.actions.schemas import MyActionItem, MyActionsView
+    from app.features.actions.service import only_site
+
+    def item(site_id: int) -> MyActionItem:
+        return MyActionItem("/x", f"조치 {site_id}", "", "요청", "", False, "처리", site_id)
+
+    view = MyActionsView(
+        to_respond=(item(1), item(2)), blocked=(item(2),), to_verify=(item(1),),
+        delegations=(), delegate_choices=(),
+    )  # fmt: skip
+
+    filtered = only_site(view, 1, "가상A현장")
+
+    assert [i.site_id for i in filtered.to_respond] == [1]
+    assert filtered.blocked == () and [i.site_id for i in filtered.to_verify] == [1]
+    assert (filtered.site_id, filtered.site_name) == (1, "가상A현장")

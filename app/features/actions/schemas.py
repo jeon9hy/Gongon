@@ -150,6 +150,7 @@ class MyActionItem:
     due_text: str
     overdue: bool
     why: str  # "처리" · "검증" · "위임받음" · "대리 기록"
+    site_id: int = 0  # 머리줄 현장 칩으로 거를 때(D-092)
 
 
 @dataclass(frozen=True, slots=True)
@@ -179,3 +180,5 @@ class MyActionsView:
     delegate_choices: tuple[DelegateChoice, ...]
     errors: tuple[str, ...] = ()
     message: str | None = None
+    site_id: int | None = None  # 머리줄 현장 칩에서 고른 현장(None = 전체, D-092)
+    site_name: str = ""

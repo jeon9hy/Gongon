@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}업체 · 전체 현장{% endblock %}
+{% block content %}
+
+<section class="hero" aria-labelledby="team-title">
+<div class="hero__main">
+<p class="hero__date">{{ icon("building", 15) }} 업체 · 전체 현장</p>
+<h1 class="hero__title" id="team-title">참여 업체 {{ view.rows | length }}곳</h1>
+</div>
+</section>
+
+{# 엑셀처럼 한 줄에 한 업체(C04-36). 등록·고치기는 현장을 고른 화면에서 #}
+<section class="card sheet-card" aria-label="참여 업체 표">
+<div class="sheet-wrap">
+<table class="sheet">
+<thead><tr><th scope="col">현장</th><th scope="col">업체</th><th scope="col">구분</th><th scope="col">맡은 업종</th><th scope="col">공종 메모</th><th scope="col" class="sheet__num">담당자</th><th scope="col" class="sheet__num">로그인</th><th scope="col">상태</th></tr></thead>
+<tbody>
+{% for r in view.rows %}{% set p = r.participant %}
+<tr{% if p.is_ended %} class="is-ended"{% endif %}>
+<td><a href="/sites/{{ r.site_id }}/members">{{ r.site_name }}</a></td>
+<th scope="row"><a href="/sites/{{ r.site_id }}/members">{{ p.organization_name }}</a></th>
+<td>{{ p.kind_label }}</td>
+<td>{% for t in p.work_trades %}<span class="sheet__chip" style="--c: {{ trade_color(t) }}; --bg: {{ trade_bg(t) }}">{{ short_trade(t) }}</span>{% else %}<span class="muted">–</span>{% endfor %}</td>
+<td>{{ p.trade_note or "–" }}</td>
+<td class="sheet__num">{{ p.contacts | length }}</td>
+<td class="sheet__num">{{ p.members | length }}</td>
+<td>{{ p.status_text }}</td>
+</tr>
+{% else %}
+<tr><td colspan="8" class="muted">참여 업체가 없어요.</td></tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+</section>
+{% endblock %}

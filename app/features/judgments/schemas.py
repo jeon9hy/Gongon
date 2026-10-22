@@ -289,17 +289,6 @@ class DayPanel:
 
 
 @dataclass(frozen=True, slots=True)
-class SiteTab:
-    """홈 위 현장 넘기기 칸(개발자 요청 2026-10-17). site_id None은 전체."""
-
-    site_id: int | None
-    name: str
-    today_count: int
-    selected: bool
-    href: str
-
-
-@dataclass(frozen=True, slots=True)
 class HomeView:
     target_date: str
     today_date: str
@@ -316,7 +305,6 @@ class HomeView:
     message: str | None
     message_is_error: bool
     next_forecast: str = ""
-    tabs: tuple[SiteTab, ...] = ()  # 현장이 둘 이상일 때만
     day_panels: tuple[DayPanel, ...] = ()  # index_days와 같은 7일, 같은 순서
     selected_site_id: int | None = None  # 고른 현장(전체면 None). 메뉴 링크가 이어받는다
 
