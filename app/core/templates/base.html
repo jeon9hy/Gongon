@@ -26,17 +26,18 @@ try { if (localStorage.getItem("gongon.group") === "place") document.documentEle
 {% set current_site_id = view.site_id | default(view.selected_site_id | default(none)) if view is defined and view else none %}
 {% set current_site_name = (view.site_name | default("")) if view is defined and view and current_site_id else "" %}
 {# 현장 고르기 칩(C04-33 안 A): 고른 현장은 모든 탭에 같이 쓴다. 목록은 처음 누를 때 불러온다 #}
-<details class="siteswitch" data-siteswitch data-site-id="{{ current_site_id or '' }}" data-site-name="{{ current_site_name }}">
-<summary aria-label="현장 고르기"><span class="siteswitch__live" aria-hidden="true"></span><span class="siteswitch__label" data-siteswitch-label>{{ current_site_name or "현장 고르기" }}</span>{{ icon("chevron-down", 14, 2.2) }}</summary>
+{% set home_all = (nav_active == "home" and not current_site_id) or (view is defined and view and view.all_mode | default(false)) %}
+<details class="siteswitch" data-siteswitch data-site-id="{{ current_site_id or '' }}" data-site-name="{{ current_site_name }}"{% if home_all %} data-all{% endif %}>
+<summary aria-label="현장 고르기"><span class="siteswitch__live" aria-hidden="true"></span><span class="siteswitch__label" data-siteswitch-label>{{ "전체 현장" if home_all else (current_site_name or "현장 고르기") }}</span>{{ icon("chevron-down", 14, 2.2) }}</summary>
 <div class="siteswitch__panel" data-siteswitch-panel><p class="siteswitch__loading">불러오는 중…</p></div>
 </details>
 {% endif %}</span>
 {% if me %}
 <nav class="appnav" aria-label="주 메뉴">
-{# 주 메뉴 5개(C04-33 안 A): 공온 판정·판정 내역은 일정, 변경 건·내 조치는 변경·조치, 참여 업체는 업체 #}
+{# 홈·일정은 언제나 전체 현장으로 연다(C04-35, 개발자 요청). 현장 고르기는 칩·화면 안에서. 주 메뉴 5개(C04-33 안 A): 공온 판정·판정 내역은 일정, 변경 건·내 조치는 변경·조치, 참여 업체는 업체 #}
 {% set nav_group = {"dashboard": "schedule", "history": "schedule", "actions": "changes"}.get(nav_active, nav_active) %}
 {% for key, href, label, short, ic in [("home", "/", "홈", "홈", "home"), ("schedule", "/schedule", "일정", "일정", "calendar"), ("changes", "/changes", "변경·조치", "조치", "clipboard"), ("team", "/team", "업체", "업체", "building"), ("chat", "/chat", "대화", "대화", "chat")] %}
-<a href="{{ href }}{% if key != 'chat' and current_site_id %}?site_id={{ current_site_id }}{% endif %}" data-site-link="{{ key }}"{% if nav_group == key %} aria-current="page"{% endif %}><span class="appnav__icon" aria-hidden="true">{{ icon(ic, 20, 2) }}</span><span class="appnav__long">{{ label }}</span><span class="appnav__short">{{ short }}</span></a>
+<a href="{{ href }}{% if key not in ('home', 'schedule', 'chat') and current_site_id %}?site_id={{ current_site_id }}{% endif %}" data-site-link="{{ key }}"{% if nav_group == key %} aria-current="page"{% endif %}><span class="appnav__icon" aria-hidden="true">{{ icon(ic, 20, 2) }}</span><span class="appnav__long">{{ label }}</span><span class="appnav__short">{{ short }}</span></a>
 {% endfor %}
 </nav>
 <div class="appbar__actions">
@@ -201,10 +202,11 @@ document.querySelectorAll("dialog.modal[data-open]").forEach((d) => { if (!d.ope
   // 현장 이름이 없는 화면(변경 건 등)은 같은 현장으로 기억해 둔 이름을 쓴다
   if (here && !here.name && saved && String(saved.id) === here.id) { here.name = saved.name; label.textContent = saved.name; }
   if (here && here.name) { try { localStorage.setItem(KEY, JSON.stringify(here)); } catch (e) {} }
-  const current = here || saved;
+  const current = here || ("all" in box.dataset ? null : saved);
   if (!here && saved) {
-    label.textContent = saved.name;
+    if (!("all" in box.dataset)) label.textContent = saved.name;  // 홈 전체는 칩도 전체로 둔다
     document.querySelectorAll("[data-site-link]").forEach((a) => {
+      if (a.dataset.siteLink === "home" || a.dataset.siteLink === "schedule") return;  // 늘 전체(C04-35)
       if (a.dataset.siteLink === "chat") a.href = `/chat/${saved.id}`;
       else if (!a.href.includes("site_id=")) a.href += `?site_id=${saved.id}`;
     });

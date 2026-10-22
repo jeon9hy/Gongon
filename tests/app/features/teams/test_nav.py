@@ -75,3 +75,20 @@ def test_changes_and_actions_share_a_sub_menu_and_me_has_no_work_cards(
         nav = page.split('<nav class="appnav"')[1].split("</nav>")[0]
         assert 'data-site-link="changes" aria-current="page"' in nav
     assert "profile-link" not in client.get("/me").text
+
+
+def test_home_and_schedule_tabs_always_open_all_sites(client: TestClient) -> None:
+    # C04-35: 처음 들어올 때도, 다른 현장을 보다가 홈·일정 탭을 눌러도 전체 현장
+    first = add_site(client, "가상A현장")
+    add_site(client, "가상B현장")
+    site_page = client.get(f"/schedule?site_id={first}").text
+    nav = site_page.split('<nav class="appnav"')[1].split("</nav>")[0]
+    assert 'href="/" data-site-link="home"' in nav
+    assert 'href="/schedule" data-site-link="schedule"' in nav
+
+    home = client.get("/").text
+    schedule = client.get("/schedule").text  # 현장이 여럿이면 전체 달력
+    assert "data-siteswitch-label>전체 현장<" in schedule
+
+    assert "data-siteswitch-label>전체 현장<" in home and "data-all" in home
+    assert "가상A현장" in home and "가상B현장" in home  # 두 현장 모두 보인다

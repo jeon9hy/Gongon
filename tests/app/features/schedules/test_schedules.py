@@ -82,8 +82,11 @@ def test_navigation_keeps_the_selected_site_through_judgment_detail(
         assert response.status_code == 200
         navigation = response.text.split('<nav class="appnav"')[1].split("</nav>")[0]
         # 주 메뉴 5탭(C04-33 안 A): 고른 현장을 이어받는다(대화는 대화방 목록으로)
-        for tab in ("/", "/schedule", "/changes", "/team"):
+        for tab in ("/changes", "/team"):
             assert f'href="{tab}?site_id={site_id}"' in navigation
+        # 홈·일정은 고른 현장과 관계없이 늘 전체 현장으로 연다(C04-35)
+        assert 'href="/" data-site-link="home"' in navigation
+        assert 'href="/schedule" data-site-link="schedule"' in navigation
         assert 'href="/chat"' in navigation
         assert "/dashboard" not in navigation and "/judgments" not in navigation  # 하위 메뉴로
         assert "/sites" not in navigation  # 현장 설정은 머리줄 현장 고르기 칩으로
