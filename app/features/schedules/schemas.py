@@ -143,6 +143,8 @@ class CalendarDay:
     holiday: str | None = None  # 공휴일 이름(특일 정보, 대체공휴일 포함)
     # 업종별 작업 수(D-089): (업종, 건수), 많은 순. 달력 칸 막대
     trades: tuple[tuple[str, int], ...] = ()
+    # 그날 작업(시작 순): (작업 이름, 업종). 칸에 '• 작업명' 줄로 3개까지(C04-48)
+    events: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

@@ -1202,7 +1202,6 @@ span.pickpop__title { cursor: default; display: inline-flex; align-items: center
 .calcell { position: relative; height: 96px; }
 .calcell__link { position: absolute; inset: 0; }
 /* 점은 칸의 가운데 줄에 한 줄로, 더 있는 건수(+n)는 오른쪽 끝에 둔다(개발자 요청 2026-10-16) */
-.caldots { position: absolute; left: 10px; right: 10px; top: 50%; transform: translateY(-50%); z-index: 1; display: flex; flex-wrap: nowrap; align-items: center; gap: 5px; pointer-events: none; }
 .caldots > * { pointer-events: auto; }
 .caldots__more { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--muted); text-decoration: none; }
 .calcell.is-outside .caldots, .calcell.is-off .caldots { opacity: 0.45; }
@@ -2348,7 +2347,6 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
   .dot--btn { width: 7px; height: 7px; box-shadow: none; border: 0; }
 }
 .monthpick__years { grid-template-rows: repeat(3, 44px); max-height: none; overflow: visible; }  /* 3행 3열 */
-.caldots { flex-wrap: nowrap; overflow: hidden; padding: 4px; margin: -4px; }
 @media (min-width: 761px) and (max-width: 1200px) {
   .caldots { gap: 3px; }
   .dot--btn { width: 11px; height: 11px; }
@@ -2563,12 +2561,12 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .wpick__all[hidden], .wpick__filter[hidden] { display: none; }
 .tpick__open { flex: 0 0 auto; }
 
-/* 달력 칸(D-089): 구글·네이버 달력 같은 업종 색 막대. 오른쪽 위에 챙길 판정·점검 표시 */
-.calevs { position: absolute; left: 6px; right: 6px; top: 34px; z-index: 1; display: flex; flex-direction: column; gap: 3px; pointer-events: none; }
-.calev { display: flex; align-items: center; gap: 4px; min-width: 0; height: 20px; padding: 0 6px 0 5px; border-left: 3px solid var(--c); border-radius: 4px; background: var(--bg); color: color-mix(in srgb, var(--c) 78%, #0E1E45); font-size: 11.5px; font-weight: 600; line-height: 1; }
-.calev__name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.calev b { flex: 0 0 auto; font-weight: 700; font-variant-numeric: tabular-nums; }
-.calev__more { padding-left: 4px; font-size: 11px; font-weight: 600; color: var(--muted); }
+/* 달력 칸(C04-48): 구글·네이버처럼 '• 작업명' 줄, 3개까지 + 나머지 수. 점 색은 업종 색. 오른쪽 위에 챙길 판정·점검 표시 */
+.calwork { position: absolute; left: 8px; right: 6px; top: 34px; bottom: auto; z-index: 1; display: grid; align-content: start; gap: 2px; margin: 0; padding: 0; list-style: none; pointer-events: none; }
+.calwork__item { display: flex; align-items: center; gap: 5px; min-width: 0; font-size: 12px; line-height: 16px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.calwork__item::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--c); }
+.calwork__item--more { padding-left: 11px; color: var(--muted); font-weight: 600; }
+.calwork__item--more::before { display: none; }
 .calmark { position: absolute; top: 9px; right: 8px; z-index: 1; display: flex; align-items: center; gap: 4px; pointer-events: none; }
 .calpill { display: inline-flex; align-items: center; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; line-height: 16px; white-space: nowrap; }
 .calpill--stop { background: var(--stop-soft); color: var(--stop-text); }
@@ -2576,20 +2574,19 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .legend--top .calpill { margin-right: 6px; }
 .colegend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 6px 0 0; padding: 0; list-style: none; font-size: 12px; font-weight: 600; color: var(--muted); }
 .colegend li { display: inline-flex; align-items: center; gap: 6px; }
-.colegend__dot { width: 11px; height: 11px; border-radius: 3px; background: var(--bg); border: 1.5px solid var(--c); }
-.calcell.is-outside .calevs, .calcell.is-outside .calmark { opacity: 0.45; }
+.colegend__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.calcell.is-outside .calwork, .calcell.is-outside .calmark { opacity: 0.45; }
 @media (max-width: 760px) {
-  /* 좁은 칸: 막대는 글자 없이 색 띠, 건수만 */
-  .calevs { left: 2px; right: 2px; top: 26px; gap: 2px; }
-  .calev { height: 14px; padding: 0 3px 0 2px; border-left-width: 2px; border-radius: 3px; font-size: 9px; justify-content: flex-end; }
-  .calev__name { display: none; }
-  .calev__more { padding: 0; font-size: 9px; text-align: center; }
+  /* 좁은 칸: 글자 없이 업종 색 점만 한 줄로, 넘치면 +n */
+  .calwork { left: 3px; right: 3px; top: 26px; display: flex; flex-wrap: wrap; gap: 3px; }
+  .calwork__item { font-size: 0; line-height: 0; gap: 0; }
+  .calwork__item--more { padding: 0; font-size: 9px; line-height: 10px; }
   .calmark { top: auto; bottom: 2px; right: 50%; transform: translateX(50%); }
   .calmark .calpill { padding: 0 4px; font-size: 9px; line-height: 12px; }
   .calmark .calsum__warn { width: 13px; height: 13px; font-size: 8px; }
 }
 
-.calcell:has(.calcell__holiday) .calevs { top: 48px; }
+.calcell:has(.calcell__holiday) .calwork { top: 48px; }
 
 /* 주 메뉴 5탭 + 현장 고르기 칩(C04-33 안 A) */
 .appnav__icon { display: none; }

@@ -287,10 +287,9 @@ def test_cell_shows_the_count_instead_of_dots(client: TestClient) -> None:
         add_item(client, site_id, start=f"{hour:02d}:00", end=f"{hour:02d}:30")
     page = client.get(f"/schedule?site_id={site_id}&day=2026-10-05").text
     cell = page.split('aria-label="10월 5일, 작업 6건"')[1].split("</td>")[0]
-    # 구글·네이버 달력처럼 업종 막대 하나에 건수(D-089). 철골 작업 → 철강구조물공사업
-    assert re.findall(r'class="calev__name">([^<]+)</span><b>(\d+)</b>', cell) == [
-        ("철강구조물", "6")
-    ]
+    # 구글·네이버 달력처럼 '• 작업명' 줄 3개까지 + 나머지 수(C04-48). 점 색은 업종 색
+    assert re.findall(r'class="calwork__item" style="--c: [^"]+">([^<]+)</li>', cell) == ["철골 작업"] * 3
+    assert 'class="calwork__item calwork__item--more">+3건<' in cell
     assert "dot--btn" not in cell
     legend = '<span class="colegend__dot" style="--c: #2B63D9; --bg: #D6E6FE"></span>철강구조물'
     assert legend in page
@@ -616,8 +615,8 @@ def test_all_sites_calendar_spans_2020_to_2100(client: TestClient) -> None:
     assert first.count('class="monthpick__year"') == 2  # 2020·2021
 
 
-def test_cell_bars_are_trades_by_count_and_show_at_most_three(client: TestClient) -> None:
-    # D-089: 칸 막대는 최상위 공종(업종)별 건수, 많은 순 3개까지. 나머지는 +n건
+def test_cell_lists_work_in_start_order_and_shows_at_most_three(client: TestClient) -> None:
+    # C04-48: 칸은 작업 이름 줄(시작 순) 3개까지. 나머지는 +n건
     site_id = add_site(client)
     kinds = ["철골 작업", "볼트 본조임", "콘크리트 타설", "먹매김", "미장", "터파기", "전기 입선"]
     for n, kind in enumerate(kinds):
@@ -625,10 +624,11 @@ def test_cell_bars_are_trades_by_count_and_show_at_most_three(client: TestClient
     page = client.get(f"/schedule?site_id={site_id}&day=2026-10-05").text
     cell = page.split('aria-label="10월 5일, 작업 7건"')[1].split("</td>")[0]
 
-    bars = re.findall(r'class="calev__name">([^<]+)</span><b>(\d+)</b>', cell)
-    # 같은 건수(2)면 업종 목록 순: 철근ㆍ콘크리트가 철강구조물보다 앞
-    assert bars == [("철근ㆍ콘크리트", "2"), ("철강구조물", "2"), ("지반조성ㆍ포장", "1")]
-    assert 'class="calev__more">+2건<' in cell  # 도장ㆍ습식(미장)·전기(입선)
+    dots = re.findall(r'class="calwork__item" style="--c: ([^"]+)">([^<]+)</li>', cell)
+    # 시작 시각 순 3개까지, 점 색은 그 작업 업종 색(철골·볼트 → 철강구조물 같은 색)
+    assert [name for _, name in dots] == ["철골 작업", "볼트 본조임", "콘크리트 타설"]
+    assert dots[0][0] == dots[1][0] != dots[2][0]
+    assert 'class="calwork__item calwork__item--more">+4건<' in cell
 
 
 def test_trade_colors_cover_every_trade_and_work_dots_use_them() -> None:

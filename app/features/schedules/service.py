@@ -188,6 +188,10 @@ def build_view(
                     warn=any(i.performing_participant_id is None for i in on_day)
                     or bool(overlapping_ids(on_day)),
                     trades=_trade_counts(on_day),
+                    events=tuple(
+                        (i.work_type, TRADE_OF_KIND.get(i.work_type, OTHER_TRADE))
+                        for i in sorted(on_day, key=lambda i: (i.start_local, i.item_id))
+                    ),
                 )
             )
             d += timedelta(days=1)

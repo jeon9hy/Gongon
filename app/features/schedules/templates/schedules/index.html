@@ -63,7 +63,7 @@
 {% if c.item_ids %}{% set ns = namespace(stop=0, check=0) %}{% for id in c.item_ids %}{% set m = marks.get(id) %}{% if m and m[0] == "중지 검토" %}{% set ns.stop = ns.stop + 1 %}{% elif m and m[0] == "확인 필요" %}{% set ns.check = ns.check + 1 %}{% endif %}{% endfor %}
 {% set total = c.item_ids | length %}{% set tip = "작업 " ~ total ~ "건" ~ (" · 중지 검토 " ~ ns.stop ~ "건" if ns.stop else "") ~ (" · 확인 필요 " ~ ns.check ~ "건" if ns.check else "") ~ (" · 업체 미지정 또는 겹침" if c.warn else "") %}
 <span class="calmark" title="{{ tip }}">{% if ns.stop %}<span class="calpill calpill--stop">중지 {{ ns.stop }}</span>{% elif ns.check %}<span class="calpill calpill--check">확인 {{ ns.check }}</span>{% endif %}{% if c.warn %}<span class="calsum__warn" aria-hidden="true">!</span>{% endif %}</span>
-<span class="calevs" title="{{ tip }}">{% for t, n in c.trades[:3] %}<span class="calev" style="--c: {{ trade_color(t) }}; --bg: {{ trade_bg(t) }}"><span class="calev__name">{{ short_trade(t) }}</span><b>{{ n }}</b></span>{% endfor %}{% if c.trades | length > 3 %}<span class="calev__more">+{{ c.trades[3:] | sum(attribute=1) }}건</span>{% endif %}</span>{% endif %}
+<ul class="calwork" title="{{ tip }}">{% for name, trade in c.events[:3] %}<li class="calwork__item" style="--c: {{ trade_color(trade) }}">{{ name }}</li>{% endfor %}{% if c.events | length > 3 %}<li class="calwork__item calwork__item--more">+{{ c.events | length - 3 }}건</li>{% endif %}</ul>{% endif %}
 </td>
 {% endfor %}
 </tr>
