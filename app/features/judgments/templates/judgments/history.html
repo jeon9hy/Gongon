@@ -1,14 +1,10 @@
 {% extends "base.html" %}
 {% from "_macros.html" import icon, verdict_badge %}
 {% block title %}판정 내역{% endblock %}
+{% block pagebar %}{% endblock %}
 {% block content %}
 
-<section class="hero" aria-labelledby="history-title">
-<div class="hero__main">
-<h1 class="hero__title" id="history-title">판정 내역</h1>
-
-</div>
-</section>
+<h1 class="visually-hidden">판정 내역</h1>
 
 <div class="filters">
 <nav class="filters__group" aria-label="판정 필터">

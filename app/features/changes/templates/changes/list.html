@@ -1,13 +1,9 @@
 {% extends "base.html" %}
 {% from "_macros.html" import icon %}
 {% block title %}변경{% endblock %}
+{% block pagebar %}{% endblock %}
 {% block content %}
-<section class="hero" aria-labelledby="changes-title">
-<div class="hero__main">
-<h1 class="hero__title" id="changes-title">변경 뒤 남은 일</h1>
-</div>
-{# 현장 고르기는 머리줄 칩 하나로(C04-36, D-092) #}
-</section>
+<h1 class="visually-hidden">변경 건</h1>
 
 <section class="card">
 <div class="change-filter" aria-label="보기">

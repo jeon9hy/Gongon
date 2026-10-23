@@ -3,14 +3,10 @@
 {% block title %}현장 설정{% endblock %}
 {% block body_class %}{% if embed %} class="embedbody"{% endif %}{% endblock %}
 {% block page %}{% if embed %}<main class="embed" id="main" tabindex="-1">{% if view.site_id is none %}{{ site_add_tabs("new") }}{% endif %}{% include "sites/_form.html" %}</main>{% else %}{{ super() }}{% endif %}{% endblock %}
+{% block pagebar %}<p class="pagemeta"><span class="pagemeta__item">{{ icon("site", 14) }}현장 <b>{{ view.items | length }}곳</b></span></p><button class="btn btn--soft btn--sm" type="button" data-site-dialog="/join?embed=1" data-title="현장 추가">{{ icon("link", 15) }} 코드로 참여</button>{% endblock %}
 {% block content %}
 
-<section class="hero" aria-labelledby="sites-title">
-<div class="hero__main">
-<h1 class="hero__title" id="sites-title">내 현장</h1>
-</div>
-<div class="hero__actions"><button class="btn btn--soft" type="button" data-site-dialog="/join?embed=1" data-title="현장 추가">{{ icon("link", 16) }} 코드로 참여</button></div>
-</section>
+<h1 class="visually-hidden">내 현장</h1>
 
 <div class="split">
 

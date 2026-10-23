@@ -4,15 +4,10 @@
 {% block schedule_tools %}
 {% if view.site_id is not none and not view.all_mode %}{{ site_menu(view.site_id, view.site_name, can_delete=view.site_id in manageable) }}{% endif %}
 {% endblock %}
+{% block pagebar %}<p class="pagemeta" data-swap="header"><span class="pagemeta__item">{{ icon("map-pin", 14) }}{{ view.site_name or "전체 현장" }}</span>{% if view.period_text %}<span class="pagemeta__item">{{ icon("calendar", 14) }}{{ view.period_text | replace("-", ".") | replace("~", " – ") }}</span>{% endif %}</p>{% endblock %}
 {% block content %}
 
-<section class="hero" aria-labelledby="schedule-title" data-swap="header">
-<div class="hero__main">
-<h1 class="hero__title" id="schedule-title">{{ view.month_title.split(" ")[-1] if view.site_id is not none or view.all_mode else "이번 달" }} 작업 일정</h1>
-<p class="hero__meta"><span class="hero__meta-item">{{ icon("map-pin", 15) }}{{ view.site_name or "전체 현장" }}</span>{% if view.period_text %}<span class="hero__meta-item">{{ icon("calendar", 15) }}<span class="hero__meta-k">작업 기간</span>{{ view.period_text | replace("-", ".") | replace("~", " – ") }}</span>{% endif %}</p>
-</div>
-{# 현장 고르기는 머리줄 칩 하나로(C04-36, D-092) #}
-</section>
+<h1 class="visually-hidden">작업 일정</h1>
 
 {% if view.message %}<div class="alert alert--ok" role="status">{{ icon("check", 16, 2.4) }} {{ view.message }}</div>{% endif %}
 

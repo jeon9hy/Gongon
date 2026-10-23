@@ -1,13 +1,10 @@
 {% extends "base.html" %}
 {% from "_macros.html" import icon %}
 {% block title %}업체 · 전체 현장{% endblock %}
+{% block pagebar %}<p class="pagemeta"><span class="pagemeta__item">{{ icon("site", 14) }}전체 현장</span><span class="pagemeta__item">{{ icon("building", 14) }}업체 <b>{{ view.rows | rejectattr("participant.is_ended") | list | length }}곳</b></span></p>{% endblock %}
 {% block content %}
 
-<section class="hero" aria-labelledby="team-title">
-<div class="hero__main">
-<h1 class="hero__title" id="team-title">참여 업체 {{ view.rows | rejectattr("participant.is_ended") | list | length }}곳</h1>
-</div>
-</section>
+<h1 class="visually-hidden">참여 업체</h1>
 
 {# 엑셀처럼 한 줄에 한 업체(C04-36). 현장마다 제목 한 줄 + 그 현장 표(C04-45 후속).
    업체 이름은 링크가 아니다. 등록·고치기는 제목의 ‘업체 화면’에서. 제외한 업체는 표 아래 접힌 묶음 #}

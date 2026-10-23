@@ -1,14 +1,10 @@
 {% extends "base.html" %}
 {% from "_macros.html" import icon %}
 {% block title %}내 조치{% endblock %}
+{% block pagebar %}{% set total = view.to_respond | length + view.blocked | length + view.to_verify | length %}<p class="pagemeta">{% if total %}챙길 조치 <b>{{ total }}건</b>{% else %}맡은 조치 없음{% endif %}</p><button class="btn btn--soft btn--sm" type="button" data-open-dialog="dlg-delegate">{{ icon("user-plus", 15) }} 잠시 맡기기</button>{% endblock %}
 {% block content %}
 {% set total = view.to_respond | length + view.blocked | length + view.to_verify | length %}
-<section class="hero" aria-labelledby="my-title">
-<div class="hero__main">
-<h1 class="hero__title" id="my-title">{% if total %}챙길 조치 {{ total }}건{% else %}맡은 조치 없음{% endif %}</h1>
-</div>
-<div class="hero__actions"><button class="btn btn--soft" type="button" data-open-dialog="dlg-delegate">{{ icon("user-plus", 16) }} 잠시 맡기기</button></div>
-</section>
+<h1 class="visually-hidden">내 조치</h1>
 
 {% if view.errors %}<div class="alert alert--error" role="alert"><ul>{% for e in view.errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
 {% elif view.message %}<div class="alert alert--ok" role="status">{{ view.message }}</div>{% endif %}

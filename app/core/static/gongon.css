@@ -2829,4 +2829,15 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .sheet-site__go { display: inline-flex; align-items: center; gap: 2px; font-size: 13px; font-weight: 600; color: var(--accent); text-decoration: none; }
 .sheet-site__go:hover { text-decoration: underline; text-underline-offset: 3px; }
 .people__menu { flex: none; }
-
+/* 화면 머리 얇은 줄(C04-46): 큰 제목 카드 대신 하위 메뉴 옆 맥락 글자·버튼 */
+.subnavrow--bar { justify-content: flex-end; }
+.pagebar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 12px; margin-left: auto; min-width: 0; }
+.pagemeta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; margin: 0; font-size: 13px; color: var(--muted); }
+.pagemeta__item { display: inline-flex; align-items: center; gap: 5px; min-width: 0; font-variant-numeric: tabular-nums; }
+.pagemeta__item svg { flex: none; color: var(--placeholder); }
+.pagemeta b { font-weight: 700; color: var(--ink); }
+.pagemeta a { color: var(--ink); font-weight: 600; text-decoration: none; }
+.pagemeta a:hover { color: var(--accent); }
+.pagebar .joincode { min-height: 34px; }
+@media (max-width: 760px) { .subnavrow { flex-wrap: wrap; } .pagebar { margin-left: 0; justify-content: flex-start; } }
+@media (max-width: 560px) { .pagebar { width: 100%; } .pagebar .joincode { width: 100%; } .pagebar > .btn { flex: 1 1 0; } }

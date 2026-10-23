@@ -60,6 +60,8 @@ try { if (localStorage.getItem("gongon.group") === "place") document.documentEle
 </header>
 
 <main class="page page--{{ nav_active }}" id="main" tabindex="-1">
+{# 화면 머리는 카드 대신 얇은 줄 하나(C04-46): 왼쪽 하위 메뉴, 오른쪽 맥락 글자·버튼 #}
+{% set pagebar = self.pagebar() | trim %}{% if false %}{% block pagebar %}{% endblock %}{% endif %}
 {% if me and nav_active in ("changes", "actions") %}
 {# 변경·조치 탭의 하위 메뉴(C04-33 안 A) #}
 <div class="subnavrow">
@@ -68,6 +70,7 @@ try { if (localStorage.getItem("gongon.group") === "place") document.documentEle
 <a href="{{ href }}"{% if nav_active == key %} aria-current="page"{% endif %}>{{ label }}</a>
 {% endfor %}
 </nav>
+{% if pagebar %}<div class="pagebar">{{ pagebar | safe }}</div>{% endif %}
 </div>
 {% endif %}
 {% if me and nav_active in ("schedule", "dashboard", "history") %}
@@ -78,8 +81,11 @@ try { if (localStorage.getItem("gongon.group") === "place") document.documentEle
 <a href="{{ href }}"{% if nav_active == key %} aria-current="page"{% endif %}>{{ label }}</a>
 {% endfor %}
 </nav>
+{% if pagebar %}<div class="pagebar">{{ pagebar | safe }}</div>{% endif %}
 {% block schedule_tools %}{% endblock %}
 </div>
+{% elif pagebar %}
+<div class="subnavrow subnavrow--bar"><div class="pagebar">{{ pagebar | safe }}</div></div>
 {% endif %}
 {% block content %}{% endblock %}
 </main>

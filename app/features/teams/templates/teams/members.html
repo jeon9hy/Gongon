@@ -1,16 +1,9 @@
 {% extends "base.html" %}
 {% from "_macros.html" import icon, trade_pick %}
 {% block title %}참여 업체 · {{ view.site_name }}{% endblock %}
-{% block content %}
-
-<section class="hero" aria-labelledby="members-title">
-<div class="hero__main">
-<h1 class="hero__title" id="members-title">참여 업체·담당자</h1>
-<p class="hero__meta"><span class="hero__meta-item">{{ icon("map-pin", 15) }}<a href="/sites?site_id={{ view.site_id }}">{{ view.site_name }}</a></span><span class="hero__meta-item">{{ icon("user", 15) }}<span class="hero__meta-k">내 역할</span>{{ view.my_role_label }}</span></p>
-</div>
+{% block pagebar %}<p class="pagemeta"><span class="pagemeta__item">{{ icon("map-pin", 14) }}<a href="/sites?site_id={{ view.site_id }}">{{ view.site_name }}</a></span><span class="pagemeta__item">{{ icon("user", 14) }}내 역할 <b>{{ view.my_role_label }}</b></span></p>
 {% if view.can_manage %}
-<div class="hero__actions">
-{% if view.join_code %}{# 현장 코드(D-095): 받은 사람이 ‘코드로 참여’에 넣으면 담당자로 들어온다 #}
+{% if view.join_code %}{# 현장 코드(D-095): 받은 사람이 코드로 참여에 넣으면 담당자로 들어온다 #}
 <div class="joincode">
 <span class="joincode__k">현장 코드</span>
 <b class="joincode__v" id="join-code">{{ view.join_code }}</b>
@@ -18,11 +11,12 @@
 <form method="post" action="/sites/{{ view.site_id }}/join-code" data-confirm="새 코드를 만들면 지금 코드로는 더 참여할 수 없어요. 바꿀까요?"><button class="joincode__btn" type="submit" aria-label="새 코드 만들기" title="새 코드 만들기">{{ icon("recheck", 16) }}</button></form>
 </div>
 {% endif %}
-<button class="btn btn--soft" type="button" data-open-dialog="dlg-participant">{{ icon("building", 16) }} 업체 등록</button>
-<button class="btn btn--accent" type="button" data-open-dialog="dlg-member">{{ icon("user-plus", 16) }} 참여자 추가</button>
-</div>
-{% endif %}
-</section>
+<button class="btn btn--soft btn--sm" type="button" data-open-dialog="dlg-participant">{{ icon("building", 15) }} 업체 등록</button>
+<button class="btn btn--accent btn--sm" type="button" data-open-dialog="dlg-member">{{ icon("user-plus", 15) }} 참여자 추가</button>
+{% endif %}{% endblock %}
+{% block content %}
+
+<h1 class="visually-hidden">참여 업체·담당자</h1>
 
 <div class="stack">
 {% if view.errors %}
