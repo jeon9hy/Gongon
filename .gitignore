@@ -27,3 +27,7 @@ CLAUDE.local.md
 
 # 로컬 바로가기(PC 절대 경로 포함)
 *.lnk
+
+# 로컬 작업 산출물(보고서 PDF·캡처·임시 스크립트)
+output/
+tmp/

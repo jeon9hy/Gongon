@@ -91,6 +91,12 @@ uv run python -m uvicorn app.main:app --reload
 - `uvicorn`·`alembic`을 직접 부르지 않고 `python -m`으로 실행한다. 한글이 든 경로에서 `.exe`가 `uv trampoline failed to canonicalize script path`로 실패한다.
 - `.lnk`는 PC 절대 경로가 들어가 커밋하지 않는다(`.gitignore`). 필요하면 `start.bat`을 가리키는 바로가기를 직접 만든다.
 
+## 화면 디자인 (Figma MCP, 선택)
+- Figma 원격 MCP(`https://mcp.figma.com/mcp`)는 claude.ai 커넥터 설정에서 연결한다(개발자 계정에 연결됨, 2026-10-23). Claude Code에서는 `claude.ai Figma`로 보인다(`claude mcp list`). 키는 저장소에 두지 않는다.
+- Codex도 쓰려면 `codex mcp add figma --url https://mcp.figma.com/mcp` 후 `codex mcp login figma`(Codex 설정은 PC별이라 저장소에 없다).
+- 흐름: ① 앱을 띄우고(`앱 실행`) 화면을 Figma 파일로 옮겨 달라고 요청 → ② Figma에서 다듬기 → ③ 프레임 링크를 주며 코드 반영 요청. 반영은 `app/core/static/gongon.css`의 색·간격 변수와 기능 폴더 템플릿을 고치는 일반 작업(작업 ID·브랜치·`check.py`)으로 한다.
+- Figma 시안의 문구·판정 이름·색 의미는 `docs/brand.md`가 우선한다. 시안에만 있는 새 기능은 결정(`docs/decisions.md`)을 먼저 남긴다.
+
 ## 의존성 변경
 - C04-30 공정표 가져오기는 `openpyxl`(엑셀 읽기)을 쓴다. 타입은 개발 의존성 `types-openpyxl`. 샘플 엑셀은 `PYTHONUTF8=1 uv run python scripts/make_schedule_sample.py --start 2026-11-02 --out app/core/static/samples/gongon-schedule-sample.xlsx`로 다시 만든다(날짜가 지나면 시작 월요일을 바꾼다).
 - S01-1 계약 검증은 개발 의존성 `jsonschema`, `rfc3339-validator`, `types-jsonschema`를 쓴다. `FormatChecker`로 날짜·시각 형식을 실제 검사한다. `uv run python -m pytest tests/app/features/judgments/test_contract.py -q`로 예시 및 DB 저장 결과를 확인한다. DB 없는 실행의 skip은 저장 흐름 검증 완료가 아니다.
