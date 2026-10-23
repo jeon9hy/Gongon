@@ -288,7 +288,8 @@ def test_cell_shows_the_count_instead_of_dots(client: TestClient) -> None:
     page = client.get(f"/schedule?site_id={site_id}&day=2026-10-05").text
     cell = page.split('aria-label="10월 5일, 작업 6건"')[1].split("</td>")[0]
     # 구글·네이버 달력처럼 '• 작업명' 줄 3개까지 + 나머지 수(C04-48). 점 색은 업종 색
-    assert re.findall(r'class="calwork__item" style="--c: [^"]+">([^<]+)</li>', cell) == ["철골 작업"] * 3
+    names = re.findall(r'class="calwork__item" style="--c: [^"]+">([^<]+)</li>', cell)
+    assert names == ["철골 작업"] * 3
     assert 'class="calwork__item calwork__item--more">+3건<' in cell
     assert "dot--btn" not in cell
     legend = '<span class="colegend__dot" style="--c: #2B63D9; --bg: #D6E6FE"></span>철강구조물'
