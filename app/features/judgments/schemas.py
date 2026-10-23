@@ -289,6 +289,45 @@ class DayPanel:
 
 
 @dataclass(frozen=True, slots=True)
+class InboxItem:
+    """홈 내 차례 한 줄(C04-44): 무엇을, 왜, 어디서, 바로 할 일 하나."""
+
+    tag: str  # "업체 미지정" · "검증" · "막힘" · "응답" · "변경 검토" · "내일 확인 필요"
+    tone: Literal["stop", "warn", "blue", "plain"]
+    title: str
+    meta: str
+    href: str
+    action: str  # 버튼 글자
+    late: str = ""  # 늦음 표시(빨간 글자)
+    detail: str = ""  # 마우스를 올리면 보이는 자세한 이유(예: 같은 곳·같은 시간 상대 작업)
+
+
+@dataclass(frozen=True, slots=True)
+class InboxGroup:
+    key: str
+    title: str
+    hint: str
+    items: tuple[InboxItem, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class HomeInbox:
+    """홈 첫 화면의 내 차례(C04-44, D-099). 급한 묶음부터."""
+
+    groups: tuple[InboxGroup, ...]
+    flow: tuple[tuple[str, str, int, str], ...]  # (상태, 이름, 건수, 강조 tone)
+    flow_href: str
+
+    @property
+    def total(self) -> int:
+        return sum(len(g.items) for g in self.groups)
+
+    @property
+    def first(self) -> InboxItem | None:
+        return next((g.items[0] for g in self.groups if g.items), None)
+
+
+@dataclass(frozen=True, slots=True)
 class HomeView:
     target_date: str
     today_date: str

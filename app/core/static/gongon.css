@@ -2079,25 +2079,6 @@ textarea:focus-visible { outline: 0; border-color: var(--ink); box-shadow: 0 0 0
 .siteline--go .job--site { box-shadow: inset 3px 0 0 var(--verdict-go-mark); }
 .siteline--check .job--site { box-shadow: inset 3px 0 0 var(--verdict-check-mark); }
 .siteline--stop .job--site { box-shadow: inset 3px 0 0 var(--verdict-stop-mark); }
-/* 우선순위 버튼과 모달(C04-37) */
-.priobtn { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 6px 0 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--ink); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; transition: border-color var(--ease), background-color var(--ease); }
-.priobtn svg { flex: none; color: var(--stop-text); }
-.priobtn:hover { border-color: var(--ink); }
-.priobtn:focus-visible { outline: 3px solid var(--ink); outline-offset: 1px; }
-.priobtn__n { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 12px; font-variant-numeric: tabular-nums; }
-.prq { display: grid; gap: 6px; }
-.prq__k { margin: 0; padding-left: 6px; font-size: 12px; font-weight: 700; color: var(--muted); }
-.prq__k--warn { color: var(--verdict-check-fg); }
-.prq__k--now { color: var(--accent); }
-.prq__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.prq__row { display: grid; grid-template-columns: 72px 44px minmax(0, 1fr) 16px; align-items: center; gap: 10px; min-height: 48px; padding: 0 12px; border: 1px solid var(--line-soft); border-radius: var(--radius-md); color: var(--ink); font-size: 14px; text-decoration: none; }
-.prq__row:hover { border-color: var(--line); background: var(--surface); }
-.prq__row b { font-variant-numeric: tabular-nums; }
-.prq__row svg { color: var(--placeholder); }
-.prq__what { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.prq__tag { display: flex; align-items: center; justify-content: center; height: 24px; padding: 0 6px; white-space: nowrap; border-radius: 999px; background: var(--surface); color: var(--muted); font-size: 12px; font-weight: 700; }
-.prq__tag--warn { background: var(--verdict-check-bg); color: var(--verdict-check-fg); }
-.prq__tag--now { background: var(--accent); color: #fff; }
 /* 달력 범례: 머리 오른쪽 위 */
 .legend--top { margin: 0; padding: 0; border-top: 0; justify-content: flex-end; }
 @media (max-width: 760px) { .legend--top { justify-content: flex-start; width: 100%; } }
@@ -2810,4 +2791,43 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .delscope__text small { font-size: 12px; color: var(--muted); }
 .modal__actions--split { align-items: center; }
 .modal__actions--split p { flex: 1; margin: 0; }
+/* 홈 내 차례(C04-44, D-099): 왼쪽 받은 일, 오른쪽 흐름·내일 */
+.homebar__urgent { color: var(--stop-text); }
+.homegrid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
+.homegrid > .hsec, .homeside > .hsec { margin: 0; }
+.homeside { display: grid; gap: 20px; }
+@media (max-width: 960px) { .homegrid { grid-template-columns: minmax(0, 1fr); } }
+.inbox__group + .inbox__group { margin-top: 16px; }
+.inbox__k { margin: 0 0 8px; padding-left: 6px; font-size: 13px; font-weight: 700; color: var(--muted); }
+.inbox__k small { font-size: 12px; font-weight: 500; }
+.inbox__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.inbox__item { display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 16px; border: 1px solid var(--line-soft); border-radius: var(--radius-md); background: var(--card); box-shadow: inset 4px 0 0 var(--line); }
+.inbox__item--stop { box-shadow: inset 4px 0 0 var(--verdict-stop-mark); }
+.inbox__item--warn { box-shadow: inset 4px 0 0 var(--verdict-check-mark); }
+.inbox__item--blue { box-shadow: inset 4px 0 0 var(--accent); }
+.inbox__body { flex: 1; min-width: 0; display: grid; gap: 3px; color: inherit; text-decoration: none; }
+.inbox__body:hover .inbox__title { color: var(--accent); }
+.inbox__top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.inbox__tag { flex: none; display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--surface); color: var(--muted); }
+.inbox__tag--stop { background: var(--stop-soft); color: var(--stop-text); }
+.inbox__tag--warn { background: var(--verdict-check-bg); color: var(--verdict-check-fg); }
+.inbox__tag--blue { background: var(--accent-soft); color: var(--accent); }
+.inbox__title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; color: var(--ink); }
+.inbox__meta { font-size: 13px; color: var(--muted); }
+.inbox__meta em { font-style: normal; font-weight: 700; color: var(--stop-text); }
+.inbox__go { flex: none; }
+.inbox__empty { display: flex; align-items: center; gap: 14px; padding: 8px 0; color: var(--muted); }
+.inbox__empty p { margin: 0; }
+@media (max-width: 560px) { .inbox__item { flex-wrap: wrap; } .inbox__go { margin-left: auto; } }
+.flow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; text-decoration: none; }
+.flow__step { display: grid; gap: 2px; padding: 10px 4px; border-radius: var(--radius-md); background: var(--surface); text-align: center; }
+.flow__step b { font-size: 20px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+.flow__step small { font-size: 11.5px; font-weight: 600; color: var(--muted); word-break: keep-all; }
+.flow__step--stop { background: var(--stop-soft); }
+.flow__step--stop b, .flow__step--stop small { color: var(--stop-text); }
+.flow__step--warn { background: var(--verdict-check-bg); }
+.flow__step--warn b, .flow__step--warn small { color: var(--verdict-check-fg); }
+.nextday { display: flex; align-items: center; gap: 14px; padding: 12px; border-radius: var(--radius-md); background: var(--surface); text-decoration: none; }
+.nextday .ring { margin: 0; flex: none; }
+.nextday__counts { display: flex; flex-wrap: wrap; gap: 6px; }
 

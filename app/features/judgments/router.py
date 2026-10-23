@@ -42,10 +42,11 @@ def home(
     if not scope and teams_service.board_site_ids(session, user.user_id):
         return RedirectResponse("/board", status_code=303)  # 현장 TV 계정은 게시 화면만(D-067)
     view = service.build_home(session, scope, now, ran, site_id)
+    inbox = service.build_inbox(session, user, view, manageable, now) if view.sites else None
     return templates.TemplateResponse(
         request,
         "judgments/home.html",
-        {"nav_active": "home", "view": view, "manageable": manageable},
+        {"nav_active": "home", "view": view, "manageable": manageable, "inbox": inbox},
     )
 
 

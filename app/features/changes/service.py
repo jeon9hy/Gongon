@@ -875,3 +875,44 @@ def _time(raw: str) -> time | None:
         return time.fromisoformat(raw.strip())
     except ValueError:
         return None
+
+
+def awaiting_review(
+    session: Session, site_ids: list[int], limit: int = 20
+) -> tuple[ChangeListItem, ...]:
+    """조정자 홈의 결정 기다리는 변경(C04-44): 최신 버전이 검토 중인 변경 건."""
+    if not site_ids:
+        return ()
+    latest = (
+        select(ChangeRevision.case_id, func.max(ChangeRevision.number).label("number"))
+        .group_by(ChangeRevision.case_id)
+        .subquery()
+    )
+    rows = session.execute(
+        select(ChangeCase, ChangeRevision)
+        .join(latest, latest.c.case_id == ChangeCase.id)
+        .join(
+            ChangeRevision,
+            (ChangeRevision.case_id == ChangeCase.id) & (ChangeRevision.number == latest.c.number),
+        )
+        .where(ChangeCase.site_id.in_(site_ids), ChangeRevision.status == "review")
+        .order_by(ChangeCase.id.desc())
+        .limit(limit)
+    ).all()
+    labels = _work_labels(session, [case.work_item_id for case, _ in rows])
+    return tuple(
+        ChangeListItem(
+            href=f"/changes/{case.id}",
+            title=case.title,
+            work_label=labels.get(case.work_item_id, "지운 작업"),
+            status=rev.status,
+            status_label=STATUS_LABELS[rev.status],
+            version_text=f"v{rev.number}",
+            after_text=_plan_text(
+                rev.after_work_date, rev.after_start_local, rev.after_end_local, rev.after_location
+            ),
+            reasons_text=", ".join(REASON_LABELS[r] for r in rev.reasons),
+            updated_text=f"{_last_event(rev).astimezone(KST):%m/%d %H:%M}",
+        )
+        for case, rev in rows
+    )

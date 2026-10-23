@@ -12,6 +12,7 @@ from urllib.parse import urlencode
 from sqlalchemy.orm import Session
 
 from app.core.rules import COMMON_LABELS, judged_labels, judges_weather, rule_sets_by_label
+from app.features.actions import service as actions_service
 from app.features.auth.schemas import CurrentUser
 from app.features.changes import service as changes_service
 from app.features.forecasts import service as forecasts_service
@@ -39,9 +40,12 @@ from app.features.judgments.schemas import (
     HistorySite,
     HistoryView,
     HomeDay,
+    HomeInbox,
     HomeIndexDay,
     HomeView,
     HourRow,
+    InboxGroup,
+    InboxItem,
     Notice,
     NoticeItem,
     PageLink,
@@ -2036,3 +2040,108 @@ def _kst_text(value: datetime) -> str:
 
 def _iso_kst(value: datetime) -> str:
     return f"{value.astimezone(KST):%Y-%m-%d %H:%M} KST"
+
+
+INBOX_SHORT = {"company": "업체 미지정", "overlap": "겹침", "change": "변경 중", "weather": "날씨"}
+
+
+def build_inbox(
+    session: Session,
+    user: CurrentUser,
+    view: HomeView,
+    manageable: frozenset[int],
+    now: datetime,
+) -> HomeInbox:
+    """홈의 내 차례(C04-44, D-099): 변경 → 후속 조치 → 완료 근거 흐름에서 지금 내가 할 일.
+
+    묶음 순서: 오늘 안에(오늘 작업의 점검 문제, 내 응답·수행) → 확인해 주세요(완료 보고 검증)
+    → 막힌 일 → 결정 기다리는 변경·내일 판정. 머리줄 현장 칩으로 고른 현장만 본다."""
+    chosen = view.selected_site_id
+    site_ids = [s.site_id for s in view.sites]
+    managed = [i for i in site_ids if i in manageable]
+    mine = actions_service.build_my_actions(session, user, now)
+
+    def here(site_id: int) -> bool:
+        return chosen is None or site_id == chosen
+
+    def action_item(
+        i: Any, tag: str, tone: Literal["stop", "warn", "blue", "plain"], action: str
+    ) -> InboxItem:
+        return InboxItem(
+            tag=tag,
+            tone=tone,
+            title=i.title,
+            meta=" · ".join(x for x in (i.site_name, i.due_text) if x),
+            href=i.href,
+            action=action,
+            late="기한 지남" if i.overdue else "",
+        )
+
+    today_board, tomorrow_board = view.boards
+    today: list[InboxItem] = []
+    if managed:
+        for w in today_board.items:
+            if w.phase == "done":
+                continue
+            for x in w.issues:
+                if x.key == "weather":
+                    continue
+                company = x.key == "company"
+                today.append(
+                    InboxItem(
+                        tag=INBOX_SHORT.get(x.key, x.label),
+                        tone="stop" if company else "warn",
+                        title=f"{w.work_type}{' · ' + w.location if w.location else ''}",
+                        meta=f"오늘 {w.time_text} · {w.site_name}",
+                        href=w.href,
+                        action="업체 정하기" if company else "일정 보기",
+                        detail=x.label,
+                    )
+                )
+    today += [action_item(i, "응답", "warn", "열기") for i in mine.to_respond if here(i.site_id)]
+    verify = [action_item(i, "완료 보고", "blue", "검증하기") for i in mine.to_verify
+              if here(i.site_id)]  # fmt: skip
+    blocked_mine = [i for i in mine.blocked if here(i.site_id)]
+    seen = {i.href for i in blocked_mine}
+    blocked_all = blocked_mine + [
+        i for i in actions_service.blocked_at_sites(session, user, managed, now)
+        if here(i.site_id) and i.href not in seen
+    ]  # fmt: skip
+    blocked = [action_item(i, "막힘", "stop", "조치 보기") for i in blocked_all]
+    decide = [
+        InboxItem(
+            tag="변경 검토",
+            tone="warn",
+            title=c.title,
+            meta=f"{c.work_label} → {c.after_text}",
+            href=c.href,
+            action="검토하기",
+        )
+        for c in changes_service.awaiting_review(session, [i for i in managed if here(i)])
+    ]
+    for w in tomorrow_board.items:
+        if w.weather in ("중지 검토", "확인 필요"):
+            decide.append(InboxItem(
+                tag=f"내일 {w.weather}", tone="stop" if w.weather == "중지 검토" else "warn",
+                title=f"{w.work_type}{' · ' + w.location if w.location else ''}",
+                meta=f"{w.time_text} · {w.site_name}", href=w.href, action="근거 보기",
+            ))  # fmt: skip
+    groups = tuple(
+        g for g in (
+            InboxGroup("today", "오늘 안에", "작업 시간이 다가오거나 답을 기다려요", tuple(today)),
+            InboxGroup("verify", "확인해 주세요", "협력업체가 끝냈다고 보고했어요", tuple(verify)),
+            InboxGroup("blocked", "막힌 일", "진행할 수 없다고 했어요", tuple(blocked)),
+            InboxGroup("decide", "결정 기다리는 변경 · 내일 판정", "", tuple(decide)),
+        ) if g.items
+    )  # fmt: skip
+    counts = actions_service.flow_counts(
+        session, [i for i in site_ids if here(i)], now - timedelta(days=7)
+    )
+    flow = (
+        ("requested", "요청 대기", counts.get("requested", 0), ""),
+        ("accepted", "수행 중", counts.get("accepted", 0), ""),
+        ("blocked", "막힘", counts.get("blocked", 0), "stop"),
+        ("reported", "검증 대기", counts.get("reported", 0), "warn"),
+        ("verified", "검증 완료", counts.get("verified", 0), ""),
+    )
+    return HomeInbox(groups=groups, flow=flow, flow_href="/actions")

@@ -13,7 +13,9 @@
 <section class="homebar" aria-labelledby="home-title">
 <div class="homebar__text">
 <p class="homebar__date">{{ view.today_date }}</p>
-<h1 class="homebar__title" id="home-title">{% set left_today = today_board.items | rejectattr("phase", "equalto", "done") | list %}{% if left_today %}오늘 남은 작업 {{ left_today | length }}건, 차근차근 가 볼까요?{% elif today_board.items %}오늘 작업 {{ today_board.items | length }}건을 모두 마쳤어요{% else %}오늘은 쉬어 가는 날{% endif %}</h1>
+{% set left_today = today_board.items | rejectattr("phase", "equalto", "done") | list %}
+{# 첫 문장은 내 차례 기준(C04-44, D-099). 할 일이 없으면 오늘 작업 기준 #}
+<h1 class="homebar__title" id="home-title">{% if inbox and inbox.total %}내 차례 {{ inbox.total }}건 · <span class="homebar__urgent">가장 급한 건 {{ inbox.first.tag }} {{ inbox.first.title }}</span>{% elif left_today %}오늘 남은 작업 {{ left_today | length }}건, 차근차근 가 볼까요?{% elif today_board.items %}오늘 작업 {{ today_board.items | length }}건을 모두 마쳤어요{% else %}오늘은 쉬어 가는 날{% endif %}</h1>
 </div>
 {% if managed_count %}
 <form method="post" action="/judgments/run-all" class="refresh" data-refresh>
@@ -68,35 +70,55 @@
 <span class="job__prog" role="img" aria-label="진행률 {{ pct }}%"><span class="job__progbar"><span style="width: {{ pct }}%; --c: {{ work_color(w.work_type) }}"></span></span><b>{% if w.phase == "before" %}시작 전{% else %}{{ pct }}%{% endif %}</b></span>
 <span class="job__state">{% if w.issues and w.phase != "done" %}<span class="job__warn" title="{{ w.issues | map(attribute='label') | join(', ') }}" aria-label="확인할 것 {{ w.issues | length }}개">!</span>{% else %}<span class="job__warn job__warn--none" aria-hidden="true"></span>{% endif %}<span class="pill pill--{{ w.phase }}">{{ w.phase_label }}</span></span>
 </a></li>{% endmacro %}
+{% if inbox %}
+{# 내 차례(C04-44, D-099): 변경 → 후속 조치 → 완료 근거에서 지금 내가 할 일. 오른쪽은 흐름·내일 #}
+<div class="homegrid">
+<section class="hsec inbox" aria-labelledby="inbox-title">
+<div class="hsec__head"><h2 class="hsec__title" id="inbox-title">내 차례 <span>{{ inbox.total }}건 · 급한 순</span></h2></div>
+{% for g in inbox.groups %}
+<div class="inbox__group">
+<h3 class="inbox__k">{{ g.title }}{% if g.hint %} <small>· {{ g.hint }}</small>{% endif %}</h3>
+<ul class="inbox__list">
+{% for i in g.items %}<li class="inbox__item inbox__item--{{ i.tone }}">
+<a class="inbox__body" href="{{ i.href }}"{% if i.detail %} title="{{ i.detail }}"{% endif %}>
+<span class="inbox__top"><span class="inbox__tag inbox__tag--{{ i.tone }}">{{ i.tag }}</span><b class="inbox__title">{{ i.title }}</b></span>
+<span class="inbox__meta">{{ i.meta }}{% if i.late %} · <em>{{ i.late }}</em>{% endif %}</span>
+</a>
+<a class="btn btn--sm {% if i.tone in ('stop', 'blue') %}btn--accent{% else %}btn--soft{% endif %} inbox__go" href="{{ i.href }}">{{ i.action }}</a>
+</li>{% endfor %}
+</ul>
+</div>
+{% else %}
+<div class="inbox__empty"><img class="mascot" src="/static/brand/mascot-hello.png" alt="" width="96" height="75"><p>지금 내 차례인 일이 없어요. 변경이 생기면 여기에 모여요.</p></div>
+{% endfor %}
+</section>
+<aside class="homeside">
+<section class="hsec" aria-labelledby="flow-title">
+<div class="hsec__head"><h2 class="hsec__title" id="flow-title">후속 조치 흐름 <span>열린 조치 · 이번 주 완료</span></h2></div>
+<a class="flow" href="{{ inbox.flow_href }}">{% for key, label, n, tone in inbox.flow %}<span class="flow__step{% if tone and n %} flow__step--{{ tone }}{% endif %}"><b>{{ n }}</b><small>{{ label }}</small></span>{% endfor %}</a>
+</section>
+{% set t = view.index_days[0] if view.index_days else none %}
+{% set p = view.day_panels[0] if view.day_panels else none %}
+<section class="hsec" aria-labelledby="next-title">
+<div class="hsec__head"><h2 class="hsec__title" id="next-title">내일 판정 <span>{{ tomorrow_board.date_text }}</span></h2></div>
+{% if p and p.total %}
+<a class="nextday" href="{{ p.href }}">
+{% if t and t.score is not none %}<span class="ring ring--{% if t.score >= 80 %}high{% elif t.score >= 50 %}mid{% else %}low{% endif %}" style="--p: {{ t.score }}" role="img" aria-label="공온지수 {{ t.score }}"><b>{{ t.score }}</b></span>{% else %}<span class="ring ring--empty" aria-hidden="true"><b>–</b></span>{% endif %}
+<span class="nextday__counts"><span class="vpill vpill--go"><i></i>진행 {{ p.go }}</span><span class="vpill vpill--check"><i></i>확인 {{ p.check }}</span><span class="vpill vpill--stop"><i></i>중지 {{ p.stop }}</span></span>
+</a>
+{% else %}<p class="hsec__empty">내일 일정이 비어 있어요.{% if can_add %} <a href="{{ p.add_href if p else '/schedule' }}">미리 추가할까요?</a>{% endif %}</p>{% endif %}
+</section>
+</aside>
+</div>
+
+{% endif %}
 <section class="hsec hsec--today reveal" aria-labelledby="today-title">
 {% set short = {"weather": "날씨", "company": "업체 미지정", "overlap": "겹침", "change": "변경 중"} %}
 {% set open_issues = today_board.items | rejectattr("phase", "equalto", "done") | selectattr("issues") | list %}
 {% set all_done = today_board.items and not now_items and not next_items %}
 <div class="hsec__head">
-<h2 class="hsec__title" id="today-title">오늘 <span>{{ today_board.date_text }}</span></h2>
+<h2 class="hsec__title" id="today-title">오늘 <span>{{ today_board.date_text }}{% if left_today and inbox and inbox.total %} · 오늘 남은 작업 {{ left_today | length }}건{% endif %}</span></h2>
 {% if all_done and not open_issues %}<span class="hsec__note">{{ icon("check", 14, 2.6) }} 오늘 일정은 다 지나갔어요. 수고했어요!</span>{% endif %}
-{% if today_board.items and (now_items or next_items or open_issues) %}
-{# 우선순위는 버튼 하나, 눌러서 모달로 본다(C04-37). 공온 로고 토글과 겹치지 않게 깃발 아이콘 #}
-{% set prio_n = now_items | length + next_items[:2] | length + (open_issues | map(attribute="issues") | map("length") | sum) %}
-<button class="priobtn" type="button" data-open-dialog="dlg-prio" aria-haspopup="dialog">{{ icon("flag", 15, 2.2) }}<span>우선순위</span><span class="priobtn__n">{{ prio_n }}</span></button>
-<dialog class="modal" id="dlg-prio" aria-labelledby="dlg-prio-title">
-<div class="modal__box">
-<div class="modal__head"><h2 class="h2" id="dlg-prio-title">오늘 우선순위 <span class="muted">{{ today_board.date_text }}</span></h2><button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
-{% if open_issues %}<div class="prq">
-<h3 class="prq__k prq__k--warn">확인할 것</h3>
-<ul class="prq__list">{% for w in open_issues %}{% for x in w.issues %}<li><a class="prq__row" href="{{ w.href }}" title="{{ x.label }}"><span class="prq__tag prq__tag--warn">{{ short.get(x.key, x.label) }}</span><b>{{ w.time_text[:5] }}</b><span class="prq__what">{{ w.work_type }}{% if w.location %} · {{ w.location }}{% endif %}</span>{{ icon("chevron-right", 16, 2.2) }}</a></li>{% endfor %}{% endfor %}</ul>
-</div>{% endif %}
-{% if now_items %}<div class="prq">
-<h3 class="prq__k prq__k--now">진행 중</h3>
-<ul class="prq__list">{% for w in now_items %}<li><a class="prq__row" href="{{ w.href }}"><span class="prq__tag prq__tag--now">진행 중</span><b>{{ w.time_text[:5] }}</b><span class="prq__what">{{ w.work_type }}{% if w.location %} · {{ w.location }}{% endif %}</span>{{ icon("chevron-right", 16, 2.2) }}</a></li>{% endfor %}</ul>
-</div>{% endif %}
-{% if next_items %}<div class="prq">
-<h3 class="prq__k">다음 작업</h3>
-<ul class="prq__list">{% for w in next_items[:2] %}<li><a class="prq__row" href="{{ w.href }}"><span class="prq__tag">다음</span><b>{{ w.time_text[:5] }}</b><span class="prq__what">{{ w.work_type }}{% if w.location %} · {{ w.location }}{% endif %}</span>{{ icon("chevron-right", 16, 2.2) }}</a></li>{% endfor %}</ul>
-</div>{% endif %}
-</div>
-</dialog>
-{% endif %}
 </div>
 {% if today_board.items %}
 

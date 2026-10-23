@@ -1140,3 +1140,46 @@ def _int(raw: str) -> int | None:
         return int(raw)
     except ValueError:
         return None
+
+
+def blocked_at_sites(
+    session: Session, user: CurrentUser, site_ids: list[int], now: datetime
+) -> tuple[MyActionItem, ...]:
+    """조정자 홈의 막힌 일(C04-44): 내가 관리하는 현장의 막힘 조치 전부(내 담당이 아니어도)."""
+    if not site_ids:
+        return ()
+    sites = {s.site_id: s.name for s in sites_service.list_sites(session, frozenset(site_ids))}
+    rows = session.scalars(
+        select(ActionItem)
+        .where(ActionItem.site_id.in_(site_ids), ActionItem.status == "blocked")
+        .order_by(ActionItem.due_at.asc().nulls_last(), ActionItem.id)
+        .limit(MY_LIST_LIMIT)
+    )
+    items = []
+    for a in rows:
+        due_text, overdue = _due_text(a, now)
+        items.append(_my_item(a, sites, "막힘 해결", due_text, overdue))
+    return tuple(items)
+
+
+def flow_counts(session: Session, site_ids: list[int], since: datetime) -> dict[str, int]:
+    """후속 조치 흐름(C04-44): 열린 조치는 상태별 전부, 검증 완료는 since 뒤 것만."""
+    if not site_ids:
+        return {}
+    open_rows = session.execute(
+        select(ActionItem.status, func.count())
+        .where(ActionItem.site_id.in_(site_ids), ActionItem.status.in_(OPEN_STATUSES))
+        .group_by(ActionItem.status)
+    ).all()
+    counts = {status: n for status, n in open_rows}
+    counts["verified"] = (
+        session.scalar(
+            select(func.count()).where(
+                ActionItem.site_id.in_(site_ids),
+                ActionItem.status == "verified",
+                ActionItem.verified_at >= since,
+            )
+        )
+        or 0
+    )
+    return counts

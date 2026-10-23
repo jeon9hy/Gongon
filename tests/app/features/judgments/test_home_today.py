@@ -138,22 +138,23 @@ def test_checks_flag_missing_company_place_and_true_overlaps_only(
     put(session, site_id, TODAY, time(20, 0), time(21, 0), "도장·방수", "C동", prime)  # 끝=시작
     put(session, site_id, TODAY, time(16, 0), time(17, 0), "콘크리트 타설", "", None)
 
-    today = board(client.get("/").text, "today")
-    prio = today.split('id="dlg-prio"')[1].split("</dialog>")[0]  # 우선순위 버튼이 여는 모달
+    page = client.get("/").text
+    today = board(page, "today")
+    prio = page.split('class="hsec inbox"')[1].split("</section>")[0]  # 내 차례(C04-44)
 
-    # 먼저 챙길 것: 걸린 작업마다 항목과 작업을 보인다
+    # 내 차례: 걸린 작업마다 항목과 작업을 보인다
     assert 'title="이동식 크레인와 같은 곳·같은 시간"' in prio  # 철골 작업 줄
     assert 'title="철골 작업와 같은 곳·같은 시간"' in prio  # 이동식 크레인 줄
     assert "고소작업대와 같은 곳" not in today and "도장·방수와 같은 곳" not in today  # 끝=시작
-    unassigned = '업체 미지정</span><b>16:00</b><span class="prq__what">콘크리트 타설<'
-    assert unassigned in prio
+    unassigned = '업체 미지정</span><b class="inbox__title">콘크리트 타설<'
+    assert unassigned in prio and "오늘 16:00–17:00" in prio
     assert "위치 없음" not in prio  # 위치는 선택 입력이라 점검하지 않는다(D-077)
     shown = company_view(today)
     # 줄 3개(철골·크레인·콘크리트 타설) + 묶음 머리 2개(업체 미정·원청 묶음)
     assert shown.count('class="job__warn"') == 5
     # 업체 미정 묶음이 맨 앞, 그다음 점검 문제가 있는 묶음(C04-31)
     assert shown.index("grp--unassigned") < shown.index('<details class="grp grp--company">')
-    assert ">날씨 ·" not in prio  # 오늘은 날씨를 보지 않는다
+    assert ">날씨<" not in prio  # 오늘은 날씨를 보지 않는다
 
 
 def test_today_board_groups_left_work_by_company_and_floor_and_keeps_done_apart(
