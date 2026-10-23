@@ -8,10 +8,12 @@
 import re
 from typing import Any
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.features.teams import service
 from app.features.teams.models import ProjectMembership, ProjectParticipant
 from tests.app.features.teams.test_roster import add_site
 from tests.conftest import Browser
@@ -120,3 +122,13 @@ def test_deleted_site_or_excluded_company_cannot_join(
 
     assert deleted.status_code == 422 and "맞는 현장 코드가 없어요" in deleted.text
     assert excluded.status_code == 422 and "제외된 업체" in excluded.text
+
+
+@pytest.mark.parametrize(
+    ("raw", "code"),
+    [("test-0000", "TEST0000"), (" B5GP 7EWG ", "B5GP7EWG"), ("TEST000", ""), ("TEST-00000", ""),
+     ("테스트-0000", "")],
+)  # fmt: skip
+def test_typed_code_is_normalized(raw: str, code: str) -> None:
+    # 만드는 코드는 헷갈리는 글자를 빼지만 입력은 영문·숫자 8자면 받는다(시험 코드 TEST-0000)
+    assert service.normalize_code(raw) == code

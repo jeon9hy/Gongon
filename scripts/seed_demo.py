@@ -203,15 +203,14 @@ def main() -> int:
         added = skipped = 0
         for offset, work_type, start, end, place, performer in WORK:
             day: date = now.date() + timedelta(days=offset)
-            if offset == 0 and start <= f"{now:%H:%M}":
-                skipped += 1
+            if (offset == 0 and start <= f"{now:%H:%M}") or performer is None:
+                skipped += 1  # 지난 시각, 실행 업체 없는 예시(지금은 업체가 꼭 있어야 한다)
                 continue
             first, errors = schedules_service.add_item(
                 session, pm, site_id,
                 WorkItemForm(work_types=(work_type,), work_dates=(day.isoformat(),), start=start,
                              end=end, location=place,
-                             performing_participant_id="" if performer is None
-                             else str(participants[companies[performer]])),
+                             performing_participant_id=str(participants[companies[performer]])),
                 now,
             )  # fmt: skip
             if first is None:

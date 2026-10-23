@@ -246,9 +246,11 @@ def _new_code(session: Session) -> str:
 
 
 def normalize_code(raw: str) -> str:
-    """입력한 코드에서 하이픈·공백을 빼고 대문자로. 형식이 맞지 않으면 빈 글자."""
-    code = "".join(ch for ch in raw.upper() if ch.isalnum())
-    if len(code) != CODE_LENGTH or any(ch not in CODE_ALPHABET for ch in code):
+    """입력한 코드에서 하이픈·공백을 빼고 대문자로. 형식이 맞지 않으면 빈 글자.
+
+    만드는 코드는 헷갈리는 글자를 빼지만, 입력은 영문·숫자 8자면 받는다(시험 코드 TEST0000 등)."""
+    code = "".join(ch for ch in raw.upper() if ch.isascii() and ch.isalnum())
+    if len(code) != CODE_LENGTH:
         return ""
     return code
 

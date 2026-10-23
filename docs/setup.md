@@ -14,6 +14,7 @@ cp .env.example .env      # 실제 값은 .env에만(커밋 금지)
 ## 시연 자료(선택)
 
 - `PYTHONUTF8=1 uv run python scripts/seed_demo.py` — 개발 DB에 [가상] 현장·업체·참여자·일주일 작업을 만든다. 로그인은 `pm@demo.gongon.test` / `gongon-demo-1234`(현장소장, 조정자). 이미 있으면 다시 만들지 않고, 번호 없는 시연 계정에만 가상 번호(010-0000-0001부터 PEOPLE 순서)를 넣는다. `--viewer 내이메일`로 내 계정을 열람자로 넣을 수 있다.
+- `PYTHONUTF8=1 uv run python scripts/seed_test_sites.py` — 코드로 참여 시험용 [TEST] 현장 3곳(아파트·물류센터·오피스텔, 업체·담당자 명부·일주일 작업)을 만든다. 현장 코드 `TEST-0000`·`TEST-0001`·`TEST-0002`, 주인은 `testowner@demo.gongon.test` / `gongon-demo-1234`. 내 계정으로 머리줄 현장 칩 → 현장 추가 → 코드로 참여에 코드를 넣는다. 같은 코드가 있으면 건너뛴다.
 
 ## DB 준비 (PostgreSQL 17, 처음 한 번)
 1. 설치: https://www.postgresql.org/download/windows/ → "Download the installer"(EDB) → **17.x Windows x86-64**.
