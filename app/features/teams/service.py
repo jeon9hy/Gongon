@@ -119,7 +119,7 @@ ProposableSitesDep = Annotated[frozenset[int], Depends(proposable_site_ids)]
 
 
 def participant_labels(session: Session, site_id: int) -> dict[int, str]:
-    """현장 참여 업체 ID → "회사 이름 · 구분"(원청 먼저, 참여 종료 업체 포함). 표시에 쓴다.
+    """현장 참여 업체 ID → "회사 이름 · 구분"(원청 먼저, 제외한 업체 포함). 표시에 쓴다.
 
     고를 수 있는 업체(참여 중)는 participant_choices."""
     participants = repository.participants(session, site_id)
@@ -271,7 +271,7 @@ def add_member(
             participant = chosen
     if participant is not None and participant.ended_at is not None:
         session.rollback()
-        return ("참여 종료한 업체입니다. 먼저 참여를 재개하세요.",)
+        return ("제외한 업체입니다. 먼저 복귀시켜 주세요.",)
     if role == "coordinator" and (participant is None or participant.kind != "prime"):
         session.rollback()
         return ("조정자는 원청 소속 사용자만 될 수 있습니다.",)
@@ -388,13 +388,13 @@ def edit_participant(
 def end_participant(
     session: Session, site_id: int, actor: CurrentUser, participant_id: int, now: datetime
 ) -> tuple[str, ...]:
-    """참여 종료: 실행 업체·조치 담당 선택에서만 빠진다. 지난 작업·기록·멤버십은 그대로다."""
+    """제외(참여 종료): 실행 업체·조치 담당 선택에서만 빠진다. 지난 작업·기록·멤버십은 그대로다."""
     require_role(session, actor, site_id, MANAGE_ROLES)
     participant = _participant_or_404(session, site_id, participant_id)
     if participant.kind == "prime":
-        return ("원청은 참여 종료할 수 없습니다.",)
+        return ("원청은 제외할 수 없습니다.",)
     if participant.ended_at is not None:
-        return ("이미 참여 종료한 업체입니다.",)
+        return ("이미 제외한 업체입니다.",)
     participant.ended_at = now
     participant.ended_by_user_id = actor.user_id
     session.commit()
@@ -716,7 +716,7 @@ def _member_same_name(
 
 def _status_text(participant: ProjectParticipant) -> str:
     if participant.ended_at is not None:
-        return f"참여 종료 · {participant.ended_at.astimezone(KST):%Y-%m-%d}"
+        return f"제외 · {participant.ended_at.astimezone(KST):%Y-%m-%d}"
     if participant.joined_on is not None:
         return f"참여 중 · {participant.joined_on:%Y-%m-%d}부터"
     return "참여 중"

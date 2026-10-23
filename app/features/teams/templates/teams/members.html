@@ -28,12 +28,13 @@
 
 <datalist id="job-titles">{% for t in view.job_titles %}<option value="{{ t }}">{% endfor %}</datalist>
 
-{# 엑셀처럼 표 두 개(C04-36): 업체 한 줄씩, 사람(명부 담당자·로그인 참여자) 한 줄씩 #}
+{# 엑셀처럼 업체 한 줄씩(C04-36). 담당자는 업체 정보 모달의 담당자 탭에서 함께 본다(C04-37).
+   줄에는 업체 정보만, 수정·제외는 머리줄 관리를 눌렀을 때만 #}
 <section class="card sheet-card" aria-labelledby="sheet-companies">
 <h2 class="h2" id="sheet-companies">참여 업체 <span class="muted">{{ view.participants | length }}</span></h2>
 <div class="sheet-wrap">
-<table class="sheet">
-<thead><tr><th scope="col">업체</th><th scope="col">구분</th><th scope="col">맡은 업종</th><th scope="col">공종 메모</th><th scope="col" class="sheet__num">담당자</th><th scope="col" class="sheet__num">로그인</th><th scope="col">상태</th>{% if view.can_manage %}<th scope="col" class="sheet__acts">관리</th>{% endif %}</tr></thead>
+<table class="sheet" id="company-sheet">
+<thead><tr><th scope="col">업체</th><th scope="col">구분</th><th scope="col">맡은 업종</th><th scope="col">공종 메모</th><th scope="col" class="sheet__num">담당자</th><th scope="col" class="sheet__num">로그인</th><th scope="col">상태</th><th scope="col" class="sheet__acts">{% if view.can_manage %}<button class="sheet__toggle" type="button" aria-pressed="false" data-sheet-edit="company-sheet">관리</button>{% else %}정보{% endif %}</th></tr></thead>
 <tbody>
 {% for p in view.participants %}
 <tr{% if p.is_ended %} class="is-ended"{% endif %}>
@@ -44,44 +45,58 @@
 <td class="sheet__num">{{ p.contacts | length }}</td>
 <td class="sheet__num">{{ p.members | length }}</td>
 <td>{{ p.status_text }}</td>
-{% if view.can_manage %}<td class="sheet__acts">
-<button class="btn btn--soft btn--sm" type="button" data-open-dialog="dlg-org-{{ p.participant_id }}">{{ icon("building", 14) }} 업체 정보</button>
-<button class="btn btn--soft btn--sm" type="button" data-open-dialog="dlg-contact-{{ p.participant_id }}">{{ icon("user-plus", 14) }} 담당자 추가</button>
+<td class="sheet__acts">
+<span class="sheet__view"><button class="btn btn--soft btn--sm" type="button" data-open-dialog="dlg-info-{{ p.participant_id }}">{{ icon("building", 14) }} 업체 정보</button></span>
+{% if view.can_manage %}<span class="sheet__edit">
+<details class="menu sheet-menu">
+<summary class="menu__trigger" aria-label="{{ p.organization_name }} 관리" title="관리">{{ icon("more", 20) }}</summary>
+<div class="menu__panel">
+<button type="button" class="menu__item" data-open-dialog="dlg-org-{{ p.participant_id }}">{{ icon("edit", 18) }} 수정</button>
 {% if not p.is_prime %}{% if p.is_ended %}
-<form method="post" action="/sites/{{ view.site_id }}/participants/{{ p.participant_id }}/resume"><button class="btn btn--soft btn--sm" type="submit">참여 재개</button></form>
+<form method="post" action="/sites/{{ view.site_id }}/participants/{{ p.participant_id }}/resume"><button class="menu__item" type="submit">{{ icon("recheck", 18) }} 복귀</button></form>
 {% else %}
-<details class="delete-action">
-<summary>참여 종료</summary>
-<form method="post" action="/sites/{{ view.site_id }}/participants/{{ p.participant_id }}/end" class="delete-action__confirm">
-<p class="small">새 작업·조치에서 빠져요. 지난 기록은 남아요.</p>
-<button class="btn btn--sm" type="submit">참여 종료</button>
-</form>
-</details>
+<button type="button" class="menu__item menu__item--danger" data-open-dialog="dlg-end-{{ p.participant_id }}">{{ icon("logout", 18) }} 제외</button>
 {% endif %}{% endif %}
-</td>{% endif %}
+</div>
+</details>
+</span>{% endif %}
+</td>
 </tr>
+{% else %}
+<tr><td colspan="8" class="muted">참여 업체가 없어요.</td></tr>
 {% endfor %}
 </tbody>
 </table>
 </div>
 </section>
 
-<section class="card sheet-card" aria-labelledby="sheet-people">
-<h2 class="h2" id="sheet-people">담당자·참여자</h2>
-<div class="sheet-wrap">
-<table class="sheet">
-<thead><tr><th scope="col">이름</th><th scope="col">업체</th><th scope="col">직책·역할</th><th scope="col">연락처</th><th scope="col">계정</th>{% if view.can_manage %}<th scope="col" class="sheet__acts">관리</th>{% endif %}</tr></thead>
-<tbody>
-{% set people = namespace(n=0) %}
+{# 업체 정보 모달: 업체 정보 탭 + 담당자 탭(명부 담당자·로그인 참여자) #}
 {% for p in view.participants %}
-{% for c in p.contacts %}{% set people.n = people.n + 1 %}
-<tr{% if p.is_ended %} class="is-ended"{% endif %}>
-<th scope="row">{{ c.name }}{% if c.memo %}<small class="sheet__sub">{{ c.memo }}</small>{% endif %}</th>
-<td>{{ p.organization_name }}</td>
-<td>{% if c.job_title %}<span class="tag">{{ c.job_title }}</span>{% else %}<span class="muted">–</span>{% endif %}</td>
-<td>{% if c.phone %}<a class="roster__tel" href="tel:{{ c.phone }}">{{ icon("phone", 13) }} {{ c.phone }}</a>{% else %}<span class="muted">–</span>{% endif %}</td>
-<td><span class="small muted">{{ c.account_text or "계정 없음" }}</span></td>
-{% if view.can_manage %}<td class="sheet__acts">
+<dialog class="modal" id="dlg-info-{{ p.participant_id }}" aria-labelledby="dlg-info-title-{{ p.participant_id }}">
+<div class="modal__box">
+<div class="modal__head"><h2 class="h2" id="dlg-info-title-{{ p.participant_id }}">{{ p.organization_name }}</h2><button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
+<div class="tabseg" role="tablist" aria-label="업체 정보 보기">
+<button class="tabseg__btn" type="button" role="tab" aria-selected="true" data-tab-btn="info">업체 정보</button>
+<button class="tabseg__btn" type="button" role="tab" aria-selected="false" data-tab-btn="people">담당자 {{ p.contacts | length + p.members | length }}</button>
+</div>
+<div class="tabpanels">
+<div role="tabpanel" data-tab-panel="info">
+<dl class="infolist">
+<div><dt>구분</dt><dd>{{ p.kind_label }}</dd></div>
+<div><dt>맡은 업종</dt><dd>{% for t in p.work_trades %}<span class="sheet__chip" style="--c: {{ trade_color(t) }}; --bg: {{ trade_bg(t) }}">{{ short_trade(t) }}</span>{% else %}–{% endfor %}</dd></div>
+<div><dt>공종 메모</dt><dd>{{ p.trade_note or "–" }}</dd></div>
+<div><dt>참여 시작일</dt><dd>{{ p.joined_on or "–" }}</dd></div>
+<div><dt>사업자번호</dt><dd>{{ p.business_no or "–" }}</dd></div>
+<div><dt>상태</dt><dd>{{ p.status_text }}</dd></div>
+</dl>
+</div>
+<div role="tabpanel" data-tab-panel="people" hidden>
+<ul class="people">
+{% for c in p.contacts %}
+<li class="people__row">
+<div class="people__who"><strong>{{ c.name }}</strong>{% if c.job_title %} <span class="tag">{{ c.job_title }}</span>{% endif %}
+<small>{% if c.phone %}<a class="roster__tel" href="tel:{{ c.phone }}">{{ icon("phone", 13) }} {{ c.phone }}</a> · {% endif %}{{ c.account_text or "계정 없음" }}{% if c.memo %} · {{ c.memo }}{% endif %}</small></div>
+{% if view.can_manage %}<div class="people__acts">
 {% if c.account_text %}
 <form method="post" action="/sites/{{ view.site_id }}/contacts/{{ c.contact_id }}/unlink"><button class="btn btn--soft btn--sm" type="submit">연결 해제</button></form>
 {% else %}
@@ -93,37 +108,23 @@
 <button class="btn btn--sm" type="submit">명부에서 빼기</button>
 </form>
 </details>
-</td>{% endif %}
-</tr>
+</div>{% endif %}
+</li>
 {% endfor %}
-{% for m in p.members %}{% set people.n = people.n + 1 %}
-<tr{% if p.is_ended %} class="is-ended"{% endif %}>
-<th scope="row">{{ m.display_name }}{% if m.is_me %} (나){% endif %}{% if m.email %}<small class="sheet__sub">{{ m.email }}</small>{% endif %}</th>
-<td>{{ p.organization_name }}</td>
-<td><span class="tag">{{ m.role_label }}</span></td>
-<td><span class="muted">–</span></td>
-<td><span class="small muted">로그인 · 추가 {{ m.granted_text }}</span></td>
-{% if view.can_manage %}<td class="sheet__acts">
-<form method="post" action="/sites/{{ view.site_id }}/members/{{ m.membership_id }}/revoke">
-<button class="btn btn--danger-line btn--sm" type="submit">권한 회수</button>
-</form>
-</td>{% endif %}
-</tr>
+{% for m in p.members %}
+<li class="people__row">
+<div class="people__who"><strong>{{ m.display_name }}{% if m.is_me %} (나){% endif %}</strong> <span class="tag">{{ m.role_label }}</span>
+<small>{% if m.email %}{{ m.email }} · {% endif %}로그인 · 추가 {{ m.granted_text }}</small></div>
+{% if view.can_manage %}<div class="people__acts">
+<form method="post" action="/sites/{{ view.site_id }}/members/{{ m.membership_id }}/revoke"><button class="btn btn--danger-line btn--sm" type="submit">권한 회수</button></form>
+</div>{% endif %}
+</li>
 {% endfor %}
-{% endfor %}
-{% if not people.n %}<tr><td colspan="6" class="muted">등록한 담당자가 없어요.</td></tr>{% endif %}
-</tbody>
-</table>
-</div>
-</section>
-
+{% if not p.contacts and not p.members %}<li class="people__empty muted small">등록한 담당자가 없어요.</li>{% endif %}
+</ul>
 {% if view.can_manage %}
-{# 표의 버튼이 여는 모달: 업체 정보·담당자 추가·계정 연결 #}
-{% for p in view.participants %}
-<dialog class="modal" id="dlg-contact-{{ p.participant_id }}" aria-labelledby="dlg-contact-title-{{ p.participant_id }}">
-<div class="modal__box">
-<div class="modal__head"><h2 class="h2" id="dlg-contact-title-{{ p.participant_id }}">{{ p.organization_name }} · 담당자 추가</h2><button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
-<form class="modal__form" method="post" action="/sites/{{ view.site_id }}/participants/{{ p.participant_id }}/contacts">
+<form class="modal__form people__add" method="post" action="/sites/{{ view.site_id }}/participants/{{ p.participant_id }}/contacts">
+<p class="people__addtitle">담당자 추가</p>
 <div class="modal__grid">
 <label class="field">이름<input type="text" name="contact_name" maxlength="40" required></label>
 <label class="field">직책<input type="text" name="job_title" maxlength="40" list="job-titles" placeholder="예: 반장"></label>
@@ -132,10 +133,27 @@
 <label class="field">연락처<input type="tel" name="phone" maxlength="30" placeholder="선택"></label>
 <label class="field">메모<input type="text" name="memo" maxlength="200" placeholder="선택"></label>
 </div>
-<div class="modal__actions"><button class="btn btn--soft" type="button" data-close>취소</button><button class="btn btn--accent" type="submit">명부에 넣기</button></div>
+<div class="modal__actions"><button class="btn btn--accent" type="submit">{{ icon("user-plus", 16) }} 명부에 넣기</button></div>
 </form>
+{% endif %}
+</div>
+</div>
 </div>
 </dialog>
+{% endfor %}
+
+{% if view.can_manage %}
+{# 관리 메뉴의 수정·제외 모달과 담당자 탭의 계정 연결 모달 #}
+{% for p in view.participants %}
+{% if not p.is_prime and not p.is_ended %}
+<dialog class="modal" id="dlg-end-{{ p.participant_id }}" aria-labelledby="dlg-end-title-{{ p.participant_id }}">
+<form class="modal__box" method="post" action="/sites/{{ view.site_id }}/participants/{{ p.participant_id }}/end">
+<div class="modal__head"><h2 class="h2" id="dlg-end-title-{{ p.participant_id }}">{{ p.organization_name }}을(를) 제외할까요?</h2><button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
+<p class="small muted">새 작업·조치에서 빠져요. 지난 기록은 남고, 관리 메뉴의 복귀로 되돌릴 수 있어요.</p>
+<div class="modal__actions"><button class="btn btn--soft" type="button" data-close>취소</button><button class="btn btn--danger-line" type="submit">제외</button></div>
+</form>
+</dialog>
+{% endif %}
 <dialog class="modal" id="dlg-org-{{ p.participant_id }}" aria-labelledby="dlg-org-title-{{ p.participant_id }}">
 <div class="modal__box">
 <div class="modal__head"><h2 class="h2" id="dlg-org-title-{{ p.participant_id }}">{{ p.organization_name }} · 업체 정보</h2><button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
@@ -236,14 +254,23 @@
 {% endif %}
 </div>
 <script>
-// 업체 등록·참여자 추가 모달: 버튼으로 열고, 닫기·바깥 누름·Esc로 닫는다
+// 업체 정보 모달의 탭, 표 머리줄 관리(수정·제외 보이기)
 document.addEventListener("click", (e) => {
-  const opener = e.target.closest("[data-open-dialog]");
-  if (opener) { document.getElementById(opener.dataset.openDialog)?.showModal(); return; }
-  const closer = e.target.closest("dialog [data-close]");
-  if (closer) { closer.closest("dialog").close(); return; }
-  if (e.target.matches("dialog.modal")) e.target.close();
+  const tab = e.target.closest("[data-tab-btn]");
+  if (tab) showTab(tab.closest("dialog"), tab.dataset.tabBtn);
+  const toggle = e.target.closest("[data-sheet-edit]");
+  if (toggle) {
+    const on = toggle.getAttribute("aria-pressed") !== "true";
+    toggle.setAttribute("aria-pressed", String(on));
+    document.getElementById(toggle.dataset.sheetEdit).classList.toggle("is-editing", on);
+  }
 });
-document.querySelectorAll("dialog[data-open]").forEach((d) => d.showModal());
+function showTab(dialog, name) {
+  dialog.querySelectorAll("[data-tab-btn]").forEach((b) => {
+    const on = b.dataset.tabBtn === name;
+    b.setAttribute("aria-selected", String(on));
+  });
+  dialog.querySelectorAll("[data-tab-panel]").forEach((panel) => { panel.hidden = panel.dataset.tabPanel !== name; });
+}
 </script>
 {% endblock %}

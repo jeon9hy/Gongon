@@ -139,13 +139,14 @@ def test_checks_flag_missing_company_place_and_true_overlaps_only(
     put(session, site_id, TODAY, time(16, 0), time(17, 0), "콘크리트 타설", "", None)
 
     today = board(client.get("/").text, "today")
-    prio = today.split('class="todo"')[1].split("</div>")[0]
+    prio = today.split('id="dlg-prio"')[1].split("</dialog>")[0]  # 우선순위 버튼이 여는 모달
 
     # 먼저 챙길 것: 걸린 작업마다 항목과 작업을 보인다
     assert 'title="이동식 크레인와 같은 곳·같은 시간"' in prio  # 철골 작업 줄
     assert 'title="철골 작업와 같은 곳·같은 시간"' in prio  # 이동식 크레인 줄
     assert "고소작업대와 같은 곳" not in today and "도장·방수와 같은 곳" not in today  # 끝=시작
-    assert ">업체 미지정 · 16:00 콘크리트 타설</a>" in prio
+    unassigned = '업체 미지정</span><b>16:00</b><span class="prq__what">콘크리트 타설<'
+    assert unassigned in prio
     assert "위치 없음" not in prio  # 위치는 선택 입력이라 점검하지 않는다(D-077)
     shown = company_view(today)
     # 줄 3개(철골·크레인·콘크리트 타설) + 묶음 머리 2개(업체 미정·원청 묶음)

@@ -76,12 +76,26 @@
 <h2 class="hsec__title" id="today-title">오늘 <span>{{ today_board.date_text }}</span></h2>
 {% if all_done and not open_issues %}<span class="hsec__note">{{ icon("check", 14, 2.6) }} 오늘 일정은 다 지나갔어요. 수고했어요!</span>{% endif %}
 {% if today_board.items and (now_items or next_items or open_issues) %}
-<div class="todo" aria-labelledby="todo-title">
-<span class="todo__k" id="todo-title"><span class="logo-toggle logo-toggle--sm" aria-hidden="true"></span>우선순위</span>
-{% for w in now_items %}<a class="chip chip--now" href="{{ w.href }}">진행 중 · {{ w.work_type }}{% if w.location %} · {{ w.location }}{% endif %}</a>{% endfor %}
-{% for w in next_items[:2] %}<a class="chip" href="{{ w.href }}"><b>{{ w.time_text[:5] }}</b> {{ w.work_type }}{% if w.location %} · {{ w.location }}{% endif %}</a>{% endfor %}
-{% for w in open_issues %}{% for x in w.issues %}<a class="chip chip--warn" href="{{ w.href }}" title="{{ x.label }}">{{ short.get(x.key, x.label) }} · {{ w.time_text[:5] }} {{ w.work_type }}</a>{% endfor %}{% endfor %}
+{# 우선순위는 버튼 하나, 눌러서 모달로 본다(C04-37). 공온 로고 토글과 겹치지 않게 깃발 아이콘 #}
+{% set prio_n = now_items | length + next_items[:2] | length + (open_issues | map(attribute="issues") | map("length") | sum) %}
+<button class="priobtn" type="button" data-open-dialog="dlg-prio" aria-haspopup="dialog">{{ icon("flag", 15, 2.2) }}<span>우선순위</span><span class="priobtn__n">{{ prio_n }}</span></button>
+<dialog class="modal" id="dlg-prio" aria-labelledby="dlg-prio-title">
+<div class="modal__box">
+<div class="modal__head"><h2 class="h2" id="dlg-prio-title">오늘 우선순위 <span class="muted">{{ today_board.date_text }}</span></h2><button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
+{% if open_issues %}<div class="prq">
+<h3 class="prq__k prq__k--warn">확인할 것</h3>
+<ul class="prq__list">{% for w in open_issues %}{% for x in w.issues %}<li><a class="prq__row" href="{{ w.href }}" title="{{ x.label }}"><span class="prq__tag prq__tag--warn">{{ short.get(x.key, x.label) }}</span><b>{{ w.time_text[:5] }}</b><span class="prq__what">{{ w.work_type }}{% if w.location %} · {{ w.location }}{% endif %}</span>{{ icon("chevron-right", 16, 2.2) }}</a></li>{% endfor %}{% endfor %}</ul>
+</div>{% endif %}
+{% if now_items %}<div class="prq">
+<h3 class="prq__k prq__k--now">진행 중</h3>
+<ul class="prq__list">{% for w in now_items %}<li><a class="prq__row" href="{{ w.href }}"><span class="prq__tag prq__tag--now">진행 중</span><b>{{ w.time_text[:5] }}</b><span class="prq__what">{{ w.work_type }}{% if w.location %} · {{ w.location }}{% endif %}</span>{{ icon("chevron-right", 16, 2.2) }}</a></li>{% endfor %}</ul>
+</div>{% endif %}
+{% if next_items %}<div class="prq">
+<h3 class="prq__k">다음 작업</h3>
+<ul class="prq__list">{% for w in next_items[:2] %}<li><a class="prq__row" href="{{ w.href }}"><span class="prq__tag">다음</span><b>{{ w.time_text[:5] }}</b><span class="prq__what">{{ w.work_type }}{% if w.location %} · {{ w.location }}{% endif %}</span>{{ icon("chevron-right", 16, 2.2) }}</a></li>{% endfor %}</ul>
+</div>{% endif %}
 </div>
+</dialog>
 {% endif %}
 </div>
 {% if today_board.items %}

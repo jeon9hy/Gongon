@@ -144,7 +144,7 @@ def test_ended_company_leaves_choices_but_keeps_existing_work(
     item = session.scalars(select(WorkItem)).one()
     assert (item.performing_participant_id, item.plan_version) == (pump.id, 2)
     page = client.get(f"/schedule?site_id={site_id}&day=2026-10-05").text
-    assert "가상펌프 (참여 종료)" in page  # 수정 폼에만, 새 작업 선택지에는 없음
+    assert "가상펌프 (제외)" in page  # 수정 폼에만, 새 작업 선택지에는 없음
     assert f'<option value="{pump.id}">가상펌프</option>' not in page
 
 
@@ -167,7 +167,7 @@ def test_prime_cannot_be_ended(client: TestClient, site_id: int, session: Sessio
 
     response = client.post(f"/sites/{site_id}/participants/{prime.id}/end")
 
-    assert response.status_code == 422 and "원청은 참여 종료할 수 없습니다" in response.text
+    assert response.status_code == 422 and "원청은 제외할 수 없습니다" in response.text
     with pytest.raises(IntegrityError):
         session.execute(text("UPDATE project_participants SET ended_at = now() WHERE id = :i"),
                         {"i": prime.id})  # fmt: skip

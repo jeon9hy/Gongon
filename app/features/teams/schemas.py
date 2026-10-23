@@ -89,7 +89,7 @@ class ParticipantView:
     trade_note: str
     business_no: str | None  # 조정자에게만
     joined_on: str  # YYYY-MM-DD 또는 빈 값
-    status_text: str  # "참여 중 · 10/01부터" / "참여 종료 · 10/16"
+    status_text: str  # "참여 중 · 10/01부터" / "제외 · 10/16"
     is_ended: bool
     members: tuple[MemberView, ...]
     contacts: tuple[ContactView, ...]

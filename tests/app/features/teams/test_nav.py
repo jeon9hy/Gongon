@@ -36,7 +36,8 @@ def test_team_tab_opens_all_sites_in_one_table_and_a_chosen_site_opens_its_page(
 
     assert all_sites.status_code == 200
     table = all_sites.text.split('<table class="sheet">')[1].split("</table>")[0]
-    assert table.count("<tr") == 1 + 4  # 머리줄 + 현장마다 원청·추가 업체
+    assert table.count("<tr") == 1 + 2 + 4  # 머리줄 + 현장 묶음 줄 + 현장마다 원청·추가 업체
+    assert table.count("가상A현장") == 1  # 현장 이름은 줄마다 반복하지 않는다
     assert "가상펌프" in table and "가상골조" in table and "가상A현장" in table
     assert 'data-site-link="team" aria-current="page"' in nav_of(all_sites.text)
     assert chosen.status_code == 303 and chosen.headers["location"] == f"/sites/{second}/members"
@@ -62,14 +63,19 @@ def test_team_tab_without_any_site_goes_to_site_setup(client: TestClient) -> Non
     assert response.headers["location"] == "/sites"
 
 
-def test_site_member_page_is_two_tables_and_uses_the_header_chip(client: TestClient) -> None:
+def test_site_member_page_is_one_table_with_people_in_the_company_dialog(
+    client: TestClient,
+) -> None:
     site_id = add_site(client, "가상A현장")
     add_site(client, "가상B현장")
     register(client, site_id, "가상펌프", trade_note="펌프카")
 
     page = client.get(f"/sites/{site_id}/members").text
 
-    assert page.count('<table class="sheet">') == 2  # 업체 표 · 사람 표
+    assert page.count('<table class="sheet"') == 1  # 담당자는 따로 표를 두지 않는다
+    pump = page.split("가상펌프")[1].split("</tr>")[0]
+    assert "업체 정보" in pump and "dlg-info-" in pump  # 줄에는 업체 정보만, 수정은 관리 메뉴로
+    assert 'data-sheet-edit="company-sheet"' in page and 'data-tab-btn="people"' in page
     assert 'id="team-site"' not in page  # 화면 안 드롭다운 없이 머리줄 칩 하나
     assert "data-siteswitch-label>가상A현장<" in page
 
@@ -120,7 +126,7 @@ def test_every_tab_has_the_chip_except_chat_and_chat_opens_no_room(client: TestC
     # 대화는 칩이 없고, 방을 고르지 않으면 방 목록만 있는 빈 화면(처음 방을 열지 않는다)
     assert chat.status_code == 200
     assert '<details class="siteswitch"' not in chat.text
-    assert "왼쪽에서 현장 방을 골라 주세요." in chat.text
+    assert "대화할 현장 방을 골라 주세요." in chat.text
     assert f'href="/chat/{first}"' in chat.text and 'id="chat-title"' not in chat.text
 
 

@@ -11,7 +11,7 @@
 {% for r in rooms %}<a class="chat__room" href="/chat/{{ r.site_id }}"><span class="chat__room-dot" aria-hidden="true">{{ (r.name | replace("[가상] ", ""))[:1] }}</span><span>{{ r.name }}</span></a>{% endfor %}
 </aside>
 <section class="chat__panel chat__panel--empty" aria-label="대화">
-<p class="hsec__empty">왼쪽에서 현장 방을 골라 주세요.</p>
+<div class="empty-art chat__pick"><img class="mascot" src="/static/brand/mascot-hello.png" alt="" width="150" height="117"><p>대화할 현장 방을 골라 주세요.</p></div>
 </section>
 </div>
 {% else %}

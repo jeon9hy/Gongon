@@ -104,10 +104,11 @@
 {% if d.is_target %}<a class="tag tag--go" href="/dashboard{% if view.site_id %}?site_id={{ view.site_id }}{% endif %}">판정 보기 ›</a>{% endif %}
 </div>
 {% if d.items %}
-{% macro workcard(i) %}{% set history = view.revisions.get(i.item_id, ()) %}<li><button type="button" class="workcard" style="--c: {{ work_color(i.work_type) }}" data-open-dialog="item-{{ i.item_id }}">
+{% macro workcard(i, warn_ids=()) %}{% set history = view.revisions.get(i.item_id, ()) %}{% set problem = ("업체 미지정" if not i.performing_participant_id else "같은 위치·같은 시간 겹침") if i.item_id in warn_ids else "" %}<li><button type="button" class="workcard{% if problem %} workcard--warn{% endif %}" style="--c: {{ work_color(i.work_type) }}" data-open-dialog="item-{{ i.item_id }}">
 <span class="workcard__time">{{ i.start_local.strftime("%H:%M") }}<span>–</span>{{ i.end_local.strftime("%H:%M") }}{% set m = marks.get(i.item_id) %}{% if m %} {{ verdict_badge(m[0]) }}{% endif %}</span>
 <span class="workcard__title"><span class="dot"></span>{{ i.work_type }}{% if i.location %}<span class="workcard__place"> · {{ i.location }}</span>{% endif %}</span>
 <span class="workcard__meta">{% if view.all_mode %}<b class="workcard__site">{{ view.site_names.get(i.site_id, "") }}</b> · {% endif %}{{ view.participant_names.get(i.performing_participant_id, "업체 미지정").split(" · ")[0] if i.performing_participant_id else "업체 미지정" }} · v{{ i.plan_version }}{% if history %} · 변경 {{ history | length }}번{% endif %}</span>
+{% if problem %}<span class="workcard__warn"><span class="calsum__warn" aria-hidden="true">!</span>{{ problem }}</span>{% endif %}
 </button></li>{% endmacro %}
 {# 업체별·위치별로 묶는다(D-085). 처음엔 모두 접혀 있다(개발자 요청) #}
 {{ groupseg() }}
@@ -119,12 +120,12 @@
 <summary class="grp__head">
 <span class="grp__icon" aria-hidden="true">{{ icon("building" if mode == "company" else "map-pin", 18, 2) }}</span>
 <span class="grp__title"><strong>{{ g.label }}</strong>{% if g.sub %}<small>{{ g.sub }}</small>{% endif %}</span>
-<span class="grp__warn">{% if g.warn_ids %}<span class="calsum__warn" title="업체 미지정 또는 같은 곳 같은 시간 겹침">!</span>{% endif %}</span>
+<span class="grp__warn">{% if g.warn_ids %}<span class="calsum__warn" title="확인할 작업 {{ g.warn_ids | length }}건 · 아래 카드에 표시">!</span>{% endif %}</span>
 <span class="grp__count">{{ g.items | length }}건</span>
 <span class="grp__state">{% if ns.stop %}<span class="calsum__chip calsum__chip--stop"><i class="calsum__mark calsum__mark--stop"></i>{{ ns.stop }}</span>{% endif %}{% if ns.check %}<span class="calsum__chip calsum__chip--check"><i class="calsum__mark calsum__mark--check"></i>{{ ns.check }}</span>{% endif %}</span>
 <span class="grp__chev" aria-hidden="true">{{ icon("chevron-down", 16, 2.2) }}</span>
 </summary>
-<ul class="worklist">{% for i in g.items %}{{ workcard(i) }}{% endfor %}</ul>
+<ul class="worklist">{% for i in g.items %}{{ workcard(i, g.warn_ids) }}{% endfor %}</ul>
 </details>
 {% endfor %}
 </div>
@@ -213,7 +214,7 @@
 <select name="performing_participant_id" required>
 <option value=""{% if not i.performing_participant_id %} selected{% endif %}>업체 고르기</option>
 {% set ns = namespace(g="", found=false) %}{% for p in view.participants %}{% if p.group_label != ns.g %}{% if ns.g %}</optgroup>{% endif %}<optgroup label="{{ p.group_label }}">{% set ns.g = p.group_label %}{% endif %}<option value="{{ p.participant_id }}"{% if p.participant_id == i.performing_participant_id %}{% set ns.found = true %} selected{% endif %}>{{ p.name }}</option>{% endfor %}{% if ns.g %}</optgroup>{% endif %}
-{% if i.performing_participant_id and not ns.found %}<option value="{{ i.performing_participant_id }}" selected>{{ view.participant_names.get(i.performing_participant_id, "").split(" · ")[0] }} (참여 종료)</option>{% endif %}
+{% if i.performing_participant_id and not ns.found %}<option value="{{ i.performing_participant_id }}" selected>{{ view.participant_names.get(i.performing_participant_id, "").split(" · ")[0] }} (제외)</option>{% endif %}
 </select>
 </label>
 </div>

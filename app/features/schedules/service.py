@@ -505,7 +505,7 @@ def _revision_views(
         performer = (
             "실행 업체 미지정"
             if r.performing_participant_id is None
-            else labels.get(r.performing_participant_id, "참여 종료 업체").split(" · ")[0]
+            else labels.get(r.performing_participant_id, "제외한 업체").split(" · ")[0]
         )
         who = users.get(r.changed_by_user_id or -1)
         by_item.setdefault(r.work_item_id, []).append(
