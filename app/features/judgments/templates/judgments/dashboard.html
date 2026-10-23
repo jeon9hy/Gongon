@@ -27,12 +27,9 @@
 <div class="hero__main">
 <p class="hero__date">{{ icon("calendar", 15) }} 공온 판정 · {{ view.target_date }}</p>
 <h1 class="hero__title" id="dash-title">{{ view.site_name }} 공사 ON?</h1>
-<ul class="hero__facts">
-<li>{{ icon("history", 15) }}<span>{% if view.work_hours %}내일 작업 {{ view.work_hours }}{% else %}내일 등록한 작업 없음{% endif %}</span></li>
-<li>{{ icon("check", 15, 2.4) }}<span>판정 항목 {{ view.cards | length }}개</span></li>
-{% if view.forecast_issued %}<li>{{ icon("cloud-sun", 15) }}<span>예보 {{ view.forecast_issued }} 발표</span></li><li>{{ icon("history", 15) }}<span>{{ view.next_forecast }}</span></li>{% endif %}
-{% if view.rule_version %}<li>{{ icon("info", 15) }}<span>기준 {{ view.rule_version }}{% if not view.rule_verified %} · 원문 대조 필요{% endif %}</span></li>{% endif %}
-</ul>
+{# 머리 정보는 두 줄만(C04-37 후속, 개발자 요청): 내일 작업 한 줄 + 예보 발표 한 줄. 격자·기준·결과 시각은 데이터 상태 카드에 #}
+<p class="hero__lead">{{ icon("hard-hat", 16) }}{% if view.work_hours %}<span>내일 작업 <b>{{ view.work_hours }}</b></span>{% else %}<span>내일 등록한 작업 없음</span>{% endif %}</p>
+{% if view.forecast_issued %}<p class="hero__sub">예보 {{ view.forecast_issued }} 발표<span aria-hidden="true">·</span>{{ view.next_forecast }}</p>{% endif %}
 </div>
 {# 현장 고르기는 머리줄 칩 하나로(C04-36, D-092) #}
 </section>
@@ -241,33 +238,30 @@ document.querySelectorAll("[data-week-toggle]").forEach((btn) => {
 
 {% if view.notice %}
 <article class="card card--tight">
-<div class="row row--center">
-<h2 class="h2">공온 알림</h2>
-<span class="badge badge--go" style="font-size: 12px; padding: 5px 10px;">미리보기</span>
-</div>
+<div class="sidehead"><h2 class="h2">공온 알림</h2><span class="sidehead__tag">{{ icon("bell", 13, 2.2) }}보낼 문자 미리보기</span></div>
 <div class="message">
-<strong>{{ view.notice.title }}</strong><br>
+<p class="message__title">{{ view.notice.title }}</p>
+<ul class="message__items">
 {% for item in view.notice.items %}
-{{ item.work }} <strong class="verdict-text verdict-text--{{ verdict_class[item.verdict] }}">{{ item.verdict }}</strong> ({{ item.reason }})<br>
+<li><span class="message__verdict message__verdict--{{ verdict_class[item.verdict] }}">{{ item.verdict }}</span><span><b>{{ item.work }}</b> {{ item.reason }}</span></li>
 {% else %}
-판정한 공종 모두 <strong>진행</strong><br>
+<li><span class="message__verdict message__verdict--go">진행</span><span>판정한 공종 모두</span></li>
 {% endfor %}
-<span class="muted">최종 판단은 현장 책임자가 합니다.</span><br>
-{% if view.notice.detail_href %}<a href="{{ view.notice.detail_href }}" style="font-weight: 700;">상세 근거 보기 ›</a>{% endif %}
+</ul>
+<p class="message__note">최종 판단은 현장 책임자가 합니다.</p>
 </div>
+{% if view.notice.detail_href %}<a class="btn btn--soft btn--block" href="{{ view.notice.detail_href }}">상세 근거 보기 {{ icon("chevron-right", 16, 2.2) }}</a>{% endif %}
 </article>
 {% endif %}
 
-<div class="note">{{ icon("info", 16) }}<p>최종 판단은 현장 책임자가 합니다.</p></div>
-
 <article class="card card--tight">
-<h2 class="h2">데이터 상태</h2>
-<dl class="facts">
-<dt>예보 수집</dt><dd>{{ view.collection_status }}</dd>
-<dt>자료 유형</dt><dd>예보 (관측 아님)</dd>
-<dt>기상청 격자</dt><dd>{{ view.grid }}</dd>
-<dt>마지막 확인</dt><dd>{{ view.checked or "—" }}</dd>
-<dt>이 결과가 나온 시각</dt><dd>{{ view.judged_at or "—" }}</dd>
+<div class="sidehead"><h2 class="h2">데이터 상태</h2><span class="sidehead__tag">예보 · 관측 아님</span></div>
+<dl class="datalist">
+<div><dt>예보 수집</dt><dd>{{ view.collection_status }}</dd></div>
+<div><dt>마지막 확인</dt><dd>{{ view.checked or "—" }}</dd></div>
+<div><dt>결과 시각</dt><dd>{{ view.judged_at or "—" }}</dd></div>
+<div><dt>기상청 격자</dt><dd>{{ view.grid }}</dd></div>
+{% if view.rule_version %}<div><dt>판정 기준</dt><dd>{{ view.rule_version }}{% if not view.rule_verified %} <span class="todo">원문 대조 필요</span>{% endif %}</dd></div>{% endif %}
 </dl>
 </article>
 </aside>

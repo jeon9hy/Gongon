@@ -2705,3 +2705,25 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .people__empty { padding: 10px 0; }
 .people__add { margin-top: 16px; padding-top: 4px; }
 .people__addtitle { margin: 0; font-size: 14px; font-weight: 700; color: var(--ink); }
+/* 공온 판정 머리 정보 두 줄과 옆 카드(C04-38) */
+.hero__lead { display: flex; align-items: center; gap: 8px; margin: 10px 0 0; font-size: 15px; color: var(--ink); }
+.hero__lead svg { flex: none; color: var(--accent); }
+.hero__lead b { font-weight: 700; font-variant-numeric: tabular-nums; }
+.hero__sub { margin: 4px 0 0 24px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.hero__sub span { margin: 0 6px; color: var(--placeholder); }
+.sidehead { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sidehead__tag { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; background: var(--surface); color: var(--muted); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.message__title { margin: 0 0 10px; font-weight: 700; color: var(--ink); }
+.message__items { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.message__items li { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: baseline; gap: 8px; }
+.message__verdict { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; background: var(--verdict-go-bg); color: var(--verdict-go-fg); }
+.message__verdict--check { background: var(--verdict-check-bg); color: var(--verdict-check-fg); }
+.message__verdict--stop { background: var(--stop-soft); color: var(--stop-text); }
+.message__verdict--unknown { background: var(--card); color: var(--muted); }
+.message__note { margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--line-soft); font-size: 12px; color: var(--muted); }
+.btn--block { width: 100%; justify-content: center; }
+.datalist { display: grid; margin: 0; }
+.datalist > div { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 12px; padding: 10px 0; border-top: 1px solid var(--line-soft); font-size: 13px; }
+.datalist > div:first-child { border-top: 0; padding-top: 0; }
+.datalist dt { color: var(--muted); }
+.datalist dd { margin: 0; color: var(--ink); font-weight: 500; font-variant-numeric: tabular-nums; }
