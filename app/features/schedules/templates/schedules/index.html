@@ -151,9 +151,22 @@
 <div class="modal__head"><h2 class="h2" id="import-title">공정표 가져오기</h2><button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
 {% if view.import_errors %}<div class="alert alert--error" role="alert"><strong>아무것도 등록하지 않았어요. 고쳐서 다시 올려 주세요.</strong><ul>{% for e in view.import_errors[:20] %}<li>{{ e }}</li>{% endfor %}{% if view.import_errors | length > 20 %}<li>외 {{ view.import_errors | length - 20 }}개</li>{% endif %}</ul></div>{% endif %}
 <input type="hidden" name="site_id" value="{{ view.site_id }}">
-<div class="importcols" aria-label="첫 줄 열 이름"><span>날짜</span><span>시작</span><span>종료</span><span>작업</span><span class="is-optional">위치</span><span>실행업체</span><span class="is-optional">메모</span></div>
-<label class="field">엑셀·CSV 파일<input type="file" name="file" accept=".xlsx,.csv" required></label>
-<p class="small muted importhelp"><a href="/static/samples/gongon-schedule-sample.xlsx" download="공온_공정표_샘플.xlsx">샘플 엑셀 받기</a> · <a href="/guide#import">형식 안내</a></p>
+<ol class="importsteps">
+<li><a href="/static/samples/gongon-schedule-sample.xlsx" download="공온_공정표_샘플.xlsx">샘플 엑셀</a>을 받아 첫 줄 열 이름은 그대로 두고 아래 줄을 채워요.</li>
+<li>파일을 올리면 줄마다 검사해요. 한 줄이라도 틀리면 아무것도 등록하지 않고 줄 번호를 알려 줘요.</li>
+</ol>
+<div class="importex" aria-label="입력 예시">
+<div class="importex__scroll"><table>
+<thead><tr><th>날짜</th><th>시작</th><th>종료</th><th>작업</th><th class="is-optional">위치</th><th>실행업체</th></tr></thead>
+<tbody><tr><td>2026-10-24</td><td>07:30</td><td>09:30</td><td>철골 작업</td><td>102동 램프</td><td>우진철강</td></tr></tbody>
+</table></div>
+<p>위치·메모는 비워도 돼요. 실행업체는 업체 화면의 이름과 같게. <a href="/guide#import">자세히</a></p>
+</div>
+<label class="filedrop">
+<input type="file" name="file" accept=".xlsx,.csv" required data-filedrop>
+<span class="filedrop__icon" aria-hidden="true">{{ icon("upload", 20, 2) }}</span>
+<span class="filedrop__text"><b data-filedrop-name>엑셀·CSV 파일 고르기</b><small>.xlsx 또는 .csv</small></span>
+</label>
 <div class="modal__actions"><button class="btn btn--soft" type="button" data-close>취소</button><button class="btn btn--accent" type="submit">{{ icon("upload", 16, 2.2) }} 가져오기</button></div>
 </form>
 </dialog>
@@ -367,6 +380,15 @@
 </aside>
 </div>
 <script>
+// 공정표 파일 고르기: 고른 파일 이름을 보이고, 끌어다 놓을 때 테두리를 바꾼다
+document.querySelectorAll("[data-filedrop]").forEach((input) => {
+  const box = input.closest(".filedrop");
+  const name = box.querySelector("[data-filedrop-name]");
+  const empty = name.textContent;
+  input.addEventListener("change", () => { name.textContent = input.files[0]?.name || empty; });
+  ["dragenter", "dragover"].forEach((t) => input.addEventListener(t, () => box.classList.add("is-over")));
+  ["dragleave", "drop"].forEach((t) => input.addEventListener(t, () => box.classList.remove("is-over")));
+});
 (() => {
   const MAX_ITEMS = 100;
   const DOW = "일월화수목금토";
