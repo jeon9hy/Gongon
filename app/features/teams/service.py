@@ -4,8 +4,10 @@
 - 같은 회사여도 멤버십이 없으면 볼 수 없다. 회사 공통 관리자는 없다.
 - 조정자는 원청 소속만 될 수 있다. 마지막 조정자는 회수할 수 없다.
 - 참여 업체는 사람 없이 등록·종료·재개하고, 업체별 담당자 명부를 둔다(C04-9, D-066).
+- 현장 코드를 아는 가입자는 스스로 담당자로 참여한다(D-095). 업체는 가입한 회사 그대로다.
 """
 
+import secrets
 from collections.abc import Iterable, Sequence
 from datetime import date, datetime
 from typing import Annotated, cast
@@ -20,7 +22,12 @@ from app.features.auth import service as auth_service
 from app.features.auth.schemas import CurrentUser, UserInfo
 from app.features.sites.schemas import SiteRecord
 from app.features.teams import repository
-from app.features.teams.models import ParticipantContact, ProjectMembership, ProjectParticipant
+from app.features.teams.models import (
+    ParticipantContact,
+    ProjectMembership,
+    ProjectParticipant,
+    SiteJoinCode,
+)
 from app.features.teams.schemas import (
     ALL_ROLES,
     ASSIGNABLE_ROLES,
@@ -222,6 +229,80 @@ def add_founder(session: Session, site_id: int, user: CurrentUser, now: datetime
     session.add(participant)
     session.flush()
     session.add(_membership(participant, user.user_id, "coordinator", user.user_id, now))
+    session.add(SiteJoinCode(site_id=site_id, code=_new_code(session), created_at=now,
+                             created_by_user_id=user.user_id))  # fmt: skip
+
+
+CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"  # 헷갈리는 0·O·1·I·L 제외
+CODE_LENGTH = 8
+
+
+def _new_code(session: Session) -> str:
+    while True:
+        code = "".join(secrets.choice(CODE_ALPHABET) for _ in range(CODE_LENGTH))
+        if repository.site_id_for_code(session, code) is None:
+            return code
+
+
+def normalize_code(raw: str) -> str:
+    """입력한 코드에서 하이픈·공백을 빼고 대문자로. 형식이 맞지 않으면 빈 글자."""
+    code = "".join(ch for ch in raw.upper() if ch.isalnum())
+    if len(code) != CODE_LENGTH or any(ch not in CODE_ALPHABET for ch in code):
+        return ""
+    return code
+
+
+def show_code(code: str) -> str:
+    return f"{code[:4]}-{code[4:]}"
+
+
+def renew_join_code(session: Session, actor: CurrentUser, site_id: int, now: datetime) -> None:
+    """새 코드로 바꾼다. 옛 코드로는 더 참여할 수 없다(이미 참여한 사람은 그대로)."""
+    require_role(session, actor, site_id, MANAGE_ROLES)
+    row = repository.join_code(session, site_id)
+    if row is None:
+        row = SiteJoinCode(site_id=site_id)
+        session.add(row)
+    row.code = _new_code(session)
+    row.created_at = now
+    row.created_by_user_id = actor.user_id
+    session.commit()
+
+
+def site_for_code(session: Session, raw: str) -> int | None:
+    code = normalize_code(raw)
+    return repository.site_id_for_code(session, code) if code else None
+
+
+def join_by_code(
+    session: Session, site_id: int, user: CurrentUser, now: datetime
+) -> tuple[bool, tuple[str, ...]]:
+    """코드로 현장에 담당자로 참여한다. (이미 참여 중이었는지, 오류 목록).
+
+    업체는 가입한 회사다. 그 회사가 이 현장에 없으면 협력업체로 새로 넣는다. 이름이 같은 업체가
+    있어도 자동으로 붙이지 않는다(D-066, 조정자가 업체 화면에서 정리). 현장 확인(삭제 여부)은
+    부르는 쪽이 먼저 한다."""
+    if repository.active_membership(session, user.user_id, site_id) is not None:
+        return True, ()
+    participant = repository.participant_of(session, site_id, user.organization_id)
+    if participant is not None and participant.ended_at is not None:
+        return False, ("이 현장에서 제외된 업체예요. 현장 조정자에게 복귀를 부탁해 주세요.",)
+    if participant is None:
+        participant = ProjectParticipant(
+            site_id=site_id,
+            organization_id=user.organization_id,
+            kind="subcontractor",
+            created_by_user_id=user.user_id,
+        )
+        session.add(participant)
+        session.flush()
+    session.add(_membership(participant, user.user_id, "assignee", user.user_id, now))
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()  # 같은 사람이 동시에 두 번 눌렀다
+        return True, ()
+    return False, ()
 
 
 def add_member(
@@ -691,7 +772,13 @@ def build_members_view(
         member_same_name=_member_same_name(session, site_id, member_form, errors),
         errors=errors,
         message=message,
+        join_code=_shown_code(session, site_id) if can_manage else "",
     )
+
+
+def _shown_code(session: Session, site_id: int) -> str:
+    row = repository.join_code(session, site_id)
+    return "" if row is None else show_code(row.code)
 
 
 def _member_same_name(

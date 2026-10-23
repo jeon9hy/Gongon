@@ -3,7 +3,12 @@ from collections.abc import Iterable
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.features.teams.models import ParticipantContact, ProjectMembership, ProjectParticipant
+from app.features.teams.models import (
+    ParticipantContact,
+    ProjectMembership,
+    ProjectParticipant,
+    SiteJoinCode,
+)
 
 
 def active_site_ids(session: Session, user_id: int, roles: tuple[str, ...]) -> frozenset[int]:
@@ -138,3 +143,11 @@ def user_has_contact_links(session: Session, user_id: int) -> bool:
         ParticipantContact.user_id == user_id, ParticipantContact.removed_at.is_(None)
     )
     return session.scalar(query.limit(1)) is not None
+
+
+def join_code(session: Session, site_id: int) -> SiteJoinCode | None:
+    return session.get(SiteJoinCode, site_id)
+
+
+def site_id_for_code(session: Session, code: str) -> int | None:
+    return session.scalar(select(SiteJoinCode.site_id).where(SiteJoinCode.code == code))

@@ -165,6 +165,7 @@ class MembersView:
     member_same_name: tuple[Option, ...] = ()
     errors: tuple[str, ...] = ()
     message: str | None = None
+    join_code: str = ""  # 조정자에게만, "ABCD-2345"(D-095)
 
 
 @dataclass(frozen=True, slots=True)

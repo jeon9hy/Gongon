@@ -123,13 +123,75 @@ def revoke_member(
     return _done(site_id, "revoked")
 
 
+@router.get("/join", response_class=HTMLResponse)
+def join_form(request: Request, embed: str = "", code: str = "") -> HTMLResponse:
+    """현장 코드로 참여(D-095). 머리줄 현장 칩의 코드로 참여 버튼이 모달(embed)로 연다."""
+    return _join_page(request, embed == "1", code, ())
+
+
+@router.post("/join", response_model=None)
+def join(
+    request: Request,
+    session: SessionDep,
+    user: CurrentUserDep,
+    now: NowDep,
+    code: Annotated[str, Form()] = "",
+    embed: Annotated[str, Form()] = "",
+) -> Response:
+    site_id = service.site_for_code(session, code)
+    site = None if site_id is None else sites_service.get_site(session, site_id, None)
+    if site_id is None or site is None:
+        errors: tuple[str, ...] = (
+            "맞는 현장 코드가 없어요. 조정자에게 받은 코드 8자리를 다시 확인해 주세요.",
+        )
+        return _join_page(request, embed == "1", code, errors, status_code=422)
+    already, errors = service.join_by_code(session, site_id, user, now)
+    if errors:
+        return _join_page(request, embed == "1", code, errors, status_code=422)
+    url = f"/sites/{site_id}/members?done={'already' if already else 'joined'}"
+    if embed == "1":
+        # 모달 안 화면이면 바깥 페이지를 옮긴다(url은 서버가 만든 앱 안 주소)
+        return HTMLResponse(
+            f'<!doctype html><meta charset="utf-8"><script>window.top.location.href = "{url}";'
+            "</script>"
+        )
+    return RedirectResponse(url, status_code=303)
+
+
+def _join_page(
+    request: Request,
+    embed: bool,
+    code: str,
+    errors: tuple[str, ...],
+    status_code: int = 200,
+) -> HTMLResponse:
+    context = {"nav_active": "team", "embed": embed, "code": code.strip()[:20], "errors": errors}
+    return templates.TemplateResponse(request, "teams/join.html", context, status_code=status_code)
+
+
+@router.post("/sites/{site_id}/join-code")
+def renew_join_code(
+    session: SessionDep,
+    user: CurrentUserDep,
+    scope: AccessibleSitesDep,
+    now: NowDep,
+    site_id: int,
+) -> Response:
+    _site_name(session, site_id, scope)
+    service.renew_join_code(session, user, site_id, now)
+    return _done(site_id, "code")
+
+
 MESSAGES = {
+    "joined": "현장에 참여했어요. 담당자로 들어왔어요.",
+    "already": "이미 참여 중인 현장이에요.",
+    "code": "새 현장 코드를 만들었어요. 예전 코드로는 더 참여할 수 없어요.",
     "added": "참여자를 추가했습니다.",
     "revoked": "권한을 회수했습니다.",
     "registered": "업체를 등록했어요.",
     "edited": "업체 정보를 고쳤어요.",
-    "ended": "참여를 종료했어요. 지난 작업 연결은 그대로예요.",
-    "resumed": "참여를 다시 시작했어요.",
+    "ended": "업체를 제외했어요. 지난 작업 연결은 그대로예요.",
+    "resumed": "업체를 복귀시켰어요.",
     "contact": "담당자를 명부에 넣었어요.",
     "removed": "명부에서 뺐어요.",
     "linked": "계정을 연결했어요.",

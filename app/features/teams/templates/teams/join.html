@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}코드로 참여{% endblock %}
+{% block body_class %}{% if embed %} class="embedbody"{% endif %}{% endblock %}
+{% macro join_form() %}
+{# 현장 코드로 참여(D-095): 가입한 회사 그대로 담당자로 들어간다 #}
+<form class="joinform" method="post" action="/join">
+{% if embed %}<input type="hidden" name="embed" value="1">{% endif %}
+{% if errors %}<div class="alert alert--error" role="alert">{% for e in errors %}<p>{{ e }}</p>{% endfor %}</div>{% endif %}
+<label class="field">현장 코드
+<input class="joinform__code" type="text" name="code" value="{{ code }}" placeholder="ABCD-2345" maxlength="20" autocomplete="off" autocapitalize="characters" spellcheck="false" required autofocus>
+</label>
+<p class="small muted">현장 조정자에게 받은 8자리 코드예요. 내 회사 이름으로 담당자가 되고, 조정자가 업체 화면에서 정리할 수 있어요.</p>
+<button class="btn btn--accent" type="submit">{{ icon("arrow-right", 16, 2.2) }} 참여하기</button>
+</form>
+{% endmacro %}
+{% block page %}{% if embed %}<main class="embed" id="main" tabindex="-1">{{ join_form() }}</main>{% else %}{{ super() }}{% endif %}{% endblock %}
+{% block content %}
+<section class="hero" aria-labelledby="join-title">
+<div class="hero__main">
+<p class="hero__date">{{ icon("link", 15) }} 현장 참여</p>
+<h1 class="hero__title" id="join-title">코드로 현장 참여</h1>
+</div>
+</section>
+<section class="card joincard">{{ join_form() }}</section>
+{% endblock %}

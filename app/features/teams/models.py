@@ -77,3 +77,18 @@ class ParticipantContact(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     created_by_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class SiteJoinCode(Base):
+    """현장 참여 코드(D-095). 현장마다 하나, 다시 만들면 바뀌고 옛 코드는 더 쓰지 못한다.
+
+    글자는 헷갈리는 0·O·1·I·L을 뺀 대문자·숫자 8자이고 하이픈 없이 저장한다."""
+
+    __tablename__ = "site_join_codes"
+
+    site_id: Mapped[int] = mapped_column(
+        ForeignKey("sites.id", ondelete="CASCADE"), primary_key=True
+    )
+    code: Mapped[str] = mapped_column(String(8), unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
