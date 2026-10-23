@@ -109,7 +109,7 @@
 {# 맡은 업종 고르기(D-088): 업체 등록·수정 폼 안의 겹친 모달. 체크 상자가 폼과 함께 전송된다 #}
 {% macro trade_pick(dlg_id, selected=()) -%}
 <div class="field tpick" data-tpick>
-<span class="fieldhead">맡은 업종 <small>여러 개 선택</small></span>
+<span class="fieldhead">맡은 업종 <small>필수 · 여러 개 선택</small></span>
 <div class="tpick__row">
 <ul class="wsel__chips" data-tpick-chips>{% for name in selected %}<li class="wsel__chip">{{ name }}</li>{% else %}<li class="wsel__empty">아직 고르지 않았어요</li>{% endfor %}</ul>
 <button type="button" class="btn btn--sm tpick__open" data-open-dialog="{{ dlg_id }}">{{ icon("plus", 14, 2.2) }} 업종 고르기</button>
@@ -122,6 +122,11 @@
 {% if not legal and not sep.done %}{% set sep.done = true %}<li class="wpick__sep">법령 업종 밖</li>{% endif %}
 <li><label class="checkline"><input type="checkbox" name="work_trades" value="{{ name }}"{% if name in selected %} checked{% endif %}> {{ name }}</label></li>
 {% endfor %}
+{# 목록에 없는 업종은 직접 입력을 골랐을 때만 글자 칸을 연다(개발자 요청, C04-45) #}
+{% set custom = selected | reject("in", work_trade_options | map(attribute=0) | list) | list %}
+<li class="wpick__sep">목록에 없으면</li>
+<li><label class="checkline"><input type="checkbox" data-trade-custom-toggle{% if custom %} checked{% endif %}> 직접 입력</label>
+<input class="tpick__custom" type="text" name="work_trades" value="{{ custom[0] if custom else '' }}" maxlength="20" placeholder="예: 석면 해체" aria-label="직접 입력한 업종" data-trade-custom{% if not custom %} hidden disabled{% endif %}></li>
 </ul>
 <div class="modal__actions"><button class="btn btn--accent" type="button" data-close>선택 완료</button></div>
 </div>

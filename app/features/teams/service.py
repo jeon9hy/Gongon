@@ -59,6 +59,7 @@ from engine.kst import KST
 NOT_FOUND = "현장을 찾을 수 없습니다"
 FORBIDDEN = "이 현장에서 이 작업을 할 권한이 없습니다"
 SAME_NAME_MEMBER = "같은 이름의 업체가 이미 있어요. 그 업체에 붙일지 따로 추가할지 고르세요."
+TRADE_CUSTOM_MAX = 20  # 직접 입력한 업종 한 개(C04-45)
 TRADE_NOTE_MAX = 20  # 표 한 칸에 들어가는 길이(C04-39 후속, 개발자 요청). DB 열은 60자 그대로
 SAME_NAME_PARTICIPANT = "같은 이름의 업체가 이미 있어요. 다른 업체면 '따로 등록'을 체크하세요."
 
@@ -602,8 +603,11 @@ def _participant_errors(
         errors.append(f"업체 이름은 {auth_service.ORGANIZATION_MAX}자 이내로 입력하세요.")
     if not prime and form.category not in CATEGORY_LABELS:
         errors.append("업체 구분을 고르세요.")
-    if any(name not in WORK_TRADE_NAMES for name in form.work_trades):
-        errors.append("업종은 목록에서 골라 주세요.")
+    trades = [" ".join(t.split()) for t in form.work_trades]
+    if not prime and not any(trades):
+        errors.append("맡은 업종을 하나 이상 고르세요. 목록에 없으면 직접 입력을 고르세요.")
+    if any(t not in WORK_TRADE_NAMES and len(t) > TRADE_CUSTOM_MAX for t in trades):
+        errors.append(f"직접 입력한 업종은 {TRADE_CUSTOM_MAX}자 이내로 입력하세요.")
     if len(form.trade_note.strip()) > TRADE_NOTE_MAX:
         errors.append(f"공종 메모는 {TRADE_NOTE_MAX}자 이내로 입력하세요.")
     if len(form.business_no.strip()) > 20:
@@ -616,8 +620,11 @@ def _participant_errors(
 def _apply_participant_values(participant: ProjectParticipant, form: ParticipantForm) -> None:
     participant.category = form.category
     participant.trade_note = form.trade_note.strip() or None
-    picked = set(form.work_trades)
-    participant.work_trades = [name for name in WORK_TRADE_NAMES if name in picked]  # 목록 순서
+    picked = list(dict.fromkeys(t for t in (" ".join(x.split()) for x in form.work_trades) if t))
+    # 목록 업종은 목록 순서, 직접 입력한 업종은 그 뒤에(C04-45)
+    participant.work_trades = [n for n in WORK_TRADE_NAMES if n in picked] + [
+        t for t in picked if t not in WORK_TRADE_NAMES
+    ]
     participant.business_no = form.business_no.strip() or None
     participant.joined_on = _date(form.joined_on)
 

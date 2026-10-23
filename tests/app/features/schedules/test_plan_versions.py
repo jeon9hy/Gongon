@@ -92,7 +92,11 @@ def add_partner(client: TestClient, site_id: int, name: str = "가상골조") ->
     """원청 말고 일할 업체(D-076: 없으면 작업을 올리지 못한다)."""
     response = client.post(
         f"/sites/{site_id}/participants",
-        data={"organization_name": name, "category": "subcontractor"},
+        data={
+            "organization_name": name,
+            "category": "subcontractor",
+            "work_trades": "철근ㆍ콘크리트공사업",
+        },
         follow_redirects=False,
     )
     assert response.status_code == 303, response.text

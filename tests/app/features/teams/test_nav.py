@@ -172,4 +172,4 @@ def test_people_count_includes_the_logged_in_founder(client: TestClient) -> None
     page = client.get(f"/sites/{site_id}/members").text
     prime = page.split("</tr>")[1]  # 머리줄 다음 첫 줄이 원청
 
-    assert re.findall(r'<td class="sheet__num">(\d+)</td>', prime) == ["1", "1"]  # 담당자·로그인
+    assert re.findall(r'<td class="sheet__num">(\d+)</td>', prime) == ["1"]  # 담당자 수

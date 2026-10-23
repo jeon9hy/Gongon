@@ -256,8 +256,14 @@ document.querySelectorAll("dialog.modal[data-open]").forEach((d) => { if (!d.ope
 // 맡은 업종 고르기(D-088): 고른 업종을 폼의 토큰으로 다시 그린다
 document.addEventListener("change", (e) => {
   const box = e.target.closest?.("[data-tpick]");
-  if (!box || e.target.name !== "work_trades") return;
-  const names = [...box.querySelectorAll("input[name=work_trades]:checked")].map((b) => b.value);
+  if (!box) return;
+  if (e.target.matches("[data-trade-custom-toggle]")) {
+    const field = box.querySelector("[data-trade-custom]");
+    field.hidden = field.disabled = !e.target.checked;
+    if (e.target.checked) field.focus();
+  } else if (e.target.name !== "work_trades") return;
+  const custom = box.querySelector("[data-trade-custom]:not([disabled])")?.value.trim();
+  const names = [...box.querySelectorAll("input[type=checkbox][name=work_trades]:checked")].map((b) => b.value).concat(custom ? [custom] : []);
   const items = names.map((n) => { const li = document.createElement("li"); li.className = "wsel__chip"; li.textContent = n; return li; });
   if (!items.length) { const li = document.createElement("li"); li.className = "wsel__empty"; li.textContent = "아직 고르지 않았어요"; items.push(li); }
   box.querySelector("[data-tpick-chips]").replaceChildren(...items);

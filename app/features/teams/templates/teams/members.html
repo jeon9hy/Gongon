@@ -42,18 +42,16 @@
 {% macro company_table(table_id, rows) %}
 <div class="sheet-wrap">
 <table class="sheet sheet--fixed" id="{{ table_id }}">
-<colgroup><col style="width: 19%"><col style="width: 9%"><col style="width: 17%"><col style="width: 17%"><col style="width: 6%"><col style="width: 6%"><col style="width: 13%"><col style="width: 13%"></colgroup>
-<thead><tr><th scope="col">업체</th><th scope="col">구분</th><th scope="col">맡은 업종</th><th scope="col">공종 메모</th><th scope="col" class="sheet__num">담당자</th><th scope="col" class="sheet__num">로그인</th><th scope="col">상태</th><th scope="col" class="sheet__acts">{% if view.can_manage %}<button class="sheet__toggle" type="button" aria-pressed="false" data-sheet-edit="{{ table_id }}">관리</button>{% else %}정보{% endif %}</th></tr></thead>
+<colgroup><col style="width: 24%"><col style="width: 11%"><col style="width: 23%"><col style="width: 22%"><col style="width: 8%"><col style="width: 12%"></colgroup>
+<thead><tr><th scope="col">업체</th><th scope="col">구분</th><th scope="col">맡은 업종</th><th scope="col">공종 메모</th><th scope="col" class="sheet__num">담당자</th><th scope="col" class="sheet__acts">{% if view.can_manage %}<button class="sheet__toggle" type="button" aria-pressed="false" data-sheet-edit="{{ table_id }}">관리</button>{% else %}정보{% endif %}</th></tr></thead>
 <tbody>
 {% for p in rows %}
 <tr>
-<th scope="row"><span class="sheet__clip" title="{{ p.organization_name }}">{{ p.organization_name }}</span>{% if p.business_no %}<small class="sheet__sub">사업자 {{ p.business_no }}</small>{% endif %}</th>
+<th scope="row"><span class="sheet__clip" title="{{ p.organization_name }}">{{ p.organization_name }}</span>{% if p.is_ended %}<small class="sheet__sub">{{ p.status_text }}</small>{% endif %}</th>
 <td>{{ p.kind_label }}</td>
 <td>{% for t in p.work_trades[:2] %}<span class="sheet__chip" style="--c: {{ trade_color(t) }}; --bg: {{ trade_bg(t) }}">{{ short_trade(t) }}</span>{% else %}<span class="muted">–</span>{% endfor %}{% if p.work_trades | length > 2 %}<span class="sheet__more" title="{{ p.work_trades | join(", ") }}">+{{ p.work_trades | length - 2 }}</span>{% endif %}</td>
 <td><span class="sheet__clip" title="{{ p.trade_note }}">{{ p.trade_note or "–" }}</span></td>
 <td class="sheet__num">{{ p.people_count }}</td>
-<td class="sheet__num">{{ p.members | length }}</td>
-<td>{% if p.is_ended %}<span class="sheet__state sheet__state--ended">{{ p.status_text }}</span>{% else %}{{ p.status_text }}{% endif %}</td>
 <td class="sheet__acts">
 <span class="sheet__view"><button class="btn btn--soft btn--sm" type="button" data-open-dialog="dlg-info-{{ p.participant_id }}">{{ icon("building", 14) }} 업체 정보</button></span>
 {% if view.can_manage %}<span class="sheet__edit">
@@ -72,7 +70,7 @@
 </td>
 </tr>
 {% else %}
-<tr><td colspan="8" class="muted">참여 업체가 없어요.</td></tr>
+<tr><td colspan="6" class="muted">참여 업체가 없어요.</td></tr>
 {% endfor %}
 </tbody>
 </table>

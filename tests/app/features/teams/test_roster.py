@@ -46,8 +46,9 @@ def add_site(client: TestClient, name: str = "가상A현장") -> int:
     return int(response.headers["location"].split("site_id=")[1].split("&")[0])
 
 
-def register(client: TestClient, site_id: int, name: str, **extra: str) -> Any:
-    data = {"organization_name": name, "category": "equipment", **extra}
+def register(client: TestClient, site_id: int, name: str, **extra: Any) -> Any:
+    data = {"organization_name": name, "category": "equipment",
+            "work_trades": "철근ㆍ콘크리트공사업", **extra}  # fmt: skip
     return client.post(f"/sites/{site_id}/participants", data=data, follow_redirects=False)
 
 

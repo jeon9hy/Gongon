@@ -2648,9 +2648,6 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .sheet tbody th a, .sheet td a { color: inherit; text-decoration: none; }
 .sheet tbody th a:hover, .sheet td a:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
 .sheet tbody tr:hover { background: var(--surface); }
-/* 제외한 업체: 줄을 흐리게 하지 않고 상태 칸 표시로만 구분한다 */
-.sheet__state { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
-.sheet__state--ended { background: var(--surface); color: var(--muted); box-shadow: inset 0 0 0 1px var(--line); }
 .sheet__sub { display: block; margin-top: 2px; font-size: 11px; font-weight: 500; color: var(--muted); }
 .sheet__num { text-align: right !important; font-variant-numeric: tabular-nums; }
 .sheet__chip { display: inline-block; margin: 1px 4px 1px 0; padding: 2px 8px 2px 6px; border-left: 3px solid var(--c); border-radius: 4px; background: var(--bg); color: color-mix(in srgb, var(--c) 78%, #0E1E45); font-size: 11.5px; font-weight: 600; }
@@ -2793,7 +2790,10 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .modal__actions--split p { flex: 1; margin: 0; }
 /* 홈 내 차례(C04-44, D-099): 왼쪽 받은 일, 오른쪽 흐름·내일 */
 .homebar__urgent { color: var(--stop-text); }
-.homegrid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
+.homegrid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: stretch; }
+/* 내 차례 카드는 오른쪽 칸 높이만큼 늘어나 아래에 빈칸이 남지 않게 한다 */
+.homegrid > .inbox { display: flex; flex-direction: column; }
+.homegrid > .inbox .inbox__empty { flex: 1; justify-content: center; }
 .homegrid > .hsec, .homeside > .hsec { margin: 0; }
 .homeside { display: grid; gap: 20px; }
 @media (max-width: 960px) { .homegrid { grid-template-columns: minmax(0, 1fr); } }
@@ -2817,6 +2817,7 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .inbox__meta em { font-style: normal; font-weight: 700; color: var(--stop-text); }
 .inbox__go { flex: none; }
 .inbox__empty { display: flex; align-items: center; gap: 14px; padding: 8px 0; color: var(--muted); }
+.homeside { align-content: start; }
 .inbox__empty p { margin: 0; }
 @media (max-width: 560px) { .inbox__item { flex-wrap: wrap; } .inbox__go { margin-left: auto; } }
 .flow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; text-decoration: none; }

@@ -89,7 +89,7 @@ class GongonClient(TestClient):
             super().post(
                 f"/sites/{site_id}/participants",
                 data={"organization_name": DEFAULT_PARTNER, "category": "subcontractor",
-                      "confirm_same_name": "1"},
+                      "confirm_same_name": "1", "work_trades": "철근ㆍ콘크리트공사업"},
             )  # fmt: skip
             found = re.search(pattern, super().get(f"/schedule?site_id={site_id}").text)
         return "" if found is None else found.group(1)
