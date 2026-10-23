@@ -4,8 +4,8 @@
 {% block content %}
 <section class="hero" aria-labelledby="change-title">
 <div class="hero__main">
-<p class="hero__date">{{ icon("history", 15) }} {{ view.site_name }} · {{ view.work_label }}</p>
 <h1 class="hero__title" id="change-title">{{ view.title }}{% if view.closed_text %} <span class="tag tag--go">종료</span>{% endif %}</h1>
+<p class="hero__meta"><span class="hero__meta-item">{{ icon("map-pin", 15) }}{{ view.site_name }}</span><span class="hero__meta-item">{{ icon("hard-hat", 15) }}{{ view.work_label }}</span></p>
 <p class="small muted">지금 작업 계획 {{ view.current_plan_text }}{% if view.current_version_text %} · 현재 확정 {{ view.current_version_text }}{% else %} · 아직 확정한 버전 없음{% endif %}</p>
 </div>
 <div class="hero__action">

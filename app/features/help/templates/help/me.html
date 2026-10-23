@@ -4,8 +4,8 @@
 {% block content %}
 <section class="hero" aria-labelledby="me-title">
 <div class="hero__main">
-<p class="hero__date">{{ icon("building", 15) }} {{ user.organization_name }}</p>
 <h1 class="hero__title" id="me-title">{{ user.display_name }}님</h1>
+<p class="hero__meta"><span class="hero__meta-item">{{ icon("building", 15) }}{{ user.organization_name }}</span></p>
 </div>
 </section>
 

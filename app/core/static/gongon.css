@@ -755,7 +755,6 @@ select:hover { border-color: var(--placeholder); }
 .hero { position: relative; overflow: hidden; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 24px; padding: 32px; border-radius: var(--radius-lg); color: #FFFFFF; background: linear-gradient(135deg, #1C60EF 0%, #1550CC 55%, #0E3BA8 100%); box-shadow: 0 10px 30px #1C60EF33; }
 .hero::after { content: ""; position: absolute; right: -80px; top: -120px; width: 360px; height: 360px; border-radius: 50%; background: radial-gradient(circle, #FFFFFF26 0%, #FFFFFF00 70%); pointer-events: none; }
 .hero__main { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-.hero__date { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; padding: 6px 12px; border-radius: 999px; background: #FFFFFF26; font-size: 13px; font-weight: 600; }
 .hero__title { margin: 4px 0 0; font-size: 36px; line-height: 1.15; font-weight: 700; letter-spacing: -0.04em; color: #FFFFFF; }
 .hero__lead { font-size: 15px; color: #DCE7FF; }
 .hero__facts { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
@@ -774,7 +773,6 @@ select:hover { border-color: var(--placeholder); }
    판정 색은 점·숫자·왼쪽 띠·배지에만 쓴다. */
 .hero { overflow: visible; color: var(--text); background: var(--card); border: 1px solid var(--line-soft); box-shadow: var(--shadow-sm); }
 .hero::after { display: none; }
-.hero__date { background: var(--accent-soft); color: var(--accent); }
 .hero__title { color: var(--ink); word-break: keep-all; overflow-wrap: anywhere; }
 .hero__lead { color: var(--muted); }
 .hero__facts li { background: var(--surface); color: var(--muted); }
@@ -2281,9 +2279,6 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 /* 오늘 작업이 다 끝나 목록이 접혀 있으면 빈 표 머리를 보이지 않는다 */
 .jobs__head--alldone:not(:has(~ .jobs.is-open)) { display: none; }
 /* 머리 알약: 휴대폰에서 줄이 바뀌어도 낱말 중간에서 끊지 않는다 */
-.hero__date { word-break: keep-all; overflow-wrap: anywhere; }
-.hero__date svg { flex-shrink: 0; }
-@media (max-width: 760px) { .hero__date { border-radius: 14px; } }
 /* 조치 후보 카드는 바탕이 회색이라 완료 기준 상자를 흰 바탕으로 구분한다 */
 .acard__criteria { align-self: flex-start; }
 .acard--candidate .acard__criteria { background: var(--card); }
@@ -2346,10 +2341,7 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .acts__note { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .acts__add, .acts__title { flex: none; white-space: nowrap; }
 /* 머리 알약: 한 줄로, 넘치면 말줄임 */
-.hero__date { display: block; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: 999px; }
-.hero__date svg { display: inline-block; vertical-align: -2px; margin-right: 6px; }
 @media (max-width: 760px) {
-  .hero__date { border-radius: 999px; }
   /* 참여자 줄: 이름·메일 한 줄, 그 아래 역할·추가 시각·버튼을 같은 자리에 */
   .member-row--account { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px 10px; }
   .member-row--account > .member-row__who { grid-column: 1 / -1; }
@@ -2783,4 +2775,10 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .sheet--fixed { table-layout: fixed; }
 .sheet--fixed .sheet__clip { max-width: 100%; }
 .sheet--fixed td, .sheet--fixed th { overflow: hidden; text-overflow: ellipsis; }
-
+/* 제목 아래 맥락 한 줄(어느 현장·기간·역할): 아이콘 + 값, 항목 사이는 간격으로만(C04-42) */
+.hero__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; margin: -2px 0 0; font-size: 14px; font-weight: 600; color: var(--ink); }
+.hero__meta-item { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-variant-numeric: tabular-nums; word-break: keep-all; }
+.hero__meta-item svg { flex: none; color: var(--placeholder); }
+.hero__meta-k { margin-right: 2px; font-weight: 500; color: var(--muted); }
+.hero__meta a { color: inherit; text-decoration: none; }
+.hero__meta a:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }

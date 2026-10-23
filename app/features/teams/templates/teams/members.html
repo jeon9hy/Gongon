@@ -5,8 +5,8 @@
 
 <section class="hero" aria-labelledby="members-title">
 <div class="hero__main">
-<p class="hero__date"><a href="/sites?site_id={{ view.site_id }}">{{ view.site_name }}</a> · 내 역할 {{ view.my_role_label }}</p>
 <h1 class="hero__title" id="members-title">참여 업체·담당자</h1>
+<p class="hero__meta"><span class="hero__meta-item">{{ icon("map-pin", 15) }}<a href="/sites?site_id={{ view.site_id }}">{{ view.site_name }}</a></span><span class="hero__meta-item">{{ icon("user", 15) }}<span class="hero__meta-k">내 역할</span>{{ view.my_role_label }}</span></p>
 </div>
 {% if view.can_manage %}
 <div class="hero__actions">

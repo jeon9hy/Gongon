@@ -8,8 +8,8 @@
 {% if embed %}<p class="small muted">{{ view.site_name }} · {{ view.work_label }}</p>{% else %}
 <section class="hero" aria-labelledby="change-form-title">
 <div class="hero__main">
-<p class="hero__date">{{ icon("history", 15) }} {{ view.site_name }} · {{ view.work_label }}</p>
 <h1 class="hero__title" id="change-form-title">{% if view.case_id %}재변경 제안{% else %}변경 제안{% endif %}</h1>
+<p class="hero__meta"><span class="hero__meta-item">{{ icon("map-pin", 15) }}{{ view.site_name }}</span><span class="hero__meta-item">{{ icon("hard-hat", 15) }}{{ view.work_label }}</span></p>
 </div>
 </section>
 {% endif %}

@@ -25,10 +25,9 @@
 </form>
 {% endif %}
 <div class="hero__main">
-<p class="hero__date">{{ icon("calendar", 15) }} 공온 판정 · {{ view.target_date }}</p>
 <h1 class="hero__title" id="dash-title">{{ view.site_name }} 공사 ON?</h1>
 {# 머리 정보는 두 줄만(C04-37 후속, 개발자 요청): 내일 작업 한 줄 + 예보 발표 한 줄. 격자·기준·결과 시각은 데이터 상태 카드에 #}
-<p class="hero__lead">{{ icon("hard-hat", 16) }}{% if view.work_hours %}<span>내일 작업 <b>{{ view.work_hours }}</b></span>{% else %}<span>내일 등록한 작업 없음</span>{% endif %}</p>
+<p class="hero__lead">{{ icon("hard-hat", 16) }}{% if view.work_hours %}<span>{{ view.target_date }} 작업 <b>{{ view.work_hours }}</b></span>{% else %}<span>{{ view.target_date }} 등록한 작업 없음</span>{% endif %}</p>
 {% if view.forecast_issued %}<p class="hero__sub">예보 {{ view.forecast_issued }} 발표<span aria-hidden="true">·</span>{{ view.next_forecast }}</p>{% endif %}
 </div>
 {# 현장 고르기는 머리줄 칩 하나로(C04-36, D-092) #}
