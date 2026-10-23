@@ -264,16 +264,15 @@
 <input type="hidden" name="day" value="{{ d.day.isoformat() }}">
 <div class="itemdlg__facts"><strong>{{ i.work_type }}</strong><p class="small muted">{{ d.day_text }} {{ i.start_local.strftime("%H:%M") }}–{{ i.end_local.strftime("%H:%M") }}{% if i.location %} · {{ i.location }}{% endif %}</p></div>
 {% set left = view.batch_left.get(i.item_id, 0) %}
-<p class="small" id="delete-note-{{ i.item_id }}">{% if left %}이 작업과 한 번에 등록한 작업이 오늘 이후 {{ left }}건 남아 있어요. {% endif %}삭제한 작업은 화면에서 되돌릴 수 없어요.</p>
 {% if left %}
-<div class="modal__actions modal__actions--stack">
-<button class="btn btn--soft" type="button" data-close autofocus>취소</button>
-<button class="btn btn--danger-line" type="submit" name="scope" value="one">이 작업만</button>
-<button class="btn btn--danger" type="submit" name="scope" value="batch">{{ icon("trash", 16) }} 함께 등록한 {{ left }}건 모두</button>
-</div>
-{% else %}
-<div class="modal__actions"><button class="btn btn--soft" type="button" data-close autofocus>취소</button><button class="btn btn--danger" type="submit">{{ icon("trash", 16) }} 삭제</button></div>
+{# 함께 등록한 작업(D-098): 범위를 먼저 고르고 삭제 버튼은 하나. 기본은 이 작업만 #}
+<fieldset class="delscope">
+<legend class="visually-hidden">지울 범위</legend>
+<label class="delscope__opt"><input type="radio" name="scope" value="one" checked><span class="delscope__text"><b>이 작업만</b><small>{{ d.day_text }} 한 건</small></span></label>
+<label class="delscope__opt"><input type="radio" name="scope" value="batch"><span class="delscope__text"><b>함께 등록한 작업 모두</b><small>한 번에 등록한 작업 중 오늘 이후 남은 {{ left }}건</small></span></label>
+</fieldset>
 {% endif %}
+<div class="modal__actions modal__actions--split"><p class="small muted" id="delete-note-{{ i.item_id }}">삭제하면 되돌릴 수 없어요</p><button class="btn btn--soft" type="button" data-close autofocus>취소</button><button class="btn btn--danger" type="submit">{{ icon("trash", 16) }} 삭제</button></div>
 </form>
 </dialog>
 {% endif %}

@@ -57,7 +57,7 @@ def test_batch_delete_removes_only_the_rest_of_that_batch_from_today(
                            data={"site_id": site_id, "day": "2026-10-05", "scope": "batch"},
                            follow_redirects=False)  # fmt: skip
 
-    assert "함께 등록한 3건 모두" in page  # 지난 작업은 세지 않는다
+    assert "오늘 이후 남은 3건" in page  # 지난 작업은 세지 않는다
     assert response.headers["location"].endswith("deleted=3")
     left = active(session, site_id)
     assert [(i.work_date, i.location) for i in left] == [
