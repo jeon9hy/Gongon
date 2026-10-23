@@ -2676,10 +2676,12 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 /* 업체 표 관리 모드(C04-37): 평소엔 업체 정보, 관리를 누르면 수정·참여 종료 */
 /* ···는 업체 정보 버튼 자리에 겹쳐 놓아 켜고 꺼도 열 너비가 그대로다 */
 .sheet td.sheet__acts { position: relative; }
-.sheet__edit { display: none; position: absolute; top: 50%; right: 4px; transform: translateY(-50%); }
+.sheet__edit { display: none; position: absolute; top: 50%; right: 0; transform: translateY(-50%); }
 .sheet.is-editing .sheet__view { visibility: hidden; }
 .sheet.is-editing .sheet__edit { display: block; }
 .sheet-menu .menu__panel { width: 168px; }
+/* 메뉴 오른쪽 끝을 표 오른쪽 끝에, ··· 오른쪽 끝을 관리 글자 끝에 맞춘다 */
+.sheet-menu .menu__trigger { width: 40px; }
 .sheet-menu .menu__panel form { display: block; }
 .sheet-menu .menu__item { width: 100%; border: 0; background: transparent; font: inherit; font-size: 14px; text-align: left; }
 /* 관리 머리글은 다른 열 머리와 같은 글자 모양, 누르는 기능만(켜지면 파란 글자) */
