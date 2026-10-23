@@ -37,10 +37,12 @@ def test_team_tab_opens_all_sites_in_one_table_and_a_chosen_site_opens_its_page(
     chosen = client.get(f"/team?site_id={second}", follow_redirects=False)
 
     assert all_sites.status_code == 200
-    table = all_sites.text.split('<table class="sheet sheet--fixed">')[1].split("</table>")[0]
-    assert table.count("<tr") == 1 + 2 + 4  # 머리줄 + 현장 묶음 줄 + 현장마다 원청·추가 업체
-    assert table.count("가상A현장") == 1  # 현장 이름은 줄마다 반복하지 않는다
-    assert "가상펌프" in table and "가상골조" in table and "가상A현장" in table
+    tables = all_sites.text.split('<table class="sheet sheet--fixed">')[1:]
+    # 현장마다 제목 한 줄 + 표 하나(원청·추가 업체 두 줄). 현장 이름은 줄에 반복하지 않는다
+    assert len(tables) == 2 and all(t.split("</table>")[0].count("<tr") == 1 + 2 for t in tables)
+    assert all_sites.text.count('class="sheet-site"') == 2
+    assert "가상펌프" in tables[0] + tables[1] and "가상골조" in tables[0] + tables[1]
+    assert '<a class="sheet__clip"' not in all_sites.text  # 업체 이름은 링크가 아니다
     assert 'data-site-link="team" aria-current="page"' in nav_of(all_sites.text)
     assert chosen.status_code == 303 and chosen.headers["location"] == f"/sites/{second}/members"
 

@@ -340,3 +340,33 @@ def test_trade_note_fits_one_table_cell(client: TestClient, site_id: int) -> Non
 
     assert at_limit.status_code == 303
     assert too_long.status_code == 422 and "공종 메모는 20자 이내" in too_long.text
+
+
+def test_contact_can_be_edited_by_a_coordinator_only(
+    browser: Browser, client: TestClient, site_id: int, session: Session
+) -> None:
+    register(client, site_id, "가상레미콘")
+    pump = participant_named(session, site_id, "가상레미콘")
+    add_contact(client, site_id, pump.id)
+    session.expire_all()
+    contact = session.scalars(
+        select(ParticipantContact).where(ParticipantContact.participant_id == pump.id)
+    ).one()
+    url = f"/sites/{site_id}/contacts/{contact.id}/edit"
+    outsider_client = browser(PUMP_USER)
+    add_member(client, site_id, PUMP_USER["email"], "assignee")
+
+    edited = client.post(url, data={"contact_name": "오상훈", "job_title": "배차 반장",
+                                    "phone": "010-1111-2222"}, follow_redirects=False)  # fmt: skip
+    too_long = client.post(url, data={"contact_name": "가" * 41}, follow_redirects=False)
+    refused = outsider_client.post(url, data={"contact_name": "바꿈"}, follow_redirects=False)
+
+    assert edited.status_code == 303
+    assert too_long.status_code == 422 and refused.status_code == 403
+    session.expire_all()
+    contact = session.get(ParticipantContact, contact.id)  # type: ignore[assignment]
+    assert (contact.name, contact.job_title, contact.phone) == (
+        "오상훈",
+        "배차 반장",
+        "010-1111-2222",
+    )

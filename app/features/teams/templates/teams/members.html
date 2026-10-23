@@ -115,28 +115,27 @@
 <li class="people__row">
 <div class="people__who"><strong>{{ c.name }}</strong>{% if c.job_title %} <span class="tag">{{ c.job_title }}</span>{% endif %}
 <small>{% if c.phone %}<a class="roster__tel" href="tel:{{ c.phone }}">{{ icon("phone", 13) }} {{ c.phone }}</a> · {% endif %}{{ c.account_text or "계정 없음" }}{% if c.memo %} · {{ c.memo }}{% endif %}</small></div>
-{% if view.can_manage %}<div class="people__acts">
-{% if c.account_text %}
-<form method="post" action="/sites/{{ view.site_id }}/contacts/{{ c.contact_id }}/unlink"><button class="btn btn--soft btn--sm" type="submit">연결 해제</button></form>
-{% else %}
-<button class="btn btn--soft btn--sm" type="button" data-open-dialog="dlg-link-{{ c.contact_id }}">{{ icon("link", 14) }} 계정 연결</button>
-{% endif %}
-<details class="delete-action">
-<summary>빼기</summary>
-<form method="post" action="/sites/{{ view.site_id }}/contacts/{{ c.contact_id }}/remove" class="delete-action__confirm">
-<button class="btn btn--sm" type="submit">명부에서 빼기</button>
-</form>
-</details>
-</div>{% endif %}
+{% if view.can_manage %}<details class="menu sheet-menu people__menu">
+<summary class="menu__trigger" aria-label="{{ c.name }} 관리" title="관리">{{ icon("more", 20) }}</summary>
+<div class="menu__panel">
+<button type="button" class="menu__item" data-open-dialog="dlg-cedit-{{ c.contact_id }}">{{ icon("edit", 18) }} 수정</button>
+{% if c.account_text %}<form method="post" action="/sites/{{ view.site_id }}/contacts/{{ c.contact_id }}/unlink"><button class="menu__item" type="submit">{{ icon("link", 18) }} 계정 연결 해제</button></form>
+{% else %}<button type="button" class="menu__item" data-open-dialog="dlg-link-{{ c.contact_id }}">{{ icon("link", 18) }} 계정 연결</button>{% endif %}
+<button type="button" class="menu__item menu__item--danger" data-open-dialog="dlg-cdel-{{ c.contact_id }}">{{ icon("trash", 18) }} 삭제</button>
+</div>
+</details>{% endif %}
 </li>
 {% endfor %}
 {% for m in p.members %}
 <li class="people__row">
 <div class="people__who"><strong>{{ m.display_name }}{% if m.is_me %} (나){% endif %}</strong> <span class="tag">{{ m.role_label }}</span>
 <small>{% if m.email %}{{ m.email }} · {% endif %}로그인 · 추가 {{ m.granted_text }}</small></div>
-{% if view.can_manage %}<div class="people__acts">
-<form method="post" action="/sites/{{ view.site_id }}/members/{{ m.membership_id }}/revoke"><button class="btn btn--danger-line btn--sm" type="submit">권한 회수</button></form>
-</div>{% endif %}
+{% if view.can_manage %}<details class="menu sheet-menu people__menu">
+<summary class="menu__trigger" aria-label="{{ m.display_name }} 관리" title="관리">{{ icon("more", 20) }}</summary>
+<div class="menu__panel">
+<button type="button" class="menu__item menu__item--danger" data-open-dialog="dlg-revoke-{{ m.membership_id }}">{{ icon("logout", 18) }} 권한 회수</button>
+</div>
+</details>{% endif %}
 </li>
 {% endfor %}
 {% if not p.contacts and not p.members %}<li class="people__empty muted small">등록한 담당자가 없어요.</li>{% endif %}
@@ -192,6 +191,40 @@
 </form>
 </div>
 </dialog>
+{% for c in p.contacts %}
+<dialog class="modal" id="dlg-cedit-{{ c.contact_id }}" aria-labelledby="dlg-cedit-title-{{ c.contact_id }}">
+<div class="modal__box">
+<div class="modal__head"><h2 class="h2" id="dlg-cedit-title-{{ c.contact_id }}">{{ c.name }} · 담당자 수정</h2><button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
+<form class="modal__form" method="post" action="/sites/{{ view.site_id }}/contacts/{{ c.contact_id }}/edit">
+<div class="modal__grid">
+<label class="field">이름<input type="text" name="contact_name" value="{{ c.name }}" maxlength="40" required></label>
+<label class="field">직책<input type="text" name="job_title" value="{{ c.job_title }}" maxlength="40" list="job-titles"></label>
+</div>
+<div class="modal__grid">
+<label class="field">연락처<input type="tel" name="phone" value="{{ c.phone or '' }}" maxlength="30" placeholder="선택"></label>
+<label class="field">메모<input type="text" name="memo" value="{{ c.memo or '' }}" maxlength="200" placeholder="선택"></label>
+</div>
+<div class="modal__actions"><button class="btn btn--soft" type="button" data-close>취소</button><button class="btn btn--accent" type="submit">저장</button></div>
+</form>
+</div>
+</dialog>
+<dialog class="modal" id="dlg-cdel-{{ c.contact_id }}" aria-labelledby="dlg-cdel-title-{{ c.contact_id }}">
+<form class="modal__box" method="post" action="/sites/{{ view.site_id }}/contacts/{{ c.contact_id }}/remove">
+<div class="modal__head"><h2 class="h2" id="dlg-cdel-title-{{ c.contact_id }}">{{ c.name }} 담당자를 삭제할까요?</h2><button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
+<p class="small muted">명부에서 빠지고 계정 연결도 풀려요. 지난 조치 기록은 남아요.</p>
+<div class="modal__actions"><button class="btn btn--soft" type="button" data-close>취소</button><button class="btn btn--danger" type="submit">{{ icon("trash", 16) }} 삭제</button></div>
+</form>
+</dialog>
+{% endfor %}
+{% for m in p.members %}
+<dialog class="modal" id="dlg-revoke-{{ m.membership_id }}" aria-labelledby="dlg-revoke-title-{{ m.membership_id }}">
+<form class="modal__box" method="post" action="/sites/{{ view.site_id }}/members/{{ m.membership_id }}/revoke">
+<div class="modal__head"><h2 class="h2" id="dlg-revoke-title-{{ m.membership_id }}">{{ m.display_name }}의 권한을 회수할까요?</h2><button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
+<p class="small muted">이 현장을 더 볼 수 없어요. 지난 기록은 남아요.</p>
+<div class="modal__actions"><button class="btn btn--soft" type="button" data-close>취소</button><button class="btn btn--danger" type="submit">권한 회수</button></div>
+</form>
+</dialog>
+{% endfor %}
 {% for c in p.contacts if not c.account_text %}
 <dialog class="modal" id="dlg-link-{{ c.contact_id }}" aria-labelledby="dlg-link-title-{{ c.contact_id }}">
 <div class="modal__box">

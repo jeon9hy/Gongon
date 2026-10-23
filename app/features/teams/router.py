@@ -193,7 +193,8 @@ MESSAGES = {
     "ended": "업체를 제외했어요. 지난 작업 연결은 그대로예요.",
     "resumed": "업체를 복귀시켰어요.",
     "contact": "담당자를 명부에 넣었어요.",
-    "removed": "명부에서 뺐어요.",
+    "removed": "담당자를 삭제했어요.",
+    "contact_edited": "담당자 정보를 고쳤어요.",
     "linked": "계정을 연결했어요.",
     "unlinked": "계정 연결을 풀었어요.",
 }
@@ -321,6 +322,27 @@ def add_contact(
     if errors:
         return _failed(request, session, user, site_id, name, errors)
     return _done(site_id, "contact")
+
+
+@router.post("/sites/{site_id}/contacts/{contact_id}/edit")
+def edit_contact(
+    request: Request,
+    session: SessionDep,
+    user: CurrentUserDep,
+    scope: AccessibleSitesDep,
+    site_id: int,
+    contact_id: int,
+    contact_name: Annotated[str, Form()] = "",
+    job_title: Annotated[str, Form()] = "",
+    phone: Annotated[str, Form()] = "",
+    memo: Annotated[str, Form()] = "",
+) -> Response:
+    name = _site_name(session, site_id, scope)
+    form = ContactForm(contact_name, job_title, phone, memo)
+    errors = service.edit_contact(session, site_id, user, contact_id, form)
+    if errors:
+        return _failed(request, session, user, site_id, name, errors)
+    return _done(site_id, "contact_edited")
 
 
 @router.post("/sites/{site_id}/contacts/{contact_id}/remove")

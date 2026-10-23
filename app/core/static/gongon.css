@@ -2659,13 +2659,6 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .sheet__clip { display: block; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sheet tbody th .sheet__clip { max-width: 180px; }
 .sheet__clip--chips { max-width: 220px; }
-/* 전체 현장 표: 현장마다 묶음 줄 하나(C04-37) */
-.sheet .sheet__group th { padding-top: 18px; background: var(--card); border-bottom: 1px solid var(--line); font-size: 13px; color: var(--ink); }
-.sheet .sheet__group:first-child th { padding-top: 10px; }
-.sheet__grouphead { display: inline-flex; align-items: center; gap: 6px; line-height: 20px; }
-.sheet__grouphead svg { flex: none; color: var(--muted); }
-.sheet__grouphead .muted { font-size: 13px; font-weight: 500; }
-.sheet tbody tr.sheet__group:hover { background: transparent; }
 /* 업체 표 관리 모드(C04-37): 평소엔 업체 정보, 관리를 누르면 수정·참여 종료 */
 /* ···는 업체 정보 버튼 자리에 겹쳐 놓아 켜고 꺼도 열 너비가 그대로다 */
 .sheet td.sheet__acts { position: relative; }
@@ -2831,4 +2824,9 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .nextday { display: flex; align-items: center; gap: 14px; padding: 12px; border-radius: var(--radius-md); background: var(--surface); text-decoration: none; }
 .nextday .ring { margin: 0; flex: none; }
 .nextday__counts { display: flex; flex-wrap: wrap; gap: 6px; }
+/* 전체 현장 업체: 현장마다 제목 + 표(C04-45 후속) */
+.sheet-site { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.sheet-site__go { display: inline-flex; align-items: center; gap: 2px; font-size: 13px; font-weight: 600; color: var(--accent); text-decoration: none; }
+.sheet-site__go:hover { text-decoration: underline; text-underline-offset: 3px; }
+.people__menu { flex: none; }
 

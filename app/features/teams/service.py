@@ -511,17 +511,9 @@ def add_contact(
     require_role(session, actor, site_id, MANAGE_ROLES)
     _participant_or_404(session, site_id, participant_id)
     name = " ".join(form.name.split())
-    errors = [] if name else ["담당자 이름을 입력하세요."]
-    for value, limit, label in (
-        (name, 40, "이름"),
-        (form.job_title.strip(), 40, "직책"),
-        (form.phone.strip(), 30, "연락처"),
-        (form.memo.strip(), 200, "메모"),
-    ):
-        if len(value) > limit:
-            errors.append(f"{label}: {limit}자 이내로 입력하세요.")
+    errors = _contact_errors(form)
     if errors:
-        return tuple(errors)
+        return errors
     session.add(
         ParticipantContact(
             site_id=site_id,
@@ -536,6 +528,37 @@ def add_contact(
     )
     session.commit()
     return ()
+
+
+def edit_contact(
+    session: Session, site_id: int, actor: CurrentUser, contact_id: int, form: ContactForm
+) -> tuple[str, ...]:
+    """명부 담당자의 이름·직책·연락처·메모를 고친다(C04-45 후속). 계정 연결은 그대로."""
+    require_role(session, actor, site_id, MANAGE_ROLES)
+    contact = _contact_or_404(session, site_id, contact_id)
+    errors = _contact_errors(form)
+    if errors:
+        return errors
+    contact.name = " ".join(form.name.split())
+    contact.job_title = form.job_title.strip()
+    contact.phone = form.phone.strip()
+    contact.memo = form.memo.strip()
+    session.commit()
+    return ()
+
+
+def _contact_errors(form: ContactForm) -> tuple[str, ...]:
+    name = " ".join(form.name.split())
+    errors = [] if name else ["담당자 이름을 입력하세요."]
+    for value, limit, label in (
+        (name, 40, "이름"),
+        (form.job_title.strip(), 40, "직책"),
+        (form.phone.strip(), 30, "연락처"),
+        (form.memo.strip(), 200, "메모"),
+    ):
+        if len(value) > limit:
+            errors.append(f"{label}: {limit}자 이내로 입력하세요.")
+    return tuple(errors)
 
 
 def remove_contact(

@@ -9,8 +9,8 @@
 </div>
 </section>
 
-{# 엑셀처럼 한 줄에 한 업체(C04-36). 현장 이름은 줄마다 반복하지 않고 묶음 줄 하나로(C04-37).
-   제외한 업체는 표 아래 접힌 묶음으로. 등록·고치기는 현장을 고른 화면에서 #}
+{# 엑셀처럼 한 줄에 한 업체(C04-36). 현장마다 제목 한 줄 + 그 현장 표(C04-45 후속).
+   업체 이름은 링크가 아니다. 등록·고치기는 제목의 ‘업체 화면’에서. 제외한 업체는 표 아래 접힌 묶음 #}
 {% macro team_table(rows) %}
 <div class="sheet-wrap">
 <table class="sheet sheet--fixed">
@@ -18,16 +18,13 @@
 <thead><tr><th scope="col">업체</th><th scope="col">구분</th><th scope="col">맡은 업종</th><th scope="col">공종 메모</th><th scope="col" class="sheet__num">담당자</th></tr></thead>
 <tbody>
 {% for r in rows %}{% set p = r.participant %}
-{% if loop.changed(r.site_id) %}<tr class="sheet__group"><th scope="colgroup" colspan="5"><span class="sheet__grouphead">{{ icon("map-pin", 15) }}<a href="/sites/{{ r.site_id }}/members">{{ r.site_name }}</a><span class="muted">{{ rows | selectattr("site_id", "equalto", r.site_id) | list | length }}곳</span></span></th></tr>{% endif %}
 <tr>
-<th scope="row"><a class="sheet__clip" href="/sites/{{ r.site_id }}/members" title="{{ p.organization_name }}">{{ p.organization_name }}</a>{% if p.is_ended %}<small class="sheet__sub">{{ p.status_text }}</small>{% endif %}</th>
+<th scope="row"><span class="sheet__clip" title="{{ p.organization_name }}">{{ p.organization_name }}</span>{% if p.is_ended %}<small class="sheet__sub">{{ p.status_text }}</small>{% endif %}</th>
 <td>{{ p.kind_label }}</td>
 <td>{% for t in p.work_trades[:2] %}<span class="sheet__chip" style="--c: {{ trade_color(t) }}; --bg: {{ trade_bg(t) }}">{{ short_trade(t) }}</span>{% else %}<span class="muted">–</span>{% endfor %}{% if p.work_trades | length > 2 %}<span class="sheet__more" title="{{ p.work_trades | join(", ") }}">+{{ p.work_trades | length - 2 }}</span>{% endif %}</td>
 <td><span class="sheet__clip" title="{{ p.trade_note }}">{{ p.trade_note or "–" }}</span></td>
 <td class="sheet__num">{{ p.people_count }}</td>
 </tr>
-{% else %}
-<tr><td colspan="5" class="muted">참여 업체가 없어요.</td></tr>
 {% endfor %}
 </tbody>
 </table>
@@ -35,13 +32,23 @@
 {% endmacro %}
 {% set active = view.rows | rejectattr("participant.is_ended") | list %}
 {% set ended = view.rows | selectattr("participant.is_ended") | list %}
-<section class="card sheet-card" aria-label="참여 업체 표">
-{{ team_table(active) }}
+{% for site_id, rows in active | groupby("site_id") %}
+<section class="card sheet-card" aria-labelledby="site-{{ site_id }}">
+<div class="sheet-site">
+<h2 class="h2" id="site-{{ site_id }}">{{ rows[0].site_name }} <span class="muted">{{ rows | length }}곳</span></h2>
+<a class="sheet-site__go" href="/sites/{{ site_id }}/members">업체 화면 {{ icon("chevron-right", 14, 2.2) }}</a>
+</div>
+{{ team_table(rows) }}
+</section>
+{% else %}
+<section class="card"><p class="muted">참여 업체가 없어요.</p></section>
+{% endfor %}
 {% if ended %}
+<section class="card sheet-card">
 <details class="sheet-ended">
 <summary>제외한 업체 <span class="muted">{{ ended | length }}</span>{{ icon("chevron-down", 16, 2.2) }}</summary>
 {{ team_table(ended) }}
 </details>
-{% endif %}
 </section>
+{% endif %}
 {% endblock %}
