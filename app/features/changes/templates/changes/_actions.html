@@ -1,3 +1,4 @@
+{% from "_macros.html" import choice_input %}
 {# 버전별 후속 조치(C06). r: RevisionView, view: ChangeDetailView #}
 {% set ra = r.actions %}
 {% set kind_labels = {"accept": "수락", "resume": "다시 수행", "block": "막힘 보고", "report": "완료 보고", "verify": "검증 완료", "reject": "반려", "exclude": "제외", "phone": "전화 기록"} %}
@@ -120,8 +121,7 @@
 <form class="modal__form" method="post" action="/changes/{{ view.case_id }}/revisions/{{ r.revision_id }}/actions" data-cand>
 {% if ed.errors %}<div class="alert alert--error" role="alert"><ul>{% for e in ed.errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
 <input type="hidden" name="site_id" value="{{ view.site_id }}">
-<label class="field">조치 이름<input type="text" name="title" value="{{ ed.form.title }}" maxlength="80" required list="cand-titles-{{ r.revision_id }}" placeholder="예: 펌프카 예약 변경"></label>
-<datalist id="cand-titles-{{ r.revision_id }}">{% for t in ed.title_suggestions %}<option value="{{ t }}">{% endfor %}</datalist>
+{{ choice_input("조치 이름", "title", ed.title_suggestions, ed.form.title, 80, True, "예: 펌프카 예약 변경") }}
 <label class="field">완료 기준<input type="text" name="done_criteria" value="{{ ed.form.done_criteria }}" maxlength="120" placeholder="선택 · 무엇을 확인하면 끝나는지"></label>
 <div class="modal__grid">
 <label class="field">수행 업체

@@ -142,3 +142,21 @@
 </nav>
 {%- endmacro %}
 
+{# 목록에서 고르는 칸(C04-49, 개발자 요청): 글자는 ‘직접 입력’을 골랐을 때만 쓴다.
+   값은 늘 아래 글자 칸(name)으로 보낸다. 고르면 스크립트가 그 값을 넣고, 직접 입력이면 칸을 연다 #}
+{% macro choice_input(label, name, options, value="", maxlength=40, required=False, placeholder="직접 입력") -%}
+{% if not options %}
+<label class="field">{{ label }}<input type="text" name="{{ name }}" value="{{ value }}" maxlength="{{ maxlength }}" placeholder="{{ placeholder }}"{% if required %} required{% endif %}></label>
+{% else %}
+{% set custom = value and value not in options %}
+<label class="field choice">{{ label }}
+<select class="choice__select" data-choice-select{% if required %} required{% endif %}>
+<option value="">{% if required %}고르세요{% else %}없음{% endif %}</option>
+{% for o in options %}<option value="{{ o }}"{% if o == value %} selected{% endif %}>{{ o }}</option>{% endfor %}
+<option value="__custom__"{% if custom %} selected{% endif %}>직접 입력</option>
+</select>
+<input class="choice__input" type="text" name="{{ name }}" value="{{ value }}" maxlength="{{ maxlength }}" placeholder="{{ placeholder }}" aria-label="{{ label }} 직접 입력" data-choice-input{% if not custom %} hidden{% elif required %} required{% endif %}>
+</label>
+{% endif %}
+{%- endmacro %}
+

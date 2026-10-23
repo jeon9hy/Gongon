@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, trade_pick %}
+{% from "_macros.html" import icon, trade_pick, choice_input %}
 {% block title %}참여 업체 · {{ view.site_name }}{% endblock %}
 {% block pagebar %}<p class="pagemeta"><span class="pagemeta__item">{{ icon("map-pin", 14) }}<a href="/sites?site_id={{ view.site_id }}">{{ view.site_name }}</a></span><span class="pagemeta__item">{{ icon("user", 14) }}내 역할 <b>{{ view.my_role_label }}</b></span></p>
 {% if view.can_manage %}
@@ -28,7 +28,6 @@
 <div class="alert alert--ok" role="status">{{ view.message }}</div>
 {% endif %}
 
-<datalist id="job-titles">{% for t in view.job_titles %}<option value="{{ t }}">{% endfor %}</datalist>
 
 {# 엑셀처럼 업체 한 줄씩(C04-36). 담당자는 업체 정보 모달의 담당자 탭에서 함께 본다(C04-37).
    줄에는 업체 정보만, 수정·제외(복귀)는 머리줄 관리를 눌렀을 때만.
@@ -139,7 +138,7 @@
 <p class="people__addtitle">담당자 추가</p>
 <div class="modal__grid">
 <label class="field">이름<input type="text" name="contact_name" maxlength="40" required></label>
-<label class="field">직책<input type="text" name="job_title" maxlength="40" list="job-titles" placeholder="예: 반장"></label>
+{{ choice_input("직책", "job_title", view.job_titles) }}
 </div>
 <div class="modal__grid">
 <label class="field">연락처<input type="tel" name="phone" maxlength="30" placeholder="선택"></label>
@@ -192,7 +191,7 @@
 <form class="modal__form" method="post" action="/sites/{{ view.site_id }}/contacts/{{ c.contact_id }}/edit">
 <div class="modal__grid">
 <label class="field">이름<input type="text" name="contact_name" value="{{ c.name }}" maxlength="40" required></label>
-<label class="field">직책<input type="text" name="job_title" value="{{ c.job_title }}" maxlength="40" list="job-titles"></label>
+{{ choice_input("직책", "job_title", view.job_titles, c.job_title) }}
 </div>
 <div class="modal__grid">
 <label class="field">연락처<input type="tel" name="phone" value="{{ c.phone or '' }}" maxlength="30" placeholder="선택"></label>

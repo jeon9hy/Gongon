@@ -259,6 +259,17 @@ document.querySelectorAll("dialog.modal[data-open]").forEach((d) => { if (!d.ope
   // 바깥을 누르면 닫는다
   document.addEventListener("click", (e) => { if (box.open && !box.contains(e.target)) box.open = false; });
 })();
+// 목록에서 고르는 칸(C04-49): 고른 값을 글자 칸에 넣고, 직접 입력이면 글자 칸을 연다
+document.addEventListener("change", (e) => {
+  const select = e.target.closest?.("[data-choice-select]");
+  if (!select) return;
+  const input = select.parentElement.querySelector("[data-choice-input]");
+  const custom = select.value === "__custom__";
+  input.hidden = !custom;
+  input.required = custom && select.required;
+  input.value = custom ? "" : select.value;
+  if (custom) input.focus();
+});
 // 맡은 업종 고르기(D-088): 고른 업종을 폼의 토큰으로 다시 그린다
 document.addEventListener("change", (e) => {
   const box = e.target.closest?.("[data-tpick]");
