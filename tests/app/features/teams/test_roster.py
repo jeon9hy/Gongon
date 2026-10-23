@@ -330,3 +330,12 @@ def test_contact_input_limits(client: TestClient, site_id: int, session: Session
 
     assert empty.status_code == 422 and long_title.status_code == 422
     assert at_limit.status_code == 303
+
+
+def test_trade_note_fits_one_table_cell(client: TestClient, site_id: int) -> None:
+    # 공종 메모는 표 한 칸에 들어가게 20자까지(C04-39 후속). 21자는 저장하지 않는다
+    at_limit = register(client, site_id, "가상펌프", trade_note="가" * 20)
+    too_long = register(client, site_id, "가상크레인", trade_note="가" * 21)
+
+    assert at_limit.status_code == 303
+    assert too_long.status_code == 422 and "공종 메모는 20자 이내" in too_long.text

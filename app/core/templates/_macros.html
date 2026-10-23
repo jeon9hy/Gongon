@@ -128,3 +128,12 @@
 </dialog>
 </div>
 {%- endmacro %}
+
+{# 현장 추가 모달 위 전환(D-095): 새로 만들기 | 코드로 참여. 모달 안 화면끼리, 전체 화면끼리 오간다 #}
+{% macro site_add_tabs(active, embed=True) -%}
+<nav class="addseg" aria-label="현장 추가 방법">
+<a class="addseg__btn" href="/sites{% if embed %}?embed=1{% endif %}"{% if active == "new" %} aria-current="page"{% endif %}>{{ icon("plus", 15, 2.2) }}새로 만들기</a>
+<a class="addseg__btn" href="/join{% if embed %}?embed=1{% endif %}"{% if active == "join" %} aria-current="page"{% endif %}>{{ icon("link", 15) }}코드로 참여</a>
+</nav>
+{%- endmacro %}
+

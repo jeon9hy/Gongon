@@ -94,6 +94,8 @@ class ParticipantView:
     members: tuple[MemberView, ...]
     contacts: tuple[ContactView, ...]
     work_trades: tuple[str, ...] = ()  # 맡은 업종(D-088)
+    # 담당자 수: 명부 담당자 + 로그인 참여자, 계정이 연결된 사람은 한 번만(C04-39 후속)
+    people_count: int = 0
 
 
 @dataclass(frozen=True, slots=True)

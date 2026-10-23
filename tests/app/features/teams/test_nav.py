@@ -6,6 +6,8 @@
 참여하지 않은 현장은 고를 수도, 표에 보일 수도 없다.
 """
 
+import re
+
 from fastapi.testclient import TestClient
 
 from tests.app.features.teams.test_roster import add_site, register
@@ -35,7 +37,7 @@ def test_team_tab_opens_all_sites_in_one_table_and_a_chosen_site_opens_its_page(
     chosen = client.get(f"/team?site_id={second}", follow_redirects=False)
 
     assert all_sites.status_code == 200
-    table = all_sites.text.split('<table class="sheet">')[1].split("</table>")[0]
+    table = all_sites.text.split('<table class="sheet sheet--fixed">')[1].split("</table>")[0]
     assert table.count("<tr") == 1 + 2 + 4  # 머리줄 + 현장 묶음 줄 + 현장마다 원청·추가 업체
     assert table.count("가상A현장") == 1  # 현장 이름은 줄마다 반복하지 않는다
     assert "가상펌프" in table and "가상골조" in table and "가상A현장" in table
@@ -72,8 +74,8 @@ def test_site_member_page_is_one_table_with_people_in_the_company_dialog(
 
     page = client.get(f"/sites/{site_id}/members").text
 
-    assert page.count('<table class="sheet"') == 1  # 담당자는 따로 표를 두지 않는다
-    pump = page.split("가상펌프")[1].split("</tr>")[0]
+    assert page.count('<table class="sheet') == 1  # 담당자는 따로 표를 두지 않는다
+    pump = page.split(">가상펌프<")[1].split("</tr>")[0]
     assert "업체 정보" in pump and "dlg-info-" in pump  # 줄에는 업체 정보만, 수정은 관리 메뉴로
     assert 'data-sheet-edit="company-sheet"' in page and 'data-tab-btn="people"' in page
     assert 'id="team-site"' not in page  # 화면 안 드롭다운 없이 머리줄 칩 하나
@@ -161,3 +163,13 @@ def test_only_site_keeps_that_sites_actions_in_every_group() -> None:
     assert [i.site_id for i in filtered.to_respond] == [1]
     assert filtered.blocked == () and [i.site_id for i in filtered.to_verify] == [1]
     assert (filtered.site_id, filtered.site_name) == (1, "가상A현장")
+
+
+def test_people_count_includes_the_logged_in_founder(client: TestClient) -> None:
+    # 담당자 수는 명부 담당자와 로그인 참여자를 합친다. 만든 사람(원청 조정자)은 1부터
+    site_id = add_site(client, "가상A현장")
+
+    page = client.get(f"/sites/{site_id}/members").text
+    prime = page.split("</tr>")[1]  # 머리줄 다음 첫 줄이 원청
+
+    assert re.findall(r'<td class="sheet__num">(\d+)</td>', prime) == ["1", "1"]  # 담당자·로그인

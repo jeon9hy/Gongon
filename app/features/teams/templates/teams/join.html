@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon %}
+{% from "_macros.html" import icon, site_add_tabs %}
 {% block title %}코드로 참여{% endblock %}
 {% block body_class %}{% if embed %} class="embedbody"{% endif %}{% endblock %}
 {% macro join_form() %}
@@ -14,7 +14,7 @@
 <button class="btn btn--accent" type="submit">{{ icon("arrow-right", 16, 2.2) }} 참여하기</button>
 </form>
 {% endmacro %}
-{% block page %}{% if embed %}<main class="embed" id="main" tabindex="-1">{{ join_form() }}</main>{% else %}{{ super() }}{% endif %}{% endblock %}
+{% block page %}{% if embed %}<main class="embed" id="main" tabindex="-1">{{ site_add_tabs("join") }}{{ join_form() }}</main>{% else %}{{ super() }}{% endif %}{% endblock %}
 {% block content %}
 <section class="hero" aria-labelledby="join-title">
 <div class="hero__main">
@@ -22,5 +22,5 @@
 <h1 class="hero__title" id="join-title">코드로 현장 참여</h1>
 </div>
 </section>
-<section class="card joincard">{{ join_form() }}</section>
+<section class="card joincard">{{ site_add_tabs("join", embed=False) }}{{ join_form() }}</section>
 {% endblock %}

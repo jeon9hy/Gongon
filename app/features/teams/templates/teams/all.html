@@ -6,26 +6,28 @@
 <section class="hero" aria-labelledby="team-title">
 <div class="hero__main">
 <p class="hero__date">{{ icon("building", 15) }} 업체 · 전체 현장</p>
-<h1 class="hero__title" id="team-title">참여 업체 {{ view.rows | length }}곳</h1>
+<h1 class="hero__title" id="team-title">참여 업체 {{ view.rows | rejectattr("participant.is_ended") | list | length }}곳</h1>
 </div>
 </section>
 
-{# 엑셀처럼 한 줄에 한 업체(C04-36). 현장 이름은 줄마다 반복하지 않고 묶음 줄 하나로(C04-37). 등록·고치기는 현장을 고른 화면에서 #}
-<section class="card sheet-card" aria-label="참여 업체 표">
+{# 엑셀처럼 한 줄에 한 업체(C04-36). 현장 이름은 줄마다 반복하지 않고 묶음 줄 하나로(C04-37).
+   제외한 업체는 표 아래 접힌 묶음으로. 등록·고치기는 현장을 고른 화면에서 #}
+{% macro team_table(rows) %}
 <div class="sheet-wrap">
-<table class="sheet">
+<table class="sheet sheet--fixed">
+<colgroup><col style="width: 22%"><col style="width: 10%"><col style="width: 20%"><col style="width: 20%"><col style="width: 7%"><col style="width: 7%"><col style="width: 14%"></colgroup>
 <thead><tr><th scope="col">업체</th><th scope="col">구분</th><th scope="col">맡은 업종</th><th scope="col">공종 메모</th><th scope="col" class="sheet__num">담당자</th><th scope="col" class="sheet__num">로그인</th><th scope="col">상태</th></tr></thead>
 <tbody>
-{% for r in view.rows %}{% set p = r.participant %}
-{% if loop.changed(r.site_id) %}<tr class="sheet__group"><th scope="colgroup" colspan="7"><span class="sheet__grouphead">{{ icon("map-pin", 15) }}<a href="/sites/{{ r.site_id }}/members">{{ r.site_name }}</a><span class="muted">{{ view.rows | selectattr("site_id", "equalto", r.site_id) | list | length }}곳</span></span></th></tr>{% endif %}
-<tr{% if p.is_ended %} class="is-ended"{% endif %}>
-<th scope="row"><a href="/sites/{{ r.site_id }}/members">{{ p.organization_name }}</a></th>
+{% for r in rows %}{% set p = r.participant %}
+{% if loop.changed(r.site_id) %}<tr class="sheet__group"><th scope="colgroup" colspan="7"><span class="sheet__grouphead">{{ icon("map-pin", 15) }}<a href="/sites/{{ r.site_id }}/members">{{ r.site_name }}</a><span class="muted">{{ rows | selectattr("site_id", "equalto", r.site_id) | list | length }}곳</span></span></th></tr>{% endif %}
+<tr>
+<th scope="row"><a class="sheet__clip" href="/sites/{{ r.site_id }}/members" title="{{ p.organization_name }}">{{ p.organization_name }}</a></th>
 <td>{{ p.kind_label }}</td>
-<td>{% for t in p.work_trades %}<span class="sheet__chip" style="--c: {{ trade_color(t) }}; --bg: {{ trade_bg(t) }}">{{ short_trade(t) }}</span>{% else %}<span class="muted">–</span>{% endfor %}</td>
-<td>{{ p.trade_note or "–" }}</td>
-<td class="sheet__num">{{ p.contacts | length }}</td>
+<td>{% for t in p.work_trades[:2] %}<span class="sheet__chip" style="--c: {{ trade_color(t) }}; --bg: {{ trade_bg(t) }}">{{ short_trade(t) }}</span>{% else %}<span class="muted">–</span>{% endfor %}{% if p.work_trades | length > 2 %}<span class="sheet__more" title="{{ p.work_trades | join(", ") }}">+{{ p.work_trades | length - 2 }}</span>{% endif %}</td>
+<td><span class="sheet__clip" title="{{ p.trade_note }}">{{ p.trade_note or "–" }}</span></td>
+<td class="sheet__num">{{ p.people_count }}</td>
 <td class="sheet__num">{{ p.members | length }}</td>
-<td>{{ p.status_text }}</td>
+<td>{% if p.is_ended %}<span class="sheet__state sheet__state--ended">{{ p.status_text }}</span>{% else %}{{ p.status_text }}{% endif %}</td>
 </tr>
 {% else %}
 <tr><td colspan="7" class="muted">참여 업체가 없어요.</td></tr>
@@ -33,5 +35,16 @@
 </tbody>
 </table>
 </div>
+{% endmacro %}
+{% set active = view.rows | rejectattr("participant.is_ended") | list %}
+{% set ended = view.rows | selectattr("participant.is_ended") | list %}
+<section class="card sheet-card" aria-label="참여 업체 표">
+{{ team_table(active) }}
+{% if ended %}
+<details class="sheet-ended">
+<summary>제외한 업체 <span class="muted">{{ ended | length }}</span>{{ icon("chevron-down", 16, 2.2) }}</summary>
+{{ team_table(ended) }}
+</details>
+{% endif %}
 </section>
 {% endblock %}

@@ -37,22 +37,23 @@
 <datalist id="job-titles">{% for t in view.job_titles %}<option value="{{ t }}">{% endfor %}</datalist>
 
 {# 엑셀처럼 업체 한 줄씩(C04-36). 담당자는 업체 정보 모달의 담당자 탭에서 함께 본다(C04-37).
-   줄에는 업체 정보만, 수정·제외는 머리줄 관리를 눌렀을 때만 #}
-<section class="card sheet-card" aria-labelledby="sheet-companies">
-<h2 class="h2" id="sheet-companies">참여 업체 <span class="muted">{{ view.participants | length }}</span></h2>
+   줄에는 업체 정보만, 수정·제외(복귀)는 머리줄 관리를 눌렀을 때만.
+   제외한 업체는 지난 작업·조치 기록 때문에 지우지 않고, 표 아래 접힌 묶음으로 뺀다 #}
+{% macro company_table(table_id, rows) %}
 <div class="sheet-wrap">
-<table class="sheet" id="company-sheet">
-<thead><tr><th scope="col">업체</th><th scope="col">구분</th><th scope="col">맡은 업종</th><th scope="col">공종 메모</th><th scope="col" class="sheet__num">담당자</th><th scope="col" class="sheet__num">로그인</th><th scope="col">상태</th><th scope="col" class="sheet__acts">{% if view.can_manage %}<button class="sheet__toggle" type="button" aria-pressed="false" data-sheet-edit="company-sheet">관리</button>{% else %}정보{% endif %}</th></tr></thead>
+<table class="sheet sheet--fixed" id="{{ table_id }}">
+<colgroup><col style="width: 19%"><col style="width: 9%"><col style="width: 17%"><col style="width: 17%"><col style="width: 6%"><col style="width: 6%"><col style="width: 13%"><col style="width: 13%"></colgroup>
+<thead><tr><th scope="col">업체</th><th scope="col">구분</th><th scope="col">맡은 업종</th><th scope="col">공종 메모</th><th scope="col" class="sheet__num">담당자</th><th scope="col" class="sheet__num">로그인</th><th scope="col">상태</th><th scope="col" class="sheet__acts">{% if view.can_manage %}<button class="sheet__toggle" type="button" aria-pressed="false" data-sheet-edit="{{ table_id }}">관리</button>{% else %}정보{% endif %}</th></tr></thead>
 <tbody>
-{% for p in view.participants %}
-<tr{% if p.is_ended %} class="is-ended"{% endif %}>
-<th scope="row">{{ p.organization_name }}{% if p.business_no %}<small class="sheet__sub">사업자 {{ p.business_no }}</small>{% endif %}</th>
+{% for p in rows %}
+<tr>
+<th scope="row"><span class="sheet__clip" title="{{ p.organization_name }}">{{ p.organization_name }}</span>{% if p.business_no %}<small class="sheet__sub">사업자 {{ p.business_no }}</small>{% endif %}</th>
 <td>{{ p.kind_label }}</td>
-<td>{% for t in p.work_trades %}<span class="sheet__chip" style="--c: {{ trade_color(t) }}; --bg: {{ trade_bg(t) }}">{{ short_trade(t) }}</span>{% else %}<span class="muted">–</span>{% endfor %}</td>
-<td>{{ p.trade_note or "–" }}</td>
-<td class="sheet__num">{{ p.contacts | length }}</td>
+<td>{% for t in p.work_trades[:2] %}<span class="sheet__chip" style="--c: {{ trade_color(t) }}; --bg: {{ trade_bg(t) }}">{{ short_trade(t) }}</span>{% else %}<span class="muted">–</span>{% endfor %}{% if p.work_trades | length > 2 %}<span class="sheet__more" title="{{ p.work_trades | join(", ") }}">+{{ p.work_trades | length - 2 }}</span>{% endif %}</td>
+<td><span class="sheet__clip" title="{{ p.trade_note }}">{{ p.trade_note or "–" }}</span></td>
+<td class="sheet__num">{{ p.people_count }}</td>
 <td class="sheet__num">{{ p.members | length }}</td>
-<td>{{ p.status_text }}</td>
+<td>{% if p.is_ended %}<span class="sheet__state sheet__state--ended">{{ p.status_text }}</span>{% else %}{{ p.status_text }}{% endif %}</td>
 <td class="sheet__acts">
 <span class="sheet__view"><button class="btn btn--soft btn--sm" type="button" data-open-dialog="dlg-info-{{ p.participant_id }}">{{ icon("building", 14) }} 업체 정보</button></span>
 {% if view.can_manage %}<span class="sheet__edit">
@@ -76,6 +77,18 @@
 </tbody>
 </table>
 </div>
+{% endmacro %}
+{% set active = view.participants | rejectattr("is_ended") | list %}
+{% set ended = view.participants | selectattr("is_ended") | list %}
+<section class="card sheet-card" aria-labelledby="sheet-companies">
+<h2 class="h2" id="sheet-companies">참여 업체 <span class="muted">{{ active | length }}</span></h2>
+{{ company_table("company-sheet", active) }}
+{% if ended %}
+<details class="sheet-ended">
+<summary>제외한 업체 <span class="muted">{{ ended | length }}</span>{{ icon("chevron-down", 16, 2.2) }}</summary>
+{{ company_table("ended-sheet", ended) }}
+</details>
+{% endif %}
 </section>
 
 {# 업체 정보 모달: 업체 정보 탭 + 담당자 탭(명부 담당자·로그인 참여자) #}
@@ -85,7 +98,7 @@
 <div class="modal__head"><h2 class="h2" id="dlg-info-title-{{ p.participant_id }}">{{ p.organization_name }}</h2><button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
 <div class="tabseg" role="tablist" aria-label="업체 정보 보기">
 <button class="tabseg__btn" type="button" role="tab" aria-selected="true" data-tab-btn="info">업체 정보</button>
-<button class="tabseg__btn" type="button" role="tab" aria-selected="false" data-tab-btn="people">담당자 {{ p.contacts | length + p.members | length }}</button>
+<button class="tabseg__btn" type="button" role="tab" aria-selected="false" data-tab-btn="people">담당자 {{ p.people_count }}</button>
 </div>
 <div class="tabpanels">
 <div role="tabpanel" data-tab-panel="info">
@@ -173,7 +186,7 @@
 {% endif %}
 {{ trade_pick("dlg-trades-" ~ p.participant_id, p.work_trades) }}
 <div class="modal__grid">
-<label class="field">공종 메모<input type="text" name="trade_note" maxlength="60" value="{{ p.trade_note }}" placeholder="선택 · 예: 지하 골조"></label>
+<label class="field">공종 메모<input type="text" name="trade_note" maxlength="20" value="{{ p.trade_note }}" placeholder="선택 · 예: 지하 골조"></label>
 <label class="field">참여 시작일<input type="date" name="joined_on" value="{{ p.joined_on }}"></label>
 </div>
 <label class="field">사업자번호<input type="text" name="business_no" maxlength="20" value="{{ p.business_no or '' }}" placeholder="선택"></label>
@@ -210,7 +223,7 @@
 </div>
 {{ trade_pick("dlg-trades-new", view.participant_form.work_trades) }}
 <div class="modal__grid">
-<label class="field">공종 메모<input type="text" name="trade_note" value="{{ view.participant_form.trade_note }}" maxlength="60" placeholder="선택 · 예: 지하 골조"></label>
+<label class="field">공종 메모<input type="text" name="trade_note" value="{{ view.participant_form.trade_note }}" maxlength="20" placeholder="선택 · 예: 지하 골조"></label>
 <label class="field">참여 시작일<input type="date" name="joined_on" value="{{ view.participant_form.joined_on }}"></label>
 </div>
 <label class="field">사업자번호<input type="text" name="business_no" value="{{ view.participant_form.business_no }}" maxlength="20" placeholder="선택"></label>

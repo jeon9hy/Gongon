@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, site_danger_zone %}
+{% from "_macros.html" import icon, site_danger_zone, site_add_tabs %}
 {% block title %}현장 설정{% endblock %}
 {% block body_class %}{% if embed %} class="embedbody"{% endif %}{% endblock %}
-{% block page %}{% if embed %}<main class="embed" id="main" tabindex="-1">{% include "sites/_form.html" %}</main>{% else %}{{ super() }}{% endif %}{% endblock %}
+{% block page %}{% if embed %}<main class="embed" id="main" tabindex="-1">{% if view.site_id is none %}{{ site_add_tabs("new") }}{% endif %}{% include "sites/_form.html" %}</main>{% else %}{{ super() }}{% endif %}{% endblock %}
 {% block content %}
 
 <section class="hero" aria-labelledby="sites-title">
@@ -10,6 +10,7 @@
 <p class="hero__date">{{ icon("site", 15) }} 현장 {{ view.items | length }}곳</p>
 <h1 class="hero__title" id="sites-title">내 현장</h1>
 </div>
+<div class="hero__actions"><button class="btn btn--soft" type="button" data-site-dialog="/join?embed=1" data-title="현장 추가">{{ icon("link", 16) }} 코드로 참여</button></div>
 </section>
 
 <div class="split">
@@ -23,7 +24,6 @@
 </a>
 {% endfor %}
 <a class="site-add" href="/sites"{% if view.site_id is none %} aria-current="true"{% endif %}>{{ icon("plus", 18, 2.2) }} 현장 추가</a>
-<a class="site-add" href="/join">{{ icon("link", 18) }} 코드로 참여</a>
 </aside>
 
 <div class="stack split__main">

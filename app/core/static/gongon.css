@@ -1827,6 +1827,7 @@ details.hmore { padding: 0; } /* 판정 내역의 옛 .hmore 여백이 접힌 �
 .sitedlg__frame { flex: 1; width: 100%; border: 0; background: var(--card); }
 .embedbody { background: var(--card); min-height: 0; }
 .embed { padding: 0 var(--card-pad) var(--card-pad); }
+.embed > .addseg { margin-top: 16px; }
 .embed .form { border: 0; box-shadow: none; padding: 0; }
 .embed .danger-zone { margin-top: 20px; }
 .sitelinks { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -2621,7 +2622,10 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .siteswitch__dot { display: grid; place-items: center; width: 26px; height: 26px; flex: 0 0 auto; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; }
 .siteswitch__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .siteswitch__empty, .siteswitch__loading { padding: 10px; font-size: 13px; color: var(--muted); }
-.siteswitch__foot { display: grid; gap: 2px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line-soft); }
+.siteswitch__foot { display: flex; align-items: center; gap: 4px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line-soft); }
+.siteswitch__foot .siteswitch__action { flex: 1; }
+.siteswitch__gear { display: inline-grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: var(--radius-md); color: var(--muted); }
+.siteswitch__gear:hover { background: var(--surface); color: var(--ink); }
 .siteswitch__action { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 0; border-radius: var(--radius-md); background: none; font: inherit; font-size: 13px; font-weight: 600; color: var(--muted); text-decoration: none; cursor: pointer; text-align: left; }
 .siteswitch__action:hover { background: var(--surface); color: var(--ink); }
 @media (max-width: 760px) {
@@ -2658,7 +2662,9 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .sheet tbody th a, .sheet td a { color: inherit; text-decoration: none; }
 .sheet tbody th a:hover, .sheet td a:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
 .sheet tbody tr:hover { background: var(--surface); }
-.sheet tr.is-ended { opacity: 0.6; }
+/* 제외한 업체: 줄을 흐리게 하지 않고 상태 칸 표시로만 구분한다 */
+.sheet__state { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.sheet__state--ended { background: var(--surface); color: var(--muted); box-shadow: inset 0 0 0 1px var(--line); }
 .sheet__sub { display: block; margin-top: 2px; font-size: 11px; font-weight: 500; color: var(--muted); }
 .sheet__num { text-align: right !important; font-variant-numeric: tabular-nums; }
 .sheet__chip { display: inline-block; margin: 1px 4px 1px 0; padding: 2px 8px 2px 6px; border-left: 3px solid var(--c); border-radius: 4px; background: var(--bg); color: color-mix(in srgb, var(--c) 78%, #0E1E45); font-size: 11.5px; font-weight: 600; }
@@ -2666,6 +2672,10 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .sheet__acts > * { vertical-align: middle; }
 .sheet__acts form, .sheet__acts details { display: inline-block; }
 .sheet tbody th { background: transparent; }
+/* 긴 글자는 칸 안에서 … 로 자른다(전체는 마우스를 올리거나 업체 정보에서). 표가 버튼을 밀어내지 않게 */
+.sheet__clip { display: block; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sheet tbody th .sheet__clip { max-width: 180px; }
+.sheet__clip--chips { max-width: 220px; }
 /* 전체 현장 표: 현장마다 묶음 줄 하나(C04-37) */
 .sheet .sheet__group th { padding-top: 18px; background: var(--card); border-bottom: 1px solid var(--line); font-size: 13px; color: var(--ink); }
 .sheet .sheet__group:first-child th { padding-top: 10px; }
@@ -2743,4 +2753,21 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .joinform .btn { justify-self: start; }
 .joinform > .small { margin: -6px 0 0; padding: 0 7px; }
 @media (max-width: 560px) { .hero__actions .joincode { width: 100%; } .joincode__v { flex: 1; } }
+/* 현장 추가 모달 위 전환: 새로 만들기 | 코드로 참여 */
+.addseg { display: flex; gap: 2px; padding: 3px; margin-bottom: 16px; border-radius: 999px; background: var(--surface); }
+.addseg__btn { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; border-radius: 999px; color: var(--muted); font-size: 13px; font-weight: 600; text-decoration: none; }
+.addseg__btn:hover { color: var(--ink); }
+.addseg__btn[aria-current="page"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px #0E1E4514, inset 0 0 0 1px var(--line); }
+/* 업체 표: 업종은 두 개까지 + 나머지 수, 제외한 업체는 표 아래 접힌 묶음 */
+.sheet__more { display: inline-block; padding: 2px 6px; border-radius: 4px; background: var(--surface); color: var(--muted); font-size: 11.5px; font-weight: 700; }
+.sheet-ended { border-top: 1px solid var(--line-soft); padding-top: 4px; }
+.sheet-ended > summary { display: flex; align-items: center; gap: 6px; padding: 8px 12px; list-style: none; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--muted); }
+.sheet-ended > summary::-webkit-details-marker { display: none; }
+.sheet-ended > summary:hover { color: var(--ink); }
+.sheet-ended > summary svg { transition: transform var(--ease); }
+.sheet-ended[open] > summary svg { transform: rotate(180deg); }
+/* 업체 표 두 장(참여·제외)의 열을 맞춘다. 칸보다 긴 글자는 … */
+.sheet--fixed { table-layout: fixed; }
+.sheet--fixed .sheet__clip { max-width: 100%; }
+.sheet--fixed td, .sheet--fixed th { overflow: hidden; text-overflow: ellipsis; }
 

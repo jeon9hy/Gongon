@@ -59,6 +59,7 @@ from engine.kst import KST
 NOT_FOUND = "현장을 찾을 수 없습니다"
 FORBIDDEN = "이 현장에서 이 작업을 할 권한이 없습니다"
 SAME_NAME_MEMBER = "같은 이름의 업체가 이미 있어요. 그 업체에 붙일지 따로 추가할지 고르세요."
+TRADE_NOTE_MAX = 20  # 표 한 칸에 들어가는 길이(C04-39 후속, 개발자 요청). DB 열은 60자 그대로
 SAME_NAME_PARTICIPANT = "같은 이름의 업체가 이미 있어요. 다른 업체면 '따로 등록'을 체크하세요."
 
 
@@ -601,8 +602,8 @@ def _participant_errors(
         errors.append("업체 구분을 고르세요.")
     if any(name not in WORK_TRADE_NAMES for name in form.work_trades):
         errors.append("업종은 목록에서 골라 주세요.")
-    if len(form.trade_note.strip()) > 60:
-        errors.append("맡은 공종은 60자 이내로 입력하세요.")
+    if len(form.trade_note.strip()) > TRADE_NOTE_MAX:
+        errors.append(f"공종 메모는 {TRADE_NOTE_MAX}자 이내로 입력하세요.")
     if len(form.business_no.strip()) > 20:
         errors.append("사업자번호는 20자 이내로 입력하세요.")
     if form.joined_on.strip() and _date(form.joined_on) is None:
@@ -738,6 +739,7 @@ def build_members_view(
             contacts=tuple(
                 _contact_view(c, users, role_of, show_detail) for c in contacts_of.get(p.id, [])
             ),
+            people_count=_people_count(contacts_of.get(p.id, []), members_of.get(p.id, [])),
         )
         for p in participants
     )
@@ -799,6 +801,13 @@ def _member_same_name(
         ),
         Option("separate", "다른 업체로 따로 추가"),
     )
+
+
+def _people_count(
+    contacts: Sequence[ParticipantContact], members: Sequence[ProjectMembership]
+) -> int:
+    linked = {c.user_id for c in contacts if c.user_id is not None}
+    return len(contacts) + sum(1 for m in members if m.user_id not in linked)
 
 
 def _status_text(participant: ProjectParticipant) -> str:
