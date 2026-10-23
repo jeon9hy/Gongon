@@ -19,6 +19,7 @@ class WorkItemRecord:
     memo: str
     performing_participant_id: int | None = None  # 실행 업체. None은 미지정
     plan_version: int = 1
+    batch_key: str | None = None  # 함께 등록한 묶음(D-098)
 
     @property
     def label(self) -> str:
@@ -208,6 +209,8 @@ class ScheduleView:
     period_end_iso: str = ""
     participant_names: dict[int, str] = field(default_factory=dict)
     revisions: dict[int, tuple[RevisionView, ...]] = field(default_factory=dict)  # 고른 날 작업
+    # 고른 날 작업 → 함께 등록한 작업 중 오늘 이후 남은 수(2건 이상만, D-098)
+    batch_left: dict[int, int] = field(default_factory=dict)
     edit_item_id: int | None = None  # 수정에 실패한 작업(그 카드의 수정 칸을 연다)
     edit_errors: tuple[str, ...] = ()
     work_picker: tuple[PickerTrade, ...] = ()  # 업종 → 업무분야 → 작업(D-085)

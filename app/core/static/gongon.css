@@ -2782,3 +2782,22 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .hero__meta-k { margin-right: 2px; font-weight: 500; color: var(--muted); }
 .hero__meta a { color: inherit; text-decoration: none; }
 .hero__meta a:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+/* 선택 지우기(C04-43, D-098) */
+.daypanel__tools { display: flex; align-items: center; gap: 8px; flex: none; }
+.daypanel__select { min-height: 30px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.daypanel__select:hover { border-color: var(--ink); }
+.daypanel__select[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+.selectbar { position: sticky; top: 8px; z-index: 3; display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 14px; border-radius: var(--radius-md); background: var(--ink); color: #fff; box-shadow: var(--shadow-sm); }
+.selectbar[hidden] { display: none; }
+.selectbar__count { flex: 1; font-size: 13px; }
+.selectbar__count b { font-variant-numeric: tabular-nums; }
+.selectbar__all { min-height: 30px; padding: 0 10px; border: 0; border-radius: var(--radius-sm); background: #FFFFFF1F; color: #fff; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.selectbar__all:hover { background: #FFFFFF33; }
+.selectbar .btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+.is-selecting .workcard { position: relative; padding-left: 44px; }
+.is-selecting .workcard::before { content: ""; position: absolute; left: 16px; top: 16px; width: 18px; height: 18px; border: 1.5px solid var(--line); border-radius: 5px; background: var(--card); }
+.is-selecting .workcard[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.is-selecting .workcard[aria-pressed="true"]::before { border-color: var(--accent); background: var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5 9-10'/%3E%3C/svg%3E") center / 12px no-repeat; }
+.modal__actions--stack { flex-wrap: wrap; }
+@media (max-width: 560px) { .modal__actions--stack .btn { flex: 1 1 100%; } }
+.is-selecting .daypanel__add, .is-selecting .daypanel__import { display: none; }

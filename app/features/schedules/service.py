@@ -1,6 +1,7 @@
 """작업 일정(S08-1). 판정 기능은 items_on·items_on_for_sites·items_between으로 작업을 읽는다."""
 
 import re
+import uuid
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
@@ -147,6 +148,7 @@ def build_view(
     labels: dict[int, str] = {}
     choices: tuple[ParticipantOption, ...] = ()
     revisions: dict[int, tuple[RevisionView, ...]] = {}
+    batch_left: dict[int, int] = {}
     legend: tuple[str, ...] = ()
     site_names = {s.site_id: s.name for s in shown}
     if shown:
@@ -199,6 +201,7 @@ def build_view(
         if site is not None:
             choices = teams_service.participant_choices(session, site.site_id)
         revisions = _revision_views(session, [i.item_id for i in detail.items], labels)
+        batch_left = _batch_left(session, detail.items, today)
 
     # 공종·시간은 미리 고르지 않는다(개발자 요청). 날짜만 고른 날로 채운다.
     default_form = WorkItemForm(
@@ -246,6 +249,7 @@ def build_view(
         ),
         participant_names=labels,
         revisions=revisions,
+        batch_left=batch_left,
         edit_item_id=edit_item_id,
         edit_errors=edit_errors,
         today_iso=today.isoformat(),
@@ -340,8 +344,10 @@ def add_item(
         errors = (*errors, performer_error)
     if not items or performer_error:
         return None, errors
+    batch = uuid.uuid4().hex if len(items) > 1 else None  # 함께 지울 수 있게(D-098)
     for item in items:
         item.performing_participant_id = performer
+        item.batch_key = batch
     repository.add_all(session, items)
     return min(i.work_date for i in items), ()
 
@@ -528,6 +534,47 @@ def delete_item(
     return repository.delete_item(session, site_id, item_id, now)
 
 
+def delete_batch(
+    session: Session, user: CurrentUser, site_id: int, item_id: int, now: datetime
+) -> int:
+    """이 작업과 함께 등록한 작업 중 오늘 이후 남은 것을 모두 지운다(D-098). 지운 건수.
+
+    없는 작업이면 0. 묶음이 없는 작업이면 그 작업 하나만 지운다."""
+    teams_service.require_role(session, user, site_id, MANAGE_ROLES)
+    item = repository.get_active(session, site_id, item_id)
+    if item is None:
+        return 0
+    if item.batch_key is None:
+        return 1 if repository.delete_item(session, site_id, item_id, now) else 0
+    today = now.astimezone(KST).date()
+    return repository.delete_many(session, site_id, now, today, batch_key=item.batch_key)
+
+
+def delete_selected(
+    session: Session, user: CurrentUser, site_id: int, item_ids: list[int], now: datetime
+) -> int:
+    """날 상세에서 고른 작업들을 지운다(D-098). 지난 날짜·다른 현장 작업은 건드리지 않는다."""
+    teams_service.require_role(session, user, site_id, MANAGE_ROLES)
+    if not item_ids:
+        return 0
+    today = now.astimezone(KST).date()
+    return repository.delete_many(session, site_id, now, today, item_ids=item_ids)
+
+
+def _batch_left(session: Session, items: tuple[WorkItemRecord, ...], today: date) -> dict[int, int]:
+    """작업 → 함께 등록한 작업 중 오늘 이후 남은 수(2건 이상일 때만)."""
+    keys_by_site: dict[int, set[str]] = {}
+    for i in items:
+        if i.batch_key:
+            keys_by_site.setdefault(i.site_id, set()).add(i.batch_key)
+    left: dict[str, int] = {}
+    for site_id, keys in keys_by_site.items():
+        left |= repository.batch_left(session, site_id, sorted(keys), today)
+    return {
+        i.item_id: left[i.batch_key] for i in items if i.batch_key and left.get(i.batch_key, 0) > 1
+    }
+
+
 def plan_start_error(
     work_date: date, start: time, now: datetime, keep: tuple[date, time] | None = None
 ) -> str | None:
@@ -685,6 +732,7 @@ def _record(item: WorkItem) -> WorkItemRecord:
         memo=item.memo,
         performing_participant_id=item.performing_participant_id,
         plan_version=item.plan_version,
+        batch_key=item.batch_key,
     )
 
 
@@ -933,6 +981,9 @@ def import_items(
             continue
         seen.add(key(item))
         new.append(item)
+    batch = uuid.uuid4().hex if len(new) > 1 else None  # 공정표 한 파일이 한 묶음(D-098)
+    for item in new:
+        item.batch_key = batch
     repository.add_all(session, new)
     first = min((i.work_date for i in new), default=None)
     return ImportResult(len(new), len(planned) - len(new), first, ())

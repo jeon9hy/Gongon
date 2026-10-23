@@ -101,10 +101,24 @@
 <h2 class="h2" id="day-title">{{ d.day_text }}</h2>
 <p class="small muted">{% if d.items %}작업 {{ d.items | length }}건{% elif d.can_add %}아직 비어 있어요{% else %}{{ d.note }}{% endif %}</p>
 </div>
+<div class="daypanel__tools">
 {% if d.is_target %}<a class="tag tag--go" href="/dashboard{% if view.site_id %}?site_id={{ view.site_id }}{% endif %}">판정 보기 ›</a>{% endif %}
+{# 선택 지우기(D-098): 오늘 이후 날, 현장 하나를 고른 달력에서 조정자만 #}
+{% set can_select = d.items and d.can_add and not view.all_mode and view.site_id in manageable %}
+{% if can_select %}<button class="daypanel__select" type="button" data-select-toggle aria-pressed="false">선택</button>{% endif %}
 </div>
+</div>
+{% if can_select %}
+<form class="selectbar" id="select-delete" method="post" action="/schedule/delete-selected" hidden>
+<input type="hidden" name="site_id" value="{{ view.site_id }}">
+<input type="hidden" name="day" value="{{ d.day.isoformat() }}">
+<span class="selectbar__count"><b data-select-count>0</b>건 선택</span>
+<button class="selectbar__all" type="button" data-select-all>모두 선택</button>
+<button class="btn btn--danger btn--sm" type="submit" data-select-submit disabled>{{ icon("trash", 14) }} 지우기</button>
+</form>
+{% endif %}
 {% if d.items %}
-{% macro workcard(i, warn_ids=()) %}{% set history = view.revisions.get(i.item_id, ()) %}{% set problem = ("업체 미지정" if not i.performing_participant_id else "같은 위치·같은 시간 겹침") if i.item_id in warn_ids else "" %}<li><button type="button" class="workcard{% if problem %} workcard--warn{% endif %}" style="--c: {{ work_color(i.work_type) }}" data-open-dialog="item-{{ i.item_id }}">
+{% macro workcard(i, warn_ids=()) %}{% set history = view.revisions.get(i.item_id, ()) %}{% set problem = ("업체 미지정" if not i.performing_participant_id else "같은 위치·같은 시간 겹침") if i.item_id in warn_ids else "" %}<li><button type="button" data-item-id="{{ i.item_id }}" class="workcard{% if problem %} workcard--warn{% endif %}" style="--c: {{ work_color(i.work_type) }}" data-open-dialog="item-{{ i.item_id }}">
 <span class="workcard__time">{{ i.start_local.strftime("%H:%M") }}<span>–</span>{{ i.end_local.strftime("%H:%M") }}{% set m = marks.get(i.item_id) %}{% if m %} {{ verdict_badge(m[0]) }}{% endif %}</span>
 <span class="workcard__title"><span class="dot"></span>{{ i.work_type }}{% if i.location %}<span class="workcard__place"> · {{ i.location }}</span>{% endif %}</span>
 <span class="workcard__meta">{% if view.all_mode %}<b class="workcard__site">{{ view.site_names.get(i.site_id, "") }}</b> · {% endif %}{{ view.participant_names.get(i.performing_participant_id, "업체 미지정").split(" · ")[0] if i.performing_participant_id else "업체 미지정" }} · v{{ i.plan_version }}{% if history %} · 변경 {{ history | length }}번{% endif %}</span>
@@ -249,8 +263,17 @@
 <input type="hidden" name="site_id" value="{{ i.site_id }}">
 <input type="hidden" name="day" value="{{ d.day.isoformat() }}">
 <div class="itemdlg__facts"><strong>{{ i.work_type }}</strong><p class="small muted">{{ d.day_text }} {{ i.start_local.strftime("%H:%M") }}–{{ i.end_local.strftime("%H:%M") }}{% if i.location %} · {{ i.location }}{% endif %}</p></div>
-<p class="small" id="delete-note-{{ i.item_id }}">삭제한 작업은 화면에서 되돌릴 수 없어요.</p>
+{% set left = view.batch_left.get(i.item_id, 0) %}
+<p class="small" id="delete-note-{{ i.item_id }}">{% if left %}이 작업과 한 번에 등록한 작업이 오늘 이후 {{ left }}건 남아 있어요. {% endif %}삭제한 작업은 화면에서 되돌릴 수 없어요.</p>
+{% if left %}
+<div class="modal__actions modal__actions--stack">
+<button class="btn btn--soft" type="button" data-close autofocus>취소</button>
+<button class="btn btn--danger-line" type="submit" name="scope" value="one">이 작업만</button>
+<button class="btn btn--danger" type="submit" name="scope" value="batch">{{ icon("trash", 16) }} 함께 등록한 {{ left }}건 모두</button>
+</div>
+{% else %}
 <div class="modal__actions"><button class="btn btn--soft" type="button" data-close autofocus>취소</button><button class="btn btn--danger" type="submit">{{ icon("trash", 16) }} 삭제</button></div>
+{% endif %}
 </form>
 </dialog>
 {% endif %}
@@ -380,6 +403,47 @@
 </aside>
 </div>
 <script>
+// 선택 지우기(D-098): 선택을 켜면 카드를 누를 때 상세 대신 고르기. 업체별·위치별에 같은 카드가 있어 함께 맞춘다
+(() => {
+  const toggle = document.querySelector("[data-select-toggle]");
+  const form = document.getElementById("select-delete");
+  if (!toggle || !form) return;
+  const panel = toggle.closest(".daypanel");
+  const picked = new Set();
+  const sync = () => {
+    form.querySelectorAll("input[name=item_ids]").forEach((n) => n.remove());
+    picked.forEach((id) => form.insertAdjacentHTML("beforeend", `<input type="hidden" name="item_ids" value="${id}">`));
+    panel.querySelectorAll(".workcard[data-item-id]").forEach((c) => c.setAttribute("aria-pressed", String(picked.has(c.dataset.itemId))));
+    form.querySelector("[data-select-count]").textContent = picked.size;
+    form.querySelector("[data-select-submit]").disabled = picked.size === 0;
+  };
+  const setMode = (on) => {
+    toggle.setAttribute("aria-pressed", String(on));
+    toggle.textContent = on ? "취소" : "선택";
+    panel.classList.toggle("is-selecting", on);
+    form.hidden = !on;
+    if (on) panel.querySelectorAll("details.grp").forEach((g) => { g.open = true; });
+    else { picked.clear(); panel.querySelectorAll(".workcard[data-item-id]").forEach((c) => c.removeAttribute("aria-pressed")); }
+    if (on) sync();
+  };
+  toggle.addEventListener("click", () => setMode(!panel.classList.contains("is-selecting")));
+  // 카드의 상세 열기(문서 전체 클릭 처리)보다 먼저 가로챈다
+  panel.addEventListener("click", (e) => {
+    const card = e.target.closest(".workcard[data-item-id]");
+    if (!card || !panel.classList.contains("is-selecting")) return;
+    e.preventDefault(); e.stopPropagation();
+    const id = card.dataset.itemId;
+    if (picked.has(id)) picked.delete(id); else picked.add(id);
+    sync();
+  }, true);
+  form.querySelector("[data-select-all]").addEventListener("click", () => {
+    panel.querySelectorAll(".workcard[data-item-id]").forEach((c) => picked.add(c.dataset.itemId));
+    sync();
+  });
+  form.addEventListener("submit", (e) => {
+    if (!confirm(`고른 작업 ${picked.size}건을 지울까요? 화면에서 되돌릴 수 없어요.`)) e.preventDefault();
+  });
+})();
 // 공정표 파일 고르기: 고른 파일 이름을 보이고, 끌어다 놓을 때 테두리를 바꾼다
 document.querySelectorAll("[data-filedrop]").forEach((input) => {
   const box = input.closest(".filedrop");

@@ -10,7 +10,10 @@ class WorkItem(Base):
     """예정된 작업 한 건(현장·공종·날짜·시간). 예보로 자동 변경하지 않는다(product.md §4)."""
 
     __tablename__ = "work_items"
-    __table_args__ = (Index("ix_work_items_site_date", "site_id", "work_date"),)
+    __table_args__ = (
+        Index("ix_work_items_site_date", "site_id", "work_date"),
+        Index("ix_work_items_site_batch", "site_id", "batch_key"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     site_id: Mapped[int] = mapped_column(ForeignKey("sites.id", ondelete="CASCADE"))
@@ -26,6 +29,9 @@ class WorkItem(Base):
     performing_participant_id: Mapped[int | None] = mapped_column(Integer)
     # 계획 버전(1부터). 계획을 바꿀 때마다 1 올리고 이전 값은 WorkItemRevision에 남긴다.
     plan_version: Mapped[int] = mapped_column(Integer, default=1)
+    # 한 번에 함께 등록한 묶음(여러 날·여러 작업 추가, 공정표 한 파일, D-098).
+    # 한 건 등록·옛 작업은 None. 지울 때 함께 등록한 남은 작업 모두에 쓴다.
+    batch_key: Mapped[str | None] = mapped_column(String(32))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

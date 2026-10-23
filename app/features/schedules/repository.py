@@ -106,3 +106,47 @@ def get_many(session: Session, item_ids: list[int]) -> list[WorkItem]:
         return []
     query = select(WorkItem).where(WorkItem.id.in_(item_ids), WorkItem.deleted_at.is_(None))
     return list(session.scalars(query))
+
+
+def batch_left(session: Session, site_id: int, keys: list[str], from_day: date) -> dict[str, int]:
+    """묶음마다 아직 남은(지우지 않았고 from_day 이후인) 작업 수."""
+    if not keys:
+        return {}
+    rows = session.execute(
+        select(WorkItem.batch_key, func.count())
+        .where(
+            WorkItem.site_id == site_id,
+            WorkItem.batch_key.in_(keys),
+            WorkItem.deleted_at.is_(None),
+            WorkItem.work_date >= from_day,
+        )
+        .group_by(WorkItem.batch_key)
+    ).all()
+    return {key: count for key, count in rows if key is not None}
+
+
+def delete_many(
+    session: Session,
+    site_id: int,
+    deleted_at: datetime,
+    from_day: date,
+    item_ids: list[int] | None = None,
+    batch_key: str | None = None,
+) -> int:
+    """고른 작업들 또는 한 묶음의 남은 작업을 숨긴다.
+
+    지난 날짜·다른 현장·이미 지운 작업은 그대로 둔다."""
+    query = update(WorkItem).where(
+        WorkItem.site_id == site_id,
+        WorkItem.deleted_at.is_(None),
+        WorkItem.work_date >= from_day,
+    )
+    if item_ids is not None:
+        query = query.where(WorkItem.id.in_(item_ids))
+    elif batch_key is not None:
+        query = query.where(WorkItem.batch_key == batch_key)
+    else:
+        return 0
+    deleted = session.scalars(query.values(deleted_at=deleted_at).returning(WorkItem.id)).all()
+    session.commit()
+    return len(deleted)

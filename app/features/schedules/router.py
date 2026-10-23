@@ -64,7 +64,7 @@ def schedule(
     month: str | None = None,
     day: str | None = None,
     saved: bool = False,
-    deleted: bool = False,
+    deleted: int = 0,
     edited: bool = False,
     unchanged: bool = False,
     imported: int | None = None,
@@ -76,7 +76,7 @@ def schedule(
         if imported is not None
         else "작업을 추가했습니다."
         if saved
-        else "작업을 지웠습니다."
+        else ("작업을 지웠습니다." if deleted == 1 else f"작업 {deleted}건을 지웠습니다.")
         if deleted
         else "작업 계획을 바꿨습니다. 바뀐 시간·위치로 다시 판정하세요."
         if edited
@@ -204,10 +204,34 @@ def delete_item(
     item_id: int,
     site_id: Annotated[int, Form()],
     day: Annotated[str, Form()] = "",
+    scope: Annotated[str, Form()] = "",
 ) -> RedirectResponse:
-    if not service.delete_item(session, user, site_id, item_id, now):
+    """scope=batch면 함께 등록한 남은 작업까지 지운다(D-098)."""
+    if scope == "batch":
+        count = service.delete_batch(session, user, site_id, item_id, now)
+    else:
+        count = 1 if service.delete_item(session, user, site_id, item_id, now) else 0
+    if not count:
         raise HTTPException(status_code=404, detail="작업을 찾을 수 없습니다")
-    return RedirectResponse(f"/schedule?site_id={site_id}&day={day}&deleted=1", status_code=303)
+    return RedirectResponse(
+        f"/schedule?site_id={site_id}&day={day}&deleted={count}", status_code=303
+    )
+
+
+@router.post("/schedule/delete-selected")
+def delete_selected(
+    session: SessionDep,
+    user: CurrentUserDep,
+    now: NowDep,
+    site_id: Annotated[int, Form()],
+    day: Annotated[str, Form()] = "",
+    item_ids: Annotated[list[int] | None, Form()] = None,
+) -> RedirectResponse:
+    """날 상세의 선택 모드에서 고른 작업을 한꺼번에 지운다(D-098)."""
+    count = service.delete_selected(session, user, site_id, item_ids or [], now)
+    return RedirectResponse(
+        f"/schedule?site_id={site_id}&day={day}&deleted={count}", status_code=303
+    )
 
 
 @router.post("/schedule/import")
