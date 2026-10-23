@@ -455,5 +455,36 @@ document.addEventListener("keydown", (e) => {
   open.querySelector("summary").focus();
 });
 </script>
+<script>
+// 휴대폰: 좌우로 밀면 아래 탭 막대의 옆 탭으로 넘어간다(C04-47, 개발자 요청).
+// 가로로 스크롤되는 표·달력·7일 슬라이드·입력칸·열린 모달 위에서는 넘기지 않는다.
+(() => {
+  if (!matchMedia("(max-width: 760px)").matches) return;
+  const tabs = [...document.querySelectorAll(".appnav a[data-site-link]")];
+  const current = tabs.findIndex((a) => a.getAttribute("aria-current") === "page");
+  if (current < 0) return;
+  const blocked = (el) => {
+    for (let n = el; n && n !== document.body; n = n.parentElement) {
+      if (n.matches?.("input, textarea, select, dialog, [data-weekslides], [data-no-swipe]")) return true;
+      const style = getComputedStyle(n);
+      if (/(auto|scroll)/.test(style.overflowX) && n.scrollWidth > n.clientWidth) return true;
+    }
+    return false;
+  };
+  let start = null;
+  addEventListener("touchstart", (e) => {
+    start = e.touches.length === 1 && !document.querySelector("dialog[open]") && !blocked(e.target)
+      ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null;
+  }, { passive: true });
+  addEventListener("touchend", (e) => {
+    if (!start) return;
+    const dx = e.changedTouches[0].clientX - start.x, dy = e.changedTouches[0].clientY - start.y;
+    start = null;
+    if (Math.abs(dx) < 80 || Math.abs(dy) > Math.abs(dx) * 0.5) return;
+    const next = tabs[current + (dx < 0 ? 1 : -1)];
+    if (next) location.href = next.href;
+  }, { passive: true });
+})();
+</script>
 </body>
 </html>

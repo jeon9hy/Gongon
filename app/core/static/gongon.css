@@ -2841,3 +2841,6 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .pagebar .joincode { min-height: 34px; }
 @media (max-width: 760px) { .subnavrow { flex-wrap: wrap; } .pagebar { margin-left: 0; justify-content: flex-start; } }
 @media (max-width: 560px) { .pagebar { width: 100%; } .pagebar .joincode { width: 100%; } .pagebar > .btn { flex: 1 1 0; } }
+/* 휴대폰(앱)에서는 푸터를 두지 않는다(C04-47, 개발자 요청). 아래 탭 막대가 끝을 대신한다 */
+@media (max-width: 760px) { .sitefoot { display: none; } }
+
