@@ -483,10 +483,10 @@ a.tag:hover { filter: brightness(0.96); }
 .badge::before { content: ""; width: 7px; height: 7px; border-radius: 999px; background: currentColor; flex: 0 0 auto; }
 .badge--go::before { background: var(--verdict-go-mark); }
 .badge--check::before { background: var(--verdict-check-mark); }
-.badge--stop::before { background: #FFFFFF; }
+.badge--stop::before { background: var(--verdict-stop-mark); }
 .badge--unknown { border: 1px dashed var(--line); padding: 3px 9px; }
 .badge--unknown::before { background: var(--verdict-unknown-mark); }
-.badge--lg { border-radius: var(--radius-md); }
+.badge--lg { min-height: 40px; padding: 0 16px; border-radius: 999px; font-size: 16px; font-weight: 700; }
 .tag { border-radius: 999px; }
 
 /* 홈 요약: 단계별 옅은 색 타일, 중지 검토만 검정 타일로 가장 먼저 눈에 띄게. 0곳은 흰 타일로 가라앉힌다 */
@@ -2942,4 +2942,14 @@ a.sumbar__cell:hover { background: var(--surface); }
   .gx-phone__tabs span:first-child { background: var(--accent-soft); color: var(--accent); }
   .gx-reveal { opacity: 1; transform: none; transition: none; }
 }
+/* 판정 단계 배지는 넷 다 같은 옅은 바탕 + 점(C04-52). 중지 검토도 꽉 찬 빨강·멈춤 표시를 쓰지 않는다 */
+.badge--stop { background: var(--stop-soft); color: var(--stop-text); }
+/* 판정 근거 정보: 이름 위·값 아래 칸을 한 줄로(좁으면 두 칸씩) */
+.factgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0; margin: 0; border: 1px solid var(--line-soft); border-radius: var(--radius-md); overflow: hidden; }
+.factgrid > div { display: grid; gap: 4px; padding: 12px 14px; border-left: 1px solid var(--line-soft); background: var(--surface); }
+.factgrid > div:first-child { border-left: 0; }
+.factgrid dt { font-size: 12px; font-weight: 600; color: var(--muted); }
+.factgrid dd { margin: 0; font-size: 14px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; word-break: keep-all; }
+@media (max-width: 560px) { .factgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .factgrid > div { border-left: 0; border-top: 1px solid var(--line-soft); } }
+.homebar__count { font-style: normal; color: var(--accent); }
 

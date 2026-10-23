@@ -18,6 +18,7 @@ from app.features.judgments.schemas import ElementKey, RunResult, VerdictFilter
 from app.features.teams import service as teams_service
 from app.features.teams.service import AccessibleSitesDep, ManagedSitesDep
 from engine.forecast import HttpGet
+from engine.kst import KST
 
 register_template_dir(Path(__file__).parent / "templates")
 
@@ -43,11 +44,17 @@ def home(
         return RedirectResponse("/board", status_code=303)  # 현장 TV 계정은 게시 화면만(D-067)
     view = service.build_home(session, scope, now, ran, site_id)
     inbox = service.build_inbox(session, user, view, manageable, now) if view.sites else None
-    return templates.TemplateResponse(
-        request,
-        "judgments/home.html",
-        {"nav_active": "home", "view": view, "manageable": manageable, "inbox": inbox},
+    hour = now.astimezone(KST).hour
+    greeting = (
+        "좋은 아침이에요"
+        if 4 <= hour < 11
+        else "좋은 점심이에요"
+        if hour < 17
+        else "좋은 저녁이에요"
     )
+    context = {"nav_active": "home", "view": view, "manageable": manageable, "inbox": inbox,
+               "greeting": greeting, "name": user.display_name}  # fmt: skip
+    return templates.TemplateResponse(request, "judgments/home.html", context)
 
 
 @router.get("/dashboard", response_class=HTMLResponse)

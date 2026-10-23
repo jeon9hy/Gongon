@@ -14,15 +14,11 @@
 <h1 class="title title--sm" style="margin-top: 6px;">{{ view.work_type }}</h1>
 <p class="subtitle">작업 시간 {{ view.work_range }}</p>
 </div>
-{% if view.verdict == "중지 검토" %}
-<span class="badge badge--stop badge--lg">{{ icon("pause", 20, 2.4) }}{{ view.verdict }}</span>
-{% else %}
 {{ verdict_badge(view.verdict, True) }}
-{% endif %}
 </div>
-<div class="chips">
-{% for chip in view.chips %}<span class="chip chip--surface">{{ chip }}</span>{% endfor %}
-</div>
+<dl class="factgrid" aria-label="판정 근거 정보">
+{% for label, value in view.chips %}<div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>{% endfor %}
+</dl>
 {% if view.failure_reason %}
 <div class="alert alert--error" role="status">{{ view.failure_reason }}. 예보가 없어 판정하지 못했습니다. 대시보드에서 다시 판정할 수 있습니다.</div>
 {% endif %}

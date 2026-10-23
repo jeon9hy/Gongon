@@ -1816,13 +1816,14 @@ def get_detail(session: Session, scope: SiteScope, judgment_id: int) -> DetailVi
         return None
     site = sites_service.get_site(session, judgment.site_id, scope)
     elements = _elements(judgment)
-    chips = ["자료 유형: 예보 (현장 관측 아님)"]
+    # 근거 정보는 (이름, 값) 칸으로(C04-52). 시각은 모두 한국 시간
+    chips = [("자료", "예보 · 현장 관측 아님")]
     if judgment.forecast_issued_at is not None:
-        chips.append(f"예보 발표 {_iso_kst(judgment.forecast_issued_at)}")
+        chips.append(("예보 발표", _iso_kst(judgment.forecast_issued_at).removesuffix(" KST")))
     chips += [
-        f"판정 시각 {_iso_kst(judgment.judged_at)}",
-        f"기준 버전 {judgment.rule_version}",
-        f"기상청 격자 ({judgment.grid_nx}, {judgment.grid_ny})",
+        ("판정 시각", _iso_kst(judgment.judged_at).removesuffix(" KST")),
+        ("판정 기준", judgment.rule_version),
+        ("기상청 격자", f"{judgment.grid_nx}, {judgment.grid_ny}"),
     ]
     return DetailView(
         site_id=None if site is None else site.site_id,

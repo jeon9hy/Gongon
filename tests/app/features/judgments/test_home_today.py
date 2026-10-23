@@ -293,3 +293,12 @@ def test_same_issue_on_many_sites_is_one_inbox_row_with_a_count() -> None:
     assert [(r.title, r.count) for r in by_work] == [("철골 작업", 3), ("이동식 크레인", 3)]
     assert "현장 3곳" in by_work[0].meta
     assert [(r.title, r.count) for r in by_place] == [("B동", 6)]
+
+
+def test_home_greets_by_time_of_day(client: TestClient) -> None:
+    # 시험 시계는 15:00(KST): 날짜 줄에 때에 맞는 인사(C04-52)
+    make_site(client)
+
+    page = client.get("/").text
+
+    assert '<p class="homebar__date">' in page and "좋은 점심이에요" in page

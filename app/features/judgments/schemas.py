@@ -400,7 +400,7 @@ class DetailView:
     work_type: str
     work_range: str
     verdict: str
-    chips: tuple[str, ...]
+    chips: tuple[tuple[str, str], ...]  # (이름, 값) 판정 근거 정보
     criteria: tuple[CriterionCard, ...]
     columns: tuple[str, ...]
     rows: tuple[HourRow, ...]
