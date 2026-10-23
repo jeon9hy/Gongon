@@ -141,7 +141,9 @@ def test_checks_flag_missing_company_place_and_true_overlaps_only(
 
     page = client.get("/").text
     today = board(page, "today")
-    urgent = page.split('<a class="urgent ')[1].split("</a>")[0]  # 맨 위 먼저 할 일(C04-51)
+    urgent = page.split("sumbar__urgent--")[1].split("</a>")[
+        0
+    ]  # 맨 위 요약 줄의 먼저 할 일(C04-51)
 
     # 오늘 일정 칸: 걸린 작업마다 이유를 마우스 글자로 보인다
     assert "이동식 크레인와 같은 곳·같은 시간" in today  # 철골 작업 줄

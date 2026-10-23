@@ -1306,7 +1306,9 @@ def _day_groups(
                 else companies.get(i.performing_participant_id or -1, schedules_service.UNASSIGNED),
                 time_text=f"{i.start_local:%H:%M}–{i.end_local:%H:%M}",
                 verdict=None if (cell := cells.get(i.item_id)) is None else cell.verdict,
-                href=cell.href if cell is not None and cell.href else fallback,
+                # 판정 기록이 있으면 그 판정 상세, 없으면(먼 날 참고 등) 그 현장 공온 판정의 그 작업
+                href=cell.href if cell is not None and cell.href
+                else dashboard_href(i.site_id, work=i.work_type),
             )
             for i in group
         )  # fmt: skip
@@ -2146,10 +2148,9 @@ def build_inbox(
         session, [i for i in site_ids if here(i)], now - timedelta(days=7)
     )
     flow = (
-        ("open", "진행 중", counts.get("requested", 0) + counts.get("accepted", 0), ""),
         ("blocked", "보류", counts.get("blocked", 0), "stop"),
         ("reported", "확인 대기", counts.get("reported", 0), "warn"),
-        ("verified", "완료", counts.get("verified", 0), ""),
+        ("verified", "이번 주 완료", counts.get("verified", 0), ""),
     )
     return HomeInbox(
         groups=groups,

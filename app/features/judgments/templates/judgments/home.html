@@ -15,17 +15,8 @@
 <p class="homebar__date">{{ view.today_date }}</p>
 {% set left_today = today_board.items | rejectattr("phase", "equalto", "done") | list %}
 {# 첫 문장은 내 차례 기준(C04-44, D-099). 할 일이 없으면 오늘 작업 기준 #}
-<h1 class="homebar__title" id="home-title">{% if inbox and inbox.total %}챙길 일 {{ inbox.total }}건{% elif left_today %}오늘 남은 작업 {{ left_today | length }}건, 차근차근 가 볼까요?{% elif today_board.items %}오늘 작업 {{ today_board.items | length }}건을 모두 마쳤어요{% else %}오늘은 쉬어 가는 날{% endif %}</h1>
-{% if inbox and inbox.first %}{% set f = inbox.first %}
-{# 가장 먼저 할 일 한 줄(C04-51): 무엇이 문제인지·어떤 작업·언제 어디서 + 바로 할 일 #}
-<a class="urgent urgent--{{ f.tone }}" href="{{ f.href }}"{% if f.detail %} title="{{ f.detail }}"{% endif %}>
-<span class="urgent__k">먼저 할 일</span>
-<span class="inbox__tag inbox__tag--{{ f.tone }}">{{ f.tag }}</span>
-<b class="urgent__what">{{ f.title }}</b>
-<span class="urgent__meta">{{ f.meta }}</span>
-<span class="urgent__go">{{ f.action }} {{ icon("chevron-right", 14, 2.2) }}</span>
-</a>
-{% endif %}
+<h1 class="homebar__title" id="home-title">{% if inbox and inbox.total %}확인할 것 {{ inbox.total }}건{% elif left_today %}오늘 남은 작업 {{ left_today | length }}건, 차근차근 가 볼까요?{% elif today_board.items %}오늘 작업 {{ today_board.items | length }}건을 모두 마쳤어요{% else %}오늘은 쉬어 가는 날{% endif %}</h1>
+
 </div>
 {% if managed_count %}
 <form method="post" action="/judgments/run-all" class="refresh" data-refresh>
@@ -92,17 +83,26 @@
 </li>{% endmacro %}
 {% set t = view.index_days[0] if view.index_days else none %}
 {% set p = view.day_panels[0] if view.day_panels else none %}
-<div class="homestrip">
-<a class="homestrip__card flow" href="{{ inbox.flow_href }}" aria-label="후속 조치 흐름">
-<span class="homestrip__k">후속 조치</span>
-{% for key, label, n, tone in inbox.flow %}<span class="flow__step{% if tone and n %} flow__step--{{ tone }}{% endif %}"><b>{{ n }}</b><small>{{ label }}</small></span>{% endfor %}
+{# 맨 위 요약 줄(C04-51): 먼저 할 일 · 변경·조치 · 내일 판정을 한 카드에. 넓으면 한 줄, 좁으면 두 줄 #}
+<div class="sumbar">
+{% if inbox.first %}{% set f = inbox.first %}
+<a class="sumbar__cell sumbar__urgent sumbar__urgent--{{ f.tone }}" href="{{ f.href }}"{% if f.detail %} title="{{ f.detail }}"{% endif %}>
+<span class="sumbar__k">먼저 할 일</span>
+<span class="sumbar__line"><span class="inbox__tag inbox__tag--{{ f.tone }}">{{ f.tag }}</span><b class="sumbar__what">{{ f.title }}</b></span>
+<span class="sumbar__meta">{{ f.meta }} · <span class="sumbar__go">{{ f.action }} {{ icon("chevron-right", 13, 2.2) }}</span></span>
 </a>
-<a class="homestrip__card nextday" href="{{ p.href if p and p.total else '/dashboard' }}" aria-label="내일 판정">
-<span class="homestrip__k">내일 판정<small>{{ tomorrow_board.date_text }}</small></span>
+{% else %}
+<div class="sumbar__cell sumbar__urgent"><span class="sumbar__k">먼저 할 일</span><span class="sumbar__line">{{ icon("check", 15, 2.4) }} 지금 급한 일은 없어요</span></div>
+{% endif %}
+<a class="sumbar__cell" href="{{ inbox.flow_href }}" aria-label="변경·조치 상태">
+<span class="sumbar__k">변경·조치</span>
+<span class="sumbar__nums">{% for key, label, n, tone in inbox.flow %}<span class="sumbar__num{% if tone and n %} sumbar__num--{{ tone }}{% endif %}"><b>{{ n }}</b>{{ label }}</span>{% endfor %}</span>
+</a>
+<a class="sumbar__cell" href="{{ p.href if p and p.total else '/dashboard' }}" aria-label="내일 판정">
+<span class="sumbar__k">내일 판정 · {{ tomorrow_board.date_text }}</span>
 {% if p and p.total %}
-{% if t and t.score is not none %}<span class="ring ring--{% if t.score >= 80 %}high{% elif t.score >= 50 %}mid{% else %}low{% endif %}" style="--p: {{ t.score }}" role="img" aria-label="공온지수 {{ t.score }}"><b>{{ t.score }}</b></span>{% endif %}
-<span class="nextday__counts"><span class="vpill vpill--go"><i></i>진행 {{ p.go }}</span><span class="vpill vpill--check"><i></i>확인 {{ p.check }}</span><span class="vpill vpill--stop"><i></i>중지 {{ p.stop }}</span></span>
-{% else %}<span class="muted small">내일 일정이 비어 있어요</span>{% endif %}
+<span class="sumbar__nums">{% if t and t.score is not none %}<span class="sumbar__num"><b>{{ t.score }}</b>공온지수</span>{% endif %}<span class="sumbar__num{% if p.stop %} sumbar__num--stop{% endif %}"><b>{{ p.stop }}</b>중지</span><span class="sumbar__num{% if p.check %} sumbar__num--warn{% endif %}"><b>{{ p.check }}</b>확인</span><span class="sumbar__num"><b>{{ p.go }}</b>진행</span></span>
+{% else %}<span class="sumbar__line muted">내일 일정이 비어 있어요</span>{% endif %}
 </a>
 </div>
 {% endif %}
@@ -110,10 +110,10 @@
 {% if inbox %}
 <section class="hsec inbox" aria-labelledby="inbox-title" data-inbox>
 <div class="hsec__head">
-<h2 class="hsec__title" id="inbox-title">챙길 일</h2>
+<h2 class="hsec__title" id="inbox-title">변경·조치</h2>
 <div class="tabseg" role="group" aria-label="묶어 보기"><button class="tabseg__btn" type="button" data-inbox-by="work" aria-selected="true">공정별</button><button class="tabseg__btn" type="button" data-inbox-by="place" aria-selected="false">위치별</button></div>
 </div>
-<div class="inboxtabs" role="tablist" aria-label="챙길 일 종류">
+<div class="inboxtabs" role="tablist" aria-label="변경·조치 종류">
 {% for g in inbox.groups %}<button class="inboxtabs__tab" type="button" role="tab" id="inbox-tab-{{ g.key }}" aria-controls="inbox-{{ g.key }}" aria-selected="{{ 'true' if loop.first else 'false' }}" data-inbox-tab="{{ loop.index0 }}">{{ g.title }} <b class="inboxtabs__n inboxtabs__n--{{ g.key }}">{{ g.total }}</b></button>{% endfor %}
 </div>
 <div class="inboxslides" data-inbox-slides>
