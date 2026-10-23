@@ -2,137 +2,183 @@
 {% from "_macros.html" import icon, verdict_badge %}
 {% block title %}공온 가이드{% endblock %}
 {% block content %}
-<section class="hero" aria-labelledby="guide-title">
-<div class="hero__main">
-<h1 class="hero__title" id="guide-title">공온 200% 쓰는 법</h1>
-<p class="hero__lead">공사 변경 뒤 필요한 일을 연결하고, 처리 결과까지 확인합니다.</p>
+{# 공온 가이드(C04-50): 움직이는 그림으로 흐름을 먼저 보여 주고, 아래에 자세한 설명.
+   움직임 줄이기 설정이면 애니메이션 없이 마지막 모습만 보인다 #}
+<section class="gx-hero" aria-labelledby="guide-title">
+<div class="gx-hero__text">
+<p class="gx-eyebrow">공온 가이드</p>
+<h1 class="gx-hero__title" id="guide-title">변경이 생기면,<br>끝까지 이어 줍니다</h1>
+<p class="gx-hero__lead">공사 변경 뒤 필요한 일을 업체에 연결하고, 처리 결과까지 확인해요.</p>
 </div>
+<ol class="gx-flow" aria-label="변경이 끝나는 흐름">
+{% for ic, label, sub in [("history", "변경 제안", "날짜·시간·위치와 원인"), ("check", "확정", "조정자가 계획을 바꿔요"), ("user-plus", "조치 요청", "업체에 할 일이 가요"), ("upload", "완료 보고", "처리 시각·내용·사진"), ("recheck", "검증", "다른 사람이 확인하면 끝")] %}
+<li class="gx-flow__step" style="--i: {{ loop.index0 }}"><span class="gx-flow__dot" aria-hidden="true">{{ icon(ic, 18, 2.2) }}</span><b>{{ label }}</b><small>{{ sub }}</small></li>
+{% endfor %}
+</ol>
 </section>
 
 <nav class="guide-toc" aria-label="목차">
-<a href="#menu">메뉴</a><a href="#check">공온 점검</a><a href="#work">작업 올리기</a><a href="#judge">공온 판정</a><a href="#gongon-index">공온지수</a><a href="#site">현장·참여자</a><a href="#change">변경</a><a href="#roles">역할</a>
+<a href="#menu">메뉴</a><a href="#check">홈·내 차례</a><a href="#work">작업 올리기</a><a href="#judge">공온 판정</a><a href="#gongon-index">공온지수</a><a href="#site">현장·업체</a><a href="#change">변경</a><a href="#actions">후속 조치</a><a href="#roles">역할</a>
 </nav>
 
-<section class="panel guide" id="menu">
-<h2 class="h2">메뉴는 네 개면 충분해요</h2>
+<section class="panel guide gx-reveal" id="menu">
+<div class="gx-split">
+<div>
+<h2 class="h2">주 메뉴는 다섯 개예요</h2>
 <dl class="guide-list">
-<div><dt>홈</dt><dd>오늘 현장에서 돌아가는 작업과 내일 준비를 한 화면에서 봅니다. 진행 중·예정·끝남은 <strong>계획 시간 기준</strong>이며 실제 작업 기록이 아닙니다.</dd></div>
-<div><dt>작업 일정</dt><dd>달력에서 작업을 올리고 고칩니다. 안에 <strong>공온 판정</strong>(현장별 날씨 판정)과 <strong>판정 내역</strong>이 있어요. 달력의 점 색은 공종 색이고, 점을 누르면 그 작업이 열립니다.</dd></div>
-<div><dt>내 현장</dt><dd>참여하는 현장을 보고 현장·업체·참여자를 관리합니다.</dd></div>
-<div><dt>대화</dt><dd>현장별 대화방에서 작업과 변경에 관한 이야기를 나눕니다.</dd></div>
+<div><dt>홈</dt><dd>지금 <strong>내 차례</strong>인 일과 오늘·내일을 한 화면에서 봐요.</dd></div>
+<div><dt>일정</dt><dd>달력으로 작업을 올리고 고쳐요. 안에 <strong>공온 판정</strong>과 <strong>판정 내역</strong>이 있어요.</dd></div>
+<div><dt>변경·조치</dt><dd>바뀐 계획을 제안·확정하고, 내게 온 후속 조치를 처리해요.</dd></div>
+<div><dt>업체</dt><dd>참여 업체와 담당자를 한 표로 보고 관리해요.</dd></div>
+<div><dt>대화</dt><dd>현장마다 대화방이 하나 있어요.</dd></div>
 </dl>
-<p>오른쪽 위 <strong>내 정보</strong>에서 <strong>변경</strong>과 <strong>내 조치</strong>를 엽니다. 바뀐 계획을 제안·검토·확정하고, 내게 연결된 후속 조치를 처리할 수 있어요.</p>
+<p class="small muted">맨 위 현장 칩으로 현장 하나만 보거나 전체를 봐요. 휴대폰에서는 좌우로 밀어 옆 탭으로 넘어가요.</p>
+</div>
+<div class="gx-phone" aria-hidden="true">
+<div class="gx-phone__screen">
+{% for label, cap in [("홈", "내 차례 7건"), ("일정", "10월 달력"), ("조치", "변경 4건 · 조치 9건"), ("업체", "참여 업체 8곳"), ("대화", "현장 방 3개")] %}
+<p class="gx-phone__cap" style="--i: {{ loop.index0 }}">{{ cap }}</p>
+{% endfor %}
+<span class="gx-phone__bar"></span><span class="gx-phone__bar gx-phone__bar--short"></span><span class="gx-phone__bar"></span>
+</div>
+<div class="gx-phone__tabs">{% for label in ["홈", "일정", "조치", "업체", "대화"] %}<span style="--i: {{ loop.index0 }}">{{ label }}</span>{% endfor %}</div>
+</div>
+</div>
 </section>
 
-<section class="panel guide" id="check">
-<h2 class="h2">공온 점검: 날씨는 그중 하나예요</h2>
-<p>홈의 오늘·내일 판에서 작업마다 다섯 가지를 확인해요. 걸린 것이 없으면 ‘준비’로 셉니다.</p>
+<section class="panel guide gx-reveal" id="check">
+<h2 class="h2">홈: 내 차례부터 보세요</h2>
+<ol class="gx-lanes">
+<li><b>오늘 안에</b><span>오늘 작업의 점검 문제, 내가 답하거나 수행할 조치</span></li>
+<li><b>확인해 주세요</b><span>협력업체가 끝냈다고 보고한 조치(내가 검증자)</span></li>
+<li><b>막힌 일</b><span>진행할 수 없다고 한 조치</span></li>
+<li><b>결정 기다리는 변경</b><span>검토 중인 변경, 내일 확인 필요·중지 검토</span></li>
+</ol>
+<p>순서는 규칙으로 정해요. AI 추천이 아니에요. 오늘 작업은 이렇게 점검해요.</p>
 <dl class="guide-list">
-<div><dt>날씨</dt><dd>내일 작업만. 공온 판정이 ‘진행’이 아니거나 아직 판정 전이면 걸려요.</dd></div>
 <div><dt>실행 업체</dt><dd>누가 할지 정하지 않은 작업.</dd></div>
-<div><dt>작업 위치</dt><dd>위치를 비워 둔 작업.</dd></div>
-<div><dt>시간·위치 겹침</dt><dd>같은 현장·같은 날·같은 위치에서 시간이 겹치는 작업. 한쪽이 끝나는 시각에 다른 쪽이 시작하면 겹침이 아니에요.</dd></div>
+<div><dt>시간·위치 겹침</dt><dd>같은 현장·같은 날·같은 위치에서 시간이 겹치는 작업. 한쪽이 끝나는 시각에 다른 쪽이 시작하면 겹침이 아니에요. 위치는 선택 입력이라 비어 있어도 걸리지 않아요.</dd></div>
 <div><dt>변경 검토 중</dt><dd>그 작업에 확정 전 변경 제안이 있어요.</dd></div>
+<div><dt>날씨</dt><dd>내일 작업만. 공온 판정이 ‘진행’이 아니면 걸려요.</dd></div>
 </dl>
-<p class="small muted">모두 등록한 자료로 하는 규칙 점검이고 새 기준 수치를 쓰지 않아요. 홈의 날짜 옆 ‘확인’ 버튼(휴대폰은 화면을 아래로 당기기)을 누르면 내일 날씨를 새 예보로 다시 봐요. 나머지 항목은 화면을 열 때마다 다시 셉니다.</p>
+<p class="small muted">모두 등록한 자료로 하는 규칙 점검이에요. 홈 오른쪽 위 ‘공온 점검’ 버튼(휴대폰은 화면을 아래로 당기기)을 누르면 내일 날씨를 새 예보로 다시 봐요.</p>
 </section>
 
-<section class="panel guide" id="work">
+<section class="panel guide gx-reveal" id="work">
 <h2 class="h2">작업 올리기</h2>
 <ul class="guide-points">
-<li>작업은 ‘작업 고르기’에서 업종 → 업무분야 → 작업 순으로 골라요. 업종·업무분야 이름은 건설산업기본법 시행령의 전문공사 업종 표를 따랐고, 전기·통신·소방과 원청·감리 업무는 따로 묶었어요. 이 현장에서 쓴 작업은 맨 위 ‘자주 쓴 작업’에 모여요.</li>
-<li>작업을 여러 개 고르면 작업마다 따로 생겨요. 날짜도 여러 날 고를 수 있고, 달력을 끌면 그 사이 날이 한 번에 골라집니다.</li>
-<li>시간은 목록에서 고르거나 직접 쳐도 돼요. <code>930</code> → 09:30, <code>17</code> → 17:00. 종료 시간 옆에는 걸리는 시간이 보이고, 시작을 바꾸면 길이를 그대로 유지해요.</li>
-<li>오늘 작업은 <strong>지금 이후 시작</strong>으로만 올릴 수 있어요. 지난 날짜에는 올릴 수 없습니다.</li>
-<li>이미 시작한 오늘 작업은 시작 시각을 그대로 두면 끝 시각·위치를 고칠 수 있어요.</li>
-<li>작업 종류는 바꿀 수 없어요. 다른 작업이면 새로 올리세요. 시간·위치를 바꾸면 이전 판정은 기록으로 남고 다시 판정해야 해요.</li>
-<li>‘오늘 먼저 챙길 것’은 진행 중 → 곧 시작 → 빠진 정보(업체 미지정) 순서의 규칙으로 고릅니다. AI 추천이 아니에요.</li>
+<li>작업은 ‘작업 고르기’에서 업종 → 업무분야 → 작업 순으로 골라요. 이 현장에서 쓴 작업은 맨 위 ‘자주 쓴 작업’에 모여요.</li>
+<li>작업을 여러 개, 날짜를 여러 날 고르면 한 번에 여러 건이 생겨요. 이렇게 함께 올린 작업은 지울 때 <strong>함께 등록한 작업 모두</strong>를 고를 수 있어요. 날 상세의 <strong>선택</strong>으로 여러 건을 골라 지울 수도 있어요.</li>
+<li>시간은 목록에서 고르거나 직접 쳐도 돼요. <code>930</code> → 09:30, <code>17</code> → 17:00.</li>
+<li>오늘 작업은 <strong>지금 이후 시작</strong>으로만 올릴 수 있어요. 지난 날짜에는 올릴 수 없어요.</li>
+<li>시간·위치를 바꾸면 이전 판정은 기록으로 남고 다시 판정해야 해요.</li>
 </ul>
 </section>
 
-<section class="panel guide" id="import">
+<section class="panel guide gx-reveal" id="import">
 <h2 class="h2">공정표 파일로 가져오기</h2>
 <ul class="guide-points">
-<li>작업 일정의 ‘공정표 가져오기’에 엑셀(.xlsx)이나 CSV 파일을 올리면 작업이 한꺼번에 등록돼요. 첫 번째 시트의 첫 줄이 열 이름이에요.</li>
-<li>꼭 있어야 하는 열: <strong>날짜</strong>(2026-10-27, 2026.10.27도 됨) · <strong>시작</strong>·<strong>종료</strong>(07:00) · <strong>작업</strong>(작업 고르기에 있는 이름 그대로) · <strong>실행업체</strong>(이 현장 참여 업체 이름 그대로). <strong>위치</strong>·<strong>메모</strong>는 있으면 넣어요. 인원·장비처럼 다른 열은 무시해요.</li>
-<li>한 줄이라도 틀리면 아무것도 등록하지 않고 몇 번째 줄이 왜 틀렸는지 알려 드려요. 이미 똑같은 작업(날짜·시간·작업·위치·업체)이 있으면 건너뛰어서, 같은 파일을 두 번 올려도 두 번 생기지 않아요.</li>
-<li>위치에 ‘101동 9층 2구역’처럼 동·층을 적으면 위치별로 묶어 볼 수 있어요. 한 번에 300줄까지 올릴 수 있어요.</li>
+<li>일정의 ‘공정표 가져오기’에 엑셀(.xlsx)이나 CSV를 올리면 작업이 한꺼번에 등록돼요. 첫 줄이 열 이름이에요.</li>
+<li>꼭 있어야 하는 열: <strong>날짜</strong> · <strong>시작</strong> · <strong>종료</strong> · <strong>작업</strong>(작업 고르기의 이름 그대로) · <strong>실행업체</strong>(이 현장 업체 이름 그대로). <strong>위치</strong>·<strong>메모</strong>는 있으면 넣어요.</li>
+<li>한 줄이라도 틀리면 아무것도 등록하지 않고 몇 번째 줄이 왜 틀렸는지 알려 줘요. 똑같은 작업은 건너뛰어 두 번 생기지 않아요.</li>
 </ul>
 </section>
 
-<section class="panel guide" id="judge">
+<section class="panel guide gx-reveal" id="judge">
 <h2 class="h2">공온 판정 읽는 법</h2>
+<p class="gx-verdicts">{{ verdict_badge("진행") }} {{ verdict_badge("확인 필요") }} {{ verdict_badge("중지 검토") }} {{ verdict_badge("판정 불가") }}</p>
 <ul class="guide-points">
-<li>기상청 단기예보를 공종별 기준과 비교해 네 단계로 알려 드려요: {{ verdict_badge("진행") }} {{ verdict_badge("확인 필요") }} {{ verdict_badge("중지 검토") }} {{ verdict_badge("판정 불가") }}</li>
-<li>판정은 규칙으로만 합니다. 같은 예보·같은 기준이면 늘 같은 결과예요. 예보로 직접 비교할 수 없는 조건은 ‘중지 검토’로 올리지 않고 ‘확인 필요’까지만 냅니다.</li>
-<li>판정은 내일부터 7일 작업에 합니다. 오늘 작업은 일정·변경 관리용이라 판정하지 않아요.</li>
-<li>판정 기준을 원문과 아직 대조하지 못한 공종은 ‘판정 기준 준비 중’으로 보이고 ‘확인 필요’로만 판정합니다.</li>
-<li>날씨 기준이 있는 작업(‘날씨 판정’ 표시)만 그 기준으로 판정해요. 먹매김·철근·검측처럼 날씨 기준이 없는 작업은 ‘확인 필요’로 올리지 않고 폭염만 판정해요.</li>
-<li>폭염(체감온도)은 모든 작업에 같이 판정해 그 작업 결과에 합쳐요.</li>
-<li>판정은 예보값과 기준의 비교 결과일 뿐 현장 안전을 보장하지 않아요. 예보는 실제 날씨와 다를 수 있어요. <strong>최종 판단은 현장 책임자가 합니다.</strong></li>
+<li>기상청 단기예보를 작업별 기준과 비교해 네 단계로 알려 드려요. 판정은 규칙으로만 해서 같은 예보·같은 기준이면 늘 같은 결과예요.</li>
+<li>예보로 직접 비교할 수 없는 조건은 ‘중지 검토’로 올리지 않고 ‘확인 필요’까지만 내요.</li>
+<li>판정은 내일부터 7일 작업에 해요. 오늘 작업은 판정하지 않아요. 폭염(체감온도)은 모든 작업에 함께 판정해요.</li>
+<li>판정은 예보값과 기준의 비교일 뿐 현장 안전을 보장하지 않아요. 예보는 실제 날씨와 다를 수 있어요. <strong>최종 판단은 현장 책임자가 합니다.</strong></li>
 </ul>
 </section>
 
-<section class="panel guide" id="gongon-index">
+<section class="panel guide gx-reveal" id="gongon-index">
+<div class="gx-split">
+<div>
 <h2 class="h2">공온지수</h2>
-<p>그날 작업이 기상 기준에 걸리지 않는 정도(0~100). 기상청 예보에서 근거를 댈 수 있는 것만 씁니다. 판정을 대신하지 않습니다.</p>
+<p>그날 작업이 기상 기준에 걸리지 않는 정도(0~100). 기상청 예보에서 근거를 댈 수 있는 것만 써요. 판정을 대신하지 않아요.</p>
+</div>
+<div class="gx-ring" aria-hidden="true"><span class="ring ring--high" data-countup="95" style="--p: 95"><b>95</b></span></div>
+</div>
 <dl class="guide-list">
 <div><dt>기본</dt><dd>작업 시각마다 진행 100 · 확인 필요 50 · 중지 검토 0점의 평균</dd></div>
 <div><dt>기준 여유</dt><dd>진행이어도 예보값이 기준까지 10% 이내면 70, 20% 이내면 85점</dd></div>
 <div><dt>강수확률</dt><dd>비 기준이 있는 작업은 강수확률 60% 이상 70, 30% 이상 85점까지</dd></div>
 <div><dt>예보 변경</dt><dd>직전 발표 예보와 판정이 바뀐 작업이 있으면 10점 감점</dd></div>
 <div><dt>상한</dt><dd>확인 필요가 있으면 70, 중지 검토가 있으면 30점까지</dd></div>
-<div><dt>성긴 예보</dt><dd>3시간 간격처럼 예보가 성긴 날은 빈 시각을 같은 날 가까운 예보값으로 추정해 계산(추정 시각은 확인 필요까지만, 같은 날 값이 없는 시각은 빼고 계산)</dd></div>
-<div><dt>중기 참고</dt><dd>단기예보 값이 없어 중기예보만 있는 날(대개 6~7일 뒤)은 작업마다 100점에서 비·눈 기준이 있는 작업만 그날 강수확률로 낮추고, 먼 예보라 10점을 뺌. 비·눈이 예보되거나 기준 확인 전인 작업이 있으면 70점까지. 풍속·강우량은 없어 참고용이고 단기예보가 나오면 다시 계산</dd></div>
+<div><dt>성긴 예보</dt><dd>3시간 간격처럼 예보가 성긴 날은 빈 시각을 같은 날 가까운 예보값으로 추정해 계산(추정 시각은 확인 필요까지만)</dd></div>
+<div><dt>중기 참고</dt><dd>중기예보만 있는 날(대개 6~7일 뒤)은 비·눈 기준이 있는 작업만 강수확률로 낮추고 먼 예보라 10점을 빼요. 단기예보가 나오면 다시 계산해요.</dd></div>
 </dl>
-
 </section>
 
-<section class="panel guide" id="site">
-<h2 class="h2">현장·참여자</h2>
+<section class="panel guide gx-reveal" id="site">
+<h2 class="h2">현장·업체</h2>
 <ul class="guide-points">
-<li>주소 찾기로 고르면 위도·경도까지 채워져요. 주소로 찾을 수 없을 때 직접 입력하세요. 저장하면 기상청 격자로 바뀝니다.</li>
-<li>기상청 격자는 대표값이라 현장과 차이가 있을 수 있어요. 작업은 작업 일정에서 올려요.</li>
-<li>업체는 사람 없이 먼저 등록해요(협력업체·자재 공급·장비 임대·감리·CM). 빠진 업체는 지우지 않고 제외해요. 새 작업 실행 업체에서만 빠지고 지난 기록은 남아요.</li>
-<li>업체마다 담당자 명부(이름·직책·연락처)를 둬요. 직책은 연락용이고 권한과는 따로예요. 열람자에게는 이름·직책만 보여요.</li>
-<li>로그인할 사람은 가입한 이메일로 참여자로 추가해요. 같은 이름 업체가 있으면 붙일지 따로 둘지 골라요(자동으로 합치지 않아요). 명부의 사람과 계정을 연결할 수 있어요.</li>
-<li>업체 등록·종료, 명부, 참여자 추가·회수와 현장 수정은 조정자만 할 수 있어요.</li>
+<li>현장을 만든 사람이 조정자예요. 다른 사람은 조정자에게 받은 <strong>현장 코드</strong>(8자리)를 머리줄 현장 칩 → 현장 추가 → 코드로 참여에 넣으면 담당자로 들어와요.</li>
+<li>업체는 사람 없이 먼저 등록해요. 맡은 업종은 꼭 하나 이상 고르고, 목록에 없으면 직접 입력해요.</li>
+<li>빠진 업체는 지우지 않고 <strong>제외</strong>해요. 지난 작업·조치 기록이 그 업체를 가리키기 때문이에요. 제외한 업체는 표 아래 묶음에 있고 복귀할 수 있어요.</li>
+<li>업체 정보의 담당자 탭에서 담당자 명부(이름·직책·연락처)와 로그인 참여자를 함께 봐요. 열람자에게는 이름·직책만 보여요.</li>
 </ul>
 </section>
 
-<section class="panel guide" id="change">
+<section class="panel guide gx-reveal" id="change">
 <h2 class="h2">변경은 이렇게 흘러가요</h2>
 <ol class="guide-steps">
-<li><strong>제안</strong> 조정자·담당자가 바뀐 날짜·시간·위치와 원인을 적어요.</li>
-<li><strong>영향 검토</strong> 함께 바꿔야 할 일을 확인해요.</li>
-<li><strong>확정</strong> 조정자가 확정하면 작업 계획이 바뀝니다. 확정한 버전은 고치지 않고, 다시 바꾸려면 재변경을 제안해요. 제안할 때와 확정할 때 모두 오늘 작업은 지금 이후 시작이어야 합니다. 이미 시작한 오늘 작업의 시작을 그대로 두는 예외는 같아요.</li>
+<li><strong>제안</strong> 바뀐 날짜·시간·위치와 원인을 적어요.</li>
+<li><strong>영향 검토</strong> 함께 바꿔야 할 일을 조치 후보로 적어요.</li>
+<li><strong>확정</strong> 조정자가 확정하면 작업 계획이 바뀌어요. 확정한 버전은 고치지 않고, 다시 바꾸려면 재변경을 제안해요. 제안·확정 모두 오늘 작업은 지금 이후 시작이어야 해요.</li>
 </ol>
-<p class="small muted">확정은 작업 계획을 바꾼 기록이에요. 공급사 예약·출역 변경이 끝났다는 뜻은 아니니 후속 조치로 따로 챙겨요.</p>
+<p class="small muted">확정은 작업 계획을 바꾼 기록이에요. 공급사 예약·출역 변경이 끝났다는 뜻은 아니니 후속 조치로 챙겨요.</p>
 </section>
 
-<section class="panel guide" id="actions">
+<section class="panel guide gx-reveal" id="actions">
 <h2 class="h2">후속 조치는 이렇게 끝나요</h2>
 <ol class="guide-steps">
-<li><strong>조치 후보</strong> 확정 전 버전에 누가, 언제까지, 무엇을 확인하면 끝나는지(완료 기준) 적어요. 필수 조치가 없으면 확정할 때 이유를 남겨요.</li>
-<li><strong>요청</strong> 확정하면 후보가 업체에 요청돼요. 계정이 없는 담당자 몫은 조정자가 전화로 확인해 대신 기록해요(연락 상대·시각 필수).</li>
+<li><strong>요청</strong> 확정하면 후보가 업체에 요청돼요. 계정이 없는 담당자 몫은 조정자가 전화로 확인해 대신 기록해요.</li>
 <li><strong>완료 보고</strong> 수행한 사람이 실제 처리 시각과 내용을 남겨요. 막히면 이유와 풀 담당을 적어요.</li>
 <li><strong>검증</strong> 보고한 사람과 다른 사람이 확인해야 끝나요. 필수 조치가 모두 끝나면 조정자가 변경 건을 종료해요.</li>
 </ol>
-<p class="small muted">재변경을 제안하면 지난 버전 조치가 새 버전 후보로 넘어와요. 고치거나 빼고 확정하세요. 작업에는 늘 실행 업체가 있어야 하고, 작업 위치는 선택이에요.</p>
 </section>
 
-<section class="panel guide" id="chat">
+<section class="panel guide gx-reveal" id="chat">
 <h2 class="h2">현장 대화</h2>
-<p>현장마다 방이 하나 있고, 그 현장 참여자만 읽고 써요. 메시지에 변경 건을 붙이면 지금 상태가 카드로 보여요. 메시지나 읽음은 작업 승인·조치 완료가 아니에요. 처리는 변경 건의 조치에서 해요.</p>
+<p>현장마다 방이 하나 있고, 그 현장 참여자만 읽고 써요. 메시지나 읽음은 작업 승인·조치 완료가 아니에요. 처리는 변경 건의 조치에서 해요.</p>
 </section>
 
-<section class="panel guide" id="roles">
+<section class="panel guide gx-reveal" id="roles">
 <h2 class="h2">역할</h2>
 <dl class="guide-list">
-<div><dt>조정자</dt><dd>원청 소속. 현장·작업 관리, 판정 실행, 변경 확정, 참여자 관리.</dd></div>
-<div><dt>담당자</dt><dd>변경 제안과 자기 업체 조치 처리.</dd></div>
-<div><dt>열람자</dt><dd>보기만 합니다. 연락처는 보이지 않아요.</dd></div>
+<div><dt>조정자</dt><dd>원청 소속. 현장·작업 관리, 판정 실행, 변경 확정, 업체·참여자 관리, 현장 코드 관리.</dd></div>
+<div><dt>담당자</dt><dd>변경 제안과 자기 업체 조치 처리. 현장 코드로 들어온 사람도 담당자예요.</dd></div>
+<div><dt>열람자</dt><dd>보기만 해요. 연락처는 보이지 않아요.</dd></div>
 <div><dt>게시(현장 TV)</dt><dd>현장 휴게실 화면용 공용 계정. 오늘·내일 작업 게시 화면만 열려요.</dd></div>
 </dl>
 </section>
+<script>
+// 가이드 움직임(C04-50): 화면에 들어온 칸을 살짝 올리며 보이고, 공온지수 원은 숫자를 센다
+(() => {
+  const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const items = document.querySelectorAll(".gx-reveal");
+  if (calm || !("IntersectionObserver" in window)) { items.forEach((el) => el.classList.add("is-in")); return; }
+  const count = (ring) => {
+    const goal = Number(ring.dataset.countup), label = ring.querySelector("b"), t0 = performance.now();
+    const tick = (t) => {
+      const k = Math.min(1, (t - t0) / 1200), v = Math.round(goal * (1 - Math.pow(1 - k, 3)));
+      ring.style.setProperty("--p", v); label.textContent = v;
+      if (k < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  };
+  const io = new IntersectionObserver((entries) => entries.forEach((e) => {
+    if (!e.isIntersecting) return;
+    e.target.classList.add("is-in");
+    e.target.querySelectorAll("[data-countup]").forEach(count);
+    io.unobserve(e.target);
+  }), { threshold: 0.15 });
+  items.forEach((el) => io.observe(el));
+})();
+</script>
 {% endblock %}
