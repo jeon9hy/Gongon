@@ -2598,12 +2598,13 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .siteswitch__live { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 999px; background: #2E9E5B; }
 .siteswitch__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .siteswitch__panel { position: absolute; top: calc(100% + 8px); left: 0; z-index: 30; width: 280px; padding: 6px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--card); box-shadow: 0 12px 32px #0E1E4524; }
-.siteswitch__list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; max-height: 50vh; overflow-y: auto; }
+.siteswitch__list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; margin: 0; padding: 0; list-style: none; max-height: 50vh; overflow-x: hidden; overflow-y: auto; }
+.siteswitch__list > li { min-width: 0; }
 .siteswitch__item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius-md); text-decoration: none; color: var(--ink); font-size: 14px; font-weight: 600; }
 .siteswitch__item:hover, .siteswitch__item[aria-current="true"] { background: var(--accent-soft); }
 .siteswitch__item--all { color: var(--muted); }
 .siteswitch__dot { display: grid; place-items: center; width: 26px; height: 26px; flex: 0 0 auto; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; }
-.siteswitch__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.siteswitch__name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .siteswitch__empty, .siteswitch__loading { padding: 10px; font-size: 13px; color: var(--muted); }
 .siteswitch__foot { display: flex; align-items: center; gap: 4px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line-soft); }
 .siteswitch__foot .siteswitch__action { flex: 1; }
@@ -2778,18 +2779,46 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .delscope__text small { font-size: 12px; color: var(--muted); }
 .modal__actions--split { align-items: center; }
 .modal__actions--split p { flex: 1; margin: 0; }
-/* 홈 내 차례(C04-44, D-099): 왼쪽 받은 일, 오른쪽 흐름·내일 */
-.homebar__urgent { color: var(--stop-text); }
-.homegrid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: stretch; }
-/* 내 차례 카드는 오른쪽 칸 높이만큼 늘어나 아래에 빈칸이 남지 않게 한다 */
-.homegrid > .inbox { display: flex; flex-direction: column; }
-.homegrid > .inbox .inbox__empty { flex: 1; justify-content: center; }
-.homegrid > .hsec, .homeside > .hsec { margin: 0; }
-.homeside { display: grid; gap: 20px; }
-@media (max-width: 960px) { .homegrid { grid-template-columns: minmax(0, 1fr); } }
-.inbox__group + .inbox__group { margin-top: 16px; }
-.inbox__k { margin: 0 0 8px; padding-left: 6px; font-size: 13px; font-weight: 700; color: var(--muted); }
-.inbox__k small { font-size: 12px; font-weight: 500; }
+/* 홈 내 차례(C04-44·C04-51, D-099): 위 얇은 줄 + 2행 2열 묶음 카드 */
+.homestrip { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 12px; margin-bottom: 16px; }
+.homestrip__card { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 12px 16px; border: 1px solid var(--line-soft); border-radius: var(--radius-lg); background: var(--card); text-decoration: none; color: inherit; }
+.homestrip__card:hover { border-color: var(--line); }
+.homestrip__k { display: grid; flex: none; margin-right: 6px; font-size: 13px; font-weight: 700; color: var(--ink); }
+.homestrip__k small { font-size: 12px; font-weight: 500; color: var(--muted); }
+.homestrip .flow { display: flex; }
+.homestrip .flow__step { flex: 1 1 0; padding: 6px 4px; }
+.homestrip .flow__step b { font-size: 17px; }
+.homestrip .ring { flex: none; width: 46px; height: 46px; margin: 0; }
+.homestrip .ring::before { inset: 5px; }
+.homestrip .ring b { font-size: 14px; }
+.inbox .hsec__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+/* 한 줄 두 칸(C04-51): 왼쪽 오늘 일정, 오른쪽 챙길 일 소탭 */
+.homerow { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.homerow > .hsec { margin: 0; min-width: 0; }
+.homerow > .hsec--today { order: -1; }
+.homerow--single { grid-template-columns: minmax(0, 1fr); }
+.inboxtabs { display: flex; gap: 4px; padding: 3px; border-radius: 999px; background: var(--surface); }
+.inboxtabs__tab { flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 10px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.inboxtabs__tab[aria-selected="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px #0E1E4514, inset 0 0 0 1px var(--line); }
+.inboxtabs__n { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--card); color: var(--ink); font-size: 11px; }
+.inboxtabs__n--verify { background: var(--accent-soft); color: var(--accent); }
+.inboxtabs__n--hold { background: var(--stop-soft); color: var(--stop-text); }
+.inboxtabs__n--decide { background: var(--verdict-check-bg); color: var(--verdict-check-fg); }
+.inboxslides { display: grid; grid-auto-flow: column; grid-auto-columns: 100%; margin-top: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; }
+.inboxslides::-webkit-scrollbar { display: none; }
+.inboxcard { display: flex; flex-direction: column; gap: 10px; min-width: 0; scroll-snap-align: start; }
+.inboxcard__hint { margin: 0; padding-left: 6px; font-size: 12px; color: var(--muted); }
+.inboxcard__view { display: grid; gap: 8px; }
+.inboxcard__view[hidden] { display: none; }
+.inboxcard__all { align-self: flex-end; display: inline-flex; align-items: center; gap: 2px; font-size: 13px; font-weight: 600; color: var(--accent); text-decoration: none; }
+.inbox__count { flex: none; display: inline-grid; place-items: center; min-width: 22px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 11px; font-weight: 700; }
+.inbox__more > summary { display: inline-flex; align-items: center; gap: 4px; padding: 4px; list-style: none; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--muted); }
+.inbox__more > summary::-webkit-details-marker { display: none; }
+.inbox__more[open] > summary svg { transform: rotate(180deg); }
+.inbox__more > .inbox__list { margin-top: 6px; max-height: 360px; overflow-y: auto; }
+.inbox__none { display: flex; align-items: center; gap: 6px; margin: 0; padding: 10px 4px; font-size: 13px; color: var(--muted); }
+.inbox__none svg { color: var(--verdict-go-mark); }
+@media (max-width: 960px) { .homestrip, .homerow { grid-template-columns: minmax(0, 1fr); } .homerow > .hsec--today { order: 0; } }
 .inbox__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .inbox__item { display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 16px; border: 1px solid var(--line-soft); border-radius: var(--radius-md); background: var(--card); box-shadow: inset 4px 0 0 var(--line); }
 .inbox__item--stop { box-shadow: inset 4px 0 0 var(--verdict-stop-mark); }
@@ -2807,7 +2836,6 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .inbox__meta em { font-style: normal; font-weight: 700; color: var(--stop-text); }
 .inbox__go { flex: none; }
 .inbox__empty { display: flex; align-items: center; gap: 14px; padding: 8px 0; color: var(--muted); }
-.homeside { align-content: start; }
 .inbox__empty p { margin: 0; }
 @media (max-width: 560px) { .inbox__item { flex-wrap: wrap; } .inbox__go { margin-left: auto; } }
 .flow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; text-decoration: none; }
@@ -2900,4 +2928,13 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
   .gx-phone__tabs span:first-child { background: var(--accent-soft); color: var(--accent); }
   .gx-reveal { opacity: 1; transform: none; transition: none; }
 }
+/* 홈 맨 위 ‘먼저 할 일’ 한 줄(C04-51) */
+.urgent { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 10px; padding: 10px 14px; border: 1px solid var(--line-soft); border-radius: var(--radius-md); background: var(--card); box-shadow: inset 4px 0 0 var(--verdict-check-mark); color: var(--ink); text-decoration: none; }
+.urgent--stop { box-shadow: inset 4px 0 0 var(--verdict-stop-mark); }
+.urgent--blue { box-shadow: inset 4px 0 0 var(--accent); }
+.urgent:hover { border-color: var(--line); }
+.urgent__k { font-size: 12px; font-weight: 700; color: var(--muted); }
+.urgent__what { font-size: 15px; }
+.urgent__meta { font-size: 13px; color: var(--muted); }
+.urgent__go { margin-left: auto; display: inline-flex; align-items: center; gap: 2px; font-size: 13px; font-weight: 700; color: var(--accent); }
 

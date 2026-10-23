@@ -1,7 +1,7 @@
 {% from "_macros.html" import choice_input %}
 {# 버전별 후속 조치(C06). r: RevisionView, view: ChangeDetailView #}
 {% set ra = r.actions %}
-{% set kind_labels = {"accept": "수락", "resume": "다시 수행", "block": "막힘 보고", "report": "완료 보고", "verify": "검증 완료", "reject": "반려", "exclude": "제외", "phone": "전화 기록"} %}
+{% set kind_labels = {"accept": "수락", "resume": "다시 수행", "block": "보류 보고", "report": "완료 보고", "verify": "검증 완료", "reject": "반려", "exclude": "제외", "phone": "전화 기록"} %}
 {% if ra and (ra.cards or ra.editor) %}
 <div class="acts" id="rev-{{ r.revision_id }}">
 <div class="acts__head">
@@ -12,7 +12,7 @@
 <b>필수 {{ ra.required_done }}/{{ ra.required_total }}</b>
 </span>
 {% elif ra.candidates %}<span class="acts__note">후보 {{ ra.candidates }}건 · 확정하면 요청돼요</span>{% endif %}
-{% if ra.blocked %}<span class="pill pill--warn">막힘 {{ ra.blocked }}</span>{% endif %}
+{% if ra.blocked %}<span class="pill pill--warn">보류 {{ ra.blocked }}</span>{% endif %}
 {% if ra.editor %}<button type="button" class="btn btn--soft btn--sm acts__add" data-open-dialog="cand-{{ r.revision_id }}">{{ icon("plus", 14, 2.2) }} 조치 후보</button>{% endif %}
 </div>
 
@@ -32,7 +32,7 @@
 <div><dt>검증</dt><dd>{{ c.verifier_text }}</dd></div>
 <div><dt>기한</dt><dd{% if c.overdue %} class="is-overdue"{% endif %}>{{ c.due_text }}</dd></div>
 </dl>
-{% if c.blocked_text %}<p class="acard__note acard__note--warn">막힘 · {{ c.blocked_text }}</p>{% endif %}
+{% if c.blocked_text %}<p class="acard__note acard__note--warn">보류 · {{ c.blocked_text }}</p>{% endif %}
 {% if c.report_text %}<p class="acard__note">{{ c.report_text }}</p>{% endif %}
 {% if c.late_text %}<p class="acard__note acard__note--warn">{{ c.late_text }}</p>{% endif %}
 {% if c.exclude_text %}<p class="acard__note">제외 이유 · {{ c.exclude_text }}</p>{% endif %}
@@ -83,8 +83,8 @@
 </div>
 <label class="field">참조 번호<input type="text" name="reference" maxlength="100" placeholder="선택 · 예약 번호 등"></label>
 {% elif kind == "block" %}
-<label class="field">막힌 이유<textarea name="body" rows="3" maxlength="1000" required></textarea></label>
-<label class="field">막힘을 풀 담당<input type="text" name="resolver" maxlength="60" required placeholder="사람·회사"></label>
+<label class="field">보류 이유<textarea name="body" rows="3" maxlength="1000" required></textarea></label>
+<label class="field">보류를 풀 담당<input type="text" name="resolver" maxlength="60" required placeholder="사람·회사"></label>
 {% elif kind == "reject" %}
 <label class="field">반려 이유<textarea name="body" rows="3" maxlength="1000" required></textarea></label>
 {% elif kind == "exclude" %}

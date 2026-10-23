@@ -11,11 +11,11 @@
 
 <div class="kpis kpis--my">
 <a class="kpi kpi--link" href="#g-respond"><span class="kpi__label">응답 대기</span><span class="kpi__value">{{ view.to_respond | length }}<small>건</small></span></a>
-<a class="kpi kpi--link" href="#g-blocked"><span class="kpi__label">막힘</span><span class="kpi__value">{{ view.blocked | length }}<small>건</small></span></a>
+<a class="kpi kpi--link" href="#g-blocked"><span class="kpi__label">보류</span><span class="kpi__value">{{ view.blocked | length }}<small>건</small></span></a>
 <a class="kpi kpi--link" href="#g-verify"><span class="kpi__label">검증 대기</span><span class="kpi__value">{{ view.to_verify | length }}<small>건</small></span></a>
 </div>
 
-{% for key, title, rows, empty in [("respond", "응답 대기", view.to_respond, "응답할 조치가 없어요."), ("blocked", "막힘", view.blocked, "막힌 조치가 없어요."), ("verify", "검증 대기", view.to_verify, "검증할 조치가 없어요.")] %}
+{% for key, title, rows, empty in [("respond", "응답 대기", view.to_respond, "응답할 조치가 없어요."), ("blocked", "보류", view.blocked, "보류 중인 조치가 없어요."), ("verify", "검증 대기", view.to_verify, "검증할 조치가 없어요.")] %}
 <section class="hsec" id="g-{{ key }}" aria-labelledby="g-{{ key }}-title">
 <div class="hsec__head"><h2 class="hsec__title" id="g-{{ key }}-title">{{ title }} <span>{{ rows | length }}건 · 기한 지난 것부터</span></h2></div>
 {% if rows %}

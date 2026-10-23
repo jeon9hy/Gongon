@@ -292,7 +292,7 @@ def test_cell_shows_the_count_instead_of_dots(client: TestClient) -> None:
     assert names == ["철골 작업"] * 3
     assert 'class="calwork__item calwork__item--more">+3건<' in cell
     assert "dot--btn" not in cell
-    legend = '<span class="colegend__dot" style="--c: #2B63D9; --bg: #D6E6FE"></span>철강구조물'
+    legend = '<span class="colegend__dot" style="--c: #EA580C; --bg: #FFEDD5"></span>철강구조물'
     assert legend in page
     company = page.split('data-groupview="company"')[1].split('data-groupview="place"')[0]
     assert company.count('class="workcard"') == 6  # 상세 패널에는 여섯 건 모두
@@ -312,7 +312,9 @@ def test_day_detail_groups_by_company_and_by_floor_and_marks_problems(
     names = re.findall(r'class="grp__title"><strong>([^<]+)</strong>', place)
     assert names == ["101동 9층", "102동 지하1층"]  # 동 → 층 순, 같은 동·층은 한 묶음
     cell = page.split('aria-label="10월 5일, 작업 3건"')[1].split("</td>")[0]
-    assert 'class="calsum__warn"' in cell  # 같은 곳 같은 시간 겹침
+    assert (
+        'calpill--check">확인 2<' in cell
+    )  # 같은 곳 같은 시간 겹침 두 건은 '확인'으로 함께 센다(C04-51)
     company = page.split('data-groupview="company"')[1].split('data-groupview="place"')[0]
     assert company.count("같은 위치·같은 시간 겹침") == 2  # 묶음 ! 만이 아니라 걸린 카드마다 이유
     assert company.count("workcard workcard--warn") == 2

@@ -185,8 +185,8 @@ def build_view(
                     addable=d >= today and _works_on(shown, d),
                     holiday=holidays_of(d.year).get(d),
                     item_ids=tuple(i.item_id for i in on_day),
-                    warn=any(i.performing_participant_id is None for i in on_day)
-                    or bool(overlapping_ids(on_day)),
+                    warn=bool(warned := _warned_ids(on_day)),
+                    warn_ids=tuple(sorted(warned)),
                     trades=_trade_counts(on_day),
                     events=tuple(
                         (i.work_type, TRADE_OF_KIND.get(i.work_type, OTHER_TRADE))
@@ -891,6 +891,13 @@ def group_items(
     if by == "place":
         return sorted(groups.items(), key=lambda g: place_order(g[0]))
     return sorted(groups.items(), key=lambda g: (g[0] != UNASSIGNED, g[0]))
+
+
+def _warned_ids(items: list[WorkItemRecord]) -> set[int]:
+    """업체 미지정이거나 같은 곳·같은 시간에 겹치는 작업(공온 점검과 같은 기준)."""
+    return overlapping_ids(items) | {
+        i.item_id for i in items if i.performing_participant_id is None
+    }
 
 
 def _trade_counts(items: Iterable[WorkItemRecord]) -> tuple[tuple[str, int], ...]:

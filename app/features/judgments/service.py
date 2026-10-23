@@ -2054,8 +2054,8 @@ def build_inbox(
 ) -> HomeInbox:
     """홈의 내 차례(C04-44, D-099): 변경 → 후속 조치 → 완료 근거 흐름에서 지금 내가 할 일.
 
-    묶음 순서: 오늘 안에(오늘 작업의 점검 문제, 내 응답·수행) → 확인해 주세요(완료 보고 검증)
-    → 막힌 일 → 결정 기다리는 변경·내일 판정. 머리줄 현장 칩으로 고른 현장만 본다."""
+    오늘 작업의 점검 문제는 '먼저 할 일' 고르기에, 나머지는 소탭(할 일·확인 대기·보류·결정 대기)에.
+    머리줄 현장 칩으로 고른 현장만 본다."""
     chosen = view.selected_site_id
     site_ids = [s.site_id for s in view.sites]
     managed = [i for i in site_ids if i in manageable]
@@ -2075,6 +2075,9 @@ def build_inbox(
             href=i.href,
             action=action,
             late="기한 지남" if i.overdue else "",
+            work=i.title,
+            place=i.site_name,
+            site=i.site_name,
         )
 
     today_board, tomorrow_board = view.boards
@@ -2096,9 +2099,12 @@ def build_inbox(
                         href=w.href,
                         action="업체 정하기" if company else "일정 보기",
                         detail=x.label,
+                        work=w.work_type,
+                        place=w.location or w.site_name,
+                        site=w.site_name,
                     )
                 )
-    today += [action_item(i, "응답", "warn", "열기") for i in mine.to_respond if here(i.site_id)]
+    respond = [action_item(i, "응답", "warn", "열기") for i in mine.to_respond if here(i.site_id)]
     verify = [action_item(i, "완료 보고", "blue", "검증하기") for i in mine.to_verify
               if here(i.site_id)]  # fmt: skip
     blocked_mine = [i for i in mine.blocked if here(i.site_id)]
@@ -2107,7 +2113,7 @@ def build_inbox(
         i for i in actions_service.blocked_at_sites(session, user, managed, now)
         if here(i.site_id) and i.href not in seen
     ]  # fmt: skip
-    blocked = [action_item(i, "막힘", "stop", "조치 보기") for i in blocked_all]
+    blocked = [action_item(i, "보류", "stop", "조치 보기") for i in blocked_all]
     decide = [
         InboxItem(
             tag="변경 검토",
@@ -2116,6 +2122,8 @@ def build_inbox(
             meta=f"{c.work_label} → {c.after_text}",
             href=c.href,
             action="검토하기",
+            work=c.title,
+            place=c.work_label,
         )
         for c in changes_service.awaiting_review(session, [i for i in managed if here(i)])
     ]
@@ -2125,23 +2133,70 @@ def build_inbox(
                 tag=f"내일 {w.weather}", tone="stop" if w.weather == "중지 검토" else "warn",
                 title=f"{w.work_type}{' · ' + w.location if w.location else ''}",
                 meta=f"{w.time_text} · {w.site_name}", href=w.href, action="근거 보기",
+                work=w.work_type, place=w.location or w.site_name, site=w.site_name,
             ))  # fmt: skip
-    groups = tuple(
-        g for g in (
-            InboxGroup("today", "오늘 안에", "작업 시간이 다가오거나 답을 기다려요", tuple(today)),
-            InboxGroup("verify", "확인해 주세요", "협력업체가 끝냈다고 보고했어요", tuple(verify)),
-            InboxGroup("blocked", "막힌 일", "진행할 수 없다고 했어요", tuple(blocked)),
-            InboxGroup("decide", "결정 기다리는 변경 · 내일 판정", "", tuple(decide)),
-        ) if g.items
-    )  # fmt: skip
+    candidates = (
+        _inbox_group("respond", "할 일", "내가 답하거나 수행할 요청", respond, "/actions"),
+        _inbox_group("verify", "확인 대기", "협력업체가 끝냈다고 보고했어요", verify, "/actions"),
+        _inbox_group("hold", "보류", "진행할 수 없다고 했어요", blocked, "/actions"),
+        _inbox_group("decide", "결정 대기", "검토 중 변경 · 내일 판정", decide, "/changes"),
+    )
+    groups = tuple(g for g in candidates if g.key != "respond" or g.total)  # 할 일은 있을 때만
     counts = actions_service.flow_counts(
         session, [i for i in site_ids if here(i)], now - timedelta(days=7)
     )
     flow = (
-        ("requested", "요청 대기", counts.get("requested", 0), ""),
-        ("accepted", "수행 중", counts.get("accepted", 0), ""),
-        ("blocked", "막힘", counts.get("blocked", 0), "stop"),
-        ("reported", "검증 대기", counts.get("reported", 0), "warn"),
-        ("verified", "검증 완료", counts.get("verified", 0), ""),
+        ("open", "진행 중", counts.get("requested", 0) + counts.get("accepted", 0), ""),
+        ("blocked", "보류", counts.get("blocked", 0), "stop"),
+        ("reported", "확인 대기", counts.get("reported", 0), "warn"),
+        ("verified", "완료", counts.get("verified", 0), ""),
     )
-    return HomeInbox(groups=groups, flow=flow, flow_href="/actions")
+    return HomeInbox(
+        groups=groups,
+        today=_merge_inbox(today, "work"),
+        today_total=len(today),
+        flow=flow,
+        flow_href="/actions",
+    )
+
+
+def _inbox_group(
+    key: str, title: str, hint: str, items: list[InboxItem], more_href: str
+) -> InboxGroup:
+    return InboxGroup(
+        key=key,
+        title=title,
+        hint=hint,
+        by_work=_merge_inbox(items, "work"),
+        by_place=_merge_inbox(items, "place"),
+        total=len(items),
+        more_href=more_href,
+    )
+
+
+def _merge_inbox(items: list[InboxItem], by: Literal["work", "place"]) -> tuple[InboxItem, ...]:
+    """같은 꼬리표·같은 공정(또는 위치)은 한 줄로 합친다(C04-51). 처음 나온 순서를 지킨다."""
+    buckets: dict[tuple[str, str], list[InboxItem]] = {}
+    for i in items:
+        buckets.setdefault((i.tag, i.work if by == "work" else i.place), []).append(i)
+    merged: list[InboxItem] = []
+    for (_, label), same in buckets.items():
+        first = same[0]
+        if len(same) == 1:
+            merged.append(first)
+            continue
+        sites = list(dict.fromkeys(i.site for i in same if i.site))
+        others = list(dict.fromkeys(i.place if by == "work" else i.work for i in same))
+        where = f"현장 {len(sites)}곳" if len(sites) > 1 else (sites[0] if sites else "")
+        what = others[0] + (f" 외 {len(others) - 1}" if len(others) > 1 else "")
+        merged.append(
+            replace(
+                first,
+                title=label,
+                meta=" · ".join(x for x in (f"{len(same)}건", what, where) if x),
+                late=next((i.late for i in same if i.late), ""),
+                detail=", ".join(dict.fromkeys(i.detail for i in same if i.detail)),
+                count=len(same),
+            )
+        )
+    return tuple(merged)

@@ -290,7 +290,9 @@ class DayPanel:
 
 @dataclass(frozen=True, slots=True)
 class InboxItem:
-    """홈 내 차례 한 줄(C04-44): 무엇을, 왜, 어디서, 바로 할 일 하나."""
+    """홈 내 차례 한 줄(C04-44): 무엇을, 왜, 어디서, 바로 할 일 하나.
+
+    같은 일(같은 꼬리표·공정 또는 위치)은 한 줄로 합치고 건수·현장 수를 보인다(C04-51)."""
 
     tag: str  # "업체 미지정" · "검증" · "막힘" · "응답" · "변경 검토" · "내일 확인 필요"
     tone: Literal["stop", "warn", "blue", "plain"]
@@ -300,6 +302,10 @@ class InboxItem:
     action: str  # 버튼 글자
     late: str = ""  # 늦음 표시(빨간 글자)
     detail: str = ""  # 마우스를 올리면 보이는 자세한 이유(예: 같은 곳·같은 시간 상대 작업)
+    work: str = ""  # 공정(작업 이름·조치 이름) — 공정별 묶기 열쇠
+    place: str = ""  # 위치(작업 위치, 없으면 현장) — 위치별 묶기 열쇠
+    site: str = ""
+    count: int = 1  # 합친 건수
 
 
 @dataclass(frozen=True, slots=True)
@@ -307,24 +313,34 @@ class InboxGroup:
     key: str
     title: str
     hint: str
-    items: tuple[InboxItem, ...]
+    by_work: tuple[InboxItem, ...]  # 공정별로 합친 줄
+    by_place: tuple[InboxItem, ...]  # 위치별로 합친 줄
+    total: int  # 합치기 전 건수
+    more_href: str  # 전체 목록 화면
 
 
 @dataclass(frozen=True, slots=True)
 class HomeInbox:
-    """홈 첫 화면의 내 차례(C04-44, D-099). 급한 묶음부터."""
+    """홈 첫 화면의 챙길 일(C04-44·C04-51, D-099).
 
-    groups: tuple[InboxGroup, ...]
+    오늘 작업의 점검 문제는 왼쪽 오늘 일정에 보이고 맨 위 '먼저 할 일'을 고르는 데만 쓴다.
+    오른쪽 카드는 넘겨 보는 소탭: (할 일) · 확인 대기 · 보류 · 결정 대기."""
+
+    groups: tuple[InboxGroup, ...]  # 소탭 순서. 할 일은 있을 때만
+    today: tuple[InboxItem, ...]  # 오늘 작업 점검 문제(공정별로 합친 줄)
     flow: tuple[tuple[str, str, int, str], ...]  # (상태, 이름, 건수, 강조 tone)
     flow_href: str
+    today_total: int = 0
 
     @property
     def total(self) -> int:
-        return sum(len(g.items) for g in self.groups)
+        return self.today_total + sum(g.total for g in self.groups)
 
     @property
     def first(self) -> InboxItem | None:
-        return next((g.items[0] for g in self.groups if g.items), None)
+        if self.today:
+            return self.today[0]
+        return next((g.by_work[0] for g in self.groups if g.by_work), None)
 
 
 @dataclass(frozen=True, slots=True)

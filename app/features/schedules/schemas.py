@@ -140,6 +140,7 @@ class CalendarDay:
     # 칸에는 점 대신 건수와 챙길 것만 보인다(D-085). 판정 단계는 화면에서 item_ids로 찾는다.
     item_ids: tuple[int, ...] = ()
     warn: bool = False  # 업체 미지정·같은 곳 같은 시간 겹침이 있다(공온 점검과 같은 기준)
+    warn_ids: tuple[int, ...] = ()  # 그 작업들(달력 '확인' 수에 날씨 확인 필요와 합쳐 센다, C04-51)
     holiday: str | None = None  # 공휴일 이름(특일 정보, 대체공휴일 포함)
     # 업종별 작업 수(D-089): (업종, 건수), 많은 순. 달력 칸 막대
     trades: tuple[tuple[str, int], ...] = ()

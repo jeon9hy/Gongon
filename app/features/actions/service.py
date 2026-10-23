@@ -401,11 +401,11 @@ def act(
             errors.append("처리 시각은 지금보다 늦을 수 없습니다.")
     if kind == "block":
         if not body:
-            errors.append("막힌 이유를 입력하세요.")
+            errors.append("보류 이유를 입력하세요.")
         if not form.resolver.strip():
-            errors.append("막힘을 풀 담당(사람·회사)을 입력하세요.")
+            errors.append("보류를 풀 담당(사람·회사)을 입력하세요.")
         elif len(form.resolver.strip()) > RESOLVER_MAX:
-            errors.append(f"막힘을 풀 담당은 {RESOLVER_MAX}자 이하로 입력하세요.")
+            errors.append(f"보류를 풀 담당은 {RESOLVER_MAX}자 이하로 입력하세요.")
     if kind in ("reject", "exclude") and not body:
         errors.append("반려 이유를 입력하세요." if kind == "reject" else "제외 이유를 입력하세요.")
     if errors:
@@ -484,7 +484,7 @@ def closure_problems(session: Session, revision_id: int) -> tuple[int, tuple[str
         problems.append(f"필수 조치 {len(waiting)}건이 아직 검증 완료되지 않았습니다.")
     blocked = [a for a in actions if a.status == "blocked"]
     if blocked:
-        problems.append(f"막힌 조치 {len(blocked)}건이 해결되지 않았습니다.")
+        problems.append(f"보류 중인 조치 {len(blocked)}건이 풀리지 않았습니다.")
     return len(required), tuple(problems)
 
 
@@ -1158,7 +1158,7 @@ def blocked_at_sites(
     items = []
     for a in rows:
         due_text, overdue = _due_text(a, now)
-        items.append(_my_item(a, sites, "막힘 해결", due_text, overdue))
+        items.append(_my_item(a, sites, "보류 풀기", due_text, overdue))
     return tuple(items)
 
 

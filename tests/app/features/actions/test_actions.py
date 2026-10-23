@@ -232,12 +232,12 @@ def test_blocked_action_needs_reason_and_keeps_case_open(
     client: TestClient, session: Session, item: WorkItem, team: dict[str, Any], requested: int
 ) -> None:
     no_reason = do(team["framer"], item, requested, action(session), "block", resolver="펌프 업체")
-    assert no_reason.status_code == 409 and "막힌 이유" in no_reason.text
+    assert no_reason.status_code == 409 and "보류 이유" in no_reason.text
     ok = do(team["framer"], item, requested, action(session), "block",
             body="펌프 업체 회신 없음", resolver="가상펌프 배차 담당")  # fmt: skip
     assert ok.status_code == 303 and action(session).status == "blocked"
     page = client.get(f"/changes/{requested}").text
-    assert "막힌 조치 1건이 있어요." in page and "변경 건 종료</button>" not in page
+    assert "보류 중인 조치 1건이 있어요." in page and "변경 건 종료</button>" not in page
 
 
 def test_coordinator_records_on_behalf_of_a_roster_contact_without_account(
@@ -378,8 +378,16 @@ def inbox(client: TestClient) -> str:
     return client.get("/").text.split('class="hsec inbox"')[1].split("</section>")[0]
 
 
+TAB_KEYS = {"할 일": "respond", "확인 대기": "verify", "보류": "hold", "결정 대기": "decide"}
+
+
 def group(page: str, title: str) -> str:
-    return page.split(f'<h3 class="inbox__k">{title}')[1].split("</ul>")[0]
+    """챙길 일 소탭 하나의 공정별 보기(C04-51). 없는 탭이면 빈 글자."""
+    key = TAB_KEYS[title]
+    if f'id="inbox-{key}"' not in page:
+        return ""
+    card = page.split(f'id="inbox-{key}"')[1].split("</article>")[0]
+    return card.split('data-inbox-view="place"')[0]
 
 
 def test_request_waits_on_the_performer_not_the_verifier(
@@ -387,7 +395,7 @@ def test_request_waits_on_the_performer_not_the_verifier(
 ) -> None:
     framer, safety = inbox(team["framer"]), inbox(team["safety"])
 
-    assert "펌프카 예약 변경" in group(framer, "오늘 안에")
+    assert "펌프카 예약 변경" in group(framer, "할 일")
     assert "펌프카 예약 변경" not in safety  # 검증자는 완료 보고 뒤에 본다
 
 
@@ -400,7 +408,7 @@ def test_report_moves_it_to_the_verifiers_check_list(
 
     safety, framer = inbox(team["safety"]), inbox(team["framer"])
 
-    assert "펌프카 예약 변경" in group(safety, "확인해 주세요")
+    assert "펌프카 예약 변경" in group(safety, "확인 대기")
     assert "펌프카 예약 변경" not in framer  # 보고한 뒤에는 협력업체 차례가 아니다
 
 
@@ -412,7 +420,7 @@ def test_coordinator_sees_blocked_work_even_when_not_assigned(
 
     mine = inbox(client)
 
-    assert "펌프카 예약 변경" in group(mine, "막힌 일")
-    assert mine.count("펌프카 예약 변경") == 1  # 같은 조치를 두 번 넣지 않는다
-    flow = client.get("/").text.split('class="flow"')[1].split("</a>")[0]
-    assert "<b>1</b><small>막힘</small>" in flow
+    assert "펌프카 예약 변경" in group(mine, "보류")
+    assert group(mine, "보류").count("펌프카 예약 변경") == 1  # 같은 조치를 두 번 넣지 않는다
+    flow = client.get("/").text.split('aria-label="후속 조치 흐름"')[1].split("</a>")[0]
+    assert "<b>1</b><small>보류</small>" in flow

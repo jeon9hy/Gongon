@@ -46,7 +46,7 @@
 <a class="today-btn" href="{{ view.this_month_href }}" aria-label="오늘로 이동" data-nav>{{ icon("calendar", 18) }}<span>오늘</span></a>
 </div>
 {# 달력 칸(D-089): 구글·네이버 달력처럼 업종(최상위 공종) 색 막대, 칸마다 많은 순 3개까지 #}
-<ul class="legend legend--top" aria-label="달력 표시"><li><span class="calpill calpill--stop">중지</span>중지 검토</li><li><span class="calpill calpill--check">확인</span>확인 필요</li><li><span class="calsum__warn" aria-hidden="true">!</span>업체 미지정·겹침</li></ul>
+
 {% if view.trade_legend %}<ul class="colegend" aria-label="업종 색">{% for t in view.trade_legend %}<li><span class="colegend__dot" style="--c: {{ trade_color(t) }}; --bg: {{ trade_bg(t) }}"></span>{{ short_trade(t) }}</li>{% endfor %}</ul>{% endif %}
 </div>
 
@@ -60,9 +60,9 @@
 {% if c.in_period %}<a class="calcell__link" href="{{ c.href }}" aria-label="{{ c.day.month }}월 {{ c.day.day }}일{% if c.holiday %} {{ c.holiday }}{% endif %}, 작업 {{ c.item_ids | length }}건"{% if c.selected %} aria-current="date"{% endif %}>
 <span class="calcell__day">{{ c.day.day }}{% if c.is_today %}<span class="calcell__flag">오늘</span>{% endif %}</span>{% if c.holiday %}<span class="calcell__holiday" title="{{ c.holiday }}">{{ c.holiday }}</span>{% endif %}
 </a>{% else %}<span class="calcell__link" aria-disabled="true" aria-label="{{ c.day.month }}월 {{ c.day.day }}일, 작업 기간 밖"><span class="calcell__day">{{ c.day.day }}{% if c.is_today %}<span class="calcell__flag">오늘</span>{% endif %}</span>{% if c.holiday %}<span class="calcell__holiday" title="{{ c.holiday }}">{{ c.holiday }}</span>{% endif %}</span>{% endif %}
-{% if c.item_ids %}{% set ns = namespace(stop=0, check=0) %}{% for id in c.item_ids %}{% set m = marks.get(id) %}{% if m and m[0] == "중지 검토" %}{% set ns.stop = ns.stop + 1 %}{% elif m and m[0] == "확인 필요" %}{% set ns.check = ns.check + 1 %}{% endif %}{% endfor %}
-{% set total = c.item_ids | length %}{% set tip = "작업 " ~ total ~ "건" ~ (" · 중지 검토 " ~ ns.stop ~ "건" if ns.stop else "") ~ (" · 확인 필요 " ~ ns.check ~ "건" if ns.check else "") ~ (" · 업체 미지정 또는 겹침" if c.warn else "") %}
-<span class="calmark" title="{{ tip }}">{% if ns.stop %}<span class="calpill calpill--stop">중지 {{ ns.stop }}</span>{% elif ns.check %}<span class="calpill calpill--check">확인 {{ ns.check }}</span>{% endif %}{% if c.warn %}<span class="calsum__warn" aria-hidden="true">!</span>{% endif %}</span>
+{# 달력 표시는 둘(C04-51): 중지(중지 검토), 확인(날씨 확인 필요 + 업체 미지정·겹침, 한 작업은 한 번) #}{% if c.item_ids %}{% set ns = namespace(stop=0, check=0) %}{% for id in c.item_ids %}{% set m = marks.get(id) %}{% if m and m[0] == "중지 검토" %}{% set ns.stop = ns.stop + 1 %}{% elif (m and m[0] == "확인 필요") or id in c.warn_ids %}{% set ns.check = ns.check + 1 %}{% endif %}{% endfor %}
+{% set total = c.item_ids | length %}{% set tip = "작업 " ~ total ~ "건" ~ (" · 중지 검토 " ~ ns.stop ~ "건" if ns.stop else "") ~ (" · 확인 " ~ ns.check ~ "건" if ns.check else "") ~ (" (업체 미지정·겹침 포함)" if c.warn else "") %}
+<span class="calmark" title="{{ tip }}">{% if ns.stop %}<span class="calpill calpill--stop">중지 {{ ns.stop }}</span>{% elif ns.check %}<span class="calpill calpill--check">확인 {{ ns.check }}</span>{% endif %}</span>
 <ul class="calwork" title="{{ tip }}">{% for name, trade in c.events[:3] %}<li class="calwork__item" style="--c: {{ trade_color(trade) }}">{{ name }}</li>{% endfor %}{% if c.events | length > 3 %}<li class="calwork__item calwork__item--more">+{{ c.events | length - 3 }}건</li>{% endif %}</ul>{% endif %}
 </td>
 {% endfor %}

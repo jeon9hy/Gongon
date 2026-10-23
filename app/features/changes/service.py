@@ -702,7 +702,7 @@ def build_detail(
             if summary.remaining:
                 blockers.append(f"필수 조치 {summary.remaining}건이 검증 전이에요.")
             if summary.blocked:
-                blockers.append(f"막힌 조치 {summary.blocked}건이 있어요.")
+                blockers.append(f"보류 중인 조치 {summary.blocked}건이 있어요.")
     closer = people.get(case.closed_by_user_id or -1)
     return ChangeDetailView(
         case_id=case.id,

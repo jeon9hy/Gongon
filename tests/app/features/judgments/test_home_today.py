@@ -15,6 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.features.judgments import service
+from app.features.judgments.schemas import InboxItem
 from app.features.schedules.models import WorkItem
 from app.features.teams.models import ProjectParticipant
 from tests.conftest import FIXED_NOW
@@ -140,21 +141,23 @@ def test_checks_flag_missing_company_place_and_true_overlaps_only(
 
     page = client.get("/").text
     today = board(page, "today")
-    prio = page.split('class="hsec inbox"')[1].split("</section>")[0]  # 내 차례(C04-44)
+    urgent = page.split('<a class="urgent ')[1].split("</a>")[0]  # 맨 위 먼저 할 일(C04-51)
 
-    # 내 차례: 걸린 작업마다 항목과 작업을 보인다
-    assert 'title="이동식 크레인와 같은 곳·같은 시간"' in prio  # 철골 작업 줄
-    assert 'title="철골 작업와 같은 곳·같은 시간"' in prio  # 이동식 크레인 줄
+    # 오늘 일정 칸: 걸린 작업마다 이유를 마우스 글자로 보인다
+    assert "이동식 크레인와 같은 곳·같은 시간" in today  # 철골 작업 줄
+    assert "철골 작업와 같은 곳·같은 시간" in today  # 이동식 크레인 줄
     assert "고소작업대와 같은 곳" not in today and "도장·방수와 같은 곳" not in today  # 끝=시작
-    unassigned = '업체 미지정</span><b class="inbox__title">콘크리트 타설<'
-    assert unassigned in prio and "오늘 16:00–17:00" in prio
-    assert "위치 없음" not in prio  # 위치는 선택 입력이라 점검하지 않는다(D-077)
+    assert "실행 업체 미지정" in today
+    assert (
+        "위치 없음," not in today and 'title="위치 없음' not in today
+    )  # 위치는 점검하지 않는다(D-077)
+    # 먼저 할 일은 오늘 작업의 점검 문제 하나(날씨는 오늘 보지 않는다)
+    assert 'class="inbox__tag' in urgent and ">날씨<" not in urgent
     shown = company_view(today)
     # 줄 3개(철골·크레인·콘크리트 타설) + 묶음 머리 2개(업체 미정·원청 묶음)
     assert shown.count('class="job__warn"') == 5
     # 업체 미정 묶음이 맨 앞, 그다음 점검 문제가 있는 묶음(C04-31)
     assert shown.index("grp--unassigned") < shown.index('<details class="grp grp--company">')
-    assert ">날씨<" not in prio  # 오늘은 날씨를 보지 않는다
 
 
 def test_today_board_groups_left_work_by_company_and_floor_and_keeps_done_apart(
@@ -262,3 +265,29 @@ def test_home_switches_between_sites(client: TestClient, session: Session) -> No
     assert "도장·방수" in today_second and "철골 작업" not in today_second
     # 내 현장이 아닌 ID는 무시하고 전체를 보인다
     assert "철골 작업" in board(client.get("/?site_id=99999").text, "today")
+
+
+def test_same_issue_on_many_sites_is_one_inbox_row_with_a_count() -> None:
+    # C04-51: 현장 세 곳의 같은 '겹침 · 철골 작업'은 공정별로 한 줄(3건·현장 3곳),
+    # 위치별로는 같은 B동 겹침이 한 줄로 합쳐진다
+    def item(site: str, work: str) -> InboxItem:
+        return InboxItem(
+            tag="겹침",
+            tone="warn",
+            title=f"{work} · B동",
+            meta=f"오늘 · {site}",
+            href="/schedule",
+            action="일정 보기",
+            work=work,
+            place="B동",
+            site=site,
+        )
+
+    rows = [item(s, w) for s in ("가상A", "가상B", "가상C") for w in ("철골 작업", "이동식 크레인")]
+
+    by_work = service._merge_inbox(rows, "work")
+    by_place = service._merge_inbox(rows, "place")
+
+    assert [(r.title, r.count) for r in by_work] == [("철골 작업", 3), ("이동식 크레인", 3)]
+    assert "현장 3곳" in by_work[0].meta
+    assert [(r.title, r.count) for r in by_place] == [("B동", 6)]
