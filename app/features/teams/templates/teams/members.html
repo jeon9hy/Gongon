@@ -19,7 +19,10 @@
 <h1 class="visually-hidden">참여 업체·담당자</h1>
 
 <div class="stack">
-{% if view.errors %}
+{# 등록·추가 폼의 오류는 그 모달 안에 보인다(C04-53, 개발자 요청). 그 밖의 오류만 화면 위에 #}
+{% set in_participant = view.errors and (view.participant_form.organization_name or view.participant_same_name) %}
+{% set in_member = view.errors and view.member_form.email and not in_participant %}
+{% if view.errors and not in_participant and not in_member %}
 <div class="alert alert--error" role="alert">
 <ul>{% for e in view.errors %}<li>{{ e }}</li>{% endfor %}</ul>
 {% if view.participant_same_name %}<p class="small">이미 있는 업체: {{ view.participant_same_name | join(", ") }}</p>{% endif %}
@@ -238,6 +241,7 @@
 <div class="modal__box">
 <div class="modal__head"><h2 class="h2" id="dlg-participant-title">업체 등록</h2><button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
 <form class="modal__form" method="post" action="/sites/{{ view.site_id }}/participants">
+{% if in_participant %}<div class="alert alert--error modal__alert" role="alert"><ul>{% for e in view.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% if view.participant_same_name %}<p class="small">이미 있는 업체: {{ view.participant_same_name | join(", ") }}</p>{% endif %}</div>{% endif %}
 <fieldset>
 <div class="modal__grid">
 <label class="field">업체 이름<input type="text" name="organization_name" value="{{ view.participant_form.organization_name }}" maxlength="60" required></label>
@@ -264,6 +268,7 @@
 <div class="modal__box">
 <div class="modal__head"><h2 class="h2" id="dlg-member-title">참여자 추가</h2><button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
 <form class="modal__form" method="post" action="/sites/{{ view.site_id }}/members">
+{% if in_member %}<div class="alert alert--error modal__alert" role="alert"><ul>{% for e in view.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% if view.participant_same_name %}<p class="small">이미 있는 업체: {{ view.participant_same_name | join(", ") }}</p>{% endif %}</div>{% endif %}
 <fieldset>
 <div class="modal__grid">
 <label class="field">휴대폰 번호 또는 이메일

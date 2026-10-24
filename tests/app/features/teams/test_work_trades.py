@@ -92,3 +92,15 @@ def test_add_form_marks_each_performer_with_its_listed_trade_keys_only(
         follow_redirects=False,
     )  # fmt: skip
     assert added.status_code == 303
+
+
+def test_registration_error_is_shown_inside_the_modal(client: TestClient) -> None:
+    # C04-53: 업체 등록 폼 오류는 다시 열린 모달 안에, 화면 위에는 없다
+    site_id = add_site(client)
+
+    response = register(client, site_id, "가상빈업체", work_trades="")
+
+    modal = response.text.split('id="dlg-participant"')[1].split("</dialog>")[0]
+    before = response.text.split('id="dlg-participant"')[0]
+    assert response.status_code == 422 and " data-open" in modal[:200]
+    assert "맡은 업종을 하나 이상" in modal and "맡은 업종을 하나 이상" not in before

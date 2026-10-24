@@ -2,38 +2,40 @@
 {% from "_macros.html" import icon %}
 {% block title %}{{ view.title }}{% endblock %}
 {% block content %}
-<section class="hero" aria-labelledby="change-title">
-<div class="hero__main">
-<h1 class="hero__title" id="change-title">{{ view.title }}{% if view.closed_text %} <span class="tag tag--go">종료</span>{% endif %}</h1>
-<p class="hero__meta"><span class="hero__meta-item">{{ icon("map-pin", 15) }}{{ view.site_name }}</span><span class="hero__meta-item">{{ icon("hard-hat", 15) }}{{ view.work_label }}</span></p>
-<p class="small muted">지금 작업 계획 {{ view.current_plan_text }}{% if view.current_version_text %} · 현재 확정 {{ view.current_version_text }}{% else %} · 아직 확정한 버전 없음{% endif %}</p>
+{# 변경 건 상세(C04-53 다시 그림): 머리(상태·제목·현장·작업·버튼) → 왼쪽 최신 버전(변경 전→후, 원인, 후속 조치), 오른쪽 종료 조건·진행 기록. 이전 버전은 접어 둔다 #}
+<section class="chead" aria-labelledby="change-title">
+<div class="chead__main">
+<p class="chead__state">{% if view.closed_text %}<span class="cstate cstate--done">종료</span>{% elif view.current_version_text %}<span class="cstate cstate--open">조치 진행</span>{% else %}<span class="cstate cstate--review">확정 전</span>{% endif %}<span class="chead__plan">지금 작업 계획 {{ view.current_plan_text }}</span></p>
+<h1 class="chead__title" id="change-title">{{ view.title }}</h1>
+<p class="hero__meta"><span class="hero__meta-item">{{ icon("map-pin", 15) }}{{ view.site_name }}</span><span class="hero__meta-item">{{ icon("hard-hat", 15) }}{{ view.work_label }}</span><span class="hero__meta-item">{{ icon("history", 15) }}{% if view.current_version_text %}현재 확정 {{ view.current_version_text }}{% else %}아직 확정한 버전 없음{% endif %}</span></p>
 </div>
-<div class="hero__action">
+<div class="chead__acts">
 {% if view.rechange_href %}<a class="btn btn--soft" href="{{ view.rechange_href }}">{{ icon("plus", 16, 2.2) }} 재변경 제안</a>{% endif %}
 {% if view.can_close %}
 <form method="post" action="/changes/{{ view.case_id }}/close"><input type="hidden" name="site_id" value="{{ view.site_id }}"><button class="btn btn--accent" type="submit">{{ icon("check", 16, 2.4) }} 변경 건 종료</button></form>
 {% endif %}
 </div>
 </section>
-{% if view.closed_text %}<p class="closebar closebar--done">{{ icon("check", 15, 2.4) }} {{ view.closed_text }} · 필수 조치를 모두 확인했어요.</p>
-{% elif view.close_blockers %}<p class="closebar">{{ icon("info", 15) }} 종료하려면 · {{ view.close_blockers | join(" ") }}</p>{% endif %}
 
 {% if view.errors %}<div class="alert alert--error" role="alert"><ul>{% for e in view.errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
 {% elif view.message %}<div class="alert alert--ok" role="status">{{ icon("check", 16, 2.4) }} {{ view.message }}</div>{% endif %}
 
-{% for r in view.revisions %}
-<section class="card card--tight change-rev change-rev--{{ r.status }}" aria-label="버전 {{ r.number }}">
-<div class="change-row__head"><h2 class="h2">v{{ r.number }}</h2><span class="tag change-status change-status--{{ r.status }}">{{ r.status_label }}</span></div>
-<dl class="change-diff">
-<div><dt>변경 전</dt><dd>{{ r.before_text }}</dd></div>
-<div><dt>변경 후</dt><dd><strong>{{ r.after_text }}</strong></dd></div>
-<div><dt>원인</dt><dd>{{ r.reasons_text }}</dd></div>
+{% macro revision(r, latest) %}
+<section class="card change-rev change-rev--{{ r.status }}" aria-label="버전 {{ r.number }}">
+<div class="change-rev__head"><h2 class="h2">변경 내용 <span class="muted">v{{ r.number }}</span></h2><span class="tag change-status change-status--{{ r.status }}">{{ r.status_label }}</span></div>
+<div class="cdiff">
+<div class="cdiff__box"><span class="cdiff__k">변경 전</span><span class="cdiff__v">{{ r.before_text }}</span></div>
+<span class="cdiff__arrow" aria-hidden="true">{{ icon("arrow-right", 20, 2.4) }}</span>
+<div class="cdiff__box cdiff__box--after"><span class="cdiff__k">변경 후</span><span class="cdiff__v">{{ r.after_text }}</span></div>
+</div>
+<dl class="cnotes">
+<div><dt>원인</dt><dd>{% for reason in r.reasons_text.split(", ") %}<span class="tag">{{ reason }}</span>{% endfor %}</dd></div>
 {% if r.basis_note %}<div><dt>근거</dt><dd>{{ r.basis_note }}</dd></div>{% endif %}
 {% if r.withdraw_reason %}<div><dt>철회 이유</dt><dd>{{ r.withdraw_reason }}</dd></div>{% endif %}
 {% if r.no_action_reason %}<div><dt>조치 없이 확정</dt><dd>{{ r.no_action_reason }}</dd></div>{% endif %}
 </dl>
 {% include "changes/_actions.html" %}
-<ul class="small muted change-history">{% for h in r.history %}<li>{{ h }}</li>{% endfor %}</ul>
+{% if not latest %}<ul class="ctimeline ctimeline--inline">{% for h in r.history %}<li>{{ h }}</li>{% endfor %}</ul>{% endif %}
 {% if r.can_submit or r.can_confirm or r.can_withdraw %}
 <div class="change-actions">
 {% if r.can_submit %}
@@ -57,7 +59,34 @@
 </div>
 {% endif %}
 </section>
-{% endfor %}
+{% endmacro %}
+
+{% set revs = view.revisions | reverse | list %}
+<div class="cbody">
+<div class="cbody__main">
+{% if revs %}{{ revision(revs[0], True) }}{% endif %}
+{% if revs | length > 1 %}
+<details class="cold">
+<summary>이전 버전 {{ revs | length - 1 }}개 {{ icon("chevron-down", 15, 2.2) }}</summary>
+{% for r in revs[1:] %}{{ revision(r, False) }}{% endfor %}
+</details>
+{% endif %}
+</div>
+<aside class="cbody__side">
+<section class="card cside" aria-labelledby="close-title">
+<h2 class="h3" id="close-title">종료 조건</h2>
+{% if view.closed_text %}<p class="cside__ok">{{ icon("check", 15, 2.4) }} {{ view.closed_text }} · 필수 조치를 모두 확인했어요.</p>
+{% elif view.close_blockers %}<ul class="cside__list">{% for b in view.close_blockers %}<li>{{ icon("info", 14) }}{{ b }}</li>{% endfor %}</ul>
+{% else %}<p class="cside__ok">{{ icon("check", 15, 2.4) }} 지금 종료할 수 있어요.</p>{% endif %}
+</section>
+{% if revs %}
+<section class="card cside" aria-labelledby="hist-title">
+<h2 class="h3" id="hist-title">진행 기록 <span class="muted">v{{ revs[0].number }}</span></h2>
+<ol class="ctimeline">{% for h in revs[0].history %}<li>{{ h }}</li>{% endfor %}</ol>
+</section>
+{% endif %}
+</aside>
+</div>
 <script>
 // 조치 후보: 수행 업체를 고르면 그 업체 사람만 담당으로 보인다
 document.querySelectorAll("[data-cand]").forEach((form) => {
