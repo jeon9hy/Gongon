@@ -3,7 +3,7 @@
 import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -27,8 +27,8 @@ from engine.forecast import (
     parse_mid_land,
     previous_issue_at,
 )
-from engine.forecast.kma import rain_probability_by_hour, urllib_get
-from engine.judgment import WeatherInput
+from engine.forecast.kma import rain_probability_by_hour, sky_by_hour, urllib_get
+from engine.judgment import Element, WeatherInput
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +115,60 @@ def latest_forecast_times(session: Session, nx: int, ny: int) -> list[datetime]:
     if snapshot is None or snapshot.weather is None:
         return []
     return sorted(h.valid_at for h in snapshot.weather.hours)
+
+
+@dataclass(frozen=True, slots=True)
+class CurrentWeather:
+    """지금 시각에 가장 가까운 예보 한 시각(홈 날씨 카드). 관측이 아니라 예보다. 없는 값은 None."""
+
+    forecast_issued_at: datetime
+    valid_at: datetime
+    sky: str | None
+    temperature_c: float | None
+    wind_speed_mps: float | None
+    humidity_pct: float | None
+    rain_probability_pct: int | None
+    precipitation_text: str | None  # 기상청 원문(예: "1mm 미만", "강수없음")
+
+
+NEAR_HOUR = timedelta(minutes=60)
+
+
+def current_weather(session: Session, nx: int, ny: int, now: datetime) -> CurrentWeather | None:
+    """이 격자의 최근 성공 수집에서 지금과 한 시간 안쪽인 예보 시각. 없으면 None(조회 1회)."""
+    run = session.scalars(
+        select(ForecastRun)
+        .where(
+            ForecastRun.grid_nx == nx,
+            ForecastRun.grid_ny == ny,
+            ForecastRun.status == STATUS_SUCCESS,
+            ForecastRun.raw_items.is_not(None),
+        )
+        .order_by(ForecastRun.base_at.desc(), ForecastRun.id.desc())
+    ).first()
+    if run is None or not isinstance(run.raw_items, list):
+        return None
+    weather = normalize(run.base_at, run.raw_items)
+    near = [h for h in weather.hours if abs(h.valid_at - now) <= NEAR_HOUR]
+    if not near:
+        return None
+    hour = min(near, key=lambda h: abs(h.valid_at - now))
+
+    def exact(element: Element) -> float | None:
+        value = hour.values.get(element)
+        return value.lower if value is not None and value.lower == value.upper else None
+
+    rain = hour.values.get(Element.PRECIPITATION_MM_PER_H)
+    return CurrentWeather(
+        forecast_issued_at=weather.forecast_issued_at,
+        valid_at=hour.valid_at,
+        sky=sky_by_hour(run.raw_items).get(hour.valid_at),
+        temperature_c=exact(Element.TEMPERATURE_C),
+        wind_speed_mps=exact(Element.WIND_SPEED_MPS),
+        humidity_pct=exact(Element.HUMIDITY_PCT),
+        rain_probability_pct=rain_probability_by_hour(run.raw_items).get(hour.valid_at),
+        precipitation_text=None if rain is None else rain.raw,
+    )
 
 
 def rain_probability_by_run(

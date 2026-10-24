@@ -23,6 +23,7 @@ from engine.forecast import (
     latest_base_at,
     normalize,
 )
+from engine.forecast.kma import sky_by_hour
 from engine.judgment import Element, ForecastValue
 from engine.kst import KST
 
@@ -97,6 +98,20 @@ def test_snow_and_wind_values_and_unrelated_categories() -> None:
         Element.SNOWFALL_CM_PER_H: ForecastValue(0.0, 0.0, True, "적설없음"),
         Element.WIND_SPEED_MPS: ForecastValue(4.3, 4.3, True, "4.3"),
         Element.TEMPERATURE_C: ForecastValue(18.0, 18.0, True, "18"),
+    }
+
+
+def test_sky_text_prefers_precipitation_type_and_drops_unknown_codes() -> None:
+    items = [
+        item("SKY", "4", "0900"), item("PTY", "1", "0900"),  # 흐림 + 비 → 비
+        item("SKY", "3", "1000"), item("PTY", "0", "1000"),  # 강수 없음 → 하늘상태
+        item("SKY", "2", "1100"),  # 가이드에 없는 코드
+    ]  # fmt: skip
+    hours = sky_by_hour(items)
+
+    assert hours == {
+        datetime(2026, 10, 5, 9, tzinfo=KST): "비",
+        datetime(2026, 10, 5, 10, tzinfo=KST): "구름많음",
     }
 
 

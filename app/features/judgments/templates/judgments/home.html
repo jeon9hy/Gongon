@@ -105,13 +105,25 @@
 <p class="sumcard__where">변경이 생기거나 일정에 문제가 생기면 여기에 먼저 보여요.</p>
 </section>
 {% endif %}
-{# 아래 변경·조치 소탭과 같은 이름·색·건수(C04-53). 줄을 누르면 그 소탭으로 #}
-<div class="sumcard" aria-label="변경·조치 상태">
-<h2 class="sumcard__head">변경·조치</h2>
-<ul class="sumcard__rows">
-{% for g in inbox.groups %}<li><a href="#inbox-{{ g.key }}" data-inbox-jump="{{ loop.index0 }}"><span class="sumcard__dot sumcard__dot--{{ g.key }}"></span><span>{{ g.title }}</span><b>{{ g.total }}</b></a></li>{% endfor %}
-</ul>
-</div>
+{# 지금 날씨(C04-54): 관측이 아니라 지금과 가장 가까운 예보 시각이다. 없는 값은 '–' #}
+{% set w = view.weather_now %}
+<section class="sumcard wxnow" aria-label="지금 날씨">
+<h2 class="sumcard__head">지금 날씨 <span class="wxnow__tag">예보</span></h2>
+{% if w %}
+<p class="sumcard__sub">{{ w.site_name }}{% if w.more_sites %} 외 {{ w.more_sites }}곳{% endif %}</p>
+{% set sky_icon = "snow" if w.sky and "눈" in w.sky else ("rain" if w.sky and ("비" in w.sky or "소나기" in w.sky) else "cloud-sun") %}
+<div class="wxnow__main"><span class="wxnow__icon">{{ icon(sky_icon, 34, 1.8) }}</span><b class="wxnow__temp">{{ w.temperature }}</b><span class="wxnow__sky">{{ w.sky or "–" }}</span></div>
+<dl class="wxnow__grid">
+<div><dt>{{ icon("wind", 14, 2.2) }}바람</dt><dd>{{ w.wind }}</dd></div>
+<div><dt>{{ icon("rain", 14, 2.2) }}강수확률</dt><dd>{{ w.rain_probability }}</dd></div>
+<div><dt>{{ icon("thermometer", 14, 2.2) }}습도</dt><dd>{{ w.humidity }}</dd></div>
+<div><dt>강수량</dt><dd>{{ w.precipitation }}</dd></div>
+</dl>
+<p class="wxnow__src">{{ w.hour_text }} · {{ w.issued_text }} · 기상청</p>
+{% else %}
+<p class="sumcard__empty">아직 받은 예보가 없어요</p>
+{% endif %}
+</section>
 <a class="sumcard sumcard--next" href="{{ p.href if p and p.total else '/dashboard' }}" aria-label="내일 작업 전망">
 <h2 class="sumcard__head">내일 작업 전망</h2>
 <p class="sumcard__sub">{{ tomorrow_board.date_text }}</p>
@@ -162,11 +174,6 @@
   const slides = box.querySelector("[data-inbox-slides]");
   const tabs = [...box.querySelectorAll("[data-inbox-tab]")];
   const select = (n) => tabs.forEach((t, i) => t.setAttribute("aria-selected", String(i === n)));
-  document.querySelectorAll("[data-inbox-jump]").forEach((a) => a.addEventListener("click", (e) => {
-    e.preventDefault();
-    tabs[Number(a.dataset.inboxJump)]?.click();
-    box.scrollIntoView({ behavior: "smooth", block: "start" });
-  }));
   tabs.forEach((t, i) => t.addEventListener("click", () => {
     slides.scrollTo({ left: slides.clientWidth * i, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
     select(i);

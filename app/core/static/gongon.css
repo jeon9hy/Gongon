@@ -2777,18 +2777,10 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 a.sumcard:hover { border-color: var(--line); }
 .sumcard__head { margin: 0; font-size: 17px; font-weight: 800; color: var(--ink); }
 .sumcard__sub { margin: 4px 0 0; font-size: 14px; color: var(--muted); }
-.sumcard__rows { flex: 1; display: grid; align-content: space-evenly; margin: 10px 0 0; padding: 0; list-style: none; }
-.sumcard__rows li { border-top: 1px solid var(--line-soft); }
-.sumcard__rows a { display: flex; align-items: center; gap: 10px; padding: 12px 0; color: var(--ink); font-size: 15px; font-weight: 600; text-decoration: none; }
-.sumcard__rows a:hover b { color: var(--accent); }
-.sumcard__rows li:first-child { border-top: 0; }
-.sumcard__rows b { margin-left: auto; font-size: 28px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
 .sumcard__dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
-/* 같은 이름은 같은 색(C04-53): 할 일 남색 · 확인 대기 파랑 · 보류 빨강 · 결정 대기 주황 · 판정 중지/확인/진행 */
-.sumcard__dot--respond { background: var(--ink); }
-.sumcard__dot--verify { background: var(--accent); }
-.sumcard__dot--hold, .sumcard__dot--stop { background: var(--verdict-stop-mark); }
-.sumcard__dot--decide, .sumcard__dot--check { background: var(--verdict-check-mark); }
+/* 판정 중지·확인·진행 점(내일 작업 전망 카드) */
+.sumcard__dot--stop { background: var(--verdict-stop-mark); }
+.sumcard__dot--check { background: var(--verdict-check-mark); }
 .sumcard__dot--go { background: var(--verdict-go-mark); }
 .sumcard__ring { flex: 1; display: grid; justify-items: center; align-content: center; gap: 6px; margin: 8px 0 0; }
 .sumcard__ring .ring { width: 92px; height: 92px; margin: 0; }
@@ -2801,6 +2793,17 @@ a.sumcard:hover { border-color: var(--line); }
 .sumcard__cols li .sumcard__dot { display: inline-block; margin-right: 6px; }
 .sumcard__cols b { font-size: 24px; font-weight: 800; color: var(--ink); line-height: 1; font-variant-numeric: tabular-nums; }
 .sumcard__empty { margin: 14px 0 0; font-size: 14px; color: var(--muted); }
+/* 지금 날씨(C04-54): 예보값이라 '예보' 꼬리표와 발표 시각을 늘 함께 보인다 */
+.wxnow__tag { margin-left: 6px; padding: 2px 8px; border-radius: 999px; background: var(--surface); font-size: 12px; font-weight: 700; color: var(--muted); vertical-align: 2px; }
+.wxnow__main { flex: 1; display: flex; align-items: center; gap: 12px; margin: 12px 0 0; }
+.wxnow__icon { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 14px; background: var(--accent-soft); color: var(--accent); }
+.wxnow__temp { font-size: 40px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+.wxnow__sky { font-size: 15px; font-weight: 700; color: var(--muted); }
+.wxnow__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; margin: 16px 0 0; padding: 14px 0 0; border-top: 1px solid var(--line-soft); }
+.wxnow__grid div { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.wxnow__grid dt { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.wxnow__grid dd { margin: 0; font-size: 14px; font-weight: 800; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.wxnow__src { margin: 12px 0 0; font-size: 12px; color: var(--muted); }
 .sumcard--hero { overflow: hidden; border: 0; background: linear-gradient(135deg, #24318C 0%, #1B2468 100%); color: #FFFFFF; box-shadow: 0 10px 28px #1B246840; }
 .sumcard--hero .sumcard__k { margin: 0; font-size: 14px; font-weight: 700; color: #E3E8FF; }
 .sumcard__pill { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; padding: 5px 12px; border-radius: 999px; background: #FFE8A8; color: #5C3D00; font-size: 14px; font-weight: 800; }
@@ -2841,7 +2844,8 @@ a.sumcard:hover { border-color: var(--line); }
 .inbox__more > .inbox__list { margin-top: 6px; max-height: 360px; overflow-y: auto; }
 .inbox__none { display: flex; align-items: center; gap: 6px; margin: 0; padding: 10px 4px; font-size: 13px; color: var(--muted); }
 .inbox__none svg { color: var(--verdict-go-mark); }
-@media (max-width: 960px) { .homerow { grid-template-columns: minmax(0, 1fr); } .homerow > .hsec--today { order: 0; } }
+/* 좁은 화면도 오늘 일정 → 변경·조치 순서(C04-54) */
+@media (max-width: 960px) { .homerow { grid-template-columns: minmax(0, 1fr); } }
 .inbox__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .inbox__item { display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 16px; border: 1px solid var(--line-soft); border-radius: var(--radius-md); background: var(--card); box-shadow: inset 4px 0 0 var(--line); }
 .inbox__item--stop { box-shadow: inset 4px 0 0 var(--verdict-stop-mark); }
@@ -2965,7 +2969,13 @@ a.sumcard:hover { border-color: var(--line); }
 /* 주의(C04-53): 켜면 중지·확인·점검 문제가 있는 묶음만 */
 :root[data-attn="1"] .grp:not(.grp--attn) { display: none; }
 :root[data-attn="1"] .grps > li:has(> .grp:not(.grp--attn)) { display: none; }
-.groupseg__btn--attn[aria-pressed="true"] { background: var(--verdict-check-bg); color: var(--verdict-check-fg); box-shadow: inset 0 0 0 1px var(--verdict-check-mark); }
+/* 주의: 업체별·위치별과 달리 켜고 끄는 스위치다 */
+.groupseg__btn--attn { gap: 8px; padding-right: 8px; }
+.groupseg__btn--attn[aria-checked="true"] { color: var(--verdict-check-fg); }
+.attnswitch { position: relative; flex: none; width: 30px; height: 18px; border-radius: 999px; background: var(--line); transition: background .15s; }
+.attnswitch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 999px; background: #FFFFFF; box-shadow: 0 1px 2px #0E1E4533; transition: transform .15s; }
+.groupseg__btn--attn[aria-checked="true"] .attnswitch { background: var(--verdict-check-mark); }
+.groupseg__btn--attn[aria-checked="true"] .attnswitch::after { transform: translateX(12px); }
 /* 내 조치: 홈 소탭과 같은 색(C04-53) */
 .mydot { display: inline-block; flex: none; width: 9px; height: 9px; margin-right: 6px; border-radius: 50%; vertical-align: 1px; }
 .mydot--respond { background: var(--ink); }

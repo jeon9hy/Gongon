@@ -178,7 +178,7 @@ const syncGroupseg = () => {
   const mode = document.documentElement.dataset.group === "place" ? "place" : "company";
   document.querySelectorAll("[data-groupseg]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.groupseg === mode)));
   const attn = document.documentElement.dataset.attn === "1";
-  document.querySelectorAll("[data-groupattn]").forEach((b) => b.setAttribute("aria-pressed", String(attn)));
+  document.querySelectorAll("[data-groupattn]").forEach((b) => b.setAttribute("aria-checked", String(attn)));
 };
 // 주의(C04-53): 중지·확인·점검 문제가 있는 묶음만 보기. 업체별·위치별과 함께 쓴다
 document.addEventListener("click", (e) => {

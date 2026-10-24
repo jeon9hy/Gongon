@@ -216,6 +216,37 @@ def rain_probability_by_hour(items: Iterable[dict[str, Any]]) -> dict[datetime, 
     return out
 
 
+# 단기예보 활용가이드 코드값: 하늘상태(SKY) 맑음(1)·구름많음(3)·흐림(4),
+# 강수형태(PTY) 없음(0)·비(1)·비/눈(2)·눈(3)·소나기(4). 판정에는 쓰지 않고 홈 날씨 표시에만 쓴다.
+_SKY_TEXT = {"1": "맑음", "3": "구름많음", "4": "흐림"}
+_PTY_TEXT = {"1": "비", "2": "비/눈", "3": "눈", "4": "소나기"}
+
+
+def sky_by_hour(items: Iterable[dict[str, Any]]) -> dict[datetime, str]:
+    """예보 시각별 하늘 글자. 강수형태가 있으면 그것, 없으면 하늘상태. 모르는 코드는 버린다."""
+    sky: dict[datetime, str] = {}
+    rain: dict[datetime, str] = {}
+    for item in items:
+        category = str(item.get("category"))
+        table = {"SKY": _SKY_TEXT, "PTY": _PTY_TEXT}.get(category)
+        if table is None:
+            continue
+        try:
+            valid_at = _kst_datetime(str(item["fcstDate"]), str(item["fcstTime"]))
+        except (KeyError, ValueError):
+            logger.warning("예보 시각 해석 불가: %r", item)
+            continue
+        code = str(item.get("fcstValue", "")).strip()
+        if category == "PTY" and code == "0":
+            continue
+        text = table.get(code)
+        if text is None:
+            logger.warning("하늘 코드 해석 불가 category=%s value=%r", category, code)
+            continue
+        (sky if category == "SKY" else rain)[valid_at] = text
+    return sky | rain
+
+
 def normalize(base_at: datetime, items: Iterable[dict[str, Any]]) -> WeatherInput:
     """원자료 → 판정 입력. 해석할 수 없는 값은 버려서 판정에서 누락(판정 불가)으로 처리되게 한다."""
     by_time: dict[datetime, dict[Element, ForecastValue]] = {}

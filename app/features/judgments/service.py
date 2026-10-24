@@ -43,6 +43,7 @@ from app.features.judgments.schemas import (
     HomeInbox,
     HomeIndexDay,
     HomeView,
+    HomeWeather,
     HourRow,
     InboxGroup,
     InboxItem,
@@ -646,6 +647,36 @@ def build_home(
         next_forecast=next_forecast_text(now),
         message_is_error=ran
         in ("failed", "no_rules", "no_sites", "out_of_period", "beyond_forecast"),
+        weather_now=_home_weather(session, sites, now),
+    )
+
+
+def _home_weather(
+    session: Session, sites: Sequence[SiteRecord], now: datetime
+) -> HomeWeather | None:
+    """맨 위 날씨 카드: 고른 현장(전체면 첫 현장)의 지금과 가까운 예보 시각."""
+    if not sites:
+        return None
+    site = sites[0]
+    current = forecasts_service.current_weather(session, site.grid_nx, site.grid_ny, now)
+    if current is None:
+        return None
+
+    def num(value: float | None, unit: str, digits: int = 1) -> str:
+        return "–" if value is None else f"{value:.{digits}f}{unit}"
+
+    pop = current.rain_probability_pct
+    return HomeWeather(
+        site_name=site.name,
+        more_sites=len(sites) - 1,
+        hour_text=f"{current.valid_at.astimezone(KST):%H}시 예보",
+        issued_text=f"{current.forecast_issued_at.astimezone(KST):%H:%M} 발표",
+        sky=current.sky,
+        temperature=num(current.temperature_c, "°", 0),
+        wind=num(current.wind_speed_mps, " m/s"),
+        humidity=num(current.humidity_pct, "%", 0),
+        rain_probability="–" if pop is None else f"{pop}%",
+        precipitation=current.precipitation_text or "–",
     )
 
 

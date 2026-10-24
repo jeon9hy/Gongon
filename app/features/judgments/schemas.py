@@ -343,6 +343,22 @@ class HomeInbox:
 
 
 @dataclass(frozen=True, slots=True)
+class HomeWeather:
+    """홈 날씨 카드. 관측이 아니라 예보이며 없는 값은 대시로 보인다(채우지 않는다)."""
+
+    site_name: str
+    more_sites: int  # 다른 현장 수(현장 전체로 볼 때)
+    hour_text: str  # '14시 예보'
+    issued_text: str  # '11:00 발표'
+    sky: str | None
+    temperature: str  # '14°'
+    wind: str  # '3.2 m/s'
+    humidity: str  # '60%'
+    rain_probability: str  # '20%'
+    precipitation: str  # 기상청 원문
+
+
+@dataclass(frozen=True, slots=True)
 class HomeView:
     target_date: str
     today_date: str
@@ -361,6 +377,7 @@ class HomeView:
     next_forecast: str = ""
     day_panels: tuple[DayPanel, ...] = ()  # index_days와 같은 7일, 같은 순서
     selected_site_id: int | None = None  # 고른 현장(전체면 None). 메뉴 링크가 이어받는다
+    weather_now: HomeWeather | None = None  # 맨 위 날씨 카드(지금과 가장 가까운 예보 시각)
 
 
 @dataclass(frozen=True, slots=True)
