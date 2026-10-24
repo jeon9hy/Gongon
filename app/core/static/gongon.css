@@ -1233,16 +1233,6 @@ span.pickpop__title { cursor: default; display: inline-flex; align-items: center
 .workcard__warn .calsum__warn { flex: none; width: 14px; height: 14px; font-size: 9px; margin-left: -2px; }
 
 /* 오늘 브리핑: 응원 한 줄 + 먼저 챙길 것(규칙 기반) */
-.briefing { display: flex; flex-direction: column; gap: 10px; background: linear-gradient(135deg, #EEF3FF 0%, #F8F5FF 100%); border-color: #DCE4FA; }
-.briefing__cheer { font-size: 15px; font-weight: 700; color: var(--accent); }
-.briefing__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.briefing__list li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14px; }
-.briefing__tag { flex: 0 0 auto; padding: 2px 8px; border-radius: 999px; background: var(--card); color: var(--ink); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.briefing__tag--now { background: var(--accent); color: var(--accent-fg); }
-.briefing__tag--warn { background: var(--verdict-check-bg); color: var(--verdict-check-fg); }
-.briefing__link { padding: 0; border: 0; background: none; font: inherit; font-weight: 600; color: var(--ink); cursor: pointer; text-align: left; }
-.briefing__link:hover { text-decoration: underline; text-underline-offset: 3px; }
-.briefing__rule { font-size: 12px; }
 
 /* 작업 상세 모달 */
 .itemdlg__title { display: inline-flex; align-items: center; gap: 8px; }
@@ -2780,34 +2770,52 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .modal__actions--split { align-items: center; }
 .modal__actions--split p { flex: 1; margin: 0; }
 /* 홈 내 차례(C04-44·C04-51, D-099): 위 얇은 줄 + 2행 2열 묶음 카드 */
-/* 맨 위 요약 줄(C04-51): 한 카드 세 칸, 칸 사이는 세로선. 960px 아래는 먼저 할 일이 한 줄을 차지 */
-.sumbar { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr); margin-bottom: 16px; border: 1px solid var(--line-soft); border-radius: var(--radius-lg); background: var(--card); overflow: hidden; }
-.sumbar__cell { display: grid; align-content: center; gap: 6px; min-width: 0; padding: 14px 18px; color: inherit; text-decoration: none; }
-.sumbar__cell + .sumbar__cell { border-left: 1px solid var(--line-soft); }
-a.sumbar__cell:hover { background: var(--surface); }
-.sumbar__k { font-size: 12px; font-weight: 700; color: var(--muted); }
-.sumbar__line { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 14px; color: var(--ink); }
-.sumbar__line svg { color: var(--verdict-go-mark); }
-.sumbar__what { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
-.sumbar__meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--muted); }
-.sumbar__go { display: inline-flex; align-items: center; gap: 2px; font-weight: 700; color: var(--accent); }
-.sumbar__urgent { box-shadow: inset 4px 0 0 var(--verdict-check-mark); }
-.sumbar__urgent--stop { box-shadow: inset 4px 0 0 var(--verdict-stop-mark); }
-.sumbar__urgent--blue { box-shadow: inset 4px 0 0 var(--accent); }
-.sumbar__nums { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); }
-.sumbar__num { display: inline-flex; align-items: baseline; gap: 4px; white-space: nowrap; }
-.sumbar__num b { font-size: 18px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
-.sumbar__num--stop, .sumbar__num--stop b { color: var(--stop-text); }
-.sumbar__num--warn, .sumbar__num--warn b { color: var(--verdict-check-fg); }
-@media (max-width: 960px) {
-  .sumbar { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-  .sumbar__urgent { grid-column: 1 / -1; }
-  .sumbar__cell + .sumbar__cell { border-left: 0; border-top: 1px solid var(--line-soft); }
-  .sumbar__cell:last-child { border-left: 1px solid var(--line-soft); }
-}
+/* 홈 맨 위 세 카드(C04-53, 개발자 시안): 먼저 확인할 일(남색) · 변경·조치 · 내일 작업 전망 */
+.homebar__sub { margin: 6px 0 0; font-size: 15px; color: var(--muted); }
+.sumcards { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: stretch; margin-bottom: 20px; }
+.sumcard { position: relative; display: flex; flex-direction: column; min-width: 0; padding: 22px 24px; border: 1px solid var(--line-soft); border-radius: 16px; background: var(--card); color: var(--ink); text-decoration: none; box-shadow: 0 6px 20px #0E1E450A; }
+a.sumcard:hover { border-color: var(--line); }
+.sumcard__head { margin: 0; font-size: 17px; font-weight: 800; color: var(--ink); }
+.sumcard__sub { margin: 4px 0 0; font-size: 14px; color: var(--muted); }
+.sumcard__rows { flex: 1; display: grid; align-content: space-evenly; margin: 10px 0 0; padding: 0; list-style: none; }
+.sumcard__rows li { border-top: 1px solid var(--line-soft); }
+.sumcard__rows a { display: flex; align-items: center; gap: 10px; padding: 12px 0; color: var(--ink); font-size: 15px; font-weight: 600; text-decoration: none; }
+.sumcard__rows a:hover b { color: var(--accent); }
+.sumcard__rows li:first-child { border-top: 0; }
+.sumcard__rows b { margin-left: auto; font-size: 28px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.sumcard__dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
+/* 같은 이름은 같은 색(C04-53): 할 일 남색 · 확인 대기 파랑 · 보류 빨강 · 결정 대기 주황 · 판정 중지/확인/진행 */
+.sumcard__dot--respond { background: var(--ink); }
+.sumcard__dot--verify { background: var(--accent); }
+.sumcard__dot--hold, .sumcard__dot--stop { background: var(--verdict-stop-mark); }
+.sumcard__dot--decide, .sumcard__dot--check { background: var(--verdict-check-mark); }
+.sumcard__dot--go { background: var(--verdict-go-mark); }
+.sumcard__ring { flex: 1; display: grid; justify-items: center; align-content: center; gap: 6px; margin: 8px 0 0; }
+.sumcard__ring .ring { width: 92px; height: 92px; margin: 0; }
+.sumcard__ring .ring::before { inset: 9px; }
+.sumcard__ring .ring b { font-size: 28px; font-weight: 800; }
+.sumcard__ring small { font-size: 13px; font-weight: 600; color: var(--muted); }
+.sumcard__cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 16px 0 0; padding: 14px 0 0; border-top: 1px solid var(--line-soft); list-style: none; }
+.sumcard__cols li { display: grid; justify-items: center; gap: 4px; padding: 0 8px; border-left: 1px solid var(--line-soft); font-size: 13px; font-weight: 600; color: var(--muted); text-align: center; }
+.sumcard__cols li:first-child { border-left: 0; }
+.sumcard__cols li .sumcard__dot { display: inline-block; margin-right: 6px; }
+.sumcard__cols b { font-size: 24px; font-weight: 800; color: var(--ink); line-height: 1; font-variant-numeric: tabular-nums; }
+.sumcard__empty { margin: 14px 0 0; font-size: 14px; color: var(--muted); }
+.sumcard--hero { overflow: hidden; border: 0; background: linear-gradient(135deg, #24318C 0%, #1B2468 100%); color: #FFFFFF; box-shadow: 0 10px 28px #1B246840; }
+.sumcard--hero .sumcard__k { margin: 0; font-size: 14px; font-weight: 700; color: #E3E8FF; }
+.sumcard__pill { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; padding: 5px 12px; border-radius: 999px; background: #FFE8A8; color: #5C3D00; font-size: 14px; font-weight: 800; }
+.sumcard__title { position: relative; z-index: 1; margin: 10px 0 0; font-size: 30px; font-weight: 900; line-height: 1.2; letter-spacing: -0.02em; color: #FFFFFF; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sumcard__where { position: relative; z-index: 1; margin: 6px 0 0; font-size: 15px; color: #D6DCFF; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sumcard__rule { width: 70%; margin: 16px 0 12px; border: 0; border-top: 1px solid #FFFFFF26; }
+.sumcard__big { margin: 2px 0 0; font-size: 34px; font-weight: 900; line-height: 1.1; color: #FFFFFF; }
+.sumcard__btn { position: relative; z-index: 1; align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; padding: 12px 20px; border-radius: 10px; background: #FFFFFF; color: var(--ink); font-size: 15px; font-weight: 800; text-decoration: none; }
+.sumcard__btn:hover { background: #EEF2FF; }
+.sumcard__art { position: absolute; right: 24px; top: 50%; width: 150px; transform: translateY(-50%); color: #FFFFFF; opacity: 0.18; pointer-events: none; }
+@media (max-width: 1080px) { .sumcards { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .sumcard--hero { grid-column: 1 / -1; } }
+@media (max-width: 560px) { .sumcards { grid-template-columns: minmax(0, 1fr); } .sumcard__art { width: 96px; right: 12px; top: 24px; transform: none; } .sumcard__title { font-size: 24px; } }
 .inbox .hsec__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 /* 한 줄 두 칸(C04-51): 왼쪽 오늘 일정, 오른쪽 챙길 일 소탭 */
-.homerow { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.homerow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: stretch; }
 .homerow > .hsec { margin: 0; min-width: 0; }
 .homerow > .hsec--today { order: -1; }
 .homerow--single { grid-template-columns: minmax(0, 1fr); }
@@ -2818,6 +2826,7 @@ a.sumbar__cell:hover { background: var(--surface); }
 .inboxtabs__n--verify { background: var(--accent-soft); color: var(--accent); }
 .inboxtabs__n--hold { background: var(--stop-soft); color: var(--stop-text); }
 .inboxtabs__n--decide { background: var(--verdict-check-bg); color: var(--verdict-check-fg); }
+.inboxtabs__n--respond { background: var(--ink); color: #fff; }
 .inboxslides { display: grid; grid-auto-flow: column; grid-auto-columns: 100%; margin-top: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; }
 .inboxslides::-webkit-scrollbar { display: none; }
 .inboxcard { display: flex; flex-direction: column; gap: 10px; min-width: 0; scroll-snap-align: start; }
@@ -2952,4 +2961,18 @@ a.sumbar__cell:hover { background: var(--surface); }
 .factgrid dd { margin: 0; font-size: 14px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; word-break: keep-all; }
 @media (max-width: 560px) { .factgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .factgrid > div { border-left: 0; border-top: 1px solid var(--line-soft); } }
 .homebar__count { font-style: normal; color: var(--accent); }
+.homebar__title { font-size: 32px; font-weight: 900; letter-spacing: -0.03em; }
+/* 주의(C04-53): 켜면 중지·확인·점검 문제가 있는 묶음만 */
+:root[data-attn="1"] .grp:not(.grp--attn) { display: none; }
+:root[data-attn="1"] .grps > li:has(> .grp:not(.grp--attn)) { display: none; }
+.groupseg__btn--attn[aria-pressed="true"] { background: var(--verdict-check-bg); color: var(--verdict-check-fg); box-shadow: inset 0 0 0 1px var(--verdict-check-mark); }
+/* 내 조치: 홈 소탭과 같은 색(C04-53) */
+.mydot { display: inline-block; flex: none; width: 9px; height: 9px; margin-right: 6px; border-radius: 50%; vertical-align: 1px; }
+.mydot--respond { background: var(--ink); }
+.mydot--verify { background: var(--accent); }
+.mydot--blocked { background: var(--verdict-stop-mark); }
+.mystate { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--surface); color: var(--ink); white-space: nowrap; }
+.mystate--verify { background: var(--accent-soft); color: var(--accent); }
+.mystate--blocked { background: var(--stop-soft); color: var(--stop-text); }
+.myact__why { display: block; margin-top: 2px; font-size: 12px; font-weight: 500; color: var(--muted); }
 

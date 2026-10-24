@@ -141,9 +141,8 @@ def test_checks_flag_missing_company_place_and_true_overlaps_only(
 
     page = client.get("/").text
     today = board(page, "today")
-    urgent = page.split("sumbar__urgent--")[1].split("</a>")[
-        0
-    ]  # 맨 위 요약 줄의 먼저 할 일(C04-51)
+    # 맨 위 먼저 확인할 일 카드(C04-53)
+    urgent = page.split('aria-label="먼저 확인할 일"')[1].split("</section>")[0]
 
     # 오늘 일정 칸: 걸린 작업마다 이유를 마우스 글자로 보인다
     assert "이동식 크레인와 같은 곳·같은 시간" in today  # 철골 작업 줄
@@ -154,12 +153,14 @@ def test_checks_flag_missing_company_place_and_true_overlaps_only(
         "위치 없음," not in today and 'title="위치 없음' not in today
     )  # 위치는 점검하지 않는다(D-077)
     # 먼저 할 일은 오늘 작업의 점검 문제 하나(날씨는 오늘 보지 않는다)
-    assert 'class="inbox__tag' in urgent and ">날씨<" not in urgent
+    assert 'class="sumcard__pill"' in urgent and "날씨" not in urgent
     shown = company_view(today)
     # 줄 3개(철골·크레인·콘크리트 타설) + 묶음 머리 2개(업체 미정·원청 묶음)
     assert shown.count('class="job__warn"') == 5
     # 업체 미정 묶음이 맨 앞, 그다음 점검 문제가 있는 묶음(C04-31)
-    assert shown.index("grp--unassigned") < shown.index('<details class="grp grp--company">')
+    assert shown.index("grp--unassigned") < shown.index(
+        '<details class="grp grp--company grp--attn">'
+    )
 
 
 def test_today_board_groups_left_work_by_company_and_floor_and_keeps_done_apart(

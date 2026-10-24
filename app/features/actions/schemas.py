@@ -9,7 +9,7 @@ STATUS_LABELS: dict[str, str] = {
     "requested": "요청 대기",
     "accepted": "수행 중",
     "blocked": "보류",
-    "reported": "완료 보고 · 검증 대기",
+    "reported": "확인 대기",
     "verified": "검증 완료",
     "replaced": "대체됨",
     "excluded": "제외",

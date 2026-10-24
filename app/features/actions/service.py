@@ -1160,26 +1160,3 @@ def blocked_at_sites(
         due_text, overdue = _due_text(a, now)
         items.append(_my_item(a, sites, "보류 풀기", due_text, overdue))
     return tuple(items)
-
-
-def flow_counts(session: Session, site_ids: list[int], since: datetime) -> dict[str, int]:
-    """후속 조치 흐름(C04-44): 열린 조치는 상태별 전부, 검증 완료는 since 뒤 것만."""
-    if not site_ids:
-        return {}
-    open_rows = session.execute(
-        select(ActionItem.status, func.count())
-        .where(ActionItem.site_id.in_(site_ids), ActionItem.status.in_(OPEN_STATUSES))
-        .group_by(ActionItem.status)
-    ).all()
-    counts = {status: n for status, n in open_rows}
-    counts["verified"] = (
-        session.scalar(
-            select(func.count()).where(
-                ActionItem.site_id.in_(site_ids),
-                ActionItem.status == "verified",
-                ActionItem.verified_at >= since,
-            )
-        )
-        or 0
-    )
-    return counts

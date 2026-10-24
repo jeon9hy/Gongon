@@ -2145,20 +2145,10 @@ def build_inbox(
         _inbox_group("decide", "결정 대기", "검토 중 변경 · 내일 판정", decide, "/changes"),
     )
     groups = tuple(g for g in candidates if g.key != "respond" or g.total)  # 할 일은 있을 때만
-    counts = actions_service.flow_counts(
-        session, [i for i in site_ids if here(i)], now - timedelta(days=7)
-    )
-    flow = (
-        ("blocked", "보류", counts.get("blocked", 0), "stop"),
-        ("reported", "확인 대기", counts.get("reported", 0), "warn"),
-        ("verified", "이번 주 완료", counts.get("verified", 0), ""),
-    )
     return HomeInbox(
         groups=groups,
         today=_merge_inbox(today, "work"),
         today_total=len(today),
-        flow=flow,
-        flow_href="/actions",
     )
 
 
@@ -2185,7 +2175,14 @@ def _merge_inbox(items: list[InboxItem], by: Literal["work", "place"]) -> tuple[
     for (_, label), same in buckets.items():
         first = same[0]
         if len(same) == 1:
-            merged.append(first)
+            merged.append(
+                replace(
+                    first,
+                    where=" · ".join(
+                        x for x in (first.place, first.site) if x and x != first.title
+                    ),
+                )
+            )
             continue
         sites = list(dict.fromkeys(i.site for i in same if i.site))
         others = list(dict.fromkeys(i.place if by == "work" else i.work for i in same))
@@ -2196,6 +2193,7 @@ def _merge_inbox(items: list[InboxItem], by: Literal["work", "place"]) -> tuple[
                 first,
                 title=label,
                 meta=" · ".join(x for x in (f"{len(same)}건", what, where) if x),
+                where=" · ".join(x for x in (what, where) if x),
                 late=next((i.late for i in same if i.late), ""),
                 detail=", ".join(dict.fromkeys(i.detail for i in same if i.detail)),
                 count=len(same),

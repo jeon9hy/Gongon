@@ -12,11 +12,11 @@
 {% endif %}
 <section class="homebar" aria-labelledby="home-title">
 <div class="homebar__text">
-<p class="homebar__date">{{ view.today_date }} · {{ greeting }}, {{ name }}님</p>
+<p class="homebar__date">{{ view.today_date }} · {{ greeting }}</p>
 {% set left_today = today_board.items | rejectattr("phase", "equalto", "done") | list %}
 {# 날짜 줄에 인사·이름, 큰 줄은 확인할 일 건수(건수 강조, C04-52). 할 일이 없으면 오늘 작업 기준. 날짜 줄에 때에 맞는 인사 #}
-<h1 class="homebar__title" id="home-title">{% if inbox and inbox.total %}확인할 일 <em class="homebar__count">{{ inbox.total }}건</em>{% elif left_today %}오늘 남은 작업 {{ left_today | length }}건, 차근차근 가 볼까요?{% elif today_board.items %}오늘 작업 {{ today_board.items | length }}건을 모두 마쳤어요{% else %}오늘은 쉬어 가는 날{% endif %}</h1>
-
+<h1 class="homebar__title" id="home-title">{% if inbox and inbox.total %}{{ name }}님, 확인할 일 <em class="homebar__count">{{ inbox.total }}건</em>{% elif left_today %}오늘 남은 작업 {{ left_today | length }}건, 차근차근 가 볼까요?{% elif today_board.items %}오늘 작업 {{ today_board.items | length }}건을 모두 마쳤어요{% else %}오늘은 쉬어 가는 날{% endif %}</h1>
+<p class="homebar__sub">오늘 필요한 정보만, 한눈에 확인하세요.</p>
 </div>
 {% if managed_count %}
 <form method="post" action="/judgments/run-all" class="refresh" data-refresh>
@@ -83,26 +83,47 @@
 </li>{% endmacro %}
 {% set t = view.index_days[0] if view.index_days else none %}
 {% set p = view.day_panels[0] if view.day_panels else none %}
-{# 맨 위 요약 줄(C04-51): 먼저 할 일 · 변경·조치 · 내일 판정을 한 카드에. 넓으면 한 줄, 좁으면 두 줄 #}
-<div class="sumbar">
+{# 맨 위 세 카드(C04-53, 개발자 시안): 먼저 확인할 일 · 변경·조치 · 내일 작업 전망 #}
+<div class="sumcards">
 {% if inbox.first %}{% set f = inbox.first %}
-<a class="sumbar__cell sumbar__urgent sumbar__urgent--{{ f.tone }}" href="{{ f.href }}"{% if f.detail %} title="{{ f.detail }}"{% endif %}>
-<span class="sumbar__k">먼저 할 일</span>
-<span class="sumbar__line"><span class="inbox__tag inbox__tag--{{ f.tone }}">{{ f.tag }}</span><b class="sumbar__what">{{ f.title }}</b></span>
-<span class="sumbar__meta">{{ f.meta }} · <span class="sumbar__go">{{ f.action }} {{ icon("chevron-right", 13, 2.2) }}</span></span>
-</a>
+{% set count_label = {"겹침": "겹친 일정", "업체 미지정": "업체 미지정 작업", "변경 중": "변경 검토 중인 작업", "완료 보고": "확인할 보고", "보류": "보류된 조치", "변경 검토": "검토할 변경"}.get(f.tag, "관련 건") %}
+<section class="sumcard sumcard--hero" aria-label="먼저 확인할 일">
+<p class="sumcard__k">먼저 확인할 일</p>
+<span class="sumcard__pill">{{ icon("calendar" if f.tag in ("겹침", "업체 미지정", "변경 중") else "check", 15, 2.2) }}{% if f.tag == "겹침" %}일정 겹침{% else %}{{ f.tag }}{% endif %}</span>
+<h2 class="sumcard__title" title="{{ f.detail }}">{{ f.work or f.title }}</h2>
+<p class="sumcard__where">{{ f.where or f.meta }}</p>
+<hr class="sumcard__rule">
+<p class="sumcard__k">{{ count_label }}</p>
+<p class="sumcard__big">{{ f.count }}건</p>
+<a class="sumcard__btn" href="{{ f.href }}">{{ f.action if f.action != "일정 보기" else "일정 확인하기" }} {{ icon("chevron-right", 16, 2.4) }}</a>
+<svg class="sumcard__art" viewBox="0 0 120 90" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 62V40h26l10 12v10"></path><path d="M44 62h8"></path><rect x="52" y="22" width="52" height="40" rx="10"></rect><path d="M60 30l36 24M60 54l36-24"></path><circle cx="22" cy="68" r="8"></circle><circle cx="66" cy="68" r="8"></circle><circle cx="92" cy="68" r="8"></circle></svg>
+</section>
 {% else %}
-<div class="sumbar__cell sumbar__urgent"><span class="sumbar__k">먼저 할 일</span><span class="sumbar__line">{{ icon("check", 15, 2.4) }} 지금 급한 일은 없어요</span></div>
+<section class="sumcard sumcard--hero" aria-label="먼저 확인할 일">
+<p class="sumcard__k">먼저 확인할 일</p>
+<h2 class="sumcard__title">지금 급한 일은 없어요</h2>
+<p class="sumcard__where">변경이 생기거나 일정에 문제가 생기면 여기에 먼저 보여요.</p>
+</section>
 {% endif %}
-<a class="sumbar__cell" href="{{ inbox.flow_href }}" aria-label="변경·조치 상태">
-<span class="sumbar__k">변경·조치</span>
-<span class="sumbar__nums">{% for key, label, n, tone in inbox.flow %}<span class="sumbar__num{% if tone and n %} sumbar__num--{{ tone }}{% endif %}"><b>{{ n }}</b>{{ label }}</span>{% endfor %}</span>
-</a>
-<a class="sumbar__cell" href="{{ p.href if p and p.total else '/dashboard' }}" aria-label="내일 판정">
-<span class="sumbar__k">내일 판정 · {{ tomorrow_board.date_text }}</span>
+{# 아래 변경·조치 소탭과 같은 이름·색·건수(C04-53). 줄을 누르면 그 소탭으로 #}
+<div class="sumcard" aria-label="변경·조치 상태">
+<h2 class="sumcard__head">변경·조치</h2>
+<ul class="sumcard__rows">
+{% for g in inbox.groups %}<li><a href="#inbox-{{ g.key }}" data-inbox-jump="{{ loop.index0 }}"><span class="sumcard__dot sumcard__dot--{{ g.key }}"></span><span>{{ g.title }}</span><b>{{ g.total }}</b></a></li>{% endfor %}
+</ul>
+</div>
+<a class="sumcard sumcard--next" href="{{ p.href if p and p.total else '/dashboard' }}" aria-label="내일 작업 전망">
+<h2 class="sumcard__head">내일 작업 전망</h2>
+<p class="sumcard__sub">{{ tomorrow_board.date_text }}</p>
 {% if p and p.total %}
-<span class="sumbar__nums">{% if t and t.score is not none %}<span class="sumbar__num"><b>{{ t.score }}</b>공온지수</span>{% endif %}<span class="sumbar__num{% if p.stop %} sumbar__num--stop{% endif %}"><b>{{ p.stop }}</b>중지</span><span class="sumbar__num{% if p.check %} sumbar__num--warn{% endif %}"><b>{{ p.check }}</b>확인</span><span class="sumbar__num"><b>{{ p.go }}</b>진행</span></span>
-{% else %}<span class="sumbar__line muted">내일 일정이 비어 있어요</span>{% endif %}
+{# 7일 공온지수와 같은 원(C04-53) #}
+<div class="sumcard__ring">{% if t and t.score is not none %}<span class="ring ring--{% if t.score >= 80 %}high{% elif t.score >= 50 %}mid{% else %}low{% endif %}" style="--p: {{ t.score }}" role="img" aria-label="공온지수 {{ t.score }}"><b>{{ t.score }}</b></span>{% else %}<span class="ring ring--empty" aria-hidden="true"><b>–</b></span>{% endif %}<small>공온지수</small></div>
+<ul class="sumcard__cols">
+<li><span class="sumcard__dot sumcard__dot--stop"></span>중지<b>{{ p.stop }}</b></li>
+<li><span class="sumcard__dot sumcard__dot--check"></span>확인<b>{{ p.check }}</b></li>
+<li><span class="sumcard__dot sumcard__dot--go"></span>진행<b>{{ p.go }}</b></li>
+</ul>
+{% else %}<p class="sumcard__empty">내일 등록한 작업이 없어요</p>{% endif %}
 </a>
 </div>
 {% endif %}
@@ -141,6 +162,11 @@
   const slides = box.querySelector("[data-inbox-slides]");
   const tabs = [...box.querySelectorAll("[data-inbox-tab]")];
   const select = (n) => tabs.forEach((t, i) => t.setAttribute("aria-selected", String(i === n)));
+  document.querySelectorAll("[data-inbox-jump]").forEach((a) => a.addEventListener("click", (e) => {
+    e.preventDefault();
+    tabs[Number(a.dataset.inboxJump)]?.click();
+    box.scrollIntoView({ behavior: "smooth", block: "start" });
+  }));
   tabs.forEach((t, i) => t.addEventListener("click", () => {
     slides.scrollTo({ left: slides.clientWidth * i, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
     select(i);
@@ -183,7 +209,7 @@
 {% for mode, groups in [("company", today_board.groups), ("place", today_board.place_groups)] %}
 <ul class="grps" data-groupview="{{ mode }}">
 {% for g in groups %}
-<li><details class="grp grp--{{ mode }}{% if g.unassigned %} grp--unassigned{% endif %}">
+<li><details class="grp grp--{{ mode }}{% if g.unassigned %} grp--unassigned{% endif %}{% if g.issues %} grp--attn{% endif %}">
 <summary class="grp__head">
 <span class="grp__icon" aria-hidden="true">{{ icon("building" if mode == "company" else "map-pin", 18, 2) }}</span>
 <span class="grp__title"><strong>{{ g.label }}</strong><small>{% if g.sub %}{{ g.sub }} · {% endif %}{{ g.time_text }}</small></span>
@@ -247,7 +273,7 @@
 <ul class="grps" data-groupview="{{ mode }}">
 {% for r in rows %}
 {% set warn = namespace(labels=[]) %}{% if first_panel %}{% for s in r.items %}{% set warn.labels = (warn.labels + others.by_item.get(s.item_id, [])) | unique | list %}{% endfor %}{% endif %}
-<li><details class="grp grp--{{ mode }}{% if r.unassigned %} grp--unassigned{% endif %}">
+<li><details class="grp grp--{{ mode }}{% if r.unassigned %} grp--unassigned{% endif %}{% if r.verdict in ("중지 검토", "확인 필요") or warn.labels %} grp--attn{% endif %}">
 <summary class="grp__head">
 <span class="grp__icon" aria-hidden="true">{{ icon("building" if mode == "company" else "map-pin", 18, 2) }}</span>
 <span class="grp__title"><strong>{{ r.label }}</strong><small>{% if r.sub %}{{ r.sub }} · {% endif %}{{ r.time_text }}</small></span>

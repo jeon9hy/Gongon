@@ -9,24 +9,24 @@
 {% if view.errors %}<div class="alert alert--error" role="alert"><ul>{% for e in view.errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
 {% elif view.message %}<div class="alert alert--ok" role="status">{{ view.message }}</div>{% endif %}
 
+{# 홈 변경·조치 소탭과 같은 이름·순서·색(C04-53): 할 일 · 확인 대기 · 보류 #}
+{% set groups = [("respond", "할 일", view.to_respond, "내가 답하거나 수행할 조치가 없어요."), ("verify", "확인 대기", view.to_verify, "확인할 완료 보고가 없어요."), ("blocked", "보류", view.blocked, "보류 중인 조치가 없어요.")] %}
 <div class="kpis kpis--my">
-<a class="kpi kpi--link" href="#g-respond"><span class="kpi__label">응답 대기</span><span class="kpi__value">{{ view.to_respond | length }}<small>건</small></span></a>
-<a class="kpi kpi--link" href="#g-blocked"><span class="kpi__label">보류</span><span class="kpi__value">{{ view.blocked | length }}<small>건</small></span></a>
-<a class="kpi kpi--link" href="#g-verify"><span class="kpi__label">검증 대기</span><span class="kpi__value">{{ view.to_verify | length }}<small>건</small></span></a>
+{% for key, title, rows, empty in groups %}<a class="kpi kpi--link" href="#g-{{ key }}"><span class="kpi__label"><span class="mydot mydot--{{ key }}"></span>{{ title }}</span><span class="kpi__value">{{ rows | length }}<small>건</small></span></a>{% endfor %}
 </div>
 
-{% for key, title, rows, empty in [("respond", "응답 대기", view.to_respond, "응답할 조치가 없어요."), ("blocked", "보류", view.blocked, "보류 중인 조치가 없어요."), ("verify", "검증 대기", view.to_verify, "검증할 조치가 없어요.")] %}
+{% for key, title, rows, empty in groups %}
 <section class="hsec" id="g-{{ key }}" aria-labelledby="g-{{ key }}-title">
-<div class="hsec__head"><h2 class="hsec__title" id="g-{{ key }}-title">{{ title }} <span>{{ rows | length }}건 · 기한 지난 것부터</span></h2></div>
+<div class="hsec__head"><h2 class="hsec__title" id="g-{{ key }}-title"><span class="mydot mydot--{{ key }}"></span>{{ title }} <span>{{ rows | length }}건 · 기한 지난 것부터</span></h2></div>
 {% if rows %}
 <div class="jobs__head" aria-hidden="true"><span>기한</span><span>조치</span><span>현장</span><span>상태</span></div>
 <ul class="jobs">
 {% for a in rows %}
 <li><a class="job myact" href="{{ a.href }}">
 <span class="job__time{% if a.overdue %} is-overdue{% endif %}">{{ a.due_text }}</span>
-<span class="job__what"><strong>{{ a.title }}</strong></span>
+<span class="job__what"><strong>{{ a.title }}</strong>{% if a.why in ("위임받음", "대리 기록") %}<small class="myact__why">{{ a.why }}</small>{% endif %}</span>
 <span class="job__who">{{ a.site_name }}</span>
-<span class="job__state"><span class="pill pill--{% if a.why == '검증' %}ok{% elif a.why == '대리 기록' %}warn{% else %}before{% endif %}">{{ a.why }}</span><span class="pill pill--done">{{ a.status_label }}</span></span>
+<span class="job__state"><span class="mystate mystate--{{ key }}">{{ a.status_label }}</span></span>
 </a></li>
 {% endfor %}
 </ul>

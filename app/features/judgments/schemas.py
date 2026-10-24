@@ -306,6 +306,7 @@ class InboxItem:
     place: str = ""  # 위치(작업 위치, 없으면 현장) — 위치별 묶기 열쇠
     site: str = ""
     count: int = 1  # 합친 건수
+    where: str = ""  # 위치 · 현장(합치면 '101동 3층 슬래브 · 현장 6곳')
 
 
 @dataclass(frozen=True, slots=True)
@@ -328,8 +329,6 @@ class HomeInbox:
 
     groups: tuple[InboxGroup, ...]  # 소탭 순서. 할 일은 있을 때만
     today: tuple[InboxItem, ...]  # 오늘 작업 점검 문제(공정별로 합친 줄)
-    flow: tuple[tuple[str, str, int, str], ...]  # (상태, 이름, 건수, 강조 tone)
-    flow_href: str
     today_total: int = 0
 
     @property

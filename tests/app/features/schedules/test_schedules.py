@@ -453,7 +453,7 @@ def test_today_work_can_be_added_and_is_shown_without_judgment(
     assert response.status_code == 303
     assert [d.isoformat() for d in session.scalars(select(WorkItem.work_date))] == ["2026-10-04"]
     page = client.get(response.headers["location"]).text
-    assert "15:01<span>–</span>17:00" in page and "오늘 먼저 챙길 것" in page
+    assert "15:01<span>–</span>17:00" in page and "오늘 먼저 챙길 것" not in page  # 홈으로 옮김
 
 
 @pytest.mark.parametrize("start", ["14:59", "15:00"])  # 바로 앞·같은 분은 이미 시작한 것으로 본다

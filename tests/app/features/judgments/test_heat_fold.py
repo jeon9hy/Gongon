@@ -220,7 +220,8 @@ def test_home_day_panel_groups_same_work_and_expands_to_each_item(
     assert (panel.stop, panel.go) == (1, 1)  # 칸 숫자는 묶음이 아니라 작업마다 센다
     page = client.get("/").text
     assert (
-        '<details class="grp grp--company">' in page and 'grp--company" open' not in page
+        '<details class="grp grp--company' in page
+        and " open>" not in page.split("grp--company")[1][:80]
     )  # 처음엔 접힘
 
 

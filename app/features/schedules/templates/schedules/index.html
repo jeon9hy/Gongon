@@ -74,22 +74,7 @@
 
 <aside class="stack split__side" id="day-detail">
 {% set d = view.detail %}
-{% if d.day.isoformat() == view.today_iso %}
-{% set cheers = ["오늘도 무사고가 최고의 공정이에요.", "안전모 턱끈까지 딱! 오늘도 화이팅.", "물 한 잔, 그늘 한 번. 오늘도 수고 많아요.", "오늘 일은 오늘 끝내고, 내일은 공온이 챙길게요.", "현장은 계획대로, 변경은 공온으로.", "작은 확인 하나가 큰 하루를 지켜요.", "점심은 든든히, 작업은 차분히."] %}
-<section class="panel briefing" aria-labelledby="briefing-title" data-swap="briefing">
-<p class="briefing__cheer">{{ cheers[d.day.toordinal() % cheers | length] }}</p>
-<h2 class="h2" id="briefing-title">오늘 먼저 챙길 것</h2>
-{% set now_items = d.items | selectattr("start_local", "le", view.now_hm | as_time) | selectattr("end_local", "gt", view.now_hm | as_time) | list %}
-{% set next_items = d.items | selectattr("start_local", "gt", view.now_hm | as_time) | sort(attribute="start_local") | list %}
-{% set no_company = d.items | rejectattr("performing_participant_id") | list %}
-<ol class="briefing__list">
-{% for i in now_items %}<li><span class="briefing__tag briefing__tag--now">진행 중</span><button type="button" class="briefing__link" data-open-dialog="item-{{ i.item_id }}">{{ i.work_type }}{% if i.location %} · {{ i.location }}{% endif %}</button><span class="small muted">~{{ i.end_local.strftime("%H:%M") }}</span></li>{% endfor %}
-{% for i in next_items[:2] %}<li><span class="briefing__tag">{{ i.start_local.strftime("%H:%M") }} 시작</span><button type="button" class="briefing__link" data-open-dialog="item-{{ i.item_id }}">{{ i.work_type }}{% if i.location %} · {{ i.location }}{% endif %}</button></li>{% endfor %}
-{% if no_company %}<li><span class="briefing__tag briefing__tag--warn">업체 미지정</span><span>{{ no_company | length }}건은 누가 할지 정해 주세요</span></li>{% endif %}
-{% if not d.items %}<li><span class="briefing__tag">여유</span><span>오늘은 등록한 작업이 없어요. 내일 일정을 미리 볼까요?</span></li>{% endif %}
-</ol>
-</section>
-{% endif %}
+{# 오늘 먼저 챙길 것 판은 홈 요약으로 옮겼다(C04-53, 개발자 요청) #}
 <section class="panel daypanel" aria-labelledby="day-title" data-swap="day">
 <div class="daypanel__head">
 <div>
@@ -125,7 +110,7 @@
 <div class="grps" data-groupview="{{ mode }}">
 {% for g in groups %}
 {% set ns = namespace(stop=0, check=0) %}{% for i in g.items %}{% set m = marks.get(i.item_id) %}{% if m and m[0] == "중지 검토" %}{% set ns.stop = ns.stop + 1 %}{% elif m and m[0] == "확인 필요" %}{% set ns.check = ns.check + 1 %}{% endif %}{% endfor %}
-<details class="grp grp--{{ mode }}{% if g.unassigned %} grp--unassigned{% endif %}">
+<details class="grp grp--{{ mode }}{% if g.unassigned %} grp--unassigned{% endif %}{% if ns.stop or ns.check or g.warn_ids %} grp--attn{% endif %}">
 <summary class="grp__head">
 <span class="grp__icon" aria-hidden="true">{{ icon("building" if mode == "company" else "map-pin", 18, 2) }}</span>
 <span class="grp__title"><strong>{{ g.label }}</strong>{% if g.sub %}<small>{{ g.sub }}</small>{% endif %}</span>

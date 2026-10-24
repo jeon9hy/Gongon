@@ -12,6 +12,7 @@
 <script data-boot>
 // 묶어 보기(업체별·위치별, D-085)를 그리기 전에 정해 깜빡임을 막는다. 저장이 막혀도 업체별로 보인다.
 try { if (localStorage.getItem("gongon.group") === "place") document.documentElement.dataset.group = "place"; } catch (e) {}
+try { if (localStorage.getItem("gongon.attn") === "1") document.documentElement.dataset.attn = "1"; } catch (e) {}
 </script>
 </head>
 <body{% block body_class %}{% endblock %}>
@@ -176,7 +177,17 @@ if (FLASH_PARAMS.some((key) => flashUrl.searchParams.has(key))) {
 const syncGroupseg = () => {
   const mode = document.documentElement.dataset.group === "place" ? "place" : "company";
   document.querySelectorAll("[data-groupseg]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.groupseg === mode)));
+  const attn = document.documentElement.dataset.attn === "1";
+  document.querySelectorAll("[data-groupattn]").forEach((b) => b.setAttribute("aria-pressed", String(attn)));
 };
+// 주의(C04-53): 중지·확인·점검 문제가 있는 묶음만 보기. 업체별·위치별과 함께 쓴다
+document.addEventListener("click", (e) => {
+  if (!e.target.closest("[data-groupattn]")) return;
+  const on = document.documentElement.dataset.attn !== "1";
+  if (on) document.documentElement.dataset.attn = "1"; else delete document.documentElement.dataset.attn;
+  try { localStorage.setItem("gongon.attn", on ? "1" : "0"); } catch (err) {}
+  syncGroupseg();
+});
 document.addEventListener("click", (e) => {
   const seg = e.target.closest("[data-groupseg]");
   if (!seg) return;

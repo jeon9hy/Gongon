@@ -422,5 +422,5 @@ def test_coordinator_sees_blocked_work_even_when_not_assigned(
 
     assert "펌프카 예약 변경" in group(mine, "보류")
     assert group(mine, "보류").count("펌프카 예약 변경") == 1  # 같은 조치를 두 번 넣지 않는다
-    flow = client.get("/").text.split('aria-label="변경·조치 상태"')[1].split("</a>")[0]
-    assert "<b>1</b>보류" in flow
+    summary = client.get("/").text.split('aria-label="변경·조치 상태"')[1].split("</ul>")[0]
+    assert "<span>보류</span><b>1</b>" in summary  # 맨 위 카드는 소탭과 같은 이름·건수
