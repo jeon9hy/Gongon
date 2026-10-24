@@ -102,4 +102,4 @@ def test_home_card_shows_the_forecast_hour_and_issue_time(
 
     assert "가상A현장" in card and "18°" in card and "구름많음" in card
     assert "15시 예보 · 14:00 발표" in card and "예보" in card
-    assert "<dd>–</dd>" in card  # 습도 없음
+    assert '<dt>습도</dt><dd title="–">–</dd>' in card  # 습도 없음은 채우지 않는다

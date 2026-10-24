@@ -1717,7 +1717,7 @@ details.hmore { padding: 0; } /* 판정 내역의 옛 .hmore 여백이 접힌 �
 @media (max-width: 760px) { .job__state { grid-column: 2; grid-row: 1 / span 2; } .todo { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; } }
 /* 홈 머리: 날짜·인사는 왼쪽, 공온 점검 시각과 새로 점검은 오른쪽 알약 하나(개발자 요청 2026-10-16) */
 .homebar { align-items: center; }
-.homebar__text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.homebar__text { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .homebar__date { font-size: 14px; font-weight: 600; color: var(--accent); }
 .homebar__title { margin: 0; }
 .homebar .refresh { display: block; }
@@ -2771,7 +2771,7 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .modal__actions--split p { flex: 1; margin: 0; }
 /* 홈 내 차례(C04-44·C04-51, D-099): 위 얇은 줄 + 2행 2열 묶음 카드 */
 /* 홈 맨 위 세 카드(C04-53, 개발자 시안): 먼저 확인할 일(남색) · 변경·조치 · 내일 작업 전망 */
-.homebar__sub { margin: 6px 0 0; font-size: 15px; color: var(--muted); }
+.homebar__sub { margin: 0; font-size: 15px; line-height: 1.4; color: var(--muted); }
 .sumcards { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: stretch; margin-bottom: 20px; }
 .sumcard { position: relative; display: flex; flex-direction: column; min-width: 0; padding: 22px 24px; border: 1px solid var(--line-soft); border-radius: 16px; background: var(--card); color: var(--ink); text-decoration: none; box-shadow: 0 6px 20px #0E1E450A; }
 a.sumcard:hover { border-color: var(--line); }
@@ -2799,11 +2799,12 @@ a.sumcard:hover { border-color: var(--line); }
 .wxnow__icon { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 14px; background: var(--accent-soft); color: var(--accent); }
 .wxnow__temp { font-size: 40px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
 .wxnow__sky { font-size: 15px; font-weight: 700; color: var(--muted); }
-.wxnow__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; margin: 16px 0 0; padding: 14px 0 0; border-top: 1px solid var(--line-soft); }
-.wxnow__grid div { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
-.wxnow__grid dt { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; color: var(--muted); }
-.wxnow__grid dd { margin: 0; font-size: 14px; font-weight: 800; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
-.wxnow__src { margin: 12px 0 0; font-size: 12px; color: var(--muted); }
+.wxnow__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 16px 0 0; }
+.wxnow__item { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 10px; row-gap: 2px; align-items: center; min-width: 0; padding: 10px 12px; border-radius: 12px; background: var(--surface); }
+.wxnow__ic { grid-row: 1 / 3; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: var(--card); color: var(--accent); }
+.wxnow__item dt { font-size: 12px; font-weight: 600; line-height: 1.3; color: var(--muted); }
+.wxnow__item dd { margin: 0; font-size: 15px; font-weight: 800; line-height: 1.3; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.wxnow__src { margin: 12px 0 0; font-size: 12px; line-height: 1.4; color: var(--muted); text-align: center; }
 .sumcard--hero { overflow: hidden; border: 0; background: linear-gradient(135deg, #24318C 0%, #1B2468 100%); color: #FFFFFF; box-shadow: 0 10px 28px #1B246840; }
 .sumcard--hero .sumcard__k { margin: 0; font-size: 14px; font-weight: 700; color: #E3E8FF; }
 .sumcard__pill { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; padding: 5px 12px; border-radius: 999px; background: #FFE8A8; color: #5C3D00; font-size: 14px; font-weight: 800; }
@@ -2965,7 +2966,9 @@ a.sumcard:hover { border-color: var(--line); }
 .factgrid dd { margin: 0; font-size: 14px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; word-break: keep-all; }
 @media (max-width: 560px) { .factgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .factgrid > div { border-left: 0; border-top: 1px solid var(--line-soft); } }
 .homebar__count { font-style: normal; color: var(--accent); }
-.homebar__title { font-size: 32px; font-weight: 900; letter-spacing: -0.03em; }
+/* 큰 제목은 줄높이를 글자에 붙여 위·아래 줄과 간격이 고르게(C04-55) */
+.homebar__title { font-size: 32px; font-weight: 900; line-height: 1.2; letter-spacing: -0.03em; }
+.homebar__date { line-height: 1.4; }
 /* 주의(C04-53): 켜면 중지·확인·점검 문제가 있는 묶음만 */
 :root[data-attn="1"] .grp:not(.grp--attn) { display: none; }
 :root[data-attn="1"] .grps > li:has(> .grp:not(.grp--attn)) { display: none; }
@@ -3040,4 +3043,43 @@ a.sumcard:hover { border-color: var(--line); }
 .acard__acts { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 12px; border-top: 1px solid var(--line-soft); }
 @media (max-width: 960px) { .cbody { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 560px) { .cdiff { grid-template-columns: minmax(0, 1fr); } .cdiff__arrow { justify-self: center; transform: rotate(90deg); } .chead__title { font-size: 24px; } }
+
+/* ---- 읽기 쉬운 정리(C04-55): 늘어선 글자를 크기·묶음으로 나누고, 줄높이를 맞춰 옆 칸과 같은 선에 ---- */
+/* 변경 건 머리: 지금 계획은 이름표 + 값 */
+.chead__plan { display: inline-flex; align-items: center; gap: 8px; min-height: 24px; padding: 0 10px 0 4px; border-radius: 999px; background: var(--surface); color: var(--text); font-variant-numeric: tabular-nums; }
+.chead__plan b { display: inline-flex; align-items: center; height: 18px; padding: 0 8px; border-radius: 999px; background: var(--card); font-size: 11px; font-weight: 800; color: var(--muted); }
+.chead .hero__meta { gap: 8px; margin: 2px 0 0; }
+.chead .hero__meta-item { min-height: 30px; padding: 0 12px 0 10px; border: 1px solid var(--line-soft); border-radius: 999px; background: var(--card); font-size: 13px; line-height: 1.2; }
+/* 변경 전 → 후: 날짜·시간 큰 줄 + 위치·버전 꼬리표 */
+.cdiff__box { align-content: start; gap: 6px; padding: 16px 18px; }
+.cdiff__k { line-height: 1.3; }
+.cdiff__v { font-size: 18px; line-height: 1.3; letter-spacing: -0.01em; }
+.cdiff__subs { display: flex; flex-wrap: wrap; gap: 6px; }
+.cdiff__sub { display: inline-flex; align-items: center; min-height: 24px; padding: 0 9px; border-radius: 999px; background: var(--card); font-size: 12px; font-weight: 600; line-height: 1.2; color: var(--muted); }
+.cdiff__box--after .cdiff__sub { color: var(--accent); }
+/* 원인·근거: 이름 칸과 값(꼬리표)이 같은 가운데 선에 */
+.cnotes { gap: 0; padding: 4px 16px; border-radius: var(--radius-md); background: var(--surface); }
+.cnotes > div { grid-template-columns: 72px minmax(0, 1fr); align-items: center; min-height: 44px; padding: 8px 0; border-top: 1px solid var(--line-soft); line-height: 1.4; }
+.cnotes > div:first-child { border-top: 0; }
+.cnotes dt { font-weight: 600; line-height: 1.4; }
+.cnotes dd { align-items: center; line-height: 1.4; }
+.cnotes .tag { min-height: 26px; background: var(--card); }
+/* 후속 조치가 없을 때: 한 줄 글이 아니라 빈 칸 안내 상자 */
+.acts__empty { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 1px dashed var(--line); border-radius: var(--radius-md); line-height: 1.45; }
+.acts__empty b { display: block; font-size: 14px; color: var(--ink); }
+.acts__empty-ic { display: grid; place-items: center; flex: none; width: 36px; height: 36px; border-radius: 10px; background: var(--surface); color: var(--muted); }
+/* 확정 줄: 입력칸과 버튼이 같은 높이·같은 아래 선, 철회는 오른쪽 끝 같은 선 */
+.change-actions { align-items: flex-end; gap: 12px; padding-top: 16px; border-top: 1px solid var(--line-soft); }
+.change-actions > .confirmform { flex: 1 1 420px; }
+.confirmform { flex-wrap: nowrap; gap: 8px; }
+.confirmform .btn { flex: none; min-height: 40px; }
+.change-actions > .delete-action { margin-left: auto; }
+.change-actions .delete-action summary { display: inline-flex; align-items: center; min-height: 40px; padding: 0 12px; line-height: 1; }
+@media (max-width: 560px) { .confirmform { flex-wrap: wrap; } .confirmform .btn { width: 100%; } .cdiff__v { font-size: 16px; } }
+.wxnow__none { flex: 1; display: grid; justify-items: center; align-content: center; gap: 8px; text-align: center; }
+.wxnow__none .sumcard__empty { margin: 4px 0 0; font-weight: 700; color: var(--ink); }
+.wxnow__none small { font-size: 12px; line-height: 1.4; color: var(--muted); }
+/* 오른쪽 칸 제목은 본문 카드 제목(h2 18px)과 같은 크기 */
+.cside .h3 { font-size: 18px; line-height: 1.3; font-weight: 700; }
+.cside .h3 .muted { font-size: 14px; font-weight: 600; }
 

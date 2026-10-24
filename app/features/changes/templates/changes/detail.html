@@ -5,7 +5,7 @@
 {# 변경 건 상세(C04-53 다시 그림): 머리(상태·제목·현장·작업·버튼) → 왼쪽 최신 버전(변경 전→후, 원인, 후속 조치), 오른쪽 종료 조건·진행 기록. 이전 버전은 접어 둔다 #}
 <section class="chead" aria-labelledby="change-title">
 <div class="chead__main">
-<p class="chead__state">{% if view.closed_text %}<span class="cstate cstate--done">종료</span>{% elif view.current_version_text %}<span class="cstate cstate--open">조치 진행</span>{% else %}<span class="cstate cstate--review">확정 전</span>{% endif %}<span class="chead__plan">지금 작업 계획 {{ view.current_plan_text }}</span></p>
+<p class="chead__state">{% if view.closed_text %}<span class="cstate cstate--done">종료</span>{% elif view.current_version_text %}<span class="cstate cstate--open">조치 진행</span>{% else %}<span class="cstate cstate--review">확정 전</span>{% endif %}<span class="chead__plan"><b>지금 계획</b>{{ view.current_plan_text }}</span></p>
 <h1 class="chead__title" id="change-title">{{ view.title }}</h1>
 <p class="hero__meta"><span class="hero__meta-item">{{ icon("map-pin", 15) }}{{ view.site_name }}</span><span class="hero__meta-item">{{ icon("hard-hat", 15) }}{{ view.work_label }}</span><span class="hero__meta-item">{{ icon("history", 15) }}{% if view.current_version_text %}현재 확정 {{ view.current_version_text }}{% else %}아직 확정한 버전 없음{% endif %}</span></p>
 </div>
@@ -20,13 +20,15 @@
 {% if view.errors %}<div class="alert alert--error" role="alert"><ul>{% for e in view.errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
 {% elif view.message %}<div class="alert alert--ok" role="status">{{ icon("check", 16, 2.4) }} {{ view.message }}</div>{% endif %}
 
+{# '날짜 시간 · 위치 · 계획 vN'을 큰 줄(날짜·시간)과 작은 꼬리표로 나눠 한 줄로 늘어지지 않게 #}
+{% macro plan_text(text) %}{% set parts = text.split(" · ") %}<span class="cdiff__v">{{ parts[0] }}</span>{% if parts | length > 1 %}<span class="cdiff__subs">{% for p in parts[1:] %}<span class="cdiff__sub">{{ p }}</span>{% endfor %}</span>{% endif %}{% endmacro %}
 {% macro revision(r, latest) %}
 <section class="card change-rev change-rev--{{ r.status }}" aria-label="버전 {{ r.number }}">
 <div class="change-rev__head"><h2 class="h2">변경 내용 <span class="muted">v{{ r.number }}</span></h2><span class="tag change-status change-status--{{ r.status }}">{{ r.status_label }}</span></div>
 <div class="cdiff">
-<div class="cdiff__box"><span class="cdiff__k">변경 전</span><span class="cdiff__v">{{ r.before_text }}</span></div>
+<div class="cdiff__box"><span class="cdiff__k">변경 전</span>{{ plan_text(r.before_text) }}</div>
 <span class="cdiff__arrow" aria-hidden="true">{{ icon("arrow-right", 20, 2.4) }}</span>
-<div class="cdiff__box cdiff__box--after"><span class="cdiff__k">변경 후</span><span class="cdiff__v">{{ r.after_text }}</span></div>
+<div class="cdiff__box cdiff__box--after"><span class="cdiff__k">변경 후</span>{{ plan_text(r.after_text) }}</div>
 </div>
 <dl class="cnotes">
 <div><dt>원인</dt><dd>{% for reason in r.reasons_text.split(", ") %}<span class="tag">{{ reason }}</span>{% endfor %}</dd></div>
@@ -44,7 +46,7 @@
 {% if r.can_confirm %}
 <form class="confirmform" method="post" action="/changes/{{ view.case_id }}/revisions/{{ r.revision_id }}/confirm"><input type="hidden" name="site_id" value="{{ view.site_id }}"><input type="hidden" name="confirm_key" value="{{ view.confirm_key }}">
 {% if not r.actions or not r.actions.required_candidates %}<label class="field">필수 조치 없이 확정하는 이유<input type="text" name="no_action_reason" maxlength="500" required placeholder="예: 같은 업체 안 시간만 바뀌어 따로 할 일이 없음"></label>{% endif %}
-<button class="btn btn--accent btn--sm" type="submit">확정 · 작업 계획 바꾸기{% if r.actions and r.actions.candidates %} · 조치 {{ r.actions.candidates }}건 요청{% endif %}</button></form>
+<button class="btn btn--accent" type="submit">확정 · 작업 계획 바꾸기{% if r.actions and r.actions.candidates %} · 조치 {{ r.actions.candidates }}건 요청{% endif %}</button></form>
 {% endif %}
 {% if r.can_withdraw %}
 <details class="delete-action">

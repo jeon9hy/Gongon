@@ -113,15 +113,13 @@
 <p class="sumcard__sub">{{ w.site_name }}{% if w.more_sites %} 외 {{ w.more_sites }}곳{% endif %}</p>
 {% set sky_icon = "snow" if w.sky and "눈" in w.sky else ("rain" if w.sky and ("비" in w.sky or "소나기" in w.sky) else "cloud-sun") %}
 <div class="wxnow__main"><span class="wxnow__icon">{{ icon(sky_icon, 34, 1.8) }}</span><b class="wxnow__temp">{{ w.temperature }}</b><span class="wxnow__sky">{{ w.sky or "–" }}</span></div>
+{# 네 칸 모두 아이콘 · 이름 · 값 같은 모양(줄이 어긋나지 않게) #}
 <dl class="wxnow__grid">
-<div><dt>{{ icon("wind", 14, 2.2) }}바람</dt><dd>{{ w.wind }}</dd></div>
-<div><dt>{{ icon("rain", 14, 2.2) }}강수확률</dt><dd>{{ w.rain_probability }}</dd></div>
-<div><dt>{{ icon("thermometer", 14, 2.2) }}습도</dt><dd>{{ w.humidity }}</dd></div>
-<div><dt>강수량</dt><dd>{{ w.precipitation }}</dd></div>
+{% for ic, label, value in [("wind", "바람", w.wind), ("rain", "강수확률", w.rain_probability), ("thermometer", "습도", w.humidity), ("droplet", "강수량", w.precipitation)] %}<div class="wxnow__item"><span class="wxnow__ic">{{ icon(ic, 16, 2.2) }}</span><dt>{{ label }}</dt><dd title="{{ value }}">{{ value }}</dd></div>{% endfor %}
 </dl>
 <p class="wxnow__src">{{ w.hour_text }} · {{ w.issued_text }} · 기상청</p>
 {% else %}
-<p class="sumcard__empty">아직 받은 예보가 없어요</p>
+<div class="wxnow__none"><span class="wxnow__icon">{{ icon("cloud-sun", 30, 1.8) }}</span><p class="sumcard__empty">아직 받은 예보가 없어요</p><small>{{ view.next_forecast }}</small></div>
 {% endif %}
 </section>
 <a class="sumcard sumcard--next" href="{{ p.href if p and p.total else '/dashboard' }}" aria-label="내일 작업 전망">

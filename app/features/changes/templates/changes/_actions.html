@@ -110,7 +110,7 @@
 {% endfor %}
 </ul>
 {% elif ra.editor %}
-<p class="acts__empty">아직 조치가 없어요. 바뀐 일정에 맞춰 누가 무엇을 해야 하는지 더해 볼까요?</p>
+<p class="acts__empty"><span class="acts__empty-ic">{{ icon("clipboard", 18, 2) }}</span><span><b>아직 조치가 없어요</b>바뀐 일정에 맞춰 누가 무엇을 해야 하는지 더해 볼까요?</span></p>
 {% endif %}
 
 {% if ra.editor %}
