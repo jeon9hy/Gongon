@@ -18,7 +18,7 @@ from alembic import command
 from alembic.config import Config
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine, create_engine, make_url, text
+from sqlalchemy import Engine, MetaData, create_engine, make_url, text
 from sqlalchemy.orm import Session
 
 from app.core.clock import now_kst
@@ -31,6 +31,7 @@ from app.core.config import (
     sqlalchemy_url,
 )
 from app.core.db import get_session
+from app.features.auth import service as auth_service
 from app.features.forecasts.service import get_http_get
 from app.features.schedules import holidays
 from app.main import create_app
@@ -39,27 +40,6 @@ from tests.fakes import FakeKma
 
 # 14:10 이후라 14시 발표를 받고, 판정 대상은 내일(2026-10-05)이다.
 FIXED_NOW = datetime(2026, 10, 4, 15, 0, tzinfo=KST)
-TABLES = (
-    "site_messages",
-    "action_events",
-    "action_delegations",
-    "action_items",
-    "change_revisions",
-    "change_cases",
-    "judgment_runs",
-    "judgments",
-    "work_item_revisions",
-    "work_items",
-    "forecast_runs",
-    "mid_forecast_runs",
-    "sites",
-    "project_memberships",
-    "participant_contacts",
-    "project_participants",
-    "auth_sessions",
-    "users",
-    "organizations",
-)
 DEFAULT_PARTNER = "기본 협력업체"
 _SCHEDULE_WRITE = re.compile(r"^/schedule(/\d+/edit)?$")
 
@@ -129,12 +109,45 @@ def db_engine() -> Iterator[Engine]:
     engine.dispose()
 
 
+@pytest.fixture(scope="session")
+def reset_statements(db_engine: Engine) -> tuple[str, ...]:
+    """시험마다 모든 표를 비우고 id를 1부터 다시 쓰는 문장(자식 표 먼저).
+
+    TRUNCATE … CASCADE는 시험마다 약 135ms라 전체 시간의 절반이었다. DELETE와 setval은 약 9ms다
+    (C04-56). 표 목록은 마이그레이션한 스키마에서 읽어 새 표가 빠지지 않게 한다.
+    """
+    metadata = MetaData()
+    metadata.reflect(bind=db_engine)
+    tables = [t for t in reversed(metadata.sorted_tables) if t.name != "alembic_version"]
+    statements = [f"DELETE FROM {t.name}" for t in tables]
+    with db_engine.connect() as connection:
+        for t in tables:
+            if "id" not in t.c:
+                continue
+            sequence = connection.execute(
+                text("SELECT pg_get_serial_sequence(:t, 'id')"), {"t": t.name}
+            ).scalar()
+            if sequence:
+                statements.append(f"SELECT setval('{sequence}', 1, false)")
+    return tuple(statements)
+
+
 @pytest.fixture
-def session(db_engine: Engine) -> Iterator[Session]:
+def session(db_engine: Engine, reset_statements: tuple[str, ...]) -> Iterator[Session]:
     with Session(db_engine, expire_on_commit=False) as s:
         yield s
     with db_engine.begin() as connection:
-        connection.execute(text(f"TRUNCATE {', '.join(TABLES)} RESTART IDENTITY CASCADE"))
+        for statement in reset_statements:
+            connection.execute(text(statement))
+
+
+@pytest.fixture(autouse=True)
+def _fast_password_hash(monkeypatch: pytest.MonkeyPatch) -> None:
+    """비밀번호 해시는 일부러 느리다(가입·로그인마다 약 60ms). 시험에서는 가볍게 한다.
+
+    저장값에 매개변수가 적혀 검증은 그 값으로 하므로 동작은 같다. 제품 설정은 바꾸지 않는다.
+    """
+    monkeypatch.setattr(auth_service, "_SCRYPT_N", 2**4)
 
 
 @pytest.fixture

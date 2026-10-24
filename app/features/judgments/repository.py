@@ -23,7 +23,10 @@ def latest_for_site_date(session: Session, site_id: int, target_date: date) -> l
 def latest_for_site_between(
     session: Session, site_id: int, start: date, end: date
 ) -> list[Judgment]:
-    """한 현장의 [start, end] 판정(주간 보기, 쿼리 1회). 시간별 상세는 읽지 않는다.
+    """한 현장의 [start, end] 판정(주간 보기, 쿼리 1회).
+
+    작업 카드가 시간별 값과 구간(windows)을 모두 쓰므로 함께 읽는다. windows를 미루면 카드마다
+    한 번씩 더 조회해 홈·일정·판정 화면에서 100번 넘게 다시 읽었다(C04-56).
 
     날짜·작업마다 최신 예보의 최신 판정과, 그 직전 다른 예보의 최신 판정까지 두 건(공온지수 예보
     안정성). 최신순이라 같은 묶음의 첫 행이 현재 판정이다.
@@ -55,7 +58,6 @@ def latest_for_site_between(
     return list(
         session.scalars(
             select(Judgment)
-            .options(defer(Judgment.windows))
             .where(Judgment.id.in_(ids))
             .order_by(Judgment.judged_at.desc(), Judgment.id.desc())
         )

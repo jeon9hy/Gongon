@@ -73,8 +73,8 @@ try { if (localStorage.getItem("gongon.attn") === "1") document.documentElement.
 </nav>
 {% if pagebar %}<div class="pagebar">{{ pagebar | safe }}</div>{% endif %}
 </div>
-{% endif %}
-{% if me and nav_active in ("schedule", "dashboard", "history") %}
+{# 한 사슬로 둔다: 따로 if면 아래 elif pagebar가 같은 줄을 한 번 더 그린다 #}
+{% elif me and nav_active in ("schedule", "dashboard", "history") %}
 {% set site_q = "?site_id=" ~ current_site_id if current_site_id else "" %}
 <div class="subnavrow">
 <nav class="subnav" aria-label="작업 일정 메뉴">

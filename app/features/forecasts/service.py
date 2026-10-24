@@ -90,13 +90,19 @@ class RunStatus:
 
 
 def latest_run(session: Session) -> RunStatus | None:
-    run = session.scalars(
-        select(ForecastRun).order_by(ForecastRun.requested_at.desc(), ForecastRun.id.desc())
+    # 원자료(raw_items)는 크다. 상태 표시에 필요한 열만 읽는다(C04-56).
+    row = session.execute(
+        select(
+            ForecastRun.base_at,
+            ForecastRun.requested_at,
+            ForecastRun.status,
+            ForecastRun.failure_reason,
+        ).order_by(ForecastRun.requested_at.desc(), ForecastRun.id.desc())
     ).first()
-    if run is None:
+    if row is None:
         return None
     return RunStatus(
-        run.base_at, run.requested_at, run.status == STATUS_SUCCESS, run.failure_reason
+        row.base_at, row.requested_at, row.status == STATUS_SUCCESS, row.failure_reason
     )
 
 

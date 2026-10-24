@@ -342,6 +342,13 @@ def test_opening_the_change_records_a_view_once_without_changing_status(
     assert action(session).status == "requested"
 
 
+def test_change_tabs_draw_the_page_bar_once(client: TestClient, item: WorkItem) -> None:
+    # 하위 메뉴 줄과 따로 쓰는 머리 줄이 겹쳐 두 번 그려졌다(C04-56)
+    bar = '<div class="pagebar">'
+    assert client.get("/actions").text.count(bar) == 1
+    assert client.get("/changes").text.count(bar) <= 1  # 빈 목록은 머리 줄이 없다
+
+
 def test_my_actions_groups_and_orders_overdue_first(
     client: TestClient, session: Session, item: WorkItem, team: dict[str, Any]
 ) -> None:

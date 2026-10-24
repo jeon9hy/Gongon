@@ -838,12 +838,6 @@ def only_site(view: MyActionsView, site_id: int, site_name: str) -> MyActionsVie
     )
 
 
-def open_action_count(session: Session, user: CurrentUser, now: datetime) -> int:
-    """홈의 '내 조치' 건수(목록과 같은 기준)."""
-    view = build_my_actions(session, user, now)
-    return len(view.to_respond) + len(view.blocked) + len(view.to_verify)
-
-
 def _my_item(
     a: ActionItem, sites: dict[int, str], why: str, due_text: str, overdue: bool
 ) -> MyActionItem:

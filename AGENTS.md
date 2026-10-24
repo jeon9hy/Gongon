@@ -11,6 +11,7 @@
 | 기능 위치·의존 규칙·코드 작성 규칙 | `docs/architecture.md` |
 | 실행·검증 명령 | `docs/setup.md` |
 | 이미 정한 것 | `docs/decisions.md` (같은 선택을 다시 논의하지 않는다) |
+| 끝난 작업·예전 S작업 기록 | `docs/plan-archive.md` (필요할 때만. `plan.md`에는 열린 작업만 둔다) |
 | 화면·알림 문구·용어 | `docs/brand.md` |
 | 공유·출시에 필요한 키·계정, 인증 계획 | `docs/launch-checklist.md` |
 | 운영자(admin) 화면 기획 | `docs/admin-spec.md` |

@@ -1,7 +1,7 @@
 """기상청 단기예보 수집·정규화. 실제 네트워크 없이 가짜 http_get으로 검증한다.
 
 응답 본문은 공식 활용가이드의 응답 구조(response.header/body.items.item, 항목 필드 이름)를 따르고
-값은 테스트용이다. 실제 응답과의 대조는 키 발급 후 한다(docs/plan.md S02-2).
+값은 테스트용이다. 실제 응답과의 대조는 키 발급 후 한다(docs/plan-archive.md S02-2).
 """
 
 import io
