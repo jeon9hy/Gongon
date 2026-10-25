@@ -15,6 +15,7 @@ cp .env.example .env      # 실제 값은 .env에만(커밋 금지)
 
 - `PYTHONUTF8=1 uv run python scripts/seed_demo.py` — 개발 DB에 [가상] 현장·업체·참여자·일주일 작업을 만든다. 로그인은 `pm@demo.gongon.test` / `gongon-demo-1234`(현장소장, 조정자). 이미 있으면 다시 만들지 않고, 번호 없는 시연 계정에만 가상 번호(010-0000-0001부터 PEOPLE 순서)를 넣는다. `--viewer 내이메일`로 내 계정을 열람자로 넣을 수 있다.
 - `PYTHONUTF8=1 uv run python scripts/seed_test_sites.py --owner 내이메일 [--reset]` — 내 계정(원청 조정자)에 시험 자료를 채운다. 기존 현장은 비어 있는 업체·담당자·일주일 작업을 채우고, 현장이 7곳이 될 때까지 [TEST] 현장(코드 `TEST-0000`부터)을 만든다. 변경 건·후속 조치는 화면 흐름 그대로(응답 대기·완료 보고·막힘·변경 검토·검증 완료), 제안은 도우미 공무 계정 `test-works@demo.gongon.test`, 검증자는 나. 협력업체 담당자 계정은 `test-<업체>@demo.gongon.test`, 비밀번호는 모두 `gongon-demo-1234`. 다시 돌려도 이미 만든 장면은 건너뛴다. `--reset`은 예전 [TEST] 현장을 지운다.
+- `PYTHONUTF8=1 uv run python scripts/seed_chat.py [--site 현장id] [--reset]` — 참여자가 둘 이상인 현장 대화방에 그 현장 자료로 만든 예시 대화를 넣는다(오늘 작업 공지·업체 대답, 열린 변경 건 카드, 보류·완료 보고 조치, 내일 작업·날씨 판정). 말하는 사람은 그 현장의 원청 조정자·해당 협력업체 담당자. 이미 3건 이상이면 건너뛰고, `--reset`은 그 현장 대화를 지우고 다시 넣는다. 시험 자료를 다시 채운 뒤 이어서 돌린다.
 
 ## DB 준비 (PostgreSQL 17, 처음 한 번)
 1. 설치: https://www.postgresql.org/download/windows/ → "Download the installer"(EDB) → **17.x Windows x86-64**.
