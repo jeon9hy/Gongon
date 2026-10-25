@@ -2031,7 +2031,7 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 .siteswitch__empty, .siteswitch__loading { padding: 10px; font-size: 13px; color: var(--muted); }
 .siteswitch__foot { display: flex; align-items: center; gap: 4px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line-soft); }
 .siteswitch__foot .siteswitch__action { flex: 1; }
-.siteswitch__gear { display: inline-grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: var(--radius-md); color: var(--muted); }
+.siteswitch__gear { display: inline-grid; place-items: center; flex: none; width: 34px; height: 34px; padding: 0; border: 0; border-radius: var(--radius-md); background: none; color: var(--muted); cursor: pointer; }
 .siteswitch__gear:hover { background: var(--surface); color: var(--ink); }
 .siteswitch__action { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 0; border-radius: var(--radius-md); background: none; font: inherit; font-size: 13px; font-weight: 600; color: var(--muted); text-decoration: none; cursor: pointer; text-align: left; }
 .siteswitch__action:hover { background: var(--surface); color: var(--ink); }

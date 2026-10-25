@@ -2,7 +2,13 @@
 {% from "_macros.html" import icon, site_danger_zone, site_add_tabs %}
 {% block title %}현장 설정{% endblock %}
 {% block body_class %}{% if embed %} class="embedbody"{% endif %}{% endblock %}
-{% block page %}{% if embed %}<main class="embed" id="main" tabindex="-1">{% if view.site_id is none %}{{ site_add_tabs("new") }}{% endif %}{% include "sites/_form.html" %}</main>{% else %}{{ super() }}{% endif %}{% endblock %}
+{% block page %}{% if embed and pick %}<main class="embed" id="main" tabindex="-1">
+{# 전체 현장에서 연 설정 모달(C04-57): 고를 현장 목록. 고르면 같은 모달 안에서 그 현장 설정을 연다 #}
+<nav class="site-list site-list--pick" aria-label="설정할 현장">
+{% for item in view.items %}<a class="site-item" href="{{ item.href }}&amp;embed=1"><strong>{{ item.name }}</strong><span class="site-item__meta"><span>주소</span><span>{{ item.address }}</span></span>{% if item.period %}<span class="site-item__meta"><span>작업 기간</span><span>{{ item.period }}</span></span>{% endif %}</a>
+{% else %}<p class="muted">참여한 현장이 없어요</p>{% endfor %}
+</nav>
+</main>{% elif embed %}<main class="embed" id="main" tabindex="-1">{% if view.site_id is none %}{{ site_add_tabs("new") }}{% endif %}{% include "sites/_form.html" %}</main>{% else %}{{ super() }}{% endif %}{% endblock %}
 {% block pagebar %}<p class="pagemeta"><span class="pagemeta__item">{{ icon("site", 14) }}현장 <b>{{ view.items | length }}곳</b></span></p><button class="btn btn--soft btn--sm" type="button" data-site-dialog="/join?embed=1" data-title="현장 추가">{{ icon("link", 15) }} 코드로 참여</button>{% endblock %}
 {% block content %}
 

@@ -51,10 +51,17 @@ FormDep = Annotated[_SiteFormFields, Depends()]
 
 
 def _render(
-    request: Request, view: SitesView, status_code: int = 200, embed: bool = False
+    request: Request,
+    view: SitesView,
+    status_code: int = 200,
+    embed: bool = False,
+    pick: bool = False,
 ) -> HTMLResponse:
-    """embed: 현장 추가·설정 모달 안 화면(폼만, 앱 메뉴 없음)."""
-    context = {"nav_active": "sites", "view": view, "embed": embed}
+    """embed: 현장 추가·설정 모달 안 화면(폼만, 앱 메뉴 없음).
+
+    pick: 전체 현장에서 톱니를 누른 모달. 현장 목록을 먼저 보이고, 고르면 그 현장 설정을 연다.
+    """
+    context = {"nav_active": "sites", "view": view, "embed": embed, "pick": pick}
     return templates.TemplateResponse(request, "sites/index.html", context, status_code=status_code)
 
 
@@ -77,13 +84,14 @@ def sites(
     saved: bool = False,
     deleted: bool = False,
     embed: bool = False,
+    pick: bool = False,
 ) -> HTMLResponse:
     view = service.build_sites_view(
         session, user, site_id, saved=saved, today=now.date(), deleted=deleted
     )
     if view is None:
         raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
-    return _render(request, view, embed=embed)
+    return _render(request, view, embed=embed, pick=embed and pick and site_id is None)
 
 
 @router.get("/sites/places")

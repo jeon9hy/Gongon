@@ -265,7 +265,10 @@ document.querySelectorAll("dialog.modal[data-open]").forEach((d) => { if (!d.ope
       if (!current) all.setAttribute("aria-current", "true");
     }
     const settings = panel.querySelector("[data-switch-settings]");
-    if (settings && current) settings.href = `/sites?site_id=${current}`;
+    // 톱니는 페이지 이동 대신 설정 모달(C04-57). 고른 현장이 있으면 그 현장 설정을 바로 연다
+    if (settings && current) settings.dataset.siteDialog = `/sites?site_id=${current}&embed=1`;
+    // 현장 추가·톱니로 모달을 열면 뒤의 현장 목록은 닫는다
+    panel.querySelectorAll("[data-site-dialog]").forEach((b) => b.addEventListener("click", () => { box.open = false; }));
   });
   // 바깥을 누르면 닫는다
   document.addEventListener("click", (e) => { if (box.open && !box.contains(e.target)) box.open = false; });

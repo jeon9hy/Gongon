@@ -95,6 +95,21 @@ def test_switcher_lists_only_joined_sites_with_add_and_settings(
 
     assert "가상A현장" in html and "남의현장" not in html
     assert "현장 추가" in html and "현장 설정" in html and "전체 현장" in html
+    # 톱니는 페이지 이동이 아니라 설정 모달(C04-57)
+    assert 'data-site-dialog="/sites?embed=1&amp;pick=1"' in html
+
+
+def test_settings_modal_from_all_sites_lists_only_joined_sites_to_pick(
+    client: TestClient, browser: Browser
+) -> None:
+    add_site(client, "가상A현장")
+    add_site(browser(OTHER), "남의현장")
+
+    picker = client.get("/sites?embed=1&pick=1").text
+
+    assert "가상A현장" in picker and "남의현장" not in picker
+    assert "&amp;embed=1" in picker  # 고르면 같은 모달 안에서 그 현장 설정을 연다
+    assert 'class="appbar' not in picker  # 모달 안 화면이라 앱 메뉴가 없다
 
 
 def test_changes_and_actions_share_a_sub_menu_and_me_has_no_work_cards(
