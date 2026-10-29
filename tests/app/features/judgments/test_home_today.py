@@ -296,6 +296,25 @@ def test_same_issue_on_many_sites_is_one_inbox_row_with_a_count() -> None:
     assert [(r.title, r.count) for r in by_place] == [("B동", 6)]
 
 
+def test_inbox_row_without_location_names_the_site_once() -> None:
+    # 위치가 없으면 place가 현장 이름이다. '남산 · 남산'처럼 두 번 쓰지 않는다
+    row = InboxItem(
+        tag="보류",
+        tone="stop",
+        title="옥상 배수구 재시공",
+        meta="",
+        href="/actions",
+        action="조치 보기",
+        work="옥상 배수구 재시공",
+        place="가상A",
+        site="가상A",
+    )
+
+    (merged,) = service._merge_inbox([row], "work")
+
+    assert merged.where == "가상A"
+
+
 def test_home_greets_by_time_of_day(client: TestClient) -> None:
     # 시험 시계는 15:00(KST): 날짜 줄에 때에 맞는 인사(C04-52)
     make_site(client)

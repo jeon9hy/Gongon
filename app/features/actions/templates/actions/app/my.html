@@ -1,0 +1,70 @@
+{# 내 조치 앱 화면(D-109, C13-1b). 웹과 같은 view, 좁은 화면용으로 압축:
+   종류 칩(건수) → 묶음마다 한 줄씩(조치 · 기한·현장 · 상태). 줄을 누르면 조치 상세. #}
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}내 조치{% endblock %}
+{% block pagebar %}{% endblock %}
+{% block content %}
+{% set groups = [("respond", "할 일", view.to_respond, "내가 답하거나 수행할 조치가 없어요"), ("verify", "확인 대기", view.to_verify, "확인할 완료 보고가 없어요"), ("blocked", "보류", view.blocked, "보류 중인 조치가 없어요")] %}
+<h1 class="visually-hidden">내 조치</h1>
+
+{% if view.errors %}<div class="alert alert--error" role="alert"><ul>{% for e in view.errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+{% elif view.message %}<div class="alert alert--ok" role="status">{{ view.message }}</div>{% endif %}
+
+<div class="mtoolbar">
+<nav class="mchips" aria-label="조치 묶음">{% for key, title, rows, empty in groups %}<a href="#g-{{ key }}"><span class="mydot mydot--{{ key }}"></span>{{ title }} <b>{{ rows | length }}</b></a>{% endfor %}</nav>
+<button class="mlink" type="button" data-open-dialog="dlg-delegate">{{ icon("user-plus", 15) }} 맡기기</button>
+</div>
+
+{% for key, title, rows, empty in groups %}
+<section class="msec" id="g-{{ key }}" aria-labelledby="g-{{ key }}-title">
+<div class="msec__head"><h2 class="msec__title" id="g-{{ key }}-title">{{ title }} <small>{{ rows | length }}건{% if rows | length > 1 %} · 기한 지난 것부터{% endif %}</small></h2></div>
+{% if rows %}
+<ul class="mlist">
+{% for a in rows %}
+<li><a class="mrow mrow--2" href="{{ a.href }}">
+<span class="mrow__main"><strong><span>{{ a.title }}</span></strong><small>{% if a.overdue %}<em>{{ a.due_text }} · 기한 지남</em>{% else %}{{ a.due_text }}{% endif %} · {{ a.site_name }}{% if a.why in ("위임받음", "대리 기록") %} · {{ a.why }}{% endif %}</small></span>
+<span class="mrow__end"><span class="mtag mtag--{{ key }}">{{ a.status_label }}</span>{{ icon("chevron-right", 16, 2) }}</span>
+</a></li>
+{% endfor %}
+</ul>
+{% else %}
+<p class="mnote">{{ empty }}</p>
+{% endif %}
+</section>
+{% endfor %}
+
+{% if view.delegations %}
+<section class="msec" aria-labelledby="deleg-title">
+<div class="msec__head"><h2 class="msec__title" id="deleg-title">맡긴·맡은 일</h2></div>
+<ul class="mlist">
+{% for d in view.delegations %}
+<li class="mrow mrow--2"><span class="mrow__main"><strong><span>{{ d.from_name }} → {{ d.to_name }}</span></strong><small>{{ d.period_text }} · {{ d.site_name }}</small></span>
+<span class="mrow__end">{% if d.can_revoke %}<form method="post" action="/actions/delegations/{{ d.delegation_id }}/revoke"><button class="mlink" type="submit">거두기</button></form>{% endif %}</span></li>
+{% endfor %}
+</ul>
+</section>
+{% endif %}
+
+<dialog class="modal" id="dlg-delegate" aria-labelledby="dlg-delegate-title">
+<div class="modal__box">
+<div class="modal__head"><h2 class="h2" id="dlg-delegate-title">잠시 맡기기</h2><button class="modal__close" type="button" data-close aria-label="닫기">{{ icon("close", 18, 2.2) }}</button></div>
+<form class="modal__form" method="post" action="/actions/delegations">
+{% if view.delegate_choices %}
+<label class="field">맡을 사람(같은 업체)
+<select name="choice" required><option value="">고르기</option>{% for c in view.delegate_choices %}<option value="{{ c.value }}">{{ c.label }}</option>{% endfor %}</select>
+</label>
+<div class="modal__grid">
+<label class="field">시작 날짜<input type="date" name="start_date" required></label>
+<label class="field">시작 시각<input type="time" name="start_time" required></label>
+<label class="field">끝 날짜<input type="date" name="end_date" required></label>
+<label class="field">끝 시각<input type="time" name="end_time" required></label>
+</div>
+{% else %}
+<p class="small muted">같은 업체의 다른 조정자·담당자가 있어야 맡길 수 있어요.</p>
+{% endif %}
+<div class="modal__actions"><button class="btn btn--soft" type="button" data-close>취소</button>{% if view.delegate_choices %}<button class="btn btn--accent" type="submit">맡기기</button>{% endif %}</div>
+</form>
+</div>
+</dialog>
+{% endblock %}

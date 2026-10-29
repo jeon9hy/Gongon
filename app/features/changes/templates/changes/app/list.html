@@ -1,0 +1,27 @@
+{# 변경 건 앱 화면(D-109, C13-1c). 웹과 같은 view: 진행 중·전체 칩 → 한 줄씩(제목 · 작업 → 바뀐 때 · 상태). #}
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}변경{% endblock %}
+{% block pagebar %}{% endblock %}
+{% block content %}
+<h1 class="visually-hidden">변경 건</h1>
+<div class="mtoolbar">
+<nav class="mchips" aria-label="보기">
+<a href="{{ view.open_href }}"{% if view.show == 'open' %} aria-current="true"{% endif %}>진행 중</a>
+<a href="{{ view.all_href }}"{% if view.show == 'all' %} aria-current="true"{% endif %}>전체</a>
+</nav>
+</div>
+{% if view.items %}
+<ul class="mlist">
+{% for c in view.items %}
+<li><a class="mrow mrow--2" href="{{ c.href }}">
+<span class="mrow__main"><strong><span>{{ c.title }}</span></strong><small>{{ c.work_label }} → {{ c.after_text }}</small><small>원인 {{ c.reasons_text }} · {{ c.updated_text }}</small></span>
+<span class="mrow__end"><span class="tag change-status change-status--{{ c.status }}">{{ c.version_text }} · {{ c.status_label }}</span></span>
+</a></li>
+{% endfor %}
+</ul>
+{% else %}
+<p class="mempty">{% if view.show == "open" %}진행 중인 변경이 없어요{% else %}아직 변경 건이 없어요{% endif %}</p>
+{% endif %}
+<p class="mnote">{{ icon("info", 13) }} 새 변경은 일정에서 작업을 눌러 제안해요</p>
+{% endblock %}

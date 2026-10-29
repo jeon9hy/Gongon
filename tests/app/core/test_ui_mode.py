@@ -55,7 +55,7 @@ def test_phone_gets_app_home_with_tab_bar_and_pc_gets_web_home(
     assert APP_HTML not in web and 'class="appbar"' in web and '<nav class="tabbar"' not in web
     assert APP_HTML in phone and '<nav class="tabbar"' in phone and 'class="appbar"' not in phone
     assert "app.css" in phone and "app.css" not in web
-    assert "mhero" in phone and "거푸집 설치" in phone  # 같은 자료를 앱 화면으로
+    assert "msum" in phone and "거푸집 설치" in phone  # 같은 자료를 앱 화면으로
 
 
 def test_choosing_pc_view_on_a_phone_is_remembered(client: TestClient) -> None:
@@ -93,3 +93,16 @@ def test_pc_web_never_gets_narrow_layout_but_modal_frames_and_app_do(client: Tes
     assert "data-narrow" not in web.split("<head>")[0]
     assert "data-narrow" in modal.split("<head>")[0]
     assert "data-narrow" in phone.split("<head>")[0]
+
+
+@pytest.mark.parametrize("path", ["/actions", "/changes", "/team"])
+def test_actions_changes_and_team_have_compact_phone_layouts(client: TestClient, path: str) -> None:
+    """C13-1b·c·f: 휴대폰은 넓은 표 대신 한 줄 목록·칩을 쓴다(가로로 넘치는 웹 표를 넣지 않는다)."""
+    make_site(client)
+
+    phone = client.get(path, headers={"user-agent": IPHONE}).text
+    web = client.get(path, headers={"user-agent": DESKTOP}).text
+
+    assert 'class="mchips"' in phone or 'class="mlist"' in phone
+    assert '<table class="sheet' not in phone and 'class="kpis' not in phone
+    assert 'class="mlist"' not in web

@@ -1,0 +1,19 @@
+{# 앱 업체 한 줄(D-109, C13-1f): 누르면 펼쳐서 담당자·전화. 명부 고치기는 PC에서(D-109). #}
+{% from "_macros.html" import icon %}
+{% macro company_row(p, show_people=true) %}
+<li><details class="mco">
+<summary class="mrow">
+<span class="mmark" aria-hidden="true">{{ p.organization_name[:1] }}</span>
+<span class="mrow__main"><strong><span>{{ p.organization_name }}</span></strong><small>{{ p.kind_label }}{% for t in p.work_trades[:2] %} · {{ short_trade(t) }}{% endfor %}{% if p.is_ended %} · {{ p.status_text }}{% endif %}</small></span>
+<span class="mrow__end"><span class="mpill">{{ icon("user", 12, 2.2) }} {{ p.people_count }}</span>{{ icon("chevron-down", 16, 2) }}</span>
+</summary>
+{% if show_people %}
+<ul class="mco__people">
+{% for c in p.contacts %}<li><span><b>{{ c.name }}</b>{% if c.job_title %} {{ c.job_title }}{% endif %}</span>{% if c.phone %}<a class="mco__tel" href="tel:{{ c.phone }}" aria-label="{{ c.name }}에게 전화">{{ icon("phone", 14, 2) }} {{ c.phone }}</a>{% endif %}</li>{% endfor %}
+{% for m in p.members if not p.contacts | selectattr("name", "equalto", m.display_name) | list %}<li><span><b>{{ m.display_name }}</b> {{ m.role_label }}</span></li>{% endfor %}
+{% if not p.contacts and not p.members %}<li class="mco__none">등록한 담당자가 없어요</li>{% endif %}
+{% if p.trade_note %}<li class="mco__none">공종 메모 · {{ p.trade_note }}</li>{% endif %}
+</ul>
+{% endif %}
+</details></li>
+{% endmacro %}

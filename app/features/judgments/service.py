@@ -2209,8 +2209,11 @@ def _merge_inbox(items: list[InboxItem], by: Literal["work", "place"]) -> tuple[
             merged.append(
                 replace(
                     first,
+                    # 위치가 없으면 place가 현장 이름이라 같은 이름을 두 번 쓰지 않는다
                     where=" · ".join(
-                        x for x in (first.place, first.site) if x and x != first.title
+                        x
+                        for x in dict.fromkeys((first.place, first.site))
+                        if x and x != first.title
                     ),
                 )
             )
@@ -2224,7 +2227,7 @@ def _merge_inbox(items: list[InboxItem], by: Literal["work", "place"]) -> tuple[
                 first,
                 title=label,
                 meta=" · ".join(x for x in (f"{len(same)}건", what, where) if x),
-                where=" · ".join(x for x in (what, where) if x),
+                where=" · ".join(x for x in dict.fromkeys((what, where)) if x),
                 late=next((i.late for i in same if i.late), ""),
                 detail=", ".join(dict.fromkeys(i.detail for i in same if i.detail)),
                 count=len(same),
