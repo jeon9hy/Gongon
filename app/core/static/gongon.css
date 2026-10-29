@@ -1691,8 +1691,6 @@ a.vtile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); color
 }
 @media (prefers-reduced-motion: reduce) { .about__mascot, .about__scroll, .about__orbs span, .about__title em { animation: none; } [data-reveal], .about__flow li, .about__flow::before { transition: none; } }
 /* 앱 바: 로고 옆 '소개' */
-.appbar__about { font-size: 13px; font-weight: 600; color: var(--muted); text-decoration: none; padding: 6px 10px; border-radius: 999px; }
-.appbar__about:hover { background: var(--surface); color: var(--ink); }
 .welcome__links { display: inline-flex; align-items: center; gap: 8px; }
 /* 소개: 가운데 맞춤·구역 글자선 정리 */
 .about__hero .auth__eyebrow { align-self: center; }
@@ -2055,7 +2053,6 @@ html:not([data-narrow]) .chat__room span:last-child { white-space: normal; displ
 @media (max-width: 760px) { html[data-narrow] .appnav__long { display: none; } html[data-narrow] .appnav__short { display: inline; } }
 @media (max-width: 760px) {
   /* 휴대폰 머리줄: 로고 · 현장 칩 · 내 이름 한 줄. 소개는 바닥 메뉴·로그인 전 화면에서 */
-  html[data-narrow] .appbar__brand:has(.siteswitch) .appbar__about { display: none; }
   html[data-narrow] .appbar__brand { flex: 1 1 auto; min-width: 0; }
   html[data-narrow] .siteswitch > summary { max-width: calc(100vw - 200px); }
   html[data-narrow] .appbar__inner { flex-wrap: nowrap; }
@@ -2528,7 +2525,7 @@ a.sumcard:hover { border-color: var(--line); }
 .intro__siteshead img { width: 56px; height: auto; filter: drop-shadow(0 8px 10px #0E1E4526); }
 .intro__siteshead h2 { font-size: 20px; font-weight: 700; color: var(--ink); }
 .intro__siteshead p { font-size: 14px; color: var(--muted); }
-.intro__sitelist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; max-height: 360px; overflow-y: auto; }
+.intro__sitelist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .intro__site { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: 1px solid var(--line-soft); border-radius: 16px; background: var(--card); color: var(--ink); text-decoration: none; transition: border-color var(--ease), box-shadow var(--ease), transform var(--ease); }
 .intro__site:hover { border-color: var(--accent); box-shadow: 0 8px 20px #1C60EF1F; transform: translateY(-1px); }
 .intro__sitemark { flex: 0 0 auto; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-size: 17px; font-weight: 700; }

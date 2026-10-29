@@ -1,4 +1,5 @@
-{# 로그인 뒤 첫 화면(D-110): 슬랙의 워크스페이스 열기처럼 내 현장을 골라 PC 웹 앱(/home)으로 들어간다.
+{# 로그인 뒤 첫 화면(D-110): 슬랙의 워크스페이스 열기처럼 내 현장을 골라 PC 웹 앱(/home)을 새 탭으로 연다.
+   탭 이름(gongon-app)이 같아 여러 번 눌러도 앱 탭 하나를 다시 쓴다.
    모양은 공온 색·캐릭터로(개발자 요청: 슬랙과 똑같이 하지 말 것). #}
 {% extends "intro/_layout.html" %}
 {% from "_macros.html" import icon %}
@@ -21,8 +22,8 @@
 <div role="tabpanel" id="sites-list" aria-labelledby="sites-tab-list">
 {% if sites %}
 <ul class="intro__sitelist">
-<li><a class="intro__site intro__site--all" href="/home"><span class="intro__sitemark" aria-hidden="true">{{ icon("site", 18) }}</span><span class="intro__sitename">전체 현장<small>{{ sites | length }}곳 함께 보기</small></span><span class="intro__siteopen">열기 {{ icon("arrow-right", 16, 2.2) }}</span></a></li>
-{% for s in sites %}<li><a class="intro__site" href="/home?site_id={{ s.site_id }}"><span class="intro__sitemark" aria-hidden="true">{{ s.name[:1] }}</span><span class="intro__sitename">{{ s.name }}<small>{{ s.address }}</small></span><span class="intro__siteopen">열기 {{ icon("arrow-right", 16, 2.2) }}</span></a></li>
+<li><a class="intro__site intro__site--all" href="/home" target="gongon-app"><span class="intro__sitemark" aria-hidden="true">{{ icon("site", 18) }}</span><span class="intro__sitename">전체 현장<small>{{ sites | length }}곳 함께 보기</small></span><span class="intro__siteopen">열기 {{ icon("arrow-right", 16, 2.2) }}</span></a></li>
+{% for s in sites %}<li><a class="intro__site" href="/home?site_id={{ s.site_id }}" target="gongon-app"><span class="intro__sitemark" aria-hidden="true">{{ s.name[:1] }}</span><span class="intro__sitename">{{ s.name }}<small>{{ s.address }}</small></span><span class="intro__siteopen">열기 {{ icon("arrow-right", 16, 2.2) }}</span></a></li>
 {% endfor %}
 </ul>
 {% else %}

@@ -27,7 +27,8 @@ def test_signed_in_front_page_picks_a_site_to_open_the_pc_app(client: TestClient
     page = client.get("/", follow_redirects=False)
 
     assert page.status_code == 200 and "다시 만나서 반가워요" in page.text
-    assert f'href="/home?site_id={site_id}"' in page.text and 'href="/home"' in page.text
+    assert f'href="/home?site_id={site_id}" target="gongon-app"' in page.text  # 앱은 새 탭
+    assert 'href="/home" target="gongon-app"' in page.text
     assert 'href="/join"' in page.text and 'action="/logout"' in page.text
     assert 'href="/signup"' not in page.text
     assert client.get(f"/home?site_id={site_id}").status_code == 200
@@ -77,7 +78,8 @@ def test_old_welcome_address_and_app_bar_lead_to_the_service_site(
 ) -> None:
     response = anonymous_client.get("/welcome", follow_redirects=False)
     assert response.status_code == 308 and response.headers["location"] == "/"
-    assert 'class="appbar__about" href="/"' in client.get("/sites").text
+    # PC 앱은 데스크톱 앱처럼 서비스 사이트 링크가 없다
+    assert "appbar__about" not in client.get("/sites").text
 
 
 def test_footer_is_on_the_service_site_only_and_me_page_can_log_out(client: TestClient) -> None:
