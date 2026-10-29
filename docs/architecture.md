@@ -27,7 +27,7 @@
 | DB 변경 이력 | `migrations/` | Alembic 리비전(`0001`~`0015_participant_roster`) | 있음 | S04-1 |
 | 작업 일정·변경 | `app/features/schedules/` | `service.items_on()`·`items_on_for_sites()`(그날 작업), `/schedule` 화면 | 있음(S08-1) | S08·S09 |
 | 현장 참여·역할 | `app/features/teams/` | `service.site_ids_for`·`require_role`·`AccessibleSitesDep`(모든 현장 조회·쓰기 범위), `/sites/{id}/members` 참여 업체·담당자 명부·참여자 화면(C04-9: 업체 등록·종료·재개, 명부, 계정 연결, `participant_choices` 참여 중 업체 선택지), `scripts/grant_site.py`(기존 현장 조정자 지정) | 있음 | C03-2 |
-| 서비스 소개(웹 입구) | `app/features/intro/` | `/`(소개, 로그인했으면 내 현장 → `/home` PC 웹 앱), `/welcome`·`/about`은 `/`로 | 없음 | C13-2a, D-110 |
+| 서비스 사이트(웹 입구) | `app/features/intro/` | `/`(로그인 전 첫 화면, 로그인 뒤 내 현장 → `/home` PC 웹 앱), `/features`·`/about`·`/pricing`, 머리줄·바닥글 틀 `_layout.html`, 기능 목록 `_features.html`. `/welcome`은 `/`로 | 없음 | C13-2a, D-110 |
 | 공온 가이드·내 정보 | `app/features/help/` | `/guide`(화면에서 뺀 설명 모음), `/me`(계정·참여 현장) | 있음 | C04-7 |
 | 실제 작업 기록 | `app/features/work_records/` | — | 계획(첫 확장) | S10 |
 | 집계·보고서·비용 | `app/features/reports/` | — | 계획(선택) | S11 |

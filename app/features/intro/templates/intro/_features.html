@@ -1,0 +1,63 @@
+{# 공온 기능 다섯 가지(D-110). 머리줄 '기능' 펼침·기능 탭·바닥글이 같이 쓴다. 지금 있는 기능만 쓴다. #}
+{% from "_macros.html" import icon, verdict_badge %}
+{% set features = [
+  ("changes", "변경 관리", "clipboard", "바뀐 계획을 버전으로 남겨요",
+   "작업을 골라 바뀌기 전·후와 원인, 근거를 등록하고 사람이 영향을 검토한 뒤 확정해요.",
+   ["원인은 공정·인력·장비·자재·도면·기상 등에서 여러 개 고를 수 있어요", "제안한 사람과 확정한 사람을 따로 남겨요", "다시 바뀌면 새 버전이 되고 이전 기록은 그대로예요"]),
+  ("actions", "후속 조치", "check", "업체별로 할 일을 나누고 끝까지 확인해요",
+   "확정한 변경마다 누가, 언제까지, 무엇을 하면 끝나는지 정하고 응답과 완료 보고를 받아요.",
+   ["업체 담당자가 응답·막힘·완료 보고를 직접 남겨요", "보고한 사람과 다른 사람이 검증해야 끝나요", "필수 조치가 모두 끝나야 변경 건이 닫혀요"]),
+  ("schedule", "일정·공온 점검", "calendar", "내일 작업, 미리 점검해요",
+   "현장 작업을 달력에 모으고 날씨·업체·위치·겹침을 규칙으로 점검해요.",
+   ["공정표 파일(엑셀·CSV)로 작업을 한꺼번에 등록해요", "내일부터 7일 날씨를 진행·확인 필요·중지 검토·판정 불가로 보여줘요", "실행 업체 미지정·위치 없음·같은 곳 같은 시간 겹침을 찾아요"]),
+  ("team", "업체·현장", "building", "현장마다 함께 일하는 사람을 모아요",
+   "현장을 만들고 원청·협력업체 담당자를 초대해 같은 현장의 같은 기록을 봐요.",
+   ["업체·담당자 명부를 엑셀처럼 표로 편집해요", "8자리 현장 코드로 담당자가 스스로 참여해요", "작업자는 가입 없이 현장 게시 화면으로 오늘·내일 작업을 봐요"]),
+  ("chat", "현장 대화", "chat", "현장 이야기는 현장 대화방에서",
+   "그 현장에 참여한 사람만 들어오는 대화방에서 이야기하고 변경 건을 함께 붙여요.",
+   ["변경 건을 붙이면 지금 상태가 카드로 보여요", "현장마다 대화방이 하나씩 있어요", "휴대폰에서는 카톡처럼 대화방 목록부터 보여요"]),
+] %}
+
+{# 기능 탭: 왼쪽 설명, 오른쪽 그림. 그림은 '예시' 표시가 붙은 장식이며 실제 자료가 아니다 #}
+{% macro feature_tabs() %}
+<div class="feat" data-tabs>
+<div class="feat__tabs" role="tablist" aria-label="기능">
+{% for key, name, ic, title, _lead, _points in features %}<button class="feat__tab" type="button" role="tab" id="feature-tab-{{ key }}" aria-controls="feature-{{ key }}" aria-selected="{{ 'true' if loop.first else 'false' }}"{% if not loop.first %} tabindex="-1"{% endif %}>{{ icon(ic, 18) }}{{ name }}</button>{% endfor %}
+</div>
+{% for key, name, ic, title, lead, points in features %}
+<div class="feat__panel" role="tabpanel" id="feature-{{ key }}" aria-labelledby="feature-tab-{{ key }}"{% if not loop.first %} hidden{% endif %}>
+<div class="feat__copy">
+<h3>{{ title }}</h3>
+<p>{{ lead }}</p>
+<ul class="intro__list">{% for point in points %}<li>{{ icon("check", 16, 2.4) }}{{ point }}</li>{% endfor %}</ul>
+</div>
+<div class="feat__art" aria-hidden="true"><span class="feat__sample">예시</span>
+{% if key == "changes" %}
+<div class="fmock"><p class="fmock__head"><strong>3층 슬래브 타설</strong><span class="fmock__tag">변경 v2</span></p>
+<div class="fmock__diff"><span><small>바뀌기 전</small>10월 30일 08:00</span>{{ icon("arrow-right", 18, 2.2) }}<span><small>바뀐 뒤</small>10월 31일 08:00</span></div>
+<p class="fmock__chips"><span>기상</span><span>장비</span></p>
+<p class="fmock__item">제안 · 공무 담당<em class="fmock__ok">확정 · 현장 소장</em></p></div>
+{% elif key == "actions" %}
+<div class="fmock"><p class="fmock__head"><strong>변경 v2 후속 조치</strong><span class="fmock__tag">필수 3건</span></p>
+<p class="fmock__item"><span class="welcome__dot welcome__dot--go"></span>펌프카 예약 변경<em class="fmock__ok">검증 완료</em></p>
+<p class="fmock__item"><span class="welcome__dot welcome__dot--wait"></span>레미콘 출하 조정<em>완료 보고 대기</em></p>
+<p class="fmock__item"><span class="welcome__dot welcome__dot--check"></span>철근 검측 일정<em>응답 대기</em></p></div>
+{% elif key == "schedule" %}
+<div class="fmock"><p class="fmock__head"><strong>내일 작업</strong><span class="fmock__tag">공온 점검</span></p>
+<p class="fmock__item">외부 비계 설치{{ verdict_badge("진행") }}</p>
+<p class="fmock__item">3층 슬래브 타설{{ verdict_badge("확인 필요") }}</p>
+<p class="fmock__item">타워크레인 인양{{ verdict_badge("중지 검토") }}</p>
+<p class="fmock__note">{{ icon("info", 14) }}실행 업체가 정해지지 않은 작업 1건</p></div>
+{% elif key == "team" %}
+<div class="fmock"><p class="fmock__head"><strong>참여 업체</strong><span class="fmock__tag">현장 코드 AB12CD34</span></p>
+<p class="fmock__grid"><b>업체</b><b>업종</b><b>담당자</b><span>한빛골조</span><span>철근·콘크리트</span><span>현장대리인</span><span>대성펌프</span><span>장비</span><span>반장</span><span>해든전기</span><span>전기</span><span>현장대리인</span></p></div>
+{% else %}
+<div class="fmock fmock--chat"><p class="fmock__bubble">타설 하루 미룹니다. 펌프카 다시 잡아주세요</p>
+<div class="fmock__case"><strong>3층 슬래브 타설 · 변경 v2</strong><span>필수 조치 2건 남음</span></div>
+<p class="fmock__bubble fmock__bubble--me">네, 오늘 오후에 예약 바꾸고 보고 올릴게요</p></div>
+{% endif %}
+</div>
+</div>
+{% endfor %}
+</div>
+{% endmacro %}

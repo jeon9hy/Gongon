@@ -1,0 +1,65 @@
+{# 로그인 뒤 첫 화면(D-110): 슬랙의 워크스페이스 열기처럼 내 현장을 골라 PC 웹 앱(/home)으로 들어간다.
+   모양은 공온 색·캐릭터로(개발자 요청: 슬랙과 똑같이 하지 말 것). #}
+{% extends "intro/_layout.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}내 현장{% endblock %}
+{% block intro_main %}
+<section class="launch__hero" aria-labelledby="launch-title">
+<img class="launch__mascot" src="/static/brand/mascot-3d.png" alt="" width="140" height="113">
+<h1 class="launch__title" id="launch-title">다시 만나서 반가워요, {{ me_intro.display_name }}님</h1>
+<p class="launch__lead">현장을 골라 시작하세요.</p>
+</section>
+
+<div class="launch">
+<section class="launch__main" aria-labelledby="mysites-title">
+<h2 class="launch__label" id="mysites-title">{{ icon("site", 18) }} 내 현장</h2>
+<div class="launch__card" data-tabs>
+<div class="launch__tabs" role="tablist" aria-label="내 현장">
+<button type="button" role="tab" id="sites-tab-list" aria-controls="sites-list" aria-selected="true">참여 중 <b>{{ sites | length }}</b></button>
+<button type="button" role="tab" id="sites-tab-join" aria-controls="sites-join" aria-selected="false" tabindex="-1">코드로 참여</button>
+</div>
+<div role="tabpanel" id="sites-list" aria-labelledby="sites-tab-list">
+{% if sites %}
+<ul class="intro__sitelist">
+<li><a class="intro__site intro__site--all" href="/home"><span class="intro__sitemark" aria-hidden="true">{{ icon("site", 18) }}</span><span class="intro__sitename">전체 현장<small>{{ sites | length }}곳 함께 보기</small></span><span class="intro__siteopen">열기 {{ icon("arrow-right", 16, 2.2) }}</span></a></li>
+{% for s in sites %}<li><a class="intro__site" href="/home?site_id={{ s.site_id }}"><span class="intro__sitemark" aria-hidden="true">{{ s.name[:1] }}</span><span class="intro__sitename">{{ s.name }}<small>{{ s.address }}</small></span><span class="intro__siteopen">열기 {{ icon("arrow-right", 16, 2.2) }}</span></a></li>
+{% endfor %}
+</ul>
+{% else %}
+<p class="launch__empty">아직 참여한 현장이 없어요. 현장을 만들거나 받은 현장 코드로 참여하세요.</p>
+{% endif %}
+</div>
+<div role="tabpanel" id="sites-join" aria-labelledby="sites-tab-join" hidden>
+<p class="launch__empty">조정자에게 받은 8자리 현장 코드를 넣으면 담당자로 들어가요.</p>
+<a class="btn btn--accent" href="/join">{{ icon("link", 16) }} 현장 코드 넣기</a>
+</div>
+<div class="launch__foot">
+<a href="/sites">{{ icon("plus", 16, 2.2) }} 새 현장 만들기</a>
+<form method="post" action="/logout"><span>현장이 보이지 않나요?</span> <button type="submit">다른 계정으로 로그인</button></form>
+</div>
+</div>
+</section>
+
+<aside class="launch__side" aria-labelledby="me-title">
+<h2 class="launch__label" id="me-title"><span class="usermenu__avatar" aria-hidden="true">{{ me_intro.display_name[:1] }}</span> {{ me_intro.organization_name }}</h2>
+<article class="launch__tip">
+<div><h3>처음이라면 가이드부터</h3><p>메뉴와 판정 읽는 법을 한곳에 모았어요.</p><a class="btn btn--soft btn--sm" href="/guide">가이드 보기</a></div>
+<span class="launch__tipicon" aria-hidden="true">{{ icon("info", 26) }}</span>
+</article>
+<article class="launch__tip">
+<div><h3>업체 담당자를 불러요</h3><p>현장 코드를 보내면 담당자가 스스로 들어와요.</p><a class="btn btn--soft btn--sm" href="/team">업체 보기</a></div>
+<span class="launch__tipicon" aria-hidden="true">{{ icon("user-plus", 26) }}</span>
+</article>
+</aside>
+</div>
+
+<section class="launch__more" aria-labelledby="more-title">
+<h2 class="launch__label" id="more-title">{{ icon("arrow-right", 18) }} 더 알아보기</h2>
+<div class="launch__cards">
+<a class="launch__morecard" href="/features"><h3>기능 둘러보기</h3><p>변경 관리부터 현장 대화까지 다섯 가지 기능이에요.</p><span class="launch__moreicon" aria-hidden="true">{{ icon("clipboard", 30) }}</span></a>
+<a class="launch__morecard" href="/features#where"><h3>휴대폰으로 쓰기</h3><p>현장에서는 휴대폰 화면으로 내 할 일부터 봐요.</p><span class="launch__moreicon" aria-hidden="true">{{ icon("smartphone", 30) }}</span></a>
+<a class="launch__morecard" href="/about"><h3>공온 이야기</h3><p>왜 시작했고 무엇을 지키는지 적었어요.</p><span class="launch__moreicon" aria-hidden="true">{{ icon("history", 30) }}</span></a>
+</div>
+<p class="launch__help"><strong>도움이 필요한가요?</strong><br><a href="/guide">공온 가이드</a>에서 확인하세요.</p>
+</section>
+{% endblock %}

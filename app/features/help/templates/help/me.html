@@ -40,6 +40,8 @@
 <button class="btn btn--soft" type="submit">{{ "번호 바꾸기" if phone else "번호 등록" }}</button>
 </form>
 </section>
+{# 휴대폰 앱 화면에는 이름 메뉴가 없어 로그아웃을 여기에도 둔다(D-110) #}
+<form method="post" action="/logout"><button class="btn btn--soft me__logout" type="submit">{{ icon("logout", 16) }} 로그아웃</button></form>
 </aside>
 </div>
 {% endblock %}

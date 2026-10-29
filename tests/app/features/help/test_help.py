@@ -62,4 +62,6 @@ def test_sources_page_shows_each_work_type_basis_and_fetched_kcs(client: TestCli
     assert "KCS 44 50 10" in rows["아스팔트 포장"]
     assert "순간풍속" in rows["이동식 크레인"] and "기상법 시행령" in rows["이동식 크레인"]
     assert "kcs_weather.json" in page and "국가건설기준센터 OpenAPI" in page
-    assert 'href="/sources"' in client.get("/guide").text  # 바닥글 자료실 링크
+    assert (
+        'href="/sources"' in client.get("/guide").text
+    )  # 가이드 끝 자료실 링크(바닥글은 소개에만, D-110)

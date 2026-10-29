@@ -1,0 +1,36 @@
+{# 기능 페이지(D-110): 기능 다섯 가지 탭 + PC와 휴대폰(D-109 역할 나눔). 지금 있는 기능만 쓴다. #}
+{% extends "intro/_layout.html" %}
+{% from "_macros.html" import icon %}
+{% from "intro/_features.html" import feature_tabs %}
+{% block title %}기능{% endblock %}
+{% block intro_main %}
+<section class="intro__pagehead" aria-labelledby="page-title">
+<p class="about__kicker">기능</p>
+<h1 class="about__title" id="page-title">현장 일에 맞춘<br><em>다섯 가지 기능</em></h1>
+<p class="about__lead">변경을 확정하고, 업체별 조치를 나누고, 완료까지 확인하는 데 필요한 것만 담았어요.</p>
+</section>
+
+<section class="about__section intro__section--top" aria-label="기능 목록">
+{{ feature_tabs() }}
+</section>
+
+<section class="about__section about__section--tint" id="where" aria-labelledby="where-title">
+<p class="about__kicker" data-reveal>PC와 휴대폰</p>
+<h2 class="about__h2" id="where-title" data-reveal>사무실에서는 PC로, 현장에서는 휴대폰으로</h2>
+<div class="intro__where">
+<article class="about__card intro__device" data-reveal style="--d: 0">
+<span class="about__icon about__icon--blue">{{ icon("monitor", 22) }}</span>
+<h3>PC 웹 · 사무실</h3>
+<p>여러 현장의 일정·변경·조치를 넓은 화면에 함께 펼쳐 봐요.</p>
+<ul class="intro__list"><li>{{ icon("check", 16, 2.4) }}업체 명부를 표로 편집</li><li>{{ icon("check", 16, 2.4) }}공정표 파일로 작업 한꺼번에 등록</li><li>{{ icon("check", 16, 2.4) }}현장 만들기·참여자 관리</li></ul>
+</article>
+<article class="about__card intro__device" data-reveal style="--d: 1">
+<span class="about__icon about__icon--blue">{{ icon("smartphone", 22) }}</span>
+<h3>휴대폰 · 현장</h3>
+<p>내 할 일부터 보이고, 한 화면에 한 가지씩 손에 들고 처리해요.</p>
+<ul class="intro__list"><li>{{ icon("check", 16, 2.4) }}조치 응답·완료 보고</li><li>{{ icon("check", 16, 2.4) }}오늘 일정과 공온 판정</li><li>{{ icon("check", 16, 2.4) }}현장 대화</li></ul>
+</article>
+</div>
+<p class="intro__note" data-reveal>같은 계정, 같은 기록이에요. 휴대폰 브라우저로 열면 휴대폰 화면으로 보여요.</p>
+</section>
+{% endblock %}

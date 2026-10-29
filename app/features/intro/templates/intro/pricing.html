@@ -1,0 +1,20 @@
+{# 요금(D-110): 지금은 비상업 시범 운영(D-014)이라 요금제가 없다. 금액·플랜은 개발자가 정하기 전까지 쓰지 않는다. #}
+{% extends "intro/_layout.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}요금{% endblock %}
+{% block intro_main %}
+<section class="intro__pagehead" aria-labelledby="page-title">
+<p class="about__kicker">요금</p>
+<h1 class="about__title" id="page-title">지금은<br><em>시범 운영 중이에요</em></h1>
+<p class="about__lead">요금제는 정식 출시 전에 정해서 이 페이지에 알려드릴게요.</p>
+</section>
+<section class="about__section intro__section--top" aria-label="시범 운영 안내">
+<div class="intro__price">
+<span class="about__icon about__icon--blue">{{ icon("info", 22) }}</span>
+<div><h2>시범 운영 동안 안내</h2>
+<ul class="intro__list"><li>{{ icon("check", 16, 2.4) }}가입과 현장 만들기는 따로 신청하지 않아도 돼요</li><li>{{ icon("check", 16, 2.4) }}카카오톡 알림은 사업자 등록 뒤에 열려요. 지금은 웹 알림과 미리보기예요</li></ul>
+</div>
+<div class="intro__pricecta">{% if me_intro %}<a class="btn btn--accent btn--lg" href="/">내 현장으로</a>{% else %}<a class="btn btn--accent btn--lg" href="/signup">가입하고 시작하기</a>{% endif %}</div>
+</div>
+</section>
+{% endblock %}

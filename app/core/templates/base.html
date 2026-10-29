@@ -133,45 +133,7 @@ try { if (localStorage.getItem("gongon.attn") === "1") document.documentElement.
 {% endif %}
 {% block content %}{% endblock %}
 </main>
-
-<footer class="sitefoot" aria-label="서비스 안내">
-<div class="sitefoot__inner">
-<div class="sitefoot__top">
-<p class="sitefoot__lead">공사가 바뀌는 순간,<br>할 일이 끊기지 않게.</p>
-<nav class="sitefoot__cols" aria-label="바닥 메뉴">
-{% if me %}
-<div class="sitefoot__col">
-<p class="sitefoot__head">서비스</p>
-<a href="/home">홈</a>
-<a href="/schedule">일정</a>
-<a href="/changes">변경·조치</a>
-<a href="/team">업체</a>
-<a href="/chat">현장 대화</a>
-<a href="/sites">현장 설정</a>
-</div>
-<div class="sitefoot__col">
-<p class="sitefoot__head">도움</p>
-<a href="/guide">공온 가이드</a>
-<a href="/me">내 정보</a>
-</div>
-{% endif %}
-<div class="sitefoot__col">
-<p class="sitefoot__head">자료 출처</p>
-<span>기상청 단기예보</span>
-<span>산업안전보건기준에 관한 규칙</span>
-<span>국가건설기준(KCS)</span>
-{% if me %}<a href="/sources">자료실(개발용)</a>{# D-079: 출시 전에 뺀다 #}{% endif %}
-</div>
-</nav>
-</div>
-<div class="sitefoot__info">
-<p>최종 판단은 현장 책임자가 합니다.</p>
-<p>공온 판정은 규칙 기반 참고 정보이며 작업 허가·공식 검측·안전 보장을 대신하지 않습니다.</p>
-</div>
-</div>
-<p class="sitefoot__mark" aria-hidden="true">Gongon</p>
-<p class="sitefoot__copy">© 공온 Gongon</p>
-</footer>
+{# PC 웹 앱에는 바닥글을 두지 않는다(슬랙 앱처럼). 서비스 안내 바닥글은 소개(/)에 있다(D-110) #}
 {% endif %}
 {% endblock %}
 {# 블록 안의 me는 여기서 보이지 않아 다시 읽는다 #}
@@ -475,7 +437,9 @@ const fitMenu = (panel) => {
   const above = Math.max(0, r.top - top - 6), under = Math.max(0, bottom - r.bottom - 6);
   const below = under >= panel.offsetHeight || under >= above;
   panel.style.maxHeight = `${below ? under : above}px`;
-  panel.style.left = `${Math.max(8, Math.min(r.right - panel.offsetWidth, right - panel.offsetWidth))}px`;
+  // 보통은 버튼 오른쪽 끝에 맞추고, data-menu-align="start"면 왼쪽 끝에 맞춘다(소개 머리줄 '기능')
+  const edge = panel.menuOwner?.dataset.menuAlign === "start" ? r.left : r.right - panel.offsetWidth;
+  panel.style.left = `${Math.max(8, Math.min(edge, right - panel.offsetWidth))}px`;
   panel.style.top = `${Math.max(top, below ? r.bottom + 6 : r.top - panel.offsetHeight - 6)}px`;
 };
 document.addEventListener("toggle", (e) => {
