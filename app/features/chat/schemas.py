@@ -18,9 +18,13 @@ class MessageView:
 
 @dataclass(frozen=True, slots=True)
 class RoomChoice:
+    """방 목록 한 줄. 마지막 메시지가 있으면 미리보기와 시각을 보인다(카톡처럼 최근 순)."""
+
     site_id: int
     name: str
     selected: bool
+    last_text: str = ""  # 마지막 메시지 미리보기("이름: 본문"), 없으면 빈 글
+    last_time: str = ""  # 오늘이면 "오후 3:05", 어제면 "어제", 그 전은 "10월 27일"
 
 
 @dataclass(frozen=True, slots=True)

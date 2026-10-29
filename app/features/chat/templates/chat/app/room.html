@@ -1,0 +1,54 @@
+{# 휴대폰 앱 대화(D-109, 개발자 요청: 카톡처럼). 목록은 최근 대화한 방부터 한 줄씩,
+   누르면 방이 화면 전체로 열리고 ←(또는 휴대폰 뒤로 가기)로 목록에 돌아온다. 방 안에서는 아래 탭을 숨긴다. #}
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% if view is not none %}{% set hide_tabbar = true %}{% endif %}
+{% block title %}{{ view.site_name if view else "대화" }}{% endblock %}
+{# 블록은 조건과 상관없이 정의되므로 방 목록에서는 기본 머리(super)를 쓴다 #}
+{% block app_bar scoped %}{% if view is not none %}
+<a class="mbar__back" href="/chat" aria-label="대화 목록">{{ icon("chevron-left", 24, 2.4) }}</a>
+<p class="mbar__title mbar__title--room">{{ view.site_name }}</p>
+<a class="mbar__icon" href="/schedule?site_id={{ view.site_id }}" aria-label="작업 일정">{{ icon("calendar", 20, 2) }}</a>
+{% else %}{{ super() }}{% endif %}{% endblock %}
+{% block content %}
+{% if view is none %}
+{% if rooms %}
+<ul class="mrooms">
+{% for r in rooms %}
+<li><a class="mroom" href="/chat/{{ r.site_id }}">
+<span class="mroom__avatar" aria-hidden="true">{{ (r.name | replace("[가상] ", ""))[:1] }}</span>
+<span class="mroom__main"><strong>{{ r.name }}</strong><small>{{ r.last_text or "아직 대화가 없어요" }}</small></span>
+<span class="mroom__time">{{ r.last_time }}</span>
+</a></li>
+{% endfor %}
+</ul>
+{% else %}
+<p class="mempty">참여 중인 현장이 없어요.<br><a href="/join">현장 코드로 참여</a>하면 그 현장 방이 생겨요.</p>
+{% endif %}
+{% else %}
+<div class="mchat">
+<div class="mchat__scroll" data-chat-scroll>
+{% if view.has_older %}<a class="chat__older" href="/chat/{{ view.site_id }}?before={{ view.messages[0].message_id }}">이전 메시지 보기</a>{% endif %}
+{% if not view.messages %}<p class="chat__empty" data-chat-empty>첫 메시지를 남겨 볼까요? 변경 건을 붙이면 지금 상태가 카드로 보여요.</p>{% endif %}
+<ol class="msgs" data-chat-list data-site="{{ view.site_id }}" data-last="{{ view.last_id }}">
+{% set messages = view.messages %}{% set site_id = view.site_id %}
+{% include "chat/_messages.html" %}
+</ol>
+<span id="end"></span>
+</div>
+<form class="mchat__composer" method="post" action="/chat/{{ view.site_id }}/messages" data-chat-form>
+{% if view.errors %}<div class="alert alert--error" role="alert"><ul>{% for e in view.errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+<details class="mchat__attach">
+<summary aria-label="변경 건 붙이기">{{ icon("plus", 20, 2.4) }}</summary>
+<select name="case_id" aria-label="관련 변경 건">
+<option value="">변경 건 붙이기(선택)</option>
+{% for c in view.case_choices %}<option value="{{ c.case_id }}">{{ c.title }} · {{ c.state_text }}</option>{% endfor %}
+</select>
+</details>
+<textarea name="body" rows="1" maxlength="1000" required placeholder="메시지 보내기" data-chat-input>{{ view.draft }}</textarea>
+<button class="mchat__send" type="submit" aria-label="보내기">{{ icon("arrow-right", 20, 2.4) }}</button>
+</form>
+</div>
+<script src="{{ static_url('chat.js') }}"></script>
+{% endif %}
+{% endblock %}

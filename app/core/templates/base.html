@@ -48,9 +48,12 @@ try { if (localStorage.getItem("gongon.attn") === "1") document.documentElement.
 <header class="mbar">
 <div class="mbar__row">
 {% if me %}
+{# 상세 화면(예: 대화방)은 app_bar를 덮어 뒤로 가기·제목만 둔다 #}
+{% block app_bar scoped %}
 <p class="mbar__title">{% block app_title %}{{ self.title() }}{% endblock %}</p>
 {{ siteswitch_chip() }}
 <a class="mbar__me" href="/me" aria-label="내 정보">{{ me.display_name[:1] }}</a>
+{% endblock %}
 {% else %}
 <a class="mbar__brand" href="/"><img src="/static/brand/logo.png" alt="" width="28" height="28">공온</a>
 {% endif %}
@@ -64,7 +67,7 @@ try { if (localStorage.getItem("gongon.attn") === "1") document.documentElement.
 {{ self.schedule_tools() }}
 {{ self.content() }}
 </main>
-{% if me %}
+{% if me and not hide_tabbar | default(false) %}
 <nav class="tabbar" aria-label="주 메뉴">
 {% for key, href, label, short, ic in nav_tabs %}
 <a href="{{ href }}" data-site-link="{{ key }}"{% if nav_group == key %} aria-current="page"{% endif %}><span class="tabbar__icon" aria-hidden="true">{{ icon(ic, 22, 2) }}</span>{{ short }}</a>

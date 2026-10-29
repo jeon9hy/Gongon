@@ -106,3 +106,40 @@ def test_polling_returns_only_newer_messages(
     fragment = client.get(f"/chat/{item.site_id}/messages?after={first}").text
 
     assert "둘째" in fragment and "첫째" not in fragment
+
+
+IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) Mobile/15E148"
+
+
+def test_room_list_puts_latest_talk_first_with_preview_and_kakao_style_time(
+    client: TestClient, browser: Browser, session: Session, item: WorkItem
+) -> None:
+    other = add_site_with_work(client, {**SITE, "name": "가상B현장"})
+    quiet = add_site_with_work(client, {**SITE, "name": "가상C현장"})
+    framer = join(client, browser, item.site_id, SUB_USER, "assignee")
+    send(client, other, "B현장 먼저 보냄")
+    send(framer, item.site_id, "줄\n바꿈 있는 답")  # 더 나중 메시지라 이 방이 맨 위
+    # 어제·그 전 메시지는 시각을 직접 넣는다(FIXED_NOW = 10/04 15:00)
+    old = messages(session)[0]
+    old.created_at = old.created_at.replace(day=2)
+    session.commit()
+
+    page = client.get("/chat", headers={"user-agent": IPHONE}).text
+    first, second, third = (page.index(n) for n in (SITE["name"], "가상B현장", "가상C현장"))
+
+    assert first < second < third  # 대화 없는 방은 뒤
+    assert "줄 바꿈 있는 답" in page and "오후 3:00" in page
+    assert "나: B현장 먼저 보냄" in page and "10월 2일" in page
+    assert page.count("아직 대화가 없어요") == 1
+    assert quiet  # 대화가 없어도 목록에 있다
+
+
+def test_app_room_has_back_to_list_and_hides_tab_bar(client: TestClient, item: WorkItem) -> None:
+    send(client, item.site_id, "안녕하세요")
+
+    room = client.get(f"/chat/{item.site_id}", headers={"user-agent": IPHONE}).text
+    rooms = client.get("/chat", headers={"user-agent": IPHONE}).text
+
+    assert 'class="mbar__back" href="/chat"' in room and '<nav class="tabbar"' not in room
+    assert "안녕하세요" in room and "chat.js" in room
+    assert '<nav class="tabbar"' in rooms and 'class="mroom"' in rooms

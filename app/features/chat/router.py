@@ -21,12 +21,12 @@ NowDep = Annotated[datetime, Depends(now_kst)]
 
 
 @router.get("/chat", response_model=None)
-def chat_home(request: Request, session: SessionDep, user: CurrentUserDep) -> Response:
-    """방을 미리 고르지 않는다(C04-36): 참여 현장 방 목록만 보이는 빈 화면."""
+def chat_home(request: Request, session: SessionDep, user: CurrentUserDep, now: NowDep) -> Response:
+    """방을 미리 고르지 않는다(C04-36): 참여 현장 방 목록만 보이는 화면. 최근 대화한 방부터."""
     return templates.TemplateResponse(
         request,
         "chat/room.html",
-        {"nav_active": "chat", "view": None, "rooms": service.rooms(session, user)},
+        {"nav_active": "chat", "view": None, "rooms": service.room_list(session, user, now)},
     )
 
 

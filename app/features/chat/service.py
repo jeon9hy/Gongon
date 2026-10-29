@@ -9,7 +9,7 @@
 from datetime import datetime
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.features.auth import service as auth_service
@@ -32,6 +32,48 @@ def rooms(session: Session, user: CurrentUser) -> tuple[RoomChoice, ...]:
     return tuple(
         RoomChoice(s.site_id, s.name, False) for s in sites_service.list_sites(session, site_ids)
     )
+
+
+def room_list(session: Session, user: CurrentUser, now: datetime) -> tuple[RoomChoice, ...]:
+    """방 목록(카톡처럼): 마지막 메시지가 최근인 방부터, 메시지가 없는 방은 뒤에 현장 순서대로.
+
+    방마다 따로 읽지 않고 현장별 가장 큰 메시지 id를 한 번에 고른다(ix_site_messages_site_id)."""
+    plain = rooms(session, user)
+    if not plain:
+        return ()
+    latest_ids = (
+        select(func.max(SiteMessage.id))
+        .where(SiteMessage.site_id.in_([r.site_id for r in plain]))
+        .group_by(SiteMessage.site_id)
+    )
+    found = session.scalars(select(SiteMessage).where(SiteMessage.id.in_(latest_ids)))
+    last = {m.site_id: m for m in found}
+    people = auth_service.describe_users(session, {m.author_user_id for m in last.values()})
+    today = now.astimezone(KST).date()
+    listed = []
+    for r in plain:
+        m = last.get(r.site_id)
+        if m is None:
+            listed.append(r)
+            continue
+        info = people.get(m.author_user_id)
+        if m.author_user_id == user.user_id:
+            who = "나"
+        else:
+            who = "알 수 없음" if info is None else info.display_name
+        text = "삭제된 메시지예요." if m.deleted_at is not None else " ".join(m.body.split())
+        local = m.created_at.astimezone(KST)
+        days = (today - local.date()).days
+        when = (
+            f"{'오전' if local.hour < 12 else '오후'} {(local.hour - 1) % 12 + 1}:{local:%M}"
+            if days == 0
+            else "어제"
+            if days == 1
+            else f"{local.month}월 {local.day}일"
+        )
+        listed.append(RoomChoice(r.site_id, r.name, False, f"{who}: {text}", when))
+    order = {site_id: -m.id for site_id, m in last.items()}
+    return tuple(sorted(listed, key=lambda r: (r.site_id not in order, order.get(r.site_id, 0))))
 
 
 def build_room(
