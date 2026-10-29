@@ -87,7 +87,6 @@
 {% if d.is_target %}<a class="tag tag--go" href="/dashboard{% if view.site_id %}?site_id={{ view.site_id }}{% endif %}">판정 보기 ›</a>{% endif %}
 {# 선택 지우기(D-098): 오늘 이후 날, 현장 하나를 고른 달력에서 조정자만 #}
 {% set can_select = d.items and d.can_add and not view.all_mode and view.site_id in manageable %}
-{% if can_select %}<button class="daypanel__select" type="button" data-select-toggle aria-pressed="false">선택</button>{% endif %}
 </div>
 </div>
 {% if can_select %}
@@ -106,8 +105,8 @@
 <span class="workcard__meta">{% if view.all_mode %}<b class="workcard__site">{{ view.site_names.get(i.site_id, "") }}</b> · {% endif %}{{ view.participant_names.get(i.performing_participant_id, "업체 미지정").split(" · ")[0] if i.performing_participant_id else "업체 미지정" }} · v{{ i.plan_version }}{% if history %} · 변경 {{ history | length }}번{% endif %}</span>
 {% if problem %}<span class="workcard__warn"><span class="calsum__warn" aria-hidden="true">!</span>{{ problem }}</span>{% endif %}
 </button></li>{% endmacro %}
-{# 업체별·위치별로 묶는다(D-085). 처음엔 모두 접혀 있다(개발자 요청) #}
-{{ groupseg() }}
+{# 업체별·위치별로 묶는다(D-085). 처음엔 모두 접혀 있다(개발자 요청). 선택 지우기는 같은 줄 주의 옆(개발자 요청) #}
+{% call groupseg() %}{% if can_select %}<button class="daypanel__select" type="button" data-select-toggle aria-pressed="false">선택</button>{% endif %}{% endcall %}
 {% for mode, groups in [("company", d.by_company), ("place", d.by_place)] %}
 <div class="grps" data-groupview="{{ mode }}">
 {% for g in groups %}

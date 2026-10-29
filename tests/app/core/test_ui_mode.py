@@ -120,3 +120,16 @@ def test_site_edit_menu_is_pc_only(client: TestClient) -> None:
         "site-menu"
         not in client.get(f"/schedule?site_id={site_id}", headers={"user-agent": IPHONE}).text
     )
+
+
+def test_phone_judgment_week_is_a_day_picker_not_the_wide_table(
+    client: TestClient, session: Session
+) -> None:
+    site_id = make_site(client)
+    put(session, site_id, date(2026, 10, 5), time(9), time(12), "거푸집 설치")
+
+    phone = client.get(f"/dashboard?site_id={site_id}", headers={"user-agent": IPHONE}).text
+    web = client.get(f"/dashboard?site_id={site_id}", headers={"user-agent": DESKTOP}).text
+
+    assert 'class="week week--groups"' in web
+    assert 'class="mdays"' in phone and 'class="week week--groups"' not in phone

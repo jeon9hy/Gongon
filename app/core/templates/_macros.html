@@ -59,6 +59,8 @@
 <button type="button" class="groupseg__btn" data-groupseg="company" aria-pressed="true">{{ icon("building", 14, 2.2) }}업체별</button>
 <button type="button" class="groupseg__btn" data-groupseg="place" aria-pressed="false">{{ icon("map-pin", 14, 2.2) }}위치별</button>
 <button type="button" class="groupseg__btn groupseg__btn--attn" data-groupattn role="switch" aria-checked="false" title="중지·확인·점검 문제가 있는 묶음만">주의<span class="attnswitch" aria-hidden="true"></span></button>
+{# 같은 줄에 붙일 도구(예: 일정의 선택 지우기)는 {% call groupseg() %}로 넘긴다 #}
+{% if caller is defined %}{{ caller() }}{% endif %}
 </div>
 {%- endmacro %}
 

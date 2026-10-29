@@ -2662,3 +2662,4 @@ a.sumcard:hover { border-color: var(--line); }
 .calcount, .calkey { display: none; }
 .sumcards--two { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
 .sitefoot__mark { margin-top: 16px; } /* 안내 문구와 겹치지 않게(점검에서 15px 겹침) */
+.groupseg .daypanel__select { margin-left: 4px; min-height: 30px; } /* 주의 옆(개발자 요청) */
