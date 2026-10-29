@@ -4,14 +4,19 @@
 - 메시지는 지우지 않고 숨긴다(작성자만). 메시지가 조치·변경 상태를 바꾸지 않는다.
 - 관련 변경 건 카드는 저장한 글이 아니라 지금 상태를 읽어 보인다.
 - 새 메시지는 짧은 주기로 불러온다(after_id 이후만, 실시간 연결은 필요가 확인될 때).
+- 첨부(D-111)는 메시지 하나에 하나: 사진·연락처(명부)·변경 건·조치. 사진은 보관소(app.core.files)에
+  두고 그 현장 참여자에게만 내준다. 연락처·조치·변경 건은 지금 상태를 읽어 카드로 보인다.
 """
 
 from datetime import datetime
+from pathlib import Path
 
 from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.files import LocalFileStore, sniff_image
+from app.features.actions import service as actions_service
 from app.features.auth import service as auth_service
 from app.features.auth.schemas import CurrentUser
 from app.features.changes import service as changes_service
@@ -23,6 +28,7 @@ from app.features.teams.schemas import ALL_ROLES
 from engine.kst import KST
 
 BODY_MAX = 1000
+PHOTO_MAX_BYTES = 10 * 1024 * 1024  # 휴대폰 사진 한 장(D-111)
 PAGE = 50
 _WEEKDAYS = "월화수목금토일"
 
@@ -61,7 +67,11 @@ def room_list(session: Session, user: CurrentUser, now: datetime) -> tuple[RoomC
             who = "나"
         else:
             who = "알 수 없음" if info is None else info.display_name
-        text = "삭제된 메시지예요." if m.deleted_at is not None else " ".join(m.body.split())
+        text = (
+            "삭제된 메시지예요."
+            if m.deleted_at is not None
+            else (" ".join(m.body.split()) or _attachment_word(m))
+        )
         local = m.created_at.astimezone(KST)
         days = (today - local.date()).days
         when = (
@@ -107,6 +117,8 @@ def build_room(
         can_write=True,
         errors=errors,
         draft=draft,
+        contact_choices=teams_service.contact_choices(session, user, site_id),
+        action_choices=actions_service.action_choices(session, site_id),
     )
 
 
@@ -127,30 +139,82 @@ def new_messages(
 
 
 def post(
-    session: Session, user: CurrentUser, site_id: int, body: str, case_id: str, now: datetime
+    session: Session,
+    user: CurrentUser,
+    site_id: int,
+    body: str,
+    attach: dict[str, str],
+    photo: bytes | None,
+    store: LocalFileStore,
+    now: datetime,
 ) -> tuple[str, ...]:
+    """보내기. attach는 {"case_id"|"contact_id"|"action_id": 번호}에서 하나, photo는 올린 그림."""
     teams_service.require_role(session, user, site_id, ALL_ROLES)
     text = body.strip()
-    if not text:
-        return ("메시지를 입력해 주세요.",)
     if len(text) > BODY_MAX:
         return (f"메시지는 {BODY_MAX}자까지 보낼 수 있어요.",)
-    linked = None
-    if case_id:
-        linked = int(case_id) if case_id.isdigit() else -1
-        if linked not in changes_service.case_cards(session, site_id, [linked]):
-            return ("이 현장의 변경 건을 골라 주세요.",)
-    session.add(
-        SiteMessage(
-            site_id=site_id,
-            author_user_id=user.user_id,
-            body=text,
-            linked_case_id=linked,
-            created_at=now,
-        )
-    )
+    picked = {k: v.strip() for k, v in attach.items() if v and v.strip()}
+    if len(picked) + (photo is not None) > 1:
+        return ("첨부는 한 번에 하나만 보낼 수 있어요.",)
+    if not text and not picked and photo is None:
+        return ("메시지를 입력하거나 첨부를 골라 주세요.",)
+    message = SiteMessage(site_id=site_id, author_user_id=user.user_id, body=text, created_at=now)
+    for key, raw in picked.items():
+        ref = int(raw) if raw.isdigit() else -1
+        if key == "case_id" and ref in changes_service.case_cards(session, site_id, [ref]):
+            message.linked_case_id = ref
+        elif key == "contact_id" and ref in teams_service.contact_cards(
+            session, user, site_id, [ref]
+        ):
+            message.linked_contact_id = ref
+        elif key == "action_id" and ref in actions_service.action_refs(session, site_id, [ref]):
+            message.linked_action_id = ref
+        else:
+            return ("이 현장의 것을 골라 주세요.",)
+    if photo is not None:
+        if len(photo) > PHOTO_MAX_BYTES:
+            return ("사진은 10MB까지 올릴 수 있어요.",)
+        kind = sniff_image(photo)
+        if kind is None:
+            return ("사진(JPG·PNG·GIF·WebP)만 올릴 수 있어요.",)
+        message.photo_type, ext = kind
+        message.photo_key = store.save(f"chat/{site_id}", ext, photo)
+        message.photo_bytes = len(photo)
+    session.add(message)
     session.commit()
     return ()
+
+
+def photo_file(
+    session: Session, user: CurrentUser, site_id: int, message_id: int, store: LocalFileStore
+) -> tuple[Path, str]:
+    """사진 파일(경로, 종류). 그 현장 참여자만, 지운 메시지의 사진은 내주지 않는다."""
+    teams_service.require_role(session, user, site_id, ALL_ROLES)
+    message = session.get(SiteMessage, message_id)
+    if (
+        message is None
+        or message.site_id != site_id
+        or message.deleted_at is not None
+        or message.photo_key is None
+        or message.photo_type is None
+    ):
+        raise HTTPException(status_code=404, detail="사진을 찾을 수 없습니다")
+    path = store.path(message.photo_key)
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="사진 파일이 없습니다")
+    return path, message.photo_type
+
+
+def _attachment_word(m: SiteMessage) -> str:
+    if m.photo_key:
+        return "사진"
+    if m.linked_contact_id:
+        return "연락처"
+    if m.linked_action_id:
+        return "조치"
+    if m.linked_case_id:
+        return "변경 건"
+    return ""
 
 
 def delete(
@@ -175,6 +239,12 @@ def _views(
     cards = changes_service.case_cards(
         session, site_id, [m.linked_case_id for m in rows if m.linked_case_id is not None]
     )
+    contacts = teams_service.contact_cards(
+        session, user, site_id, [m.linked_contact_id for m in rows if m.linked_contact_id]
+    )
+    actions = actions_service.action_refs(
+        session, site_id, [m.linked_action_id for m in rows if m.linked_action_id]
+    )
     views = []
     for m in rows:
         info = people.get(m.author_user_id)
@@ -191,6 +261,13 @@ def _views(
                 day_text=f"{local.month}월 {local.day}일({_WEEKDAYS[local.weekday()]})",
                 case=None if deleted or m.linked_case_id is None else cards.get(m.linked_case_id),
                 can_delete=not deleted and m.author_user_id == user.user_id,
+                photo_url=None if deleted or not m.photo_key else f"/chat/{site_id}/photos/{m.id}",
+                contact=None
+                if deleted or not m.linked_contact_id
+                else contacts.get(m.linked_contact_id),
+                action=None
+                if deleted or not m.linked_action_id
+                else actions.get(m.linked_action_id),
             )
         )
     return tuple(views)

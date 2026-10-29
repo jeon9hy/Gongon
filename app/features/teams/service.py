@@ -38,6 +38,7 @@ from app.features.teams.schemas import (
     PROPOSE_ROLES,
     ROLE_LABELS,
     Category,
+    ContactCard,
     ContactForm,
     ContactView,
     MemberForm,
@@ -915,3 +916,34 @@ def build_team_all(
         for p in build_members_view(session, s.site_id, s.name, viewer).participants
     )
     return TeamAllView(rows=rows)
+
+
+def contact_cards(
+    session: Session, viewer: CurrentUser, site_id: int, contact_ids: list[int]
+) -> dict[int, ContactCard]:
+    """이 현장 명부 담당자 카드(D-111). 전화번호는 명부와 같은 규칙으로 열람자에게 숨긴다."""
+    if not contact_ids:
+        return {}
+    show_phone = require_role(session, viewer, site_id, ALL_ROLES) in CONTACT_DETAIL_ROLES
+    rows = repository.contacts_by_ids(session, site_id, contact_ids)
+    parts = {p.id: p for p in repository.participants(session, site_id)}
+    names = auth_service.organization_names(session, (p.organization_id for p in parts.values()))
+    return {
+        c.id: ContactCard(
+            contact_id=c.id,
+            name=c.name,
+            job_title=c.job_title,
+            company=names.get(parts[c.participant_id].organization_id, "")
+            if c.participant_id in parts
+            else "",
+            phone=(c.phone or None) if show_phone else None,
+        )
+        for c in rows
+    }
+
+
+def contact_choices(session: Session, viewer: CurrentUser, site_id: int) -> tuple[ContactCard, ...]:
+    """대화방에서 고를 수 있는 이 현장의 명부 담당자(지운 사람 제외)."""
+    ids = [c.id for c in repository.contacts(session, site_id)]
+    cards = contact_cards(session, viewer, site_id, ids)
+    return tuple(cards[i] for i in ids if i in cards)

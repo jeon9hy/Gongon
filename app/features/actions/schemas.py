@@ -182,3 +182,14 @@ class MyActionsView:
     message: str | None = None
     site_id: int | None = None  # 머리줄 현장 칩에서 고른 현장(None = 전체, D-092)
     site_name: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class ActionRef:
+    """대화방에 붙이는 조치 카드(D-111). 늘 지금 상태를 읽어 만든다."""
+
+    action_id: int
+    title: str
+    href: str
+    status: str
+    status_label: str

@@ -19,6 +19,8 @@ class Settings:
     kakao_rest_api_key: str = ""  # 현장 위치 찾기(카카오 로컬 API). 없으면 위경도 직접 입력
     auto_refresh: bool = True  # 매시 15분 전체 현장 자동 판정(D-043). AUTO_REFRESH=0이면 끈다
     session_cookie_secure: bool = False  # HTTPS 배포에서 SESSION_COOKIE_SECURE=1 (D-057)
+    # 올린 파일(대화방 사진, D-111)을 두는 폴더. 비우면 저장소의 data/uploads(커밋하지 않음)
+    upload_dir: Path = REPO_ROOT / "data" / "uploads"
 
     def kma_auth(self) -> KmaAuth:
         portal = KmaAuth(DATA_GO_KR, self.kma_service_key)
@@ -62,4 +64,7 @@ def get_settings() -> Settings:
         kakao_rest_api_key=value("KAKAO_REST_API_KEY"),
         auto_refresh=value("AUTO_REFRESH") != "0",
         session_cookie_secure=value("SESSION_COOKIE_SECURE") == "1",
+        upload_dir=Path(value("UPLOAD_DIR"))
+        if value("UPLOAD_DIR")
+        else REPO_ROOT / "data" / "uploads",
     )

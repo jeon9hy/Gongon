@@ -1,0 +1,30 @@
+{# 대화방 첨부 메뉴(D-111, 카톡처럼): + 를 누르면 사진 · 연락처 · 변경 건 · 조치. 하나만 붙이고, 고른 것은 입력칸 위 알약으로 보인다.
+   웹·앱 대화방이 같이 쓴다. 고르기·지우기는 chat.js #}
+{% from "_macros.html" import icon %}
+<div class="attach" data-attach>
+<button type="button" class="attach__open" aria-expanded="false" aria-controls="attach-menu" aria-label="첨부" data-attach-open>{{ icon("plus", 20, 2.4) }}</button>
+<div class="attach__panel" id="attach-menu" hidden data-attach-panel>
+<div class="attach__menu" data-attach-menu>
+<label class="attach__item"><span class="attach__icon attach__icon--photo">{{ icon("image", 20) }}</span>사진<input type="file" name="photo" accept="image/*" class="visually-hidden" data-attach-photo></label>
+<button type="button" class="attach__item" data-attach-pick="contact"{% if not view.contact_choices %} disabled{% endif %}><span class="attach__icon attach__icon--contact">{{ icon("user", 20) }}</span>연락처</button>
+<button type="button" class="attach__item" data-attach-pick="case"{% if not view.case_choices %} disabled{% endif %}><span class="attach__icon attach__icon--case">{{ icon("history", 20) }}</span>변경 건</button>
+<button type="button" class="attach__item" data-attach-pick="action"{% if not view.action_choices %} disabled{% endif %}><span class="attach__icon attach__icon--action">{{ icon("check", 20, 2.4) }}</span>조치</button>
+</div>
+{% for kind, title, rows in [("contact", "연락처 고르기", view.contact_choices), ("case", "변경 건 고르기", view.case_choices), ("action", "조치 고르기", view.action_choices)] %}
+<div class="attach__list" data-attach-list="{{ kind }}" hidden>
+<p class="attach__head"><button type="button" class="attach__back" data-attach-back aria-label="뒤로">{{ icon("arrow-left", 16, 2.2) }}</button>{{ title }}</p>
+<ul>
+{% for r in rows %}
+{% if kind == "contact" %}{% set value, label, sub = r.contact_id, r.name, ([r.job_title, r.company] | select | join(" · ")) %}
+{% elif kind == "case" %}{% set value, label, sub = r.case_id, r.title, r.state_text %}
+{% else %}{% set value, label, sub = r.action_id, r.title, r.status_label %}{% endif %}
+<li><button type="button" data-attach-value="{{ value }}" data-attach-label="{{ label }}"><strong>{{ label }}</strong>{% if sub %}<small>{{ sub }}</small>{% endif %}</button></li>
+{% endfor %}
+</ul>
+</div>
+{% endfor %}
+</div>
+<input type="hidden" name="contact_id" value="" data-attach-field="contact">
+<input type="hidden" name="case_id" value="" data-attach-field="case">
+<input type="hidden" name="action_id" value="" data-attach-field="action">
+</div>

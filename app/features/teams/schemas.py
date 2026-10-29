@@ -184,3 +184,14 @@ class TeamAllView:
     """업체 탭의 전체 현장 보기(C04-36, D-092). 고치기는 현장별 화면에서 한다."""
 
     rows: tuple[TeamRow, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class ContactCard:
+    """대화방에 붙이는 연락처 카드(D-111). 전화번호는 볼 수 있는 역할에게만(열람자는 None)."""
+
+    contact_id: int
+    name: str
+    job_title: str
+    company: str
+    phone: str | None

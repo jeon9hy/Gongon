@@ -18,6 +18,7 @@
 | 한국 표준시 | `engine/kst.py` | `KST`(고정 +09:00, D-018) | 있음 | S01 |
 | 공통 기반 | `app/core/` | `config.py`(설정), `db.py`(세션), `rules.py`(기준표·판정 공종 목록), `work_kinds.py`(작업 고르기 목록, D-085), `clock.py`(현재 시각), `errors.py`(DB 오류 화면) | 있음 | S04-1 |
 | 회원·인증 | `app/features/auth/` | `/login`·`/signup`·`/logout`, `service.require_user`(모든 기능 라우터의 로그인 의존성), 회사·사용자·세션 | 있음 | C03-1 |
+| 올린 파일 보관 | `app/core/files.py` | 보관소 어댑터 `LocalFileStore`(지금은 `UPLOAD_DIR` 폴더, 배포 때 같은 모양의 클라우드 저장소로 교체), 그림 종류 확인 `sniff_image`, 라우터 의존성 `FileStoreDep` | 있음 | D-111 |
 | 요청 위조 방지 | `app/core/security.py` | `SameOriginMiddleware`(쓰기 요청 Origin/Referer 검사, D-057) | 있음 | C03-1 |
 | 현장 등록·설정 | `app/features/sites/` | `router.py`(등록·수정·삭제 폼), `service.py`(`list_sites`·`get_site` 공개, 삭제한 현장 제외 D-040) | 있음 | S04-3·S05 |
 | 예보 수집 기록 | `app/features/forecasts/` | `service.get_forecast()`(발표 시각·격자 재사용, 실패 기록) | 있음 | S02-2·S04 |

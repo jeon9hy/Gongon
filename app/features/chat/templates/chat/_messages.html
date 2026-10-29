@@ -6,7 +6,14 @@
 {% if not m.mine %}<p class="msg__who"><strong>{{ m.author_name }}</strong>{% if m.author_company %} · {{ m.author_company }}{% endif %}</p>{% endif %}
 <div class="msg__row">
 <div class="msg__bubble">
-{% if m.body is none %}<span class="muted">삭제된 메시지예요.</span>{% else %}<span class="msg__text">{{ m.body }}</span>{% endif %}
+{% if m.body is none %}<span class="muted">삭제된 메시지예요.</span>{% elif m.body %}<span class="msg__text">{{ m.body }}</span>{% endif %}
+{% if m.photo_url %}<a class="msg__photo" href="{{ m.photo_url }}" target="_blank" rel="noopener"><img src="{{ m.photo_url }}" alt="보낸 사진" loading="lazy"></a>{% endif %}
+{% if m.contact %}{% set c = m.contact %}
+<div class="msg__case msg__contact"><span class="msg__cicon" aria-hidden="true">{{ c.name[:1] }}</span><span><strong>{{ c.name }}{% if c.job_title %} {{ c.job_title }}{% endif %}</strong><small>{{ c.company }}</small></span>{% if c.phone %}<a class="msg__tel" href="tel:{{ c.phone }}" aria-label="{{ c.name }}에게 전화">{{ icon("phone", 14, 2) }} {{ c.phone }}</a>{% endif %}</div>
+{% endif %}
+{% if m.action %}
+<a class="msg__case msg__case--action" href="{{ m.action.href }}">{{ icon("check", 14, 2.4) }}<span><strong>{{ m.action.title }}</strong><small>조치 · 지금 {{ m.action.status_label }}</small></span></a>
+{% endif %}
 {% if m.case %}
 <a class="msg__case msg__case--{{ m.case.state }}" href="{{ m.case.href }}">{{ icon("history", 14) }}<span><strong>{{ m.case.title }}</strong><small>지금 {{ m.case.state_text }}</small></span></a>
 {% endif %}

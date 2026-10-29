@@ -27,6 +27,7 @@ from app.features.actions.schemas import (
     UNSTARTED_STATUSES,
     ActionCard,
     ActionForm,
+    ActionRef,
     AssigneeOption,
     CandidateEditor,
     CandidateForm,
@@ -1154,3 +1155,34 @@ def blocked_at_sites(
         due_text, overdue = _due_text(a, now)
         items.append(_my_item(a, sites, "보류 풀기", due_text, overdue))
     return tuple(items)
+
+
+def action_refs(session: Session, site_id: int, action_ids: list[int]) -> dict[int, ActionRef]:
+    """이 현장 조치들의 지금 상태 카드(쿼리 1회). 다른 현장 ID는 빠진다(D-111)."""
+    if not action_ids:
+        return {}
+    rows = session.scalars(
+        select(ActionItem).where(ActionItem.id.in_(action_ids), ActionItem.site_id == site_id)
+    )
+    return {
+        a.id: ActionRef(
+            action_id=a.id,
+            title=a.title,
+            href=f"/changes/{a.case_id}#action-{a.id}",
+            status=a.status,
+            status_label=STATUS_LABELS[a.status],
+        )
+        for a in rows
+    }
+
+
+def action_choices(session: Session, site_id: int, limit: int = 30) -> tuple[ActionRef, ...]:
+    """대화방에서 고를 수 있는 이 현장의 최근 조치(후보·바뀐 것 제외)."""
+    rows = session.scalars(
+        select(ActionItem)
+        .where(ActionItem.site_id == site_id, ActionItem.status.not_in(("candidate", "replaced")))
+        .order_by(ActionItem.id.desc())
+        .limit(limit)
+    )
+    cards = action_refs(session, site_id, [a.id for a in rows])
+    return tuple(sorted(cards.values(), key=lambda c: -c.action_id))

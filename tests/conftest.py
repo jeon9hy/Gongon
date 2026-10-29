@@ -11,6 +11,7 @@ import re
 import zlib
 from collections.abc import Callable, Iterator
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -156,8 +157,8 @@ def fake_kma() -> FakeKma:
 
 
 @pytest.fixture
-def settings() -> Settings:
-    return Settings(database_url="", kma_service_key="test-key")
+def settings(tmp_path: Path) -> Settings:
+    return Settings(database_url="", kma_service_key="test-key", upload_dir=tmp_path / "uploads")
 
 
 @pytest.fixture

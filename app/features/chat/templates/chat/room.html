@@ -30,23 +30,19 @@
 </header>
 <div class="chat__scroll" data-chat-scroll>
 {% if view.has_older %}<a class="chat__older" href="/chat/{{ view.site_id }}?before={{ view.messages[0].message_id }}">이전 메시지 보기</a>{% endif %}
-{% if not view.messages %}<p class="chat__empty" data-chat-empty>첫 메시지를 남겨 볼까요? 변경 건을 함께 붙이면 지금 상태가 카드로 보여요.</p>{% endif %}
+{% if not view.messages %}<p class="chat__empty" data-chat-empty>첫 메시지를 남겨 볼까요? + 로 사진·연락처·변경 건·조치를 붙일 수 있어요.</p>{% endif %}
 <ol class="msgs" data-chat-list data-site="{{ view.site_id }}" data-last="{{ view.last_id }}">
 {% set messages = view.messages %}{% set site_id = view.site_id %}
 {% include "chat/_messages.html" %}
 </ol>
 <span id="end"></span>
 </div>
-<form class="chat__composer" method="post" action="/chat/{{ view.site_id }}/messages" data-chat-form>
+<form class="chat__composer" method="post" action="/chat/{{ view.site_id }}/messages" enctype="multipart/form-data" data-chat-form>
 {% if view.errors %}<div class="alert alert--error" role="alert"><ul>{% for e in view.errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+<p class="attach__chip" data-attach-chip hidden><span data-attach-chip-text></span><button type="button" data-attach-clear aria-label="첨부 빼기">{{ icon("close", 14, 2.4) }}</button></p>
 <div class="chat__compose-row">
-<select name="case_id" class="chat__case" aria-label="관련 변경 건">
-<option value="">변경 건 붙이기(선택)</option>
-{% for c in view.case_choices %}<option value="{{ c.case_id }}">{{ c.title }} · {{ c.state_text }}</option>{% endfor %}
-</select>
-</div>
-<div class="chat__compose-row">
-<textarea name="body" rows="1" maxlength="1000" required placeholder="메시지 입력 · Enter로 보내기" title="Enter 보내기 · Shift+Enter 줄바꿈" data-chat-input>{{ view.draft }}</textarea>
+{% include "chat/_attach.html" %}
+<textarea name="body" rows="1" maxlength="1000" placeholder="메시지 입력 · Enter로 보내기" title="Enter 보내기 · Shift+Enter 줄바꿈" data-chat-input>{{ view.draft }}</textarea>
 <button class="btn btn--accent chat__send" type="submit" aria-label="보내기">{{ icon("arrow-right", 18, 2.4) }}</button>
 </div>
 </form>

@@ -2680,3 +2680,37 @@ div.hmore .hmore__toggle { margin-left: 0; padding: 6px 12px; }
 .daypanel .groupbar .groupseg__btn { padding: 0 10px; gap: 6px; }
 .daypanel .groupbar .groupseg [data-groupseg] svg { display: none; }
 .daypanel .groupbar .daypanel__select { padding: 0 10px; }
+/* 대화방 첨부(D-111, 카톡처럼): + → 사진·연락처·변경 건·조치 네 칸, 고르면 목록, 고른 것은 입력칸 위 알약 */
+.attach { position: relative; flex: none; align-self: flex-end; }
+.attach__open { display: grid; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 999px; background: var(--surface); color: var(--muted); cursor: pointer; }
+.attach__open[aria-expanded="true"] { background: var(--accent-soft); color: var(--accent); }
+.attach__panel { position: absolute; left: 0; bottom: calc(100% + 8px); z-index: 30; width: min(320px, calc(100vw - 24px)); padding: 12px; border: 1px solid var(--line-soft); border-radius: 16px; background: var(--card); box-shadow: var(--shadow-lg); }
+.attach__menu { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.attach__menu[hidden], .attach__list[hidden], .attach__panel[hidden] { display: none; }
+.attach__item { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 0; border: 0; border-radius: 12px; background: none; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--ink); cursor: pointer; }
+.attach__item:hover:not(:disabled) { background: var(--surface); }
+.attach__item:disabled { opacity: 0.4; cursor: default; }
+.attach__icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; }
+.attach__icon--photo { background: #E8F5E9; color: #2E7D32; }
+.attach__icon--contact { background: #FFF3E0; color: #E65100; }
+.attach__icon--case { background: #F1E9FF; color: #7C3AED; }
+.attach__icon--action { background: var(--accent-soft); color: var(--accent); }
+.attach__head { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; font-size: 13px; font-weight: 700; color: var(--ink); }
+.attach__back { display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 999px; background: var(--surface); color: var(--muted); cursor: pointer; }
+.attach__list ul { margin: 0; padding: 0; list-style: none; max-height: 240px; overflow-y: auto; }
+.attach__list li button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; min-height: 44px; padding: 6px 8px; border: 0; border-radius: 10px; background: none; font: inherit; text-align: left; cursor: pointer; }
+.attach__list li button:hover { background: var(--surface); }
+.attach__list strong { font-size: 13.5px; color: var(--ink); }
+.attach__list small { font-size: 12px; color: var(--muted); }
+.attach__chip { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; max-width: 100%; margin: 0; padding: 4px 6px 4px 12px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12.5px; font-weight: 600; }
+.attach__chip[hidden] { display: none; }
+.attach__chip span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.attach__chip button { display: grid; place-items: center; width: 22px; height: 22px; border: 0; border-radius: 999px; background: #FFFFFF; color: var(--accent); cursor: pointer; }
+/* 메시지 안 첨부: 사진은 말풍선 폭에 맞춰, 연락처는 이름·회사·전화 */
+.msg__photo { display: block; margin-top: 4px; }
+.msg__photo img { display: block; max-width: min(260px, 100%); max-height: 320px; border-radius: 12px; object-fit: cover; background: var(--surface); }
+.msg__contact { flex-wrap: wrap; }
+.msg__cicon { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 999px; background: #FFF3E0; color: #E65100; font-size: 13px; font-weight: 800; flex: none; }
+.msg__tel { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; padding: 4px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.msg__case--action svg { color: var(--accent); }
+.mchat__composer .attach__chip { flex-basis: 100%; }

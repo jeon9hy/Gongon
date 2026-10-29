@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 
+from app.features.actions.schemas import ActionRef
 from app.features.changes.schemas import CaseCard
+from app.features.teams.schemas import ContactCard
 
 
 @dataclass(frozen=True, slots=True)
@@ -14,6 +16,10 @@ class MessageView:
     day_text: str  # 날짜 구분선 "10월 17일(토)"
     case: CaseCard | None
     can_delete: bool
+    # 첨부(D-111): 사진 주소(현장 참여자만 열림)·연락처·조치. 지운 메시지는 모두 None
+    photo_url: str | None = None
+    contact: ContactCard | None = None
+    action: ActionRef | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,3 +45,5 @@ class ChatView:
     can_write: bool
     errors: tuple[str, ...] = ()
     draft: str = ""
+    contact_choices: tuple[ContactCard, ...] = ()
+    action_choices: tuple[ActionRef, ...] = ()

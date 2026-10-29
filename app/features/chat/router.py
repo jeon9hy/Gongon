@@ -2,12 +2,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session
 
 from app.core.clock import now_kst
 from app.core.db import get_session
+from app.core.files import FileStoreDep
 from app.core.templating import register_template_dir, templates
 from app.features.auth.service import CurrentUserDep, require_user
 from app.features.chat import service
@@ -62,10 +63,17 @@ def send(
     user: CurrentUserDep,
     now: NowDep,
     site_id: int,
+    store: FileStoreDep,
     body: Annotated[str, Form()] = "",
     case_id: Annotated[str, Form()] = "",
+    contact_id: Annotated[str, Form()] = "",
+    action_id: Annotated[str, Form()] = "",
+    photo: Annotated[UploadFile | None, File()] = None,
 ) -> Response:
-    errors = service.post(session, user, site_id, body, case_id, now)
+    # 한도보다 1바이트 더 읽어 넘치는지만 본다(큰 파일을 끝까지 메모리에 올리지 않는다)
+    data = photo.file.read(service.PHOTO_MAX_BYTES + 1) if photo and photo.filename else None
+    attach = {"case_id": case_id, "contact_id": contact_id, "action_id": action_id}
+    errors = service.post(session, user, site_id, body, attach, data, store, now)
     if errors:
         view = service.build_room(session, user, site_id, errors=errors, draft=body)
         return templates.TemplateResponse(
@@ -80,3 +88,14 @@ def delete(
 ) -> RedirectResponse:
     service.delete(session, user, site_id, message_id, now)
     return RedirectResponse(f"/chat/{site_id}#end", status_code=303)
+
+
+@router.get("/chat/{site_id}/photos/{message_id}")
+def photo(
+    session: SessionDep, user: CurrentUserDep, store: FileStoreDep, site_id: int, message_id: int
+) -> FileResponse:
+    """대화방 사진(D-111). 그 현장 참여자만. 공용 캐시에 남기지 않는다."""
+    path, media_type = service.photo_file(session, user, site_id, message_id, store)
+    return FileResponse(
+        path, media_type=media_type, headers={"Cache-Control": "private, max-age=3600"}
+    )
