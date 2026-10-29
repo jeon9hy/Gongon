@@ -132,15 +132,19 @@ a.mrow:active { background: var(--surface); }
 .msec__head { align-items: center; margin: 2px 2px 0; min-height: 28px; }
 .msec__title { display: flex; align-items: baseline; gap: 6px; font-size: 15px; }
 .msec__title small { font-size: 12.5px; font-weight: 600; color: var(--muted); }
-/* 위 요약: 날짜·날씨 한 줄 + 숫자 세 칸(누르면 그 화면) */
-.msum { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px 14px; background: var(--card); border: 1px solid var(--line-soft); border-radius: 16px; }
-.msum__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--muted); }
-.msum__wx { display: inline-flex; align-items: center; gap: 4px; color: var(--ink); font-weight: 600; white-space: nowrap; }
-.msum__stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
-.msum__stats a { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 12px; background: var(--surface); color: var(--muted); font-size: 12px; font-weight: 600; text-decoration: none; }
-.msum__stats b { font-size: 22px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1.15; }
-.msum__stats .is-hot b { color: var(--accent); }
-.msum__stats .is-stop b { color: var(--stop-text); }
+/* 위 요약: 웹 홈 '먼저 확인할 일'과 같은 남색 카드, 오른쪽 위에 인사하는 캐릭터. 숫자 세 칸은 반투명 */
+.msum { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 10px; padding: 14px 14px 12px; border-radius: 18px; color: #FFFFFF;
+  background: radial-gradient(90% 80% at 100% 0%, #3A4FC4 0%, transparent 60%), linear-gradient(135deg, #24318C 0%, #1B2468 100%); box-shadow: 0 10px 24px #1B246833; }
+.msum__art { position: absolute; top: 42px; right: 2px; width: 80px; height: auto; filter: drop-shadow(0 8px 10px #0000004D); pointer-events: none; }
+.msum__top { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0; font-size: 12.5px; color: #C9D2FF; }
+.msum__wx { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 9px; border-radius: 999px; background: #FFFFFF1F; color: #FFFFFF; font-weight: 600; white-space: nowrap; }
+.msum__title { position: relative; margin: 2px 92px 2px 0; font-size: 19px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.3; color: #FFFFFF; }
+.msum__title em { font-style: normal; color: #9DB5FF; }
+.msum__stats { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
+.msum__stats a { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 5px; padding: 8px 10px; border-radius: 12px; background: #FFFFFF14; border: 1px solid #FFFFFF1F; color: #C9D2FF; font-size: 11.5px; font-weight: 600; text-decoration: none; backdrop-filter: blur(4px); }
+.msum__stats a span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msum__stats b { grid-column: 1 / -1; margin-top: 2px; font-size: 22px; font-weight: 800; color: #FFFFFF; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.msum__stats .is-stop b { color: #FFB4A8; }
 /* 묶음 고르기 칩(가로로 밀기) */
 .mchips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 calc(-1 * var(--m-gutter)); padding: 0 var(--m-gutter); }
 .mchips::-webkit-scrollbar { display: none; }
