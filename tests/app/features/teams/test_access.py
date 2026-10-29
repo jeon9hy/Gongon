@@ -142,7 +142,7 @@ def test_outsider_cannot_open_judgment_detail_or_filter_history(
 def test_outsider_lists_show_no_foreign_site(browser: Browser, judgment_id: int) -> None:
     outsider = browser(OUTSIDER)
 
-    for path in ("/", "/sites", "/dashboard", "/schedule", "/judgments"):
+    for path in ("/home", "/sites", "/dashboard", "/schedule", "/judgments"):
         assert SITE["name"] not in outsider.get(path).text, path
 
 
@@ -392,7 +392,7 @@ def test_coordinator_only_controls_are_hidden_from_other_roles(
     add_member(client, site_id, SUB_USER["email"], "assignee")
     client.post("/schedule", data={"site_id": site_id, **WORK})
     pages = {
-        "home": "/",
+        "home": "/home",
         "dashboard": f"/dashboard?site_id={site_id}",
         "schedule": f"/schedule?site_id={site_id}&day={WORK['work_date']}",
     }

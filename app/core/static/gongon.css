@@ -2523,3 +2523,19 @@ a.sumcard:hover { border-color: var(--line); }
   html[data-narrow] .intro__barwrap .about__bar { padding: 12px 16px; }
   html[data-narrow] .welcome__lead br { display: none; }
 }
+/* 소개 첫 화면의 내 현장(로그인했을 때, D-110): 눌러서 PC 웹 앱으로 들어간다 */
+.intro__sites { display: flex; flex-direction: column; gap: 16px; padding: 24px; border: 1px solid var(--line-soft); border-radius: 24px; background: #FFFFFFE6; backdrop-filter: blur(8px); box-shadow: var(--shadow-lg); animation: welcome-rise 0.7s ease-out 0.15s both; }
+.intro__siteshead { display: flex; align-items: center; gap: 12px; padding: 0 4px; }
+.intro__siteshead img { width: 56px; height: auto; filter: drop-shadow(0 8px 10px #0E1E4526); }
+.intro__siteshead h2 { font-size: 20px; font-weight: 700; color: var(--ink); }
+.intro__siteshead p { font-size: 14px; color: var(--muted); }
+.intro__sitelist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; max-height: 360px; overflow-y: auto; }
+.intro__site { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: 1px solid var(--line-soft); border-radius: 16px; background: var(--card); color: var(--ink); text-decoration: none; transition: border-color var(--ease), box-shadow var(--ease), transform var(--ease); }
+.intro__site:hover { border-color: var(--accent); box-shadow: 0 8px 20px #1C60EF1F; transform: translateY(-1px); }
+.intro__sitemark { flex: 0 0 auto; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-size: 17px; font-weight: 700; }
+.intro__site--all .intro__sitemark { background: var(--accent); color: var(--accent-fg); }
+.intro__sitename { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 16px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.intro__sitename small { font-size: 13px; font-weight: 400; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+.intro__siteopen { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 600; color: var(--accent); }
+.intro__empty { font-size: 15px; color: var(--muted); padding: 0 4px; }
+@media (prefers-reduced-motion: reduce) { .intro__sites { animation: none; } }

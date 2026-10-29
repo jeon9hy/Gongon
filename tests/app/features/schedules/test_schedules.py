@@ -82,7 +82,7 @@ def test_navigation_keeps_the_selected_site_through_judgment_detail(
         assert response.status_code == 200
         navigation = response.text.split('<nav class="appnav"')[1].split("</nav>")[0]
         # 서버가 그리는 탭 주소는 전체, 칩에서 고른 현장은 스크립트가 쿠키로 붙인다(D-092)
-        for key, href in (("home", "/"), ("schedule", "/schedule"), ("changes", "/changes"),
+        for key, href in (("home", "/home"), ("schedule", "/schedule"), ("changes", "/changes"),
                           ("team", "/team"), ("chat", "/chat")):  # fmt: skip
             assert f'href="{href}" data-site-link="{key}"' in navigation
         assert "/dashboard" not in navigation and "/judgments" not in navigation  # 하위 메뉴로
@@ -567,7 +567,7 @@ def test_judgment_menu_entry_shows_all_sites_summary(client: TestClient, query: 
     )
 
 
-@pytest.mark.parametrize("path", ["/", "/schedule", "/dashboard", "/judgments"])
+@pytest.mark.parametrize("path", ["/home", "/schedule", "/dashboard", "/judgments"])
 def test_site_filter_accepts_blank_but_rejects_non_integer(client: TestClient, path: str) -> None:
     add_site(client)
 

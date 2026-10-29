@@ -94,11 +94,11 @@ def test_home_card_shows_the_forecast_hour_and_issue_time(
     client: TestClient, session: Session
 ) -> None:
     client.post("/sites", data=SITE)
-    assert "아직 받은 예보가 없어요" in weather_card(client.get("/").text)
+    assert "아직 받은 예보가 없어요" in weather_card(client.get("/home").text)
 
     site = session.scalars(select(Site)).one()
     save(session, ITEMS, nx=site.grid_nx, ny=site.grid_ny)
-    card = weather_card(client.get("/").text)
+    card = weather_card(client.get("/home").text)
 
     assert "가상A현장" in card and "18°" in card and "구름많음" in card
     assert "15시 예보 · 14:00 발표" in card and "예보" in card

@@ -49,8 +49,8 @@ def test_phone_gets_app_home_with_tab_bar_and_pc_gets_web_home(
     site_id = make_site(client)
     put(session, site_id, date(2026, 10, 4), time(16), time(18), "거푸집 설치")
 
-    web = client.get("/", headers={"user-agent": DESKTOP}).text
-    phone = client.get("/", headers={"user-agent": IPHONE}).text
+    web = client.get("/home", headers={"user-agent": DESKTOP}).text
+    phone = client.get("/home", headers={"user-agent": IPHONE}).text
 
     assert APP_HTML not in web and 'class="appbar"' in web and '<nav class="tabbar"' not in web
     assert APP_HTML in phone and '<nav class="tabbar"' in phone and 'class="appbar"' not in phone
@@ -61,7 +61,7 @@ def test_phone_gets_app_home_with_tab_bar_and_pc_gets_web_home(
 def test_choosing_pc_view_on_a_phone_is_remembered(client: TestClient) -> None:
     make_site(client)
 
-    switched = client.get("/?ui=web", headers={"user-agent": IPHONE})
+    switched = client.get("/home?ui=web", headers={"user-agent": IPHONE})
     assert f"{UI_COOKIE}=web" in switched.headers["set-cookie"]
     assert APP_HTML not in switched.text
     # 쿠키가 남아 다음 화면도 웹 화면이다
@@ -78,7 +78,7 @@ def test_page_without_app_layout_falls_back_to_web_content_in_app_frame(client: 
 
 
 def test_app_view_keeps_access_rules(anonymous_client: TestClient) -> None:
-    response = anonymous_client.get("/", headers={"user-agent": IPHONE}, follow_redirects=False)
+    response = anonymous_client.get("/home", headers={"user-agent": IPHONE}, follow_redirects=False)
     assert response.status_code in (302, 303, 307)
 
 

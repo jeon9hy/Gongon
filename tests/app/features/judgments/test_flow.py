@@ -256,7 +256,7 @@ def test_out_of_range_query_is_rejected(client: TestClient, params: dict[str, An
 
 
 def test_home_without_sites_shows_onboarding_steps(client: TestClient) -> None:
-    page = client.get("/").text
+    page = client.get("/home").text
 
     assert "세 단계면 내일 판정을 받습니다" in page
     assert "공온지수" not in page
@@ -264,7 +264,7 @@ def test_home_without_sites_shows_onboarding_steps(client: TestClient) -> None:
 
 
 def test_home_is_separate_from_site_dashboard_in_menu(client: TestClient) -> None:
-    home = client.get("/").text
+    home = client.get("/home").text
     dashboard = client.get("/dashboard").text
 
     def current_tab(page: str) -> list[str]:
@@ -304,7 +304,7 @@ def test_run_all_judges_every_site_and_fetches_shared_grid_once(
 
     response = client.post("/judgments/run-all", follow_redirects=False)
 
-    assert response.headers["location"] == "/?ran=all_done"
+    assert response.headers["location"] == "/home?ran=all_done"
     assert count(session, Judgment) == 8
     assert len(fake_kma.calls) == 1
     assert "전체 현장을 판정했습니다" in client.get(response.headers["location"]).text
@@ -313,7 +313,7 @@ def test_run_all_judges_every_site_and_fetches_shared_grid_once(
 def test_run_all_without_sites_says_so(client: TestClient) -> None:
     location = client.post("/judgments/run-all", follow_redirects=False).headers["location"]
 
-    assert location == "/?ran=no_sites"
+    assert location == "/home?ran=no_sites"
 
 
 def test_week_outside_work_period_is_not_judged_or_fetched(
@@ -386,7 +386,7 @@ def test_run_all_skips_sites_outside_period_and_home_counts_them(
     location = client.post("/judgments/run-all", follow_redirects=False).headers["location"]
     home = client.get(location).text
 
-    assert location == "/?ran=all_done"
+    assert location == "/home?ran=all_done"
     assert count(session, Judgment) == 4
     assert "작업 기간이 아닙니다 · 2026-11-01~2026-11-30" in client.get("/dashboard").text
     assert "작업 없음" in home
@@ -437,7 +437,7 @@ def test_home_work_type_row_opens_the_worst_judgment(
     run(client, add_site(client))
     steel = session.scalars(select(Judgment).where(STEEL)).one()
 
-    home = client.get("/").text
+    home = client.get("/home").text
 
     # 묶음(업체별) 안의 작업 줄이 그 판정 상세로 간다(D-085)
     links = [h.split('"')[0] for h in home.split('class="grp__item" href="')[1:]]

@@ -48,49 +48,10 @@ def test_pages_send_anonymous_visitor_to_login_with_return_path(
     ).replace("?", "%3F").replace("=", "%3D")
 
 
-def test_anonymous_home_visit_lands_on_welcome(anonymous_client: TestClient) -> None:
-    response = anonymous_client.get("/", follow_redirects=False)
+def test_anonymous_app_home_visit_lands_on_the_intro(anonymous_client: TestClient) -> None:
+    response = anonymous_client.get("/home", follow_redirects=False)
 
-    assert response.status_code == 303
-    assert response.headers["location"] == "/welcome"
-    html = anonymous_client.get("/welcome").text
-    assert 'href="/signup"' in html and 'href="/login"' in html
-    assert 'aria-label="주 메뉴"' not in html
-
-
-def test_welcome_is_the_service_intro_leading_into_the_pc_app(
-    anonymous_client: TestClient, client: TestClient
-) -> None:
-    html = anonymous_client.get("/welcome").text
-    assert 'id="why"' in html and 'id="where"' in html  # 소개 구역이 한 화면에 이어진다(D-110)
-    assert "공온 열기" not in html
-
-    signed_in = client.get("/welcome", follow_redirects=False)
-    assert signed_in.status_code == 200
-    assert 'href="/">공온 열기' in signed_in.text and 'href="/signup"' not in signed_in.text
-
-
-def test_old_about_address_goes_to_the_intro(anonymous_client: TestClient) -> None:
-    response = anonymous_client.get("/about", follow_redirects=False)
-
-    assert response.status_code == 308 and response.headers["location"] == "/welcome"
-
-
-def test_pc_app_bar_links_back_to_the_intro(client: TestClient) -> None:
-    assert 'class="appbar__about" href="/welcome"' in client.get("/sites").text
-
-
-def test_app_shell_skips_the_intro(anonymous_client: TestClient) -> None:
-    shell = {"user-agent": "Mozilla/5.0 (Linux; Android 14) GongonApp/1"}
-    response = anonymous_client.get("/", headers=shell, follow_redirects=False)
-
-    assert response.status_code == 303 and response.headers["location"] == "/login"
-    # 휴대폰 브라우저는 앱 껍데기가 아니므로 소개를 본다
-    phone = {"user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile"}
-    assert (
-        anonymous_client.get("/", headers=phone, follow_redirects=False).headers["location"]
-        == "/welcome"
-    )
+    assert response.status_code == 303 and response.headers["location"] == "/"
 
 
 def test_anonymous_write_is_not_executed(anonymous_client: TestClient, session: Session) -> None:
@@ -241,7 +202,7 @@ def test_logout_invalidates_the_token_on_the_server(client: TestClient) -> None:
     response = client.post("/logout", follow_redirects=False)
     client.cookies.set(service.SESSION_COOKIE, token)  # 쿠키를 지우지 않고 다시 보내는 경우
 
-    assert response.headers["location"] == "/welcome"
+    assert response.headers["location"] == "/"
     assert client.get("/sites", follow_redirects=False).status_code == 303
 
 

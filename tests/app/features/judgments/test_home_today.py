@@ -36,7 +36,7 @@ def test_empty_home_add_links_keep_the_site_and_day(client: TestClient) -> None:
     site_id = make_site(client)
     make_site(client, "가상B현장")
 
-    selected = client.get(f"/?site_id={site_id}").text
+    selected = client.get(f"/home?site_id={site_id}").text
     for label, day in [("작업을 추가할까요?", TODAY), ("미리 추가할까요?", TOMORROW)]:
         link = re.search(r'href="([^"]+)">' + re.escape(label) + r"</a>", selected)
         assert link is not None
@@ -45,7 +45,7 @@ def test_empty_home_add_links_keep_the_site_and_day(client: TestClient) -> None:
         assert "add=1" in href
         assert client.get(href).status_code == 200
 
-    overview = client.get("/").text
+    overview = client.get("/home").text
     link = re.search(r'href="([^"]+)">작업을 추가할까요\?</a>', overview)
     assert link is not None
     href = unescape(link[1])
@@ -103,7 +103,7 @@ def test_today_board_lists_today_in_start_order_with_phase_at_boundaries(
     put(session, site_id, TODAY, time(14, 0), time(15, 0), "철골 작업")  # 끝 = 지금 → 끝남
     put(session, site_id, TODAY, time(15, 0), time(17, 0), "콘크리트 타설")  # 시작 = 지금
 
-    page = client.get("/").text
+    page = client.get("/home").text
 
     # 끝난 작업(끝 = 지금 포함)은 목록에서 빠진다(개발자 요청 2026-10-17)
     today = board(page, "today")
@@ -122,7 +122,7 @@ def test_today_all_done_says_finished_and_hides_empty_table_head(
     site_id = make_site(client)
     put(session, site_id, TODAY, time(13, 0), time(15, 0), "철골 작업")  # 끝 = 지금 → 끝남
 
-    page = client.get("/").text
+    page = client.get("/home").text
 
     assert "오늘 작업 1건을 모두 마쳤어요" in page and "남은 작업" not in page
     assert "jobs__head--alldone" in board(page, "today")
@@ -139,7 +139,7 @@ def test_checks_flag_missing_company_place_and_true_overlaps_only(
     put(session, site_id, TODAY, time(20, 0), time(21, 0), "도장·방수", "C동", prime)  # 끝=시작
     put(session, site_id, TODAY, time(16, 0), time(17, 0), "콘크리트 타설", "", None)
 
-    page = client.get("/").text
+    page = client.get("/home").text
     today = board(page, "today")
     # 맨 위 먼저 확인할 일 카드(C04-53)
     urgent = page.split('aria-label="먼저 확인할 일"')[1].split("</section>")[0]
@@ -182,7 +182,7 @@ def test_today_board_groups_left_work_by_company_and_floor_and_keeps_done_apart(
     assert [g.unassigned for g in today_board.groups] == [True, False]
     assert today_board.groups[0].issues == ("실행 업체 미지정",)
     assert today_board.groups[1].phase == "now" and today_board.groups[1].issues == ()
-    today = board(client.get("/").text, "today")
+    today = board(client.get("/home").text, "today")
     assert "끝난 작업 1건 보기" in today and today.count('<li class="is-extra">') == 1
 
 
@@ -202,7 +202,7 @@ def test_tomorrow_board_counts_weather_before_judgment_and_open_change(
     )  # fmt: skip
     assert response.status_code == 303
 
-    tomorrow = board(client.get("/").text, "tomorrow")
+    tomorrow = board(client.get("/home").text, "tomorrow")
 
     # 작업 줄: 판정 칸은 그 작업의 판정(판정 전), 다른 확인할 것(변경 검토 중)은 ! 표시
     assert '<span class="badge badge--unknown">판정 전</span>' in tomorrow
@@ -214,7 +214,7 @@ def test_week_index_shows_seven_days_from_tomorrow(client: TestClient, session: 
     site_id = make_site(client)
     put(session, site_id, TOMORROW, time(9, 0), time(10, 0), "철골 작업")
 
-    page = client.get("/").text
+    page = client.get("/home").text
     week = page.split('class="idxweek"')[1].split("</ol>")[0]
 
     # 7일 원은 버튼이고, 누르면 그날 패널(공종별 요약)이 보인다(슬라이드)
@@ -236,7 +236,7 @@ def test_week_index_scores_mid_forecast_days_as_reference(
     put(session, site_id, date(2026, 10, 8), time(9, 0), time(10, 0), "철골 작업")
     client.post("/judgments/run", data={"site_id": site_id})
 
-    week = client.get("/").text.split('class="idxweek"')[1].split("</ol>")[0]
+    week = client.get("/home").text.split('class="idxweek"')[1].split("</ol>")[0]
     mid_day = week.split("</li>")[3]  # 내일(10/5)부터 네 번째 칸
 
     assert 'aria-label="공온지수 75(먼 날 예보로 계산)"' in mid_day
@@ -246,7 +246,7 @@ def test_week_index_scores_mid_forecast_days_as_reference(
 def test_home_without_any_work_says_so(client: TestClient) -> None:
     make_site(client)
 
-    page = client.get("/").text
+    page = client.get("/home").text
 
     assert "오늘은 쉬어 가는 날" in page and 'class="job job--today' not in page
 
@@ -257,8 +257,8 @@ def test_home_switches_between_sites(client: TestClient, session: Session) -> No
     put(session, first, TODAY, time(16, 0), time(17, 0), "철골 작업")
     put(session, second, TODAY, time(16, 0), time(17, 0), "도장·방수")
 
-    all_page = client.get("/").text
-    only_second = client.get(f"/?site_id={second}").text
+    all_page = client.get("/home").text
+    only_second = client.get(f"/home?site_id={second}").text
 
     # 현장 고르기는 머리줄 칩 하나(D-092). 처음엔 전체
     assert "data-siteswitch-label>전체 현장<" in all_page and 'class="sitetabs"' not in all_page
@@ -267,7 +267,7 @@ def test_home_switches_between_sites(client: TestClient, session: Session) -> No
     today_second = board(only_second, "today")
     assert "도장·방수" in today_second and "철골 작업" not in today_second
     # 내 현장이 아닌 ID는 무시하고 전체를 보인다
-    assert "철골 작업" in board(client.get("/?site_id=99999").text, "today")
+    assert "철골 작업" in board(client.get("/home?site_id=99999").text, "today")
 
 
 def test_same_issue_on_many_sites_is_one_inbox_row_with_a_count() -> None:
@@ -300,6 +300,6 @@ def test_home_greets_by_time_of_day(client: TestClient) -> None:
     # 시험 시계는 15:00(KST): 날짜 줄에 때에 맞는 인사(C04-52)
     make_site(client)
 
-    page = client.get("/").text
+    page = client.get("/home").text
 
     assert '<p class="homebar__date">' in page and "좋은 점심이에요" in page

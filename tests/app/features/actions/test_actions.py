@@ -382,7 +382,7 @@ def test_my_actions_groups_and_orders_overdue_first(
 
 # 홈 내 차례(C04-44, D-099): 같은 조치가 맡은 사람마다 알맞은 묶음에 나온다.
 def inbox(client: TestClient) -> str:
-    return client.get("/").text.split('class="hsec inbox"')[1].split("</section>")[0]
+    return client.get("/home").text.split('class="hsec inbox"')[1].split("</section>")[0]
 
 
 TAB_KEYS = {"할 일": "respond", "확인 대기": "verify", "보류": "hold", "결정 대기": "decide"}
@@ -429,4 +429,4 @@ def test_coordinator_sees_blocked_work_even_when_not_assigned(
 
     assert "펌프카 예약 변경" in group(mine, "보류")
     assert group(mine, "보류").count("펌프카 예약 변경") == 1  # 같은 조치를 두 번 넣지 않는다
-    assert 'inboxtabs__n--hold">1</b>' in client.get("/").text  # 소탭 건수도 한 번만 센다
+    assert 'inboxtabs__n--hold">1</b>' in client.get("/home").text  # 소탭 건수도 한 번만 센다

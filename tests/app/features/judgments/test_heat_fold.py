@@ -115,7 +115,7 @@ def test_site_without_work_is_not_judged_and_no_forecast_is_fetched(
     site_id = int(response.headers["location"].split("site_id=")[1].split("&")[0])
 
     location = run(client, site_id)
-    home = client.get("/").text
+    home = client.get("/home").text
 
     assert "ran=no_work" in location
     assert session.scalar(select(Judgment.id)) is None and fake_kma.calls == []
@@ -218,7 +218,7 @@ def test_home_day_panel_groups_same_work_and_expands_to_each_item(
         (STEEL, "13:00–16:00", "진행"),
     ]
     assert (panel.stop, panel.go) == (1, 1)  # 칸 숫자는 묶음이 아니라 작업마다 센다
-    page = client.get("/").text
+    page = client.get("/home").text
     assert (
         '<details class="grp grp--company' in page
         and " open>" not in page.split("grp--company")[1][:80]
@@ -240,5 +240,5 @@ def test_home_day_panel_groups_by_company_and_by_floor(
 
     assert [(r.label, r.count) for r in panel.place_rows] == [("101동 9층", 2), ("위치 없음", 1)]
     assert sum(r.count for r in panel.rows) == 3
-    page = client.get("/").text
+    page = client.get("/home").text
     assert 'data-groupview="company"' in page and 'data-groupview="place"' in page

@@ -45,21 +45,6 @@ def _signed_in_already(request: Request, session: Session, now: datetime) -> boo
     return service.resolve(session, request.cookies.get(service.SESSION_COOKIE), now) is not None
 
 
-@router.get("/welcome", response_model=None)
-def welcome(request: Request, session: SessionDep, now: NowDep) -> Response:
-    """서비스 소개이자 PC 웹 입구(D-110). 로그인했으면 '공온 열기'로 앱(/)에 이어진다."""
-    signed_in = _signed_in_already(request, session, now)
-    return templates.TemplateResponse(
-        request, "auth/welcome.html", {"nav_active": "", "signed_in": signed_in}
-    )
-
-
-@router.get("/about")
-def about() -> RedirectResponse:
-    # 예전 소개 주소(C04-20)는 합친 소개로 보낸다
-    return RedirectResponse("/welcome", status_code=308)
-
-
 @router.get("/login", response_model=None)
 def login_page(request: Request, session: SessionDep, now: NowDep, next: str = "/") -> Response:
     # 로그인한 뒤 뒤로 가기로 다시 와도 로그인 화면을 보이지 않는다

@@ -25,7 +25,7 @@ def test_missing_database_setting_shows_setup_page_not_500() -> None:
 
     app.dependency_overrides[get_session] = no_database
 
-    response = TestClient(app).get("/")
+    response = TestClient(app).get("/home")
 
     assert response.status_code == 503
     assert "DB 설정이 필요합니다" in response.text

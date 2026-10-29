@@ -26,7 +26,7 @@ def board_home(session: SessionDep, user: CurrentUserDep) -> Response:
     """게시 계정이 로그인하면 그 현장 게시 화면으로 간다."""
     sites = sorted(teams_service.board_site_ids(session, user.user_id))
     if not sites:
-        return RedirectResponse("/", status_code=303)
+        return RedirectResponse("/home", status_code=303)
     return RedirectResponse(f"/board/{sites[0]}", status_code=303)
 
 

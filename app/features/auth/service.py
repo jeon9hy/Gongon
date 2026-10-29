@@ -202,7 +202,7 @@ def safe_next(path: str | None) -> str:
 
 
 def signed_out_landing(request: Request) -> str:
-    return "/login" if ui_mode.in_app_shell(request.headers) else "/welcome"
+    return "/login" if ui_mode.in_app_shell(request.headers) else "/"
 
 
 def require_user(
@@ -213,7 +213,7 @@ def require_user(
     """로그인이 필요한 화면의 의존성. 없으면 로그인 화면으로 보낸다(303)."""
     user = resolve(session, request.cookies.get(SESSION_COOKIE), now)
     if user is None:
-        if request.url.path == "/":
+        if request.url.path == "/home":
             # 처음 온 사람은 서비스 소개에서 가입·로그인을 고른다(앱 껍데기는 바로 로그인, D-110)
             raise HTTPException(status_code=303, headers={"Location": signed_out_landing(request)})
         target = request.url.path + (f"?{request.url.query}" if request.url.query else "")

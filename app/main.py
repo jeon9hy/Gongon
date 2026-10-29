@@ -18,6 +18,7 @@ from app.features.board.router import router as board_router
 from app.features.changes.router import router as changes_router
 from app.features.chat.router import router as chat_router
 from app.features.help.router import router as help_router
+from app.features.intro.router import router as intro_router
 from app.features.judgments.auto_refresh import run_hourly
 from app.features.judgments.router import router as judgments_router
 from app.features.schedules.router import router as schedules_router
@@ -43,6 +44,7 @@ def create_app(auto_refresh: bool = False) -> FastAPI:
     app.add_middleware(NoStoreHtmlMiddleware)
     app.add_middleware(UiModeMiddleware)
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+    app.include_router(intro_router)
     app.include_router(auth_router)
     app.include_router(judgments_router)
     app.include_router(sites_router)

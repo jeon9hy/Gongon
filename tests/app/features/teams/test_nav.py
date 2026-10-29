@@ -130,11 +130,11 @@ def test_every_tab_has_the_chip_except_chat_and_chat_opens_no_room(client: TestC
     first = add_site(client, "가상A현장")
     add_site(client, "가상B현장")
     nav = nav_of(client.get(f"/schedule?site_id={first}").text)
-    for key, href in (("home", "/"), ("schedule", "/schedule"), ("changes", "/changes"),
+    for key, href in (("home", "/home"), ("schedule", "/schedule"), ("changes", "/changes"),
                       ("team", "/team"), ("chat", "/chat")):  # fmt: skip
         assert f'href="{href}" data-site-link="{key}"' in nav  # 서버 주소는 전체
 
-    home = client.get("/").text
+    home = client.get("/home").text
     dashboard = client.get(f"/dashboard?site_id={first}").text
     team = client.get("/team").text
     chat = client.get("/chat", follow_redirects=False)

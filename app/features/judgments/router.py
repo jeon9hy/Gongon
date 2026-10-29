@@ -29,7 +29,7 @@ SessionDep = Annotated[Session, Depends(get_session)]
 NowDep = Annotated[datetime, Depends(now_kst)]
 
 
-@router.get("/", response_model=None)
+@router.get("/home", response_model=None)
 def home(
     request: Request,
     session: SessionDep,
@@ -119,7 +119,7 @@ def run_all(
     result = service.run_all(
         session, scope, now, settings.kma_auth(), http_get, settings.kma_service_key
     )
-    return RedirectResponse(f"/?ran={result}", status_code=303)
+    return RedirectResponse(f"/home?ran={result}", status_code=303)
 
 
 @router.get("/judgments", response_class=HTMLResponse)

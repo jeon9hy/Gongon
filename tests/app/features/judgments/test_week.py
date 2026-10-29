@@ -208,7 +208,7 @@ def test_rerun_updates_last_checked_time_without_new_judgments(
     client.post("/judgments/run", data={"site_id": site_id})
 
     assert list(session.scalars(select(Judgment.id))) == first_rows  # 판정 기록은 그대로
-    home = client.get("/").text
+    home = client.get("/home").text
     dashboard = client.get("/dashboard", params={"site_id": site_id}).text
     assert "15:50 확인" in home  # 사용자에게는 확인 시각이 갱신된다(홈 카드는 짧게)
     assert "10월 4일 15:50 확인 · 14:00 발표 예보" in dashboard

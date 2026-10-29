@@ -42,7 +42,7 @@ def tv(client: TestClient, browser: Browser, item: WorkItem) -> TestClient:
 
 
 def test_board_account_sees_only_the_board(tv: TestClient, item: WorkItem) -> None:
-    home = tv.get("/", follow_redirects=False)
+    home = tv.get("/home", follow_redirects=False)
     assert home.status_code == 303 and home.headers["location"] == "/board"
     page = tv.get(f"/board/{item.site_id}").text
     assert "작업 여부는 반장·소장 지시를 따릅니다." in page
