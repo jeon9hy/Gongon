@@ -2660,3 +2660,4 @@ a.sumcard:hover { border-color: var(--line); }
 .guide-list dt, .guide-list dd { line-height: 1.6; }
 /* 작업 수·점 설명은 휴대폰 앱 달력에서만 쓴다(app.css) */
 .calcount, .calkey { display: none; }
+.sumcards--two { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }

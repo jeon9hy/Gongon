@@ -378,6 +378,7 @@ class HomeView:
     day_panels: tuple[DayPanel, ...] = ()  # index_days와 같은 7일, 같은 순서
     selected_site_id: int | None = None  # 고른 현장(전체면 None). 메뉴 링크가 이어받는다
     weather_now: HomeWeather | None = None  # 맨 위 날씨 카드(지금과 가장 가까운 예보 시각)
+    single_site: bool = False  # 현장 하나만 보는 중(날씨 카드는 이때만)
 
 
 @dataclass(frozen=True, slots=True)

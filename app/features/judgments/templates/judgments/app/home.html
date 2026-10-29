@@ -12,16 +12,17 @@
 {% set done_today = today_board.items | selectattr("phase", "equalto", "done") | list %}
 {% set w = view.weather_now %}
 {% set p = view.day_panels[0] if view.day_panels else none %}
-{% set JOBS_SHOWN = 6 %}
+{% set todo_total = inbox.groups | sum(attribute="total") if inbox else 0 %}
+{% set JOBS_SHOWN = 3 %}
 
 <h1 class="visually-hidden">오늘</h1>
 {# 위 요약: 웹 홈 '먼저 확인할 일'과 같은 남색 카드 + 인사하는 캐릭터, 숫자 세 칸(누르면 그 화면) #}
 <section class="msum" aria-label="오늘 요약">
-<img class="msum__art" src="/static/brand/mascot-hello.png" alt="" width="92" height="70">
+<img class="msum__art" src="/static/brand/mascot-3d.png" alt="" width="520" height="419">
 <p class="msum__top"><span>{{ view.today_date }}</span>{% if w %}<span class="msum__wx">{{ icon("cloud-sun", 14, 2) }} {{ w.temperature }} {{ w.sky or "" }}</span>{% endif %}</p>
 <p class="msum__title">{{ greeting }},<br>{{ name }}님</p>
 <ul class="msum__stats">
-<li><a href="/actions">{{ icon("clipboard", 15, 2) }}<span>할 일</span><b>{{ inbox.total if inbox else 0 }}</b></a></li>
+<li><a href="/actions">{{ icon("clipboard", 15, 2) }}<span>챙길 일</span><b>{{ todo_total }}</b></a></li>
 <li><a href="#m-jobs-title">{{ icon("hard-hat", 15, 2) }}<span>남은 작업</span><b>{{ left_today | length }}</b></a></li>
 <li><a href="{{ p.href if p and p.total else '/dashboard' }}" class="{{ 'is-stop' if p and p.stop }}">{{ icon("cloud-sun", 15, 2) }}<span>내일 중지</span><b>{{ p.stop if p else 0 }}</b></a></li>
 </ul>
@@ -40,42 +41,53 @@
 {% else %}
 
 {% if inbox %}
-{# 먼저 챙길 것: 오늘 작업 문제 → 소탭 순서(할 일·확인 대기·보류·결정 대기)의 첫 줄들. 다섯 줄까지 #}
-{% set firsts = (inbox.today | list) + (inbox.groups | map(attribute="by_work") | map("list") | sum(start=[])) %}
+{# 먼저 챙길 것(개발자 요청 2026-10-29): 2×2 칸, 일이 흐르는 순서(변경 결정 → 할 일 → 확인 → 보류)와 칸마다 다른 색.
+   칸에는 건수와 맨 앞 한 건. 오늘 작업 점검 문제(겹침·업체 미지정)는 아래 한 줄 #}
+{% set by_key = {} %}{% for g in inbox.groups %}{% set _ = by_key.update({g.key: g}) %}{% endfor %}
 <section class="msec" aria-labelledby="m-todo-title">
-<div class="msec__head"><h2 class="msec__title" id="m-todo-title">먼저 챙길 것{% if inbox.total %} <small>{{ inbox.total }}건</small>{% endif %}</h2><a class="mlink" href="/actions">내 조치</a></div>
-{% if firsts %}
-<ul class="mlist mlist--tags">
-{% for i in firsts[:5] %}
-<li><a class="mrow" href="{{ i.href }}" aria-label="{{ i.tag }} · {{ i.title }} · {{ i.action }}">
-<span class="mtag mtag--{{ i.tone }}">{{ i.tag }}</span>
-<span class="mrow__main"><strong><span>{{ i.title }}{% if i.count > 1 %} · {{ i.count }}건{% endif %}</span></strong><small>{{ i.where or i.meta }}{% if i.late %} · <em>{{ i.late }}</em>{% endif %}</small></span>
-<span class="mrow__end">{{ icon("chevron-right", 18, 2) }}</span>
+<div class="msec__head"><h2 class="msec__title" id="m-todo-title">먼저 챙길 것{% if todo_total %} <small>{{ todo_total }}건</small>{% endif %}</h2><a class="mlink" href="/actions">내 조치</a></div>
+<ul class="mgrid">
+{% for key, title, ic, href, empty in [("decide", "변경 결정", "clipboard", "/changes", "확정할 변경이 없어요"), ("respond", "할 일", "arrow-right", "/actions#g-respond", "답할 요청이 없어요"), ("verify", "확인 대기", "check", "/actions#g-verify", "확인할 보고가 없어요"), ("hold", "보류", "info", "/actions#g-blocked", "막힌 조치가 없어요")] %}
+{% set g = by_key.get(key) %}{% set top = g.by_work[0] if g and g.by_work else none %}
+<li><a class="mgrid__tile mgrid__tile--{{ key }}{% if not g or not g.total %} is-zero{% endif %}" href="{{ top.href if top else href }}">
+<span class="mgrid__head"><span class="mgrid__icon">{{ icon(ic, 16, 2.2) }}</span>{{ title }}{% if top and top.late %}<em class="mgrid__late">기한 지남</em>{% endif %}</span>
+<b class="mgrid__n">{{ g.total if g else 0 }}<small>건</small></b>
+<span class="mgrid__top">{% if top %}{{ top.title }}{% else %}{{ empty }}{% endif %}</span>
 </a></li>
 {% endfor %}
 </ul>
-{% else %}
-<p class="mempty">{{ icon("check", 15, 2.4) }} 지금 챙길 일은 없어요</p>
+{% if inbox.today %}{% set f = inbox.today[0] %}
+<a class="malert" href="{{ f.href }}"><span class="mtag mtag--warn">{{ f.tag }}</span><span class="malert__text">오늘 작업 점검 {{ inbox.today_total }}건 · {{ inbox.today | map(attribute="tag") | unique | join(" · ") }}</span>{{ icon("chevron-right", 16, 2) }}</a>
 {% endif %}
-{% if inbox.groups %}<nav class="mchips" aria-label="변경·조치 종류">{% for g in inbox.groups %}<a href="{{ g.more_href }}">{{ g.title }} <b>{{ g.total }}</b></a>{% endfor %}</nav>{% endif %}
 </section>
 {% endif %}
 
 <section class="msec" aria-labelledby="m-jobs-title">
 <div class="msec__head"><h2 class="msec__title" id="m-jobs-title">오늘 작업 <small>{{ today_board.date_text }}{% if today_board.items %} · {{ today_board.items | length }}건{% endif %}</small></h2>{% if can_add %}<a class="mlink" href="{{ today_board.add_href }}">+ 추가</a>{% endif %}</div>
-{% if today_board.items %}
-{% set jobs = left_today + done_today %}
-<ul class="mlist">
+{% macro job_rows(jobs) %}
 {% for j in jobs[:JOBS_SHOWN] %}
 {% set start, _, end = j.time_text.partition("~" if "~" in j.time_text else "–") %}
 <li><a class="mrow{% if j.phase == 'done' %} mrow--done{% endif %}" href="{{ j.href }}">
 <span class="mrow__time">{{ start }}{% if end %}<small>{{ end }}</small>{% endif %}</span>
-<span class="mrow__main"><strong><span class="job__dot" style="--c: {{ work_color(j.work_type) }}"></span><span>{{ j.work_type }}</span></strong><small>{{ [j.location, j.company or j.site_name] | select | join(" · ") }}</small></span>
+<span class="mrow__main"><strong><span class="job__dot" style="--c: {{ work_color(j.work_type) }}"></span><span>{{ j.work_type }}</span></strong><small>{{ [j.location, j.company] | select | join(" · ") }}</small></span>
 <span class="mrow__end">{% if j.issues and j.phase != "done" %}<span class="mjob__warn" title="{{ j.issues | map(attribute='label') | join(', ') }}" aria-label="확인할 것 {{ j.issues | length }}개">!</span>{% endif %}<span class="mpill mpill--{{ j.phase }}">{{ j.phase_label }}</span></span>
 </a></li>
 {% endfor %}
-{% if jobs | length > JOBS_SHOWN %}<li><a class="mrow mrow--more" href="/schedule"><span>{{ jobs | length - JOBS_SHOWN }}건 더 보기</span>{{ icon("chevron-right", 16, 2) }}</a></li>{% endif %}
+{% if jobs | length > JOBS_SHOWN %}<li><a class="mrow mrow--more" href="{{ jobs[0].href }}"><span>{{ jobs | length - JOBS_SHOWN }}건 더 보기</span>{{ icon("chevron-right", 16, 2) }}</a></li>{% endif %}
+{% endmacro %}
+{% if today_board.items %}
+{% set jobs = left_today + done_today %}
+{% if view.single_site %}
+<ul class="mlist">{{ job_rows(jobs) }}</ul>
+{% else %}
+{# 전체 현장이면 현장별로 세 건씩(개발자 요청) #}
+{% for site_name, site_jobs in jobs | groupby("site_name") %}
+<ul class="mlist mlist--site">
+<li class="mlist__head"><span class="mclip">{{ site_name }}</span><small>{{ site_jobs | length }}건</small></li>
+{{ job_rows(site_jobs | list) }}
 </ul>
+{% endfor %}
+{% endif %}
 {% else %}
 <p class="mempty">오늘 등록한 작업이 없어요</p>
 {% endif %}

@@ -103,3 +103,13 @@ def test_home_card_shows_the_forecast_hour_and_issue_time(
     assert "가상A현장" in card and "18°" in card and "구름많음" in card
     assert "15시 예보 · 14:00 발표" in card and "예보" in card
     assert '<dt>습도</dt><dd title="–">–</dd>' in card  # 습도 없음은 채우지 않는다
+
+
+def test_weather_card_only_for_a_single_site(client: TestClient) -> None:
+    # 전체 현장의 날씨는 기준이 없어 보이지 않는다(개발자 지적). 현장을 고르면 보인다
+    client.post("/sites", data=SITE)
+    client.post("/sites", data={**SITE, "name": "가상B현장"})
+    site_id = int(client.get("/sites").text.split('href="/sites?site_id=')[1].split('"')[0])
+
+    assert 'aria-label="지금 날씨"' not in client.get("/home").text
+    assert 'aria-label="지금 날씨"' in client.get(f"/home?site_id={site_id}").text

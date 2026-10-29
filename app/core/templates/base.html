@@ -64,7 +64,7 @@ try { if (localStorage.getItem("gongon.attn") === "1") document.documentElement.
 </header>
 <main class="mpage page--{{ nav_active }}" id="main" tabindex="-1">
 {% if pagebar %}<div class="mpagebar">{{ pagebar | safe }}</div>{% endif %}
-{{ self.schedule_tools() }}
+{# 현장 수정·삭제(··· 현장 메뉴)는 PC에서만(D-109). 앱 틀에는 그리지 않는다 #}
 {{ self.content() }}
 </main>
 {% if me and not hide_tabbar | default(false) %}

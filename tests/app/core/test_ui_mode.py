@@ -106,3 +106,17 @@ def test_actions_changes_and_team_have_compact_phone_layouts(client: TestClient,
     assert 'class="mchips"' in phone or 'class="mlist"' in phone
     assert '<table class="sheet' not in phone and 'class="kpis' not in phone
     assert 'class="mlist"' not in web
+
+
+def test_site_edit_menu_is_pc_only(client: TestClient) -> None:
+    # 현장 수정·삭제 ··· 메뉴는 PC에서만(D-109). 앱 화면에 혼자 떠 있지 않게
+    site_id = make_site(client)
+
+    assert (
+        "site-menu"
+        in client.get(f"/schedule?site_id={site_id}", headers={"user-agent": DESKTOP}).text
+    )
+    assert (
+        "site-menu"
+        not in client.get(f"/schedule?site_id={site_id}", headers={"user-agent": IPHONE}).text
+    )

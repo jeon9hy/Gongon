@@ -647,14 +647,16 @@ def build_home(
         next_forecast=next_forecast_text(now),
         message_is_error=ran
         in ("failed", "no_rules", "no_sites", "out_of_period", "beyond_forecast"),
-        weather_now=_home_weather(session, sites, now),
+        # 날씨는 현장 하나일 때만(개발자 지적: 전체 현장의 날씨는 기준이 없다)
+        weather_now=_home_weather(session, sites, now) if len(sites) == 1 else None,
+        single_site=len(sites) == 1,
     )
 
 
 def _home_weather(
     session: Session, sites: Sequence[SiteRecord], now: datetime
 ) -> HomeWeather | None:
-    """맨 위 날씨 카드: 고른 현장(전체면 첫 현장)의 지금과 가까운 예보 시각."""
+    """맨 위 날씨 카드: 고른 현장 하나의 지금과 가까운 예보 시각."""
     if not sites:
         return None
     site = sites[0]
