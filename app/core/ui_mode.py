@@ -41,6 +41,11 @@ def detect(headers: Headers, query_string: bytes) -> tuple[UiMode, bool]:
     return ("app" if APP_SHELL_MARK in agent or _PHONE_UA.search(agent) else "web"), False
 
 
+def in_app_shell(headers: Headers) -> bool:
+    """앱 껍데기 안이면 서비스 소개 없이 바로 로그인으로 간다(D-110)."""
+    return APP_SHELL_MARK in headers.get("user-agent", "")
+
+
 def ui_mode(request: Request) -> UiMode:
     return getattr(request.state, "ui_mode", "web")
 

@@ -1,22 +1,32 @@
-{# 처음 들어온 사람의 첫 화면(로그인 전). 가입·로그인으로만 넘어간다. #}
+{# 서비스 소개(D-110): 로그인 전 첫 화면이자 PC 웹의 입구. 소개를 읽고 가입·로그인하면 PC 웹 앱(/)으로 이어진다.
+   로그인한 사람도 열 수 있고 그때는 '공온 열기'만 둔다. 지어낸 수치·고객 후기는 쓰지 않는다(C04-20).
+   예시 상태 칩은 장식이며 실제 자료가 아니다(D-072). #}
 {% extends "base.html" %}
-{% block title %}환영해요{% endblock %}
-{% block body_class %} class="authbody"{% endblock %}
+{% from "_macros.html" import icon %}
+{% block title %}공온{% endblock %}
+{% block body_class %} class="authbody aboutbody"{% endblock %}
+{% macro start_buttons(size) %}
+{% if signed_in %}<a class="btn btn--accent btn--{{ size }}" href="/">공온 열기</a>
+{% else %}<a class="btn btn--accent btn--{{ size }}" href="/signup">가입하고 시작하기</a><a class="btn btn--soft btn--{{ size }}" href="/login">로그인</a>{% endif %}
+{% endmacro %}
 {% block page %}
-<div class="welcome">
-<header class="welcome__bar">
+<div class="intro">
+<div class="intro__barwrap">
+<header class="about__bar">
 <a class="auth__logo" href="/welcome"><img src="/static/brand/logo.png" alt="" width="32" height="32">공온</a>
-<span class="welcome__links"><a class="appbar__about" href="/about">공온 소개</a><a class="btn btn--soft btn--sm" href="/login">로그인</a></span>
+<nav class="about__nav" aria-label="소개 목차"><a href="#why">왜 공온인가</a><a href="#how">어떻게 일하나</a><a href="#principles">원칙</a><a href="#where">PC와 휴대폰</a></nav>
+<span class="welcome__links">{% if signed_in %}<a class="btn btn--accent btn--sm" href="/">공온 열기</a>{% else %}<a class="btn btn--soft btn--sm" href="/login">로그인</a><a class="btn btn--accent btn--sm" href="/signup">시작하기</a>{% endif %}</span>
 </header>
-<main class="welcome__hero" id="main" tabindex="-1">
+</div>
+
+<main id="main" tabindex="-1">
+<div class="welcome intro__first">
+<section class="welcome__hero" aria-labelledby="intro-title">
 <div class="welcome__copy">
 <p class="auth__eyebrow">공사 + ON</p>
-<h1 class="welcome__title">변경 뒤 남은 조치는<br><em>무엇인가요?</em></h1>
-<p class="welcome__lead">공사 변경 뒤 필요한 일을 연결하고,<br>처리 결과까지 확인해요.</p>
-<div class="welcome__actions">
-<a class="btn btn--accent btn--lg" href="/signup">가입하고 시작하기</a>
-<a class="btn btn--soft btn--lg" href="/login">이미 계정이 있어요</a>
-</div>
+<h1 class="welcome__title" id="intro-title">변경 뒤 남은 조치는<br><em>무엇인가요?</em></h1>
+<p class="welcome__lead">공사 계획이 바뀔 때 함께 바꿔야 할 일을 업체와 담당자에게 잇고,<br>실제로 처리됐는지 근거와 확인까지 남겨요.</p>
+<div class="welcome__actions">{{ start_buttons("lg") }}</div>
 </div>
 <div class="welcome__art" aria-hidden="true">
 <div class="welcome__orb welcome__orb--1"></div>
@@ -28,12 +38,84 @@
 <div class="welcome__chip welcome__chip--b"><span class="welcome__dot welcome__dot--check"></span>변경 v2 · 필수 조치 2건 남음</div>
 <div class="welcome__chip welcome__chip--c"><span class="welcome__dot welcome__dot--wait"></span>가상골조 · 완료 보고 대기</div>
 </div>
-</main>
-<section class="welcome__steps" aria-label="공온 흐름">
-<article class="welcome__step"><img src="/static/brand/icon-schedule.png" alt="" width="40" height="40"><h2>변경을 확정하면</h2><p>바뀐 날짜·시간이 버전으로 남아요.</p></article>
-<article class="welcome__step"><img src="/static/brand/icon-alert.png" alt="" width="40" height="40"><h2>업체별로 조치를 나누고</h2><p>누가, 언제까지, 무엇을 할지 정해요.</p></article>
-<article class="welcome__step"><img src="/static/brand/icon-record.png" alt="" width="40" height="40"><h2>완료 보고를 검증해요</h2><p>보고한 사람과 확인한 사람을 따로 남겨요.</p></article>
 </section>
-<p class="welcome__foot">최종 판단은 현장 책임자가 합니다. · © 공온 Gongon</p>
+<a class="about__scroll intro__scroll" href="#why" aria-label="아래로">{{ icon("chevron-down", 22, 2.2) }}</a>
 </div>
+
+<section class="about__section" id="why" aria-labelledby="why-title">
+<p class="about__kicker" data-reveal>01 · 왜 공온인가</p>
+<h2 class="about__h2" id="why-title" data-reveal>현장의 변경은 매일 일어나는데,<br>그 뒤에 남는 일은 흩어져 있었어요.</h2>
+<div class="about__cards">
+<article class="about__card" data-reveal style="--d: 0"><span class="about__icon">{{ icon("phone", 22) }}</span><h3>전화와 단톡방에 흩어진 연락</h3><p>타설 시간이 하루 밀리면 펌프·레미콘·장비·검측까지 연락이 줄줄이 이어져요. 누가 받았고 누가 못 받았는지 한곳에 남지 않아요.</p></article>
+<article class="about__card" data-reveal style="--d: 1"><span class="about__icon">{{ icon("history", 22) }}</span><h3>‘바꿨다’와 ‘처리됐다’의 차이</h3><p>계획표를 고쳤다고 예약까지 바뀐 건 아니에요. 실제로 처리됐는지 확인하는 데 또 시간이 들어요.</p></article>
+<article class="about__card" data-reveal style="--d: 2"><span class="about__icon">{{ icon("user-plus", 22) }}</span><h3>여러 회사가 함께 쓰는 현장</h3><p>원청과 협력업체, 공급사가 섞여 일하는데 각자 다른 도구를 써요. 같은 변경을 같은 기준으로 보기가 어려워요.</p></article>
+</div>
+</section>
+
+<section class="about__section about__section--tint" id="how" aria-labelledby="how-title">
+<p class="about__kicker" data-reveal>02 · 어떻게 일하나</p>
+<h2 class="about__h2" id="how-title" data-reveal>변경 하나가 끝까지 이어지는 흐름</h2>
+<ol class="about__flow" data-reveal>
+<li style="--d: 0"><span class="about__step">1</span><strong>변경 확정</strong><p>바뀐 날짜·시간·원인을 버전으로 남겨요.</p></li>
+<li style="--d: 1"><span class="about__step">2</span><strong>업체별 후속 조치</strong><p>누가, 언제까지, 무엇을 확인하면 끝나는지 정해요.</p></li>
+<li style="--d: 2"><span class="about__step">3</span><strong>완료 보고</strong><p>실제로 처리한 시각과 내용을 수행한 사람이 남겨요.</p></li>
+<li style="--d: 3"><span class="about__step">4</span><strong>검증</strong><p>보고한 사람과 다른 사람이 확인해야 끝나요.</p></li>
+</ol>
+</section>
+
+<section class="about__section" id="principles" aria-labelledby="principles-title">
+<p class="about__kicker" data-reveal>03 · 원칙</p>
+<h2 class="about__h2" id="principles-title" data-reveal>우리가 지키는 세 가지</h2>
+<div class="about__cards">
+<article class="about__card" data-reveal style="--d: 0"><span class="about__icon about__icon--blue">{{ icon("check", 22, 2.4) }}</span><h3>근거를 남겨요</h3><p>누가 제안하고, 누가 확정하고, 누가 처리하고 확인했는지 시각과 함께 지우지 않고 남겨요.</p></article>
+<article class="about__card" data-reveal style="--d: 1"><span class="about__icon about__icon--blue">{{ icon("user-plus", 22) }}</span><h3>결정은 사람이 해요</h3><p>공온은 자동으로 승인하거나 확정하지 않아요. 판단에 필요한 것을 모아 보여줄 뿐이에요.</p></article>
+<article class="about__card" data-reveal style="--d: 2"><span class="about__icon about__icon--blue">{{ icon("info", 22) }}</span><h3>같은 입력엔 같은 결과</h3><p>판정은 공개된 기준과 규칙으로만 계산해요. 모르는 것은 모른다고 보여줘요.</p></article>
+</div>
+</section>
+
+{# D-109: 기능은 같고 배치만 다르다. 같은 주소에서 PC는 웹 화면, 휴대폰은 휴대폰 화면이 열린다 #}
+<section class="about__section about__section--tint" id="where" aria-labelledby="where-title">
+<p class="about__kicker" data-reveal>04 · PC와 휴대폰</p>
+<h2 class="about__h2" id="where-title" data-reveal>사무실에서는 PC로, 현장에서는 휴대폰으로</h2>
+<div class="intro__where">
+<article class="about__card intro__device" data-reveal style="--d: 0">
+<span class="about__icon about__icon--blue">{{ icon("monitor", 22) }}</span>
+<h3>PC 웹 · 사무실</h3>
+<p>여러 현장의 일정·변경·조치를 넓은 화면에 함께 펼쳐 봐요.</p>
+<ul class="intro__list"><li>{{ icon("check", 16, 2.4) }}업체 명부를 표로 편집</li><li>{{ icon("check", 16, 2.4) }}공정표 파일로 작업 한꺼번에 등록</li><li>{{ icon("check", 16, 2.4) }}현장 만들기·참여자 관리</li></ul>
+</article>
+<article class="about__card intro__device" data-reveal style="--d: 1">
+<span class="about__icon about__icon--blue">{{ icon("smartphone", 22) }}</span>
+<h3>휴대폰 · 현장</h3>
+<p>내 할 일부터 보이고, 한 화면에 한 가지씩 손에 들고 처리해요.</p>
+<ul class="intro__list"><li>{{ icon("check", 16, 2.4) }}조치 응답·완료 보고</li><li>{{ icon("check", 16, 2.4) }}오늘 일정과 공온 판정</li><li>{{ icon("check", 16, 2.4) }}현장 대화</li></ul>
+</article>
+</div>
+<p class="intro__note" data-reveal>같은 계정, 같은 기록이에요. 휴대폰 브라우저로 열면 휴대폰 화면으로 보여요.</p>
+</section>
+
+<section class="about__vision" id="vision" aria-labelledby="vision-title">
+<div class="about__orbs about__orbs--dark" aria-hidden="true"><span></span><span></span></div>
+<p class="about__kicker about__kicker--light" data-reveal>05 · 최종 비전</p>
+<h2 class="about__h2 about__h2--light" id="vision-title" data-reveal>모든 현장의 변경이<br>끝까지 연결되는 건설 현장</h2>
+<p class="about__lead about__lead--light" data-reveal>계획이 바뀌어도 해야 할 일이 빠지지 않고, 처리된 것은 처리됐다고 믿을 수 있는 현장.<br>공온은 원청과 협력업체가 같은 화면에서 같은 사실을 보는 협업의 기본기가 되려고 해요.</p>
+<div class="about__cta" data-reveal>{{ start_buttons("lg") }}</div>
+<p class="about__foot">최종 판단은 현장 책임자가 합니다. · © 공온 Gongon</p>
+</section>
+</main>
+</div>
+<script>
+// 스크롤하면 차례로 떠오른다(동작 줄이기 설정이면 바로 보인다)
+(() => {
+  const items = document.querySelectorAll("[data-reveal]");
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches || !("IntersectionObserver" in window)) {
+    items.forEach((el) => el.classList.add("is-in"));
+    return;
+  }
+  const io = new IntersectionObserver((entries) => entries.forEach((e) => {
+    if (e.isIntersecting) { e.target.classList.add("is-in"); io.unobserve(e.target); }
+  }), { threshold: 0.15 });
+  items.forEach((el) => io.observe(el));
+})();
+</script>
 {% endblock %}

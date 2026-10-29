@@ -47,10 +47,17 @@ def _signed_in_already(request: Request, session: Session, now: datetime) -> boo
 
 @router.get("/welcome", response_model=None)
 def welcome(request: Request, session: SessionDep, now: NowDep) -> Response:
-    """처음 들어온 사람의 첫 화면. 이미 로그인했으면 홈으로 보낸다."""
-    if _signed_in_already(request, session, now):
-        return RedirectResponse("/", status_code=303)
-    return templates.TemplateResponse(request, "auth/welcome.html", {"nav_active": ""})
+    """서비스 소개이자 PC 웹 입구(D-110). 로그인했으면 '공온 열기'로 앱(/)에 이어진다."""
+    signed_in = _signed_in_already(request, session, now)
+    return templates.TemplateResponse(
+        request, "auth/welcome.html", {"nav_active": "", "signed_in": signed_in}
+    )
+
+
+@router.get("/about")
+def about() -> RedirectResponse:
+    # 예전 소개 주소(C04-20)는 합친 소개로 보낸다
+    return RedirectResponse("/welcome", status_code=308)
 
 
 @router.get("/login", response_model=None)
@@ -122,6 +129,6 @@ def logout(request: Request, session: SessionDep) -> RedirectResponse:
     token = request.cookies.get(service.SESSION_COOKIE)
     if token:
         service.end_session(session, token)
-    response = RedirectResponse("/welcome", status_code=303)
+    response = RedirectResponse(service.signed_out_landing(request), status_code=303)
     response.delete_cookie(service.SESSION_COOKIE)
     return response

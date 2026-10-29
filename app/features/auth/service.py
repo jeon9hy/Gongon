@@ -18,6 +18,7 @@ from sqlalchemy import ColumnElement, delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core import ui_mode
 from app.core.clock import now_kst
 from app.core.db import get_session
 from app.features.auth.models import AuthSession, Organization, User
@@ -200,6 +201,10 @@ def safe_next(path: str | None) -> str:
     return path
 
 
+def signed_out_landing(request: Request) -> str:
+    return "/login" if ui_mode.in_app_shell(request.headers) else "/welcome"
+
+
 def require_user(
     request: Request,
     session: Annotated[Session, Depends(get_session)],
@@ -209,8 +214,8 @@ def require_user(
     user = resolve(session, request.cookies.get(SESSION_COOKIE), now)
     if user is None:
         if request.url.path == "/":
-            # 처음 들어온 사람은 환영 화면에서 가입·로그인을 고른다
-            raise HTTPException(status_code=303, headers={"Location": "/welcome"})
+            # 처음 온 사람은 서비스 소개에서 가입·로그인을 고른다(앱 껍데기는 바로 로그인, D-110)
+            raise HTTPException(status_code=303, headers={"Location": signed_out_landing(request)})
         target = request.url.path + (f"?{request.url.query}" if request.url.query else "")
         raise HTTPException(
             status_code=303, headers={"Location": f"/login?next={quote(target, safe='')}"}
