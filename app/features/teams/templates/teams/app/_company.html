@@ -5,12 +5,14 @@
 <summary class="mrow">
 <span class="mmark" aria-hidden="true">{{ p.organization_name[:1] }}</span>
 <span class="mrow__main"><strong><span>{{ p.organization_name }}</span></strong><small>{{ p.kind_label }}{% for t in p.work_trades[:2] %} · {{ short_trade(t) }}{% endfor %}{% if p.is_ended %} · {{ p.status_text }}{% endif %}</small></span>
-<span class="mrow__end"><span class="mpill">{{ icon("user", 12, 2.2) }} {{ p.people_count }}</span>{{ icon("chevron-down", 16, 2) }}</span>
+<span class="mrow__end"><span class="mpill">{{ p.people_count }}명</span>{{ icon("chevron-down", 16, 2) }}</span>
 </summary>
 {% if show_people %}
 <ul class="mco__people">
-{% for c in p.contacts %}<li><span><b>{{ c.name }}</b>{% if c.job_title %} {{ c.job_title }}{% endif %}</span>{% if c.phone %}<a class="mco__tel" href="tel:{{ c.phone }}" aria-label="{{ c.name }}에게 전화">{{ icon("phone", 14, 2) }} {{ c.phone }}</a>{% endif %}</li>{% endfor %}
-{% for m in p.members if not p.contacts | selectattr("name", "equalto", m.display_name) | list %}<li><span><b>{{ m.display_name }}</b> {{ m.role_label }}</span></li>{% endfor %}
+{# 명부 담당자와 로그인 참여자가 같은 사람이면 한 줄로(계정 이름에 직함이 붙어 '임동현 반장'처럼 다를 수 있다) #}
+{% for c in p.contacts %}{% set ns = namespace(acct=none) %}{% for m in p.members %}{% if c.name in m.display_name %}{% set ns.acct = m %}{% endif %}{% endfor %}<li><span><b>{{ c.name }}</b>{% if c.job_title %} {{ c.job_title }}{% endif %}{% if ns.acct %} <span class="mco__acct" title="공온 계정 · {{ ns.acct.role_label }}" aria-label="공온 계정 · {{ ns.acct.role_label }}">{{ icon("user", 12, 2.4) }}</span>{% endif %}</span>{% if c.phone %}<a class="mco__tel" href="tel:{{ c.phone }}" aria-label="{{ c.name }}에게 전화">{{ icon("phone", 14, 2) }} {{ c.phone }}</a>{% endif %}</li>{% endfor %}
+{# 명부에 없는 로그인 참여자만 따로(이름에 명부 이름이 들어 있으면 같은 사람) #}
+{% for m in p.members %}{% set ns = namespace(dup=false) %}{% for c in p.contacts %}{% if c.name in m.display_name %}{% set ns.dup = true %}{% endif %}{% endfor %}{% if not ns.dup %}<li><span><b>{{ m.display_name }}</b> <span class="mco__acct" title="공온 계정 · {{ m.role_label }}" aria-label="공온 계정 · {{ m.role_label }}">{{ icon("user", 12, 2.4) }}</span></span></li>{% endif %}{% endfor %}
 {% if not p.contacts and not p.members %}<li class="mco__none">등록한 담당자가 없어요</li>{% endif %}
 {% if p.trade_note %}<li class="mco__none">공종 메모 · {{ p.trade_note }}</li>{% endif %}
 </ul>

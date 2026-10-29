@@ -296,5 +296,17 @@ html[data-ui="app"] .page--dashboard .card { padding: 14px; border-radius: 16px;
 html[data-ui="app"] .page--dashboard .hero { padding: 14px; gap: 8px; }
 html[data-ui="app"] .page--dashboard .hero__title { font-size: 19px; }
 html[data-ui="app"] .page--dashboard .hero__sub { font-size: 12px; }
-html[data-ui="app"] .page--dashboard .hero__corner { position: static; align-self: flex-start; }
+/* 공온 점검 알약은 제목 오른쪽 위에(개발자 요청), 좁은 화면이라 시각과 새로 고침만 */
+html[data-ui="app"] .page--dashboard .hero { grid-template-columns: minmax(0, 1fr) auto; column-gap: 8px; }
+html[data-ui="app"] .page--dashboard .hero__main { grid-column: 1; grid-row: 1; min-width: 0; }
+html[data-ui="app"] .page--dashboard .hero__corner { position: static; grid-column: 2; grid-row: 1; align-self: start; }
+html[data-ui="app"] .page--dashboard .refresh__btn { gap: 6px; padding: 4px 4px 4px 10px; box-shadow: none; }
+html[data-ui="app"] .page--dashboard .refresh__btn .logo-toggle, html[data-ui="app"] .page--dashboard .refresh__text small { display: none; }
+html[data-ui="app"] .page--dashboard .refresh__text b { font-size: 12.5px; }
+html[data-ui="app"] .page--dashboard .refresh__go { width: 28px; height: 28px; }
 html[data-ui="app"] .page--dashboard .card .mlist { margin: 0 -2px; }
+/* 알약은 제목 줄에만 붙고, 아래 날짜·예보 줄은 카드 폭을 다 쓴다 */
+html[data-ui="app"] .page--dashboard .hero__main { display: contents; }
+html[data-ui="app"] .page--dashboard .hero__title { grid-column: 1; grid-row: 1; align-self: center; margin: 0; }
+html[data-ui="app"] .page--dashboard .hero__lead, html[data-ui="app"] .page--dashboard .hero__sub { grid-column: 1 / -1; }
+.mco__acct { display: inline-grid; place-items: center; width: 18px; height: 18px; margin-left: 2px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); vertical-align: -3px; }
