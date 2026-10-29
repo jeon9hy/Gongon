@@ -2661,3 +2661,4 @@ a.sumcard:hover { border-color: var(--line); }
 /* 작업 수·점 설명은 휴대폰 앱 달력에서만 쓴다(app.css) */
 .calcount, .calkey { display: none; }
 .sumcards--two { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
+.sitefoot__mark { margin-top: 16px; } /* 안내 문구와 겹치지 않게(점검에서 15px 겹침) */

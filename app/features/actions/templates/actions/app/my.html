@@ -11,14 +11,11 @@
 {% if view.errors %}<div class="alert alert--error" role="alert"><ul>{% for e in view.errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
 {% elif view.message %}<div class="alert alert--ok" role="status">{{ view.message }}</div>{% endif %}
 
-<div class="mtoolbar">
-<nav class="mchips" aria-label="조치 묶음">{% for key, title, rows, empty in groups %}<a href="#g-{{ key }}"><span class="mydot mydot--{{ key }}"></span>{{ title }} <b>{{ rows | length }}</b></a>{% endfor %}</nav>
-<button class="mlink" type="button" data-open-dialog="dlg-delegate">{{ icon("user-plus", 15) }} 맡기기</button>
-</div>
+<nav class="mchips mchips--fill" aria-label="조치 묶음">{% for key, title, rows, empty in groups %}<a href="#g-{{ key }}"><span class="mydot mydot--{{ key }}"></span>{{ title }} <b>{{ rows | length }}</b></a>{% endfor %}</nav>
 
 {% for key, title, rows, empty in groups %}
 <section class="msec" id="g-{{ key }}" aria-labelledby="g-{{ key }}-title">
-<div class="msec__head"><h2 class="msec__title" id="g-{{ key }}-title">{{ title }} <small>{{ rows | length }}건{% if rows | length > 1 %} · 기한 지난 것부터{% endif %}</small></h2></div>
+<div class="msec__head"><h2 class="msec__title" id="g-{{ key }}-title">{{ title }} <small>{{ rows | length }}건{% if rows | length > 1 %} · 기한 지난 것부터{% endif %}</small></h2>{% if loop.first %}<button class="mlink" type="button" data-open-dialog="dlg-delegate">{{ icon("user-plus", 15) }} 잠시 맡기기</button>{% endif %}</div>
 {% if rows %}
 <ul class="mlist">
 {% for a in rows %}

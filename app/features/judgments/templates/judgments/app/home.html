@@ -18,9 +18,9 @@
 <h1 class="visually-hidden">오늘</h1>
 {# 위 요약: 웹 홈 '먼저 확인할 일'과 같은 남색 카드 + 인사하는 캐릭터, 숫자 세 칸(누르면 그 화면) #}
 <section class="msum" aria-label="오늘 요약">
-<img class="msum__art" src="/static/brand/mascot-3d.png" alt="" width="520" height="419">
 <p class="msum__top"><span>{{ view.today_date }}</span>{% if w %}<span class="msum__wx">{{ icon("cloud-sun", 14, 2) }} {{ w.temperature }} {{ w.sky or "" }}</span>{% endif %}</p>
 <p class="msum__title">{{ greeting }},<br>{{ name }}님</p>
+<img class="msum__art" src="/static/brand/mascot-3d-card.png" alt="" width="513" height="416">
 <ul class="msum__stats">
 <li><a href="/actions">{{ icon("clipboard", 15, 2) }}<span>챙길 일</span><b>{{ todo_total }}</b></a></li>
 <li><a href="#m-jobs-title">{{ icon("hard-hat", 15, 2) }}<span>남은 작업</span><b>{{ left_today | length }}</b></a></li>

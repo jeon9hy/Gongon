@@ -103,7 +103,7 @@ def test_actions_changes_and_team_have_compact_phone_layouts(client: TestClient,
     phone = client.get(path, headers={"user-agent": IPHONE}).text
     web = client.get(path, headers={"user-agent": DESKTOP}).text
 
-    assert 'class="mchips"' in phone or 'class="mlist"' in phone
+    assert 'class="mchips' in phone or 'class="mlist' in phone
     assert '<table class="sheet' not in phone and 'class="kpis' not in phone
     assert 'class="mlist"' not in web
 

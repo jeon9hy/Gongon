@@ -265,3 +265,13 @@ html[data-ui="app"] .page--schedule .calendar th { text-align: center; padding: 
 .mgrid__head { min-width: 0; white-space: nowrap; }
 .mgrid__late { margin-left: auto; padding: 1px 6px; border-radius: 6px; background: var(--stop-soft); color: var(--stop-text); font-size: 10.5px; font-style: normal; font-weight: 700; }
 .mgrid__top { display: block; -webkit-line-clamp: unset; white-space: nowrap; text-overflow: ellipsis; }
+/* 요약 카드 배치(개발자 지적: 캐릭터가 숫자 칸에 겹침): 캐릭터를 겹쳐 띄우지 않고 칸 안에 둔다.
+   1줄 날짜·날씨 / 2줄 인사(왼쪽)·캐릭터(오른쪽) / 3줄 숫자 세 칸 — 어떤 폭에서도 겹치지 않는다 */
+.msum { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "top top" "title art" "stats stats"; column-gap: 8px; row-gap: 8px; }
+.msum__top { grid-area: top; }
+.msum__title { grid-area: title; align-self: center; margin: 0; }
+.msum__art { grid-area: art; position: static; align-self: end; width: 84px; height: auto; margin: -6px 2px -2px 0; filter: drop-shadow(0 6px 8px #0000004D); }
+.msum__stats { grid-area: stats; }
+/* 칸 수가 정해진 칩(내 조치 셋)은 밀지 않고 같은 너비로 채운다 */
+.mchips--fill { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); margin: 0; padding: 0; overflow: visible; }
+.mchips--fill a { justify-content: center; padding: 0 6px; min-width: 0; }
