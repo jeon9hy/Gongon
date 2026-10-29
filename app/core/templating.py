@@ -2,16 +2,44 @@
 
 from datetime import time
 from pathlib import Path
+from typing import Any
 
 from fastapi.templating import Jinja2Templates
-from jinja2 import FileSystemLoader
+from jinja2 import FileSystemLoader, TemplateNotFound
+from starlette.requests import Request
+from starlette.templating import _TemplateResponse
 
+from app.core.ui_mode import ui_mode
 from app.core.work_kinds import TRADE_OF_KIND, WORK_TRADES, short_trade_name
 
 CORE_DIR = Path(__file__).parent
 STATIC_DIR = CORE_DIR / "static"
 
-templates = Jinja2Templates(directory=CORE_DIR / "templates")
+
+def app_variant(name: str) -> str:
+    """`기능/화면.html`의 앱 화면 이름 `기능/app/화면.html`(D-109)."""
+    feature, _, page = name.rpartition("/")
+    return f"{feature}/app/{page}" if feature else f"app/{page}"
+
+
+class DeviceTemplates(Jinja2Templates):
+    """앱 화면으로 열린 요청이면 같은 기능의 앱 화면을 먼저 찾는다. 없으면 웹 화면을 앱 틀에 그린다.
+
+    라우터·주소·권한은 하나이고 화면만 바뀐다(D-109)."""
+
+    def TemplateResponse(
+        self, request: Request, name: str, *args: Any, **kwargs: Any
+    ) -> _TemplateResponse:
+        if ui_mode(request) == "app":
+            try:
+                self.env.get_template(app_variant(name))
+                name = app_variant(name)
+            except TemplateNotFound:
+                pass
+        return super().TemplateResponse(request, name, *args, **kwargs)
+
+
+templates = DeviceTemplates(directory=CORE_DIR / "templates")
 
 
 def static_url(name: str) -> str:

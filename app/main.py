@@ -11,6 +11,7 @@ from app.core.config import get_settings
 from app.core.errors import install_error_handlers
 from app.core.security import NoStoreHtmlMiddleware, SameOriginMiddleware
 from app.core.templating import STATIC_DIR
+from app.core.ui_mode import UiModeMiddleware
 from app.features.about.router import router as about_router
 from app.features.actions.router import router as actions_router
 from app.features.auth.router import router as auth_router
@@ -41,6 +42,7 @@ def create_app(auto_refresh: bool = False) -> FastAPI:
     install_error_handlers(app)
     app.add_middleware(SameOriginMiddleware)
     app.add_middleware(NoStoreHtmlMiddleware)
+    app.add_middleware(UiModeMiddleware)
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     app.include_router(auth_router)
     app.include_router(about_router)

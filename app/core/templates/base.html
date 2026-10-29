@@ -1,6 +1,7 @@
 {% from "_macros.html" import icon %}
 <!doctype html>
-<html lang="ko">
+{% set ui_app = request is defined and request.state.ui_mode | default("web") == "app" %}
+<html lang="ko"{% if ui_app %} data-ui="app"{% endif %}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,6 +10,7 @@
 <link rel="icon" type="image/png" href="/static/brand/favicon.png">
 <link rel="apple-touch-icon" href="/static/brand/logo.png">
 <link rel="stylesheet" href="{{ static_url('gongon.css') }}">
+{% if ui_app %}<link rel="stylesheet" href="{{ static_url('app.css') }}">{% endif %}
 <script data-boot>
 // 묶어 보기(업체별·위치별, D-085)를 그리기 전에 정해 깜빡임을 막는다. 저장이 막혀도 업체별로 보인다.
 try { if (localStorage.getItem("gongon.group") === "place") document.documentElement.dataset.group = "place"; } catch (e) {}
@@ -18,31 +20,67 @@ try { if (localStorage.getItem("gongon.attn") === "1") document.documentElement.
 <body{% block body_class %}{% endblock %}>
 <a class="skip-link" href="#main">본문으로 바로 가기</a>
 {% block page %}
-<header class="appbar">
-<div class="appbar__inner">
 {% set me = request.state.user if request is defined else none %}
-<span class="appbar__brand"><a class="logo-word" href="/" aria-label="공온 홈"><img class="logo-mark" src="/static/brand/logo.png" alt="" width="32" height="32">공온</a>
-<a class="appbar__about" href="/about">소개</a>
 {% if me %}
 {% set current_site_id = view.site_id | default(view.selected_site_id | default(none)) if view is defined and view else none %}
 {% set listed = (view.sites | default([])) if view is defined and view else [] %}
 {% set current_site_name = ((view.site_name | default("")) or (listed | selectattr("site_id", "equalto", current_site_id) | map(attribute="name") | first | default(""))) if current_site_id else "" %}
-{# 현장 고르기 칩(C04-33 안 A): 고른 현장은 모든 탭에 같이 쓴다. 목록은 처음 누를 때 불러온다 #}
 {% set home_all = not current_site_id or (view is defined and view and view.all_mode | default(false)) %}
-{# 머리줄 현장 칩이 모든 화면의 현장 고르기다(대화는 방 목록으로 고른다, D-092) #}
-{% if nav_active != "chat" %}
+{% endif %}
+{# 현장 고르기 칩(C04-33 안 A): 고른 현장은 모든 탭에 같이 쓴다. 목록은 처음 누를 때 불러온다.
+   머리줄 현장 칩이 모든 화면의 현장 고르기다(대화는 방 목록으로 고른다, D-092). 웹·앱 머리가 같이 쓴다 #}
+{% macro siteswitch_chip() %}{% if me and nav_active != "chat" %}
 <details class="siteswitch" data-siteswitch data-site-id="{{ current_site_id or '' }}" data-site-name="{{ current_site_name }}"{% if home_all %} data-all{% endif %}>
 <summary aria-label="현장 고르기"><span class="siteswitch__live" aria-hidden="true"></span><span class="siteswitch__label" data-siteswitch-label>{{ "전체 현장" if home_all else (current_site_name or "현장 고르기") }}</span>{{ icon("chevron-down", 14, 2.2) }}</summary>
 <div class="siteswitch__panel" data-siteswitch-panel><p class="siteswitch__loading">불러오는 중…</p></div>
 </details>
+{% endif %}{% endmacro %}
+{# 주 메뉴 5개(C04-33 안 A): 공온 판정·판정 내역은 일정, 변경 건·내 조치는 변경·조치, 참여 업체는 업체 #}
+{% set nav_group = {"dashboard": "schedule", "history": "schedule", "actions": "changes"}.get(nav_active, nav_active) %}
+{% set nav_tabs = [("home", "/", "홈", "오늘", "home"), ("schedule", "/schedule", "일정", "일정", "calendar"), ("changes", "/changes", "변경·조치", "조치", "clipboard"), ("team", "/team", "업체", "업체", "building"), ("chat", "/chat", "대화", "대화", "chat")] %}
+{% if ui_app %}
+{# 앱 화면 틀(D-109): 위 얇은 머리(제목·현장 칩·내 정보), 하위 메뉴는 꽉 찬 분할 버튼, 아래 탭 막대.
+   본문은 기능의 앱 화면(<기능>/app/*.html)이고 아직 없으면 웹 화면을 그대로 넣는다 #}
+{% set site_q = "?site_id=" ~ current_site_id if me and current_site_id else "" %}
+{% set sub_items = [("changes", "/changes", "변경 건"), ("actions", "/actions", "내 조치")] if nav_active in ("changes", "actions") else ([("schedule", "/schedule" ~ site_q, "달력"), ("dashboard", "/dashboard" ~ site_q, "공온 판정"), ("history", "/judgments", "판정 내역")] if nav_active in ("schedule", "dashboard", "history") else []) %}
+{% set pagebar = self.pagebar() | trim %}
+<header class="mbar">
+<div class="mbar__row">
+{% if me %}
+<p class="mbar__title">{% block app_title %}{{ self.title() }}{% endblock %}</p>
+{{ siteswitch_chip() }}
+<a class="mbar__me" href="/me" aria-label="내 정보">{{ me.display_name[:1] }}</a>
+{% else %}
+<a class="mbar__brand" href="/"><img src="/static/brand/logo.png" alt="" width="28" height="28">공온</a>
 {% endif %}
-{% endif %}</span>
+</div>
+{% if me and sub_items %}
+<nav class="mseg" aria-label="하위 메뉴">{% for key, href, label in sub_items %}<a href="{{ href }}"{% if nav_active == key %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}</nav>
+{% endif %}
+</header>
+<main class="mpage page--{{ nav_active }}" id="main" tabindex="-1">
+{% if pagebar %}<div class="mpagebar">{{ pagebar | safe }}</div>{% endif %}
+{{ self.schedule_tools() }}
+{{ self.content() }}
+</main>
+{% if me %}
+<nav class="tabbar" aria-label="주 메뉴">
+{% for key, href, label, short, ic in nav_tabs %}
+<a href="{{ href }}" data-site-link="{{ key }}"{% if nav_group == key %} aria-current="page"{% endif %}><span class="tabbar__icon" aria-hidden="true">{{ icon(ic, 22, 2) }}</span>{{ short }}</a>
+{% endfor %}
+</nav>
+{% endif %}
+{% else %}
+<header class="appbar">
+<div class="appbar__inner">
+<span class="appbar__brand"><a class="logo-word" href="/" aria-label="공온 홈"><img class="logo-mark" src="/static/brand/logo.png" alt="" width="32" height="32">공온</a>
+<a class="appbar__about" href="/about">소개</a>
+{{ siteswitch_chip() }}</span>
 {% if me %}
 <nav class="appnav" aria-label="주 메뉴">
-{# 탭 주소는 서버에서 늘 전체이고, 칩에서 고른 현장이 있으면 스크립트가 이어 붙인다(D-092). 주 메뉴 5개(C04-33 안 A): 공온 판정·판정 내역은 일정, 변경 건·내 조치는 변경·조치, 참여 업체는 업체 #}
-{% set nav_group = {"dashboard": "schedule", "history": "schedule", "actions": "changes"}.get(nav_active, nav_active) %}
-{% for key, href, label, short, ic in [("home", "/", "홈", "홈", "home"), ("schedule", "/schedule", "일정", "일정", "calendar"), ("changes", "/changes", "변경·조치", "조치", "clipboard"), ("team", "/team", "업체", "업체", "building"), ("chat", "/chat", "대화", "대화", "chat")] %}
-<a href="{{ href }}" data-site-link="{{ key }}"{% if nav_group == key %} aria-current="page"{% endif %}><span class="appnav__icon" aria-hidden="true">{{ icon(ic, 20, 2) }}</span><span class="appnav__long">{{ label }}</span><span class="appnav__short">{{ short }}</span></a>
+{# 탭 주소는 서버에서 늘 전체이고, 칩에서 고른 현장이 있으면 스크립트가 이어 붙인다(D-092) #}
+{% for key, href, label, short, ic in nav_tabs %}
+<a href="{{ href }}" data-site-link="{{ key }}"{% if nav_group == key %} aria-current="page"{% endif %}><span class="appnav__icon" aria-hidden="true">{{ icon(ic, 20, 2) }}</span><span class="appnav__long">{{ label }}</span><span class="appnav__short">{{ "홈" if key == "home" else short }}</span></a>
 {% endfor %}
 </nav>
 <div class="appbar__actions">
@@ -52,6 +90,7 @@ try { if (localStorage.getItem("gongon.attn") === "1") document.documentElement.
 <p class="usermenu__who"><strong>{{ me.display_name }}</strong><span>{{ me.organization_name }}</span></p>
 <a class="menu__item" href="/me">{{ icon("user", 16) }} 내 정보</a>
 <a class="menu__item" href="/guide">{{ icon("info", 16) }} 공온 가이드</a>
+<a class="menu__item" href="?ui=app">{{ icon("phone", 16) }} 휴대폰 화면으로 보기</a>
 <form method="post" action="/logout"><button class="menu__item usermenu__logout" type="submit">{{ icon("arrow-right", 16) }} 로그아웃</button></form>
 </div>
 </details>
@@ -129,6 +168,7 @@ try { if (localStorage.getItem("gongon.attn") === "1") document.documentElement.
 <p class="sitefoot__mark" aria-hidden="true">Gongon</p>
 <p class="sitefoot__copy">© 공온 Gongon</p>
 </footer>
+{% endif %}
 {% endblock %}
 {# 블록 안의 me는 여기서 보이지 않아 다시 읽는다 #}
 {% if request is defined and request.state.user is defined and request.state.user %}
@@ -481,11 +521,12 @@ document.addEventListener("keydown", (e) => {
 });
 </script>
 <script>
-// 휴대폰: 좌우로 밀면 아래 탭 막대의 옆 탭으로 넘어간다(C04-47, 개발자 요청).
+// 휴대폰·앱 화면: 좌우로 밀면 아래 탭 막대의 옆 탭으로 넘어간다(C04-47, 개발자 요청).
 // 가로로 스크롤되는 표·달력·7일 슬라이드·입력칸·열린 모달 위에서는 넘기지 않는다.
 (() => {
-  if (!matchMedia("(max-width: 760px)").matches) return;
-  const tabs = [...document.querySelectorAll(".appnav a[data-site-link]")];
+  const app = document.documentElement.dataset.ui === "app";
+  if (!app && !matchMedia("(max-width: 760px)").matches) return;
+  const tabs = [...document.querySelectorAll(".appnav a[data-site-link], .tabbar a[data-site-link]")];
   const current = tabs.findIndex((a) => a.getAttribute("aria-current") === "page");
   if (current < 0) return;
   const blocked = (el) => {
