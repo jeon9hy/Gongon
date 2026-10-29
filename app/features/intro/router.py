@@ -1,7 +1,7 @@
 """공온 서비스 사이트(D-110, 슬랙 방식).
 
 `/`는 로그인 전에는 첫 화면, 로그인 뒤에는 내 현장 고르기이고 현장을 고르면 PC 웹 앱(/home)으로
-들어간다. 기능·소개·요금은 각자 페이지다. 앱 화면(휴대폰)은 서비스 사이트를 거치지 않는다:
+들어간다. 기능·협업·소개·요금은 각자 페이지다. 앱 화면(휴대폰)은 서비스 사이트를 거치지 않는다:
 로그인했으면 바로 앱 홈, 앱 껍데기에서 로그인 전이면 로그인으로 간다.
 """
 
@@ -58,6 +58,11 @@ def _page(request: Request, session: Session, now: datetime, name: str) -> HTMLR
 @router.get("/features", response_class=HTMLResponse)
 def features(request: Request, session: SessionDep, now: NowDep) -> HTMLResponse:
     return _page(request, session, now, "features")
+
+
+@router.get("/collab", response_class=HTMLResponse)
+def collab(request: Request, session: SessionDep, now: NowDep) -> HTMLResponse:
+    return _page(request, session, now, "collab")
 
 
 @router.get("/about", response_class=HTMLResponse)

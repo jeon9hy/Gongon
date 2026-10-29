@@ -1,4 +1,4 @@
-{# 공온 서비스 사이트의 틀(D-110, 슬랙 방식): 머리줄 메뉴는 각자 페이지로 간다(기능·PC와 휴대폰·공온 소개·요금).
+{# 공온 서비스 사이트의 틀(D-110, 슬랙 방식): 머리줄 메뉴는 각자 페이지로 간다(기능·협업·소개·요금).
    바닥글은 서비스 사이트에만 있고 PC 웹 앱에는 없다. 지어낸 수치·고객 후기는 쓰지 않는다(C04-20). #}
 {% extends "base.html" %}
 {% from "_macros.html" import icon %}
@@ -15,8 +15,8 @@
 <div class="menu__panel intro__featpanel">{% for key, name, ic, title, _lead, _points in features %}<a class="menu__item" href="/features#feature-{{ key }}">{{ icon(ic, 18) }}<span><strong>{{ name }}</strong><small>{{ title }}</small></span></a>{% endfor %}
 <a class="menu__item intro__featall" href="/features">모든 기능 보기 {{ icon("arrow-right", 16, 2.2) }}</a></div>
 </details>
-<a href="/features#where">PC와 휴대폰</a>
-<a href="/about"{% if intro_page == "about" %} aria-current="page"{% endif %}>공온 소개</a>
+<a href="/collab"{% if intro_page == "collab" %} aria-current="page"{% endif %}>협업</a>
+<a href="/about"{% if intro_page == "about" %} aria-current="page"{% endif %}>소개</a>
 <a href="/pricing"{% if intro_page == "pricing" %} aria-current="page"{% endif %}>요금</a>
 </nav>
 <span class="welcome__links">{% if signed_in %}<a class="btn btn--accent btn--sm" href="/">내 현장</a>
@@ -48,7 +48,8 @@
 </div>
 <div class="sitefoot__col">
 <p class="sitefoot__head">공온</p>
-<a href="/about">공온 소개</a>
+<a href="/collab">협업</a>
+<a href="/about">소개</a>
 <a href="/about#how">일하는 방식</a>
 <a href="/about#principles">원칙</a>
 <a href="/pricing">요금</a>

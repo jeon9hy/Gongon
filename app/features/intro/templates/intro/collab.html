@@ -1,0 +1,33 @@
+{# 협업(D-110): 역할별로: 누가 무엇을 하고 어디서 쓰는지. product §2 사용자 표와 D-109 역할 나눔만 쓴다. #}
+{% extends "intro/_layout.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}협업{% endblock %}
+{% set roles = [
+  ("hard-hat", "원청 공사·공무 담당", "조정자", "작업을 등록하고 변경을 제안·확정해요. 업체별 조치를 나누고 업체·담당자 명부를 관리해요.", ["작업 등록·공정표 파일 가져오기", "변경 확정과 후속 조치 배정", "업체 명부 표 편집"], "PC 중심"),
+  ("check", "원청 안전·품질 담당", "담당자", "업체가 올린 완료 보고를 확인하고 검증해요. 보고한 사람과 다른 사람이 확인해야 끝나요.", ["완료 보고 근거 확인", "검증·반려와 이유 남기기"], "PC · 휴대폰"),
+  ("building", "협력업체 현장대리인·반장", "담당자", "우리 업체에 온 조치에 응답하고, 막히면 막힘을, 끝나면 완료 보고를 남겨요.", ["내게 온 조치 응답", "막힘·완료 보고", "현장 대화"], "휴대폰 중심"),
+  ("dashboard", "현장 소장", "조정자·열람자", "여러 현장의 일정과 변경·조치 진행을 한눈에 봐요.", ["현장별 오늘·내일 작업", "남은 필수 조치 보기"], "PC · 휴대폰"),
+  ("users", "감리·CM", "열람자", "변경과 조치 기록을 봐요. 연락처는 보이지 않아요.", ["변경 이력과 근거 보기", "판정 내역 보기"], "PC 중심"),
+  ("site", "작업자·기사", "가입 없이", "현장 휴게실 화면 같은 게시 화면에서 오늘·내일 작업을 봐요.", ["오늘·내일 작업 게시 화면"], "현장 TV"),
+] %}
+{% block intro_main %}
+<section class="intro__pagehead" aria-labelledby="page-title">
+<p class="about__kicker">협업</p>
+<h1 class="about__title" id="page-title">같은 현장,<br><em>각자 할 일만 보여요</em></h1>
+<p class="about__lead">원청과 협력업체, 감리까지 같은 기록을 보면서 각자 맡은 일만 처리해요.</p>
+</section>
+<section class="about__section intro__section--top" aria-label="역할 목록">
+<div class="intro__roles">
+{% for ic, name, role, lead, does, where in roles %}
+<article class="about__card intro__role" data-reveal style="--d: {{ loop.index0 % 3 }}">
+<div class="intro__rolehead"><span class="about__icon about__icon--blue">{{ icon(ic, 22) }}</span><span class="intro__roletags"><span>{{ role }}</span><span>{{ where }}</span></span></div>
+<h3>{{ name }}</h3>
+<p>{{ lead }}</p>
+<ul class="intro__list">{% for d in does %}<li>{{ icon("check", 16, 2.4) }}{{ d }}</li>{% endfor %}</ul>
+</article>
+{% endfor %}
+</div>
+<p class="intro__note" data-reveal>역할은 현장마다 정해요. 현장을 만든 사람이 조정자이고, 다른 사람은 조정자가 추가하거나 현장 코드로 들어와요.</p>
+<a class="intro__more" href="/features#where" data-reveal>PC와 휴대폰에서 어떻게 다른지 보기 {{ icon("arrow-right", 16, 2.2) }}</a>
+</section>
+{% endblock %}

@@ -45,7 +45,12 @@ def test_site_list_shows_only_my_sites(client: TestClient, anonymous_client: Tes
 
 @pytest.mark.parametrize(
     ("path", "marker"),
-    [("/features", 'id="where"'), ("/about", 'id="principles"'), ("/pricing", "시범 운영")],
+    [
+        ("/features", 'id="where"'),
+        ("/collab", "협력업체 현장대리인"),
+        ("/about", 'id="principles"'),
+        ("/pricing", "시범 운영"),
+    ],
 )
 def test_menu_items_are_their_own_pages(
     anonymous_client: TestClient, client: TestClient, path: str, marker: str

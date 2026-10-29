@@ -2646,3 +2646,18 @@ a.sumcard:hover { border-color: var(--line); }
   html[data-narrow] .intro__price { grid-template-columns: minmax(0, 1fr); padding: 24px 16px; }
 }
 @media (prefers-reduced-motion: reduce) { .launch__mascot { animation: none; } }
+/* 역할별 활용 카드(D-110) */
+.intro__roles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.intro__rolehead { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.intro__roletags { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.intro__roletags span { padding: 4px 10px; border-radius: 999px; background: var(--surface); font-size: 12px; font-weight: 600; color: var(--muted); }
+.intro__roletags span:first-child { background: var(--accent-soft); color: var(--accent); }
+@media (max-width: 900px) { html[data-narrow] .intro__roles { grid-template-columns: minmax(0, 1fr); } }
+/* 가이드·소개 흐름은 움직이지 않는 같은 모양으로(개발자 지적: 한 번 채워진 색이 남아 진행 중처럼 보임) */
+.gx-flow::after, .about__flow::before { display: none; }
+.gx-flow::before { background: var(--accent-soft); }
+.gx-flow__dot { animation: none; background: var(--accent-soft); color: var(--accent); transform: none; }
+/* 가이드 설명 목록: 제목·목록·안내 사이 간격과 이름·설명 줄높이를 맞춘다 */
+.gx-split > div:first-child { display: flex; flex-direction: column; gap: 14px; }
+.guide-list div { align-items: baseline; }
+.guide-list dt, .guide-list dd { line-height: 1.6; }
