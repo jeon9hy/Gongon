@@ -17,7 +17,7 @@ ANDROID_TABLET = "Mozilla/5.0 (Linux; Android 14; SM-X710) Chrome/126.0 Safari/5
 IPAD = "Mozilla/5.0 (iPad; CPU OS 17_5 like Mac OS X) Mobile/15E148"
 DESKTOP = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0 Safari/537.36"
 SHELL = f"{ANDROID_TABLET} GongonApp/1"
-APP_HTML = '<html lang="ko" data-ui="app">'
+APP_HTML = '<html lang="ko" data-ui="app"'
 
 
 @pytest.mark.parametrize(
@@ -80,3 +80,16 @@ def test_page_without_app_layout_falls_back_to_web_content_in_app_frame(client: 
 def test_app_view_keeps_access_rules(anonymous_client: TestClient) -> None:
     response = anonymous_client.get("/", headers={"user-agent": IPHONE}, follow_redirects=False)
     assert response.status_code in (302, 303, 307)
+
+
+def test_pc_web_never_gets_narrow_layout_but_modal_frames_and_app_do(client: TestClient) -> None:
+    """PC 웹은 창을 줄여도 앱처럼 바뀌지 않는다. 좁은 배치는 앱 화면과 모달 안 화면(embed)만."""
+    make_site(client)
+
+    web = client.get("/schedule", headers={"user-agent": DESKTOP}).text
+    modal = client.get("/sites?embed=1", headers={"user-agent": DESKTOP}).text
+    phone = client.get("/schedule", headers={"user-agent": IPHONE}).text
+
+    assert "data-narrow" not in web.split("<head>")[0]
+    assert "data-narrow" in modal.split("<head>")[0]
+    assert "data-narrow" in phone.split("<head>")[0]

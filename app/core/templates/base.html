@@ -1,7 +1,8 @@
 {% from "_macros.html" import icon %}
 <!doctype html>
 {% set ui_app = request is defined and request.state.ui_mode | default("web") == "app" %}
-<html lang="ko"{% if ui_app %} data-ui="app"{% endif %}>
+{# 좁은 배치(gongon.css의 max-width 규칙)는 앱 화면과 모달 안 화면(embed)에서만 쓴다. PC 웹은 창을 줄여도 앱처럼 바뀌지 않는다(D-109) #}
+<html lang="ko"{% if ui_app %} data-ui="app"{% endif %}{% if ui_app or (embed is defined and embed) %} data-narrow{% endif %}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -392,7 +393,7 @@ document.addEventListener("invalid", (e) => {
 const calendarMedia = window.matchMedia("(max-width: 760px)");
 const updateCalendarLinks = () => document.querySelectorAll("a.calcell__link[href]").forEach((link) => {
   const url = new URL(link.href);
-  url.hash = calendarMedia.matches ? "day-detail" : "";
+  url.hash = document.documentElement.hasAttribute("data-narrow") && calendarMedia.matches ? "day-detail" : "";
   link.href = url.href;
 });
 calendarMedia.addEventListener("change", updateCalendarLinks);
@@ -521,11 +522,10 @@ document.addEventListener("keydown", (e) => {
 });
 </script>
 <script>
-// 휴대폰·앱 화면: 좌우로 밀면 아래 탭 막대의 옆 탭으로 넘어간다(C04-47, 개발자 요청).
+// 앱 화면: 좌우로 밀면 아래 탭 막대의 옆 탭으로 넘어간다(C04-47, 개발자 요청).
 // 가로로 스크롤되는 표·달력·7일 슬라이드·입력칸·열린 모달 위에서는 넘기지 않는다.
 (() => {
-  const app = document.documentElement.dataset.ui === "app";
-  if (!app && !matchMedia("(max-width: 760px)").matches) return;
+  if (document.documentElement.dataset.ui !== "app") return;
   const tabs = [...document.querySelectorAll(".appnav a[data-site-link], .tabbar a[data-site-link]")];
   const current = tabs.findIndex((a) => a.getAttribute("aria-current") === "page");
   if (current < 0) return;
