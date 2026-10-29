@@ -2658,3 +2658,5 @@ a.sumcard:hover { border-color: var(--line); }
 .gx-split > div:first-child { display: flex; flex-direction: column; gap: 14px; }
 .guide-list div { align-items: baseline; }
 .guide-list dt, .guide-list dd { line-height: 1.6; }
+/* 작업 수·점 설명은 휴대폰 앱 달력에서만 쓴다(app.css) */
+.calcount, .calkey { display: none; }
