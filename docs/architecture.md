@@ -16,6 +16,7 @@
 | 예보 수집·정규화 | `engine/forecast/` | `fetch_vilage_forecast()` → 원자료, `normalize()` → 판정 입력 | 있음 | S02-2 |
 | 순수 판정 | `engine/judgment/` | `judge(weather, rule_set, work_start_at, work_end_at) -> JudgmentResult`, `load_rule_set()` | 있음 | S03 |
 | 한국 표준시 | `engine/kst.py` | `KST`(고정 +09:00, D-018) | 있음 | S01 |
+| 디자인(Figma) | `design/figma/` | 공온 · 웹/앱 Figma 파일을 그리는 use_figma 스크립트(`_common.js` + 페이지별). 앱 화면을 바꾸면 해당 스크립트도 고친다(README) | — | 2026-10-30 |
 | 공통 기반 | `app/core/` | `config.py`(설정), `db.py`(세션), `rules.py`(기준표·판정 공종 목록), `work_kinds.py`(작업 고르기 목록, D-085), `clock.py`(현재 시각), `errors.py`(DB 오류 화면) | 있음 | S04-1 |
 | 회원·인증 | `app/features/auth/` | `/login`·`/signup`·`/logout`, `service.require_user`(모든 기능 라우터의 로그인 의존성), 회사·사용자·세션 | 있음 | C03-1 |
 | 올린 파일 보관 | `app/core/files.py` | 보관소 어댑터 `LocalFileStore`(지금은 `UPLOAD_DIR` 폴더, 배포 때 같은 모양의 클라우드 저장소로 교체), 그림 종류 확인 `sniff_image`, 라우터 의존성 `FileStoreDep` | 있음 | D-111 |
