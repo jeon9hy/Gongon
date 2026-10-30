@@ -2762,8 +2762,8 @@ div.hmore .hmore__toggle { margin-left: 0; padding: 6px 12px; }
 .doc-daily__edit td { padding: 0 8px; border-top: 0; }
 .doc-form summary { padding: 4px 0 6px; color: var(--accent); font-size: 12px; font-weight: 700; cursor: pointer; }
 .doc-form form { display: grid; gap: 10px; padding: 4px 0 12px; }
-.doc-form__group { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0; padding: 0; border: 0; font-size: 13px; }
-.doc-form__group legend { width: 100%; margin-bottom: 4px; font-weight: 700; color: var(--ink); }
+.doc-form__group { display: flex; flex-direction: row; flex-wrap: wrap; gap: 6px 14px; margin: 0; padding: 0; border: 0; font-size: 13px; }
+.doc-form__group legend { width: 100%; margin-bottom: 4px; font-size: 13px; font-weight: 700; color: var(--ink); }
 .doc-form__group legend span { font-weight: 500; color: var(--muted); font-size: 12px; }
 .doc-form__group label { display: inline-flex; align-items: center; gap: 4px; }
 .doc-form__line { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 10px; }
@@ -2777,6 +2777,10 @@ div.hmore .hmore__toggle { margin-left: 0; padding: 6px 12px; }
 .doc-signs div { display: grid; grid-template-rows: auto 48px; min-width: 140px; border: 1px solid var(--line); font-size: 12px; text-align: center; }
 .doc-signs div span:first-child { padding: 4px; border-bottom: 1px solid var(--line); background: var(--surface); color: var(--ink); font-weight: 700; }
 .doc-blank { height: 120px; border: 1px solid var(--line); }
+.doc__hint { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
+.doc-loss td { text-align: right; font-variant-numeric: tabular-nums; }
+.doc-loss thead th { text-align: center; }
+.doc-loss tfoot th, .doc-loss tfoot td { background: var(--surface); font-weight: 700; color: var(--ink); }
 @media print {
   @page { size: A4 landscape; margin: 10mm; }
   @page doc-portrait { size: A4 portrait; margin: 12mm; }

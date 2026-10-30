@@ -66,9 +66,10 @@ def save_daily(
     workers: Annotated[str, Form()] = "",
     equipment_note: Annotated[str, Form()] = "",
     note: Annotated[str, Form()] = "",
+    known_when: Annotated[str, Form()] = "",
 ) -> Response:
     form = ReportForm(outcome=outcome, causes=tuple(causes or ()), workers=workers,
-                      equipment_note=equipment_note, note=note)  # fmt: skip
+                      equipment_note=equipment_note, note=note, known_when=known_when)  # fmt: skip
     work_date, errors = service.save_report(session, user, site_id, item_id, form, now)
     if errors:
         view = service.build_daily(session, user, site_id, now, work_date, errors, item_id, form)
@@ -111,6 +112,22 @@ def change_doc(
     view = service.build_change_doc(session, user, site_id, case_id, doc_kind, now)
     return templates.TemplateResponse(
         request, "reports/change_doc.html", {"nav_active": "", "view": view}
+    )
+
+
+@router.get("/reports/{site_id}/losses", response_class=HTMLResponse)
+def losses(
+    request: Request,
+    session: SessionDep,
+    user: CurrentUserDep,
+    now: NowDep,
+    site_id: int,
+    month: str = "",
+) -> HTMLResponse:
+    """작업 차질 월 집계(C14-5, D-113). 달이 잘못되면 이번 달을 보인다."""
+    view = service.build_loss_summary(session, user, site_id, now, month)
+    return templates.TemplateResponse(
+        request, "reports/losses.html", {"nav_active": "", "view": view}
     )
 
 

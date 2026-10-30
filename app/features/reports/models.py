@@ -30,6 +30,8 @@ class WorkReport(Base):
     workers: Mapped[int | None] = mapped_column(
         Integer
     )  # 투입 인원. 모르면 None(0으로 채우지 않음)
+    # 일부만·못함을 언제 알았나(D-113): day_before · morning · on_site, 모르면·했음이면 None
+    known_when: Mapped[str | None] = mapped_column(String(12))
     equipment_note: Mapped[str] = mapped_column(String(120), default="")
     note: Mapped[str] = mapped_column(Text, default="")
     recorded_by_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))

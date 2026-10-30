@@ -154,3 +154,21 @@ def test_totals_leave_unknown_workers_blank(
     record(client, other)  # 인원 모름
     page = client.get(f"/reports/{item.site_id}/daily").text
     assert "투입 인원</dt><dd>7명" in page and "기록</dt><dd>2건" in page
+
+
+def test_when_it_became_known_is_optional_and_cleared_for_done_work(
+    client: TestClient, session: Session, today_work: WorkItem
+) -> None:
+    bad = record(client, today_work, outcome="partial", causes="material", known_when="yesterday")
+    assert bad.status_code == 422 and "목록에서 골라" in bad.text
+
+    assert record(client, today_work, outcome="partial", causes="material").status_code == 303
+    assert saved(session, today_work).known_when is None  # type: ignore[union-attr]  # 고르지 않으면 모름
+
+    assert record(client, today_work, outcome="partial", causes="material",
+                  known_when="morning").status_code == 303  # fmt: skip
+    assert saved(session, today_work).known_when == "morning"  # type: ignore[union-attr]
+    assert "당일 아침 알게 됨" in client.get(f"/reports/{today_work.site_id}/daily").text
+
+    assert record(client, today_work, outcome="done", known_when="morning").status_code == 303
+    assert saved(session, today_work).known_when is None  # type: ignore[union-attr]

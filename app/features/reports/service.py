@@ -10,6 +10,7 @@
   공식 근거는 관측·계약 조건이다.
 - 변경 건 문서(C14-4): 작업 지시서(업체별 조치·확인란)와 실정보고 초안(원인·근거·전후·
   버전·조치 결과). 변경 건 상세와 같은 값을 쓰며 발주처 양식으로 옮겨 쓰는 초안이다.
+- 작업 차질 월 집계(C14-5): 작업일보의 일부만·못함을 원인별로, 적은 인원 합과 언제 알았나까지.
 - 연락처·작업 메모는 넣지 않는다. 인쇄·PDF 저장용이며 공식 서류를 대신하지 않는다.
 """
 
@@ -30,6 +31,7 @@ from app.features.reports.models import WorkReport
 from app.features.reports.schemas import (
     CHANGE_DOC_TITLES,
     EQUIPMENT_MAX,
+    KNOWN_LABELS,
     NOTE_MAX,
     OUTCOME_LABELS,
     WORKERS_MAX,
@@ -38,6 +40,8 @@ from app.features.reports.schemas import (
     DailyRow,
     DailyView,
     DailyWork,
+    LossRow,
+    LossSummaryView,
     ReportForm,
     ReportInput,
     WeatherDay,
@@ -237,6 +241,7 @@ def build_daily(
             outcome=r.outcome if r else None,
             outcome_label=OUTCOME_LABELS[r.outcome] if r else "미입력",
             causes_text=" · ".join(REASON_LABELS.get(c, c) for c in r.causes) if r else "",
+            known_text=_known_text(r),
             workers=r.workers if r else None,
             equipment_note=r.equipment_note if r else "",
             note=r.note if r else "",
@@ -288,6 +293,7 @@ def build_daily(
         made_text=f"{_short(local.date())} {local:%H:%M} · {user.display_name}",
         reason_labels=REASON_LABELS,
         outcome_labels=OUTCOME_LABELS,
+        known_labels=KNOWN_LABELS,
         errors=errors,
         error_item_id=error_item_id,
     )
@@ -324,6 +330,7 @@ def save_report(
     report.workers = parsed.workers
     report.equipment_note = parsed.equipment_note
     report.note = parsed.note
+    report.known_when = parsed.known_when
     report.recorded_by_user_id = user.user_id
     report.recorded_at = now
     session.commit()
@@ -354,6 +361,9 @@ def validate_report(form: ReportForm) -> tuple[ReportInput | None, tuple[str, ..
     note = form.note.strip()
     if len(note) > NOTE_MAX:
         errors.append(f"메모는 {NOTE_MAX}자까지 적을 수 있어요.")
+    known = form.known_when.strip()
+    if known and known not in KNOWN_LABELS:
+        errors.append("언제 알았는지는 목록에서 골라 주세요.")
     if errors:
         return None, tuple(errors)
     return ReportInput(
@@ -362,6 +372,8 @@ def validate_report(form: ReportForm) -> tuple[ReportInput | None, tuple[str, ..
         workers=workers,
         equipment_note=equipment,
         note=note,
+        # 했음이면 비운다. 일부만·못함도 고르지 않았으면 모름(None)으로 둔다
+        known_when=known or None if form.outcome != "done" else None,
     ), ()
 
 
@@ -397,7 +409,14 @@ def _form_of(r: WorkReport | None) -> ReportForm:
         workers="" if r.workers is None else str(r.workers),
         equipment_note=r.equipment_note,
         note=r.note,
+        known_when=r.known_when or "",
     )
+
+
+def _known_text(r: WorkReport | None) -> str:
+    if r is None or r.known_when is None:
+        return ""
+    return f"{KNOWN_LABELS[r.known_when]} 알게 됨"
 
 
 def _sum(values: Iterable[int | None]) -> int | None:
@@ -455,6 +474,7 @@ def build_weather_log(
             work_text=work,
             outcome_label=OUTCOME_LABELS[r.outcome],
             causes_text=" · ".join(REASON_LABELS.get(c, c) for c in r.causes),
+            known_text=_known_text(r),
             note=r.note,
             verdict=verdict[0] if verdict else None,
             verdict_text=verdict_text,
@@ -512,4 +532,52 @@ def build_change_doc(
         current=confirmed or (detail.revisions[0] if detail.revisions else None),
         confirmed=confirmed is not None,
         made_text=f"{_short(local.date())} {local:%H:%M} · {user.display_name}",
+    )
+
+
+def build_loss_summary(
+    session: Session, user: CurrentUser, site_id: int, now: datetime, requested: str
+) -> LossSummaryView:
+    """작업 차질 월 집계(C14-5, D-113): 원인별 일부만·못함 건수, 적은 인원 합, 언제 알았나.
+
+    원인을 여러 개 고른 기록은 원인마다 세고, 합계 줄은 기록 하나를 한 번만 센다.
+    """
+    teams_service.require_role(session, user, site_id, ALL_ROLES)
+    site = sites_service.get_site(session, site_id, None)
+    if site is None:
+        raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
+    first = month_start(now, requested)
+    reports = reports_between(session, site_id, first, _next_month(first) - timedelta(days=1))
+    short = [r for r in reports if r.outcome != "done"]
+    by_cause: dict[str, list[WorkReport]] = {}
+    for r in short:
+        for c in r.causes:
+            by_cause.setdefault(c, []).append(r)
+    rows = sorted(
+        (_loss_row(REASON_LABELS.get(c, c), group) for c, group in by_cause.items()),
+        key=lambda row: (-(row.partial_count + row.not_done_count), row.label),
+    )
+    local = now.astimezone(KST)
+    return LossSummaryView(
+        site_id=site_id,
+        site_name=site.name,
+        month_text=f"{first.year}년 {first.month}월",
+        rows=tuple(rows),
+        total=_loss_row("합계", short),
+        known_headers=(*KNOWN_LABELS.values(), "모름"),
+        recorded_count=len(reports),
+        prev_month=f"{(first - timedelta(days=1)):%Y-%m}",
+        next_month=f"{_next_month(first):%Y-%m}",
+        made_text=f"{_short(local.date())} {local:%H:%M} · {user.display_name}",
+    )
+
+
+def _loss_row(label: str, group: list[WorkReport]) -> LossRow:
+    codes = (*KNOWN_LABELS, None)
+    return LossRow(
+        label=label,
+        partial_count=sum(1 for r in group if r.outcome == "partial"),
+        not_done_count=sum(1 for r in group if r.outcome == "not_done"),
+        workers_total=_sum(r.workers for r in group),
+        known=tuple(sum(1 for r in group if r.known_when == code) for code in codes),
     )

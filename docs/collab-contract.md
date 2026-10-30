@@ -124,6 +124,8 @@ C01 [공개 조사](research/C01-public-research.md)의 설계 가정 A1~A7과 �
 - 주간 작업계획표 `/reports/{site}/weekly?start=YYYY-MM-DD`: 고른 날이 든 주(월~일), 기본은 다음 주. 확정 변경은 [그 주 월요일 − 7일, 그 주 월요일) KST, 조치는 지금 `requested·accepted·blocked·reported`.
 - 작업일보 `work_reports`(0026): 작업(`work_item_id`, unique) 하나에 한 행. `outcome` ∈ done·partial·not_done, `causes`는 변경 원인 코드(REASON_LABELS)이고 done이 아니면 하나 이상(DB CHECK), done이면 비운다. `workers` 0~999 또는 NULL(모름, 0으로 채우지 않음), `equipment_note` ≤120자, `note` ≤500자, `work_date`·`plan_version`은 기록할 때의 작업 값, `recorded_by_user_id`·`recorded_at`은 마지막 기록. 고치면 덮어쓴다(이력 없음, 확인 항목).
 - 기록 조건: 작업 날짜 ≤ 오늘(KST). 조정자는 모든 작업, 담당자는 자기 참여 업체가 실행 업체인 작업만(아니면 403), 열람자·게시 403. 기록 뒤 계획 버전이 바뀌면 ‘기록 뒤 계획 바뀜’으로 보이고 기록을 새 계획으로 옮기지 않는다. 결과가 done이 아니면 변경 제안 폼으로 가는 링크만 준다(자동 변경 없음).
+- `known_when`(0027, D-113): day_before·morning·on_site 또는 NULL(모름), done이면 NULL(DB CHECK).
+- 작업 차질 월 집계 `/reports/{site}/losses?month=`: 그달 `work_date`의 done이 아닌 기록을 원인별로(여러 원인이면 원인마다, 합계는 기록 하나를 한 번), 건수·적은 인원 합(없으면 ‘-’)·known_when 분포(모름 포함). 금액으로 바꾸지 않는다.
 - 공사일보 `/reports/{site}/daily?day=`: 그날 작업을 업체별로, 합계 인원은 적은 값만 더한다(모두 없으면 ‘-’). 그날 확정된 변경을 붙인다.
 - 기상 작업중지 기록 `/reports/{site}/weather?month=YYYY-MM`: 그달 `work_date`의 work_reports 중 done이 아니고 causes에 weather가 있는 것. ‘전체 중지’는 그날 작업 수 ≤ 기상 원인 못함 수. 판정은 그 작업·그 날짜의 판정 가운데 `judged_at ≤ work_start_at`인 마지막 하나(없으면 ‘판정 기록 없음’, 진행으로 채우지 않음). 판정은 참고이며 공기 연장 근거는 관측·계약 조건.
 - 변경 건 문서 `/reports/{site}/changes/{case}?kind=order|report`: 변경 건 상세(changes 서비스, 열람 기록 포함)와 같은 값. 확정 버전이 있으면 그것, 없으면 최근 버전에 ‘아직 확정 전’ 표시. 주소의 현장과 변경 건의 현장이 다르면 404.

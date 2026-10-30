@@ -42,7 +42,7 @@
 <td>{{ e.company }}</td>
 <td>{{ e.work_text }}</td>
 <td>{{ e.outcome_label }}</td>
-<td>{{ e.causes_text }}</td>
+<td>{{ e.causes_text }}{% if e.known_text %}<span class="doc-daily__sub">{{ e.known_text }}</span>{% endif %}</td>
 <td>{{ e.note or "-" }}</td>
 <td>{% if e.verdict %}{{ verdict_badge(e.verdict) }} {% endif %}<span class="doc-daily__sub">{{ e.verdict_text }}</span></td>
 </tr>

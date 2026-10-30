@@ -1,0 +1,60 @@
+{# 작업 차질 월 집계(C14-5, D-113): 작업일보의 일부만·못함을 원인별로, 적은 인원 합과 언제 알았나까지. #}
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}작업 차질 집계 · {{ view.site_name }}{% endblock %}
+{% block body_class %} class="docbody"{% endblock %}
+{% block page %}
+<nav class="doc-tools" aria-label="서류 도구">
+<a class="btn btn--soft btn--sm" href="/reports/{{ view.site_id }}/daily">{{ icon("chevron-left", 16) }} 공사일보</a>
+<div class="doc-tools__week">
+<a class="btn btn--soft btn--sm" href="?month={{ view.prev_month }}" aria-label="지난달">{{ icon("chevron-left", 16) }}</a>
+<span>{{ view.month_text }}</span>
+<a class="btn btn--soft btn--sm" href="?month={{ view.next_month }}" aria-label="다음 달">{{ icon("chevron-right", 16) }}</a>
+</div>
+<button class="btn btn--accent btn--sm" type="button" data-print>인쇄 · PDF 저장</button>
+</nav>
+<main class="doc" id="main" tabindex="-1">
+<header class="doc__head">
+<div>
+<p class="doc__kind">작업 차질 집계</p>
+<h1 class="doc__title">{{ view.site_name }}</h1>
+<p class="doc__period">{{ view.month_text }}</p>
+</div>
+<dl class="doc__meta">
+<div><dt>작업일보</dt><dd>{{ view.recorded_count }}건</dd></div>
+<div><dt>일부만</dt><dd>{{ view.total.partial_count }}건</dd></div>
+<div><dt>못함</dt><dd>{{ view.total.not_done_count }}건</dd></div>
+<div><dt>그 작업의 인원</dt><dd>{{ "%d명" | format(view.total.workers_total) if view.total.workers_total is not none else "-" }}</dd></div>
+</dl>
+</header>
+
+<section class="doc__section" aria-labelledby="doc-causes">
+<h2 class="doc__h2" id="doc-causes">원인별</h2>
+{% if view.rows %}
+<table class="doc-table doc-loss">
+<thead>
+<tr><th scope="col" rowspan="2">원인</th><th scope="col" rowspan="2">일부만</th><th scope="col" rowspan="2">못함</th><th scope="col" rowspan="2">인원</th><th scope="colgroup" colspan="{{ view.known_headers | length }}">언제 알았나</th></tr>
+<tr>{% for h in view.known_headers %}<th scope="col">{{ h }}</th>{% endfor %}</tr>
+</thead>
+<tbody>
+{% for r in view.rows %}
+<tr><th scope="row">{{ r.label }}</th><td>{{ r.partial_count }}</td><td>{{ r.not_done_count }}</td><td>{{ r.workers_total if r.workers_total is not none else "-" }}</td>{% for n in r.known %}<td>{{ n }}</td>{% endfor %}</tr>
+{% endfor %}
+</tbody>
+<tfoot>
+<tr><th scope="row">{{ view.total.label }}</th><td>{{ view.total.partial_count }}</td><td>{{ view.total.not_done_count }}</td><td>{{ view.total.workers_total if view.total.workers_total is not none else "-" }}</td>{% for n in view.total.known %}<td>{{ n }}</td>{% endfor %}</tr>
+</tfoot>
+</table>
+<p class="doc__hint">원인을 여러 개 고른 기록은 원인마다 세고, 합계는 기록 하나를 한 번만 셉니다. 인원은 공사일보에 적은 값만 더합니다.</p>
+{% else %}<p class="doc__empty">이달에 일부만·못함으로 남긴 작업이 없어요.</p>{% endif %}
+</section>
+
+<footer class="doc__foot">
+<p>공온 기록 · 공식 서류 아님. 각 업체·담당자가 공사일보에 남긴 결과를 센 것이며 손실액이 아닙니다.</p>
+<p>{{ view.made_text }} 출력</p>
+</footer>
+</main>
+<script>
+document.querySelector("[data-print]").addEventListener("click", () => window.print());
+</script>
+{% endblock %}

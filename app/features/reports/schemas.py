@@ -58,6 +58,12 @@ class WeeklyPlanView:
 
 # 작업일보 결과(C14-2). 했음이 아니면 원인을 하나 이상 고른다(원인 코드는 변경 원인과 같다).
 OUTCOME_LABELS: dict[str, str] = {"done": "했음", "partial": "일부만", "not_done": "못함"}
+# 일부만·못함을 언제 알았나(D-113). 미리 알면 쉬고, 당일에 알면 반나절 인건비가 나간다.
+KNOWN_LABELS: dict[str, str] = {
+    "day_before": "전날",
+    "morning": "당일 아침",
+    "on_site": "현장 와서",
+}
 NOTE_MAX = 500
 EQUIPMENT_MAX = 120
 WORKERS_MAX = 999
@@ -72,6 +78,7 @@ class ReportForm:
     workers: str = ""
     equipment_note: str = ""
     note: str = ""
+    known_when: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,6 +88,7 @@ class ReportInput:
     workers: int | None
     equipment_note: str
     note: str
+    known_when: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,6 +100,7 @@ class DailyWork:
     outcome: str | None  # None은 미입력
     outcome_label: str
     causes_text: str
+    known_text: str  # "당일 아침 알게 됨", 모르면 빈칸
     workers: int | None
     equipment_note: str
     note: str
@@ -128,6 +137,7 @@ class DailyView:
     made_text: str
     reason_labels: dict[str, str]
     outcome_labels: dict[str, str]
+    known_labels: dict[str, str]
     errors: tuple[str, ...] = ()
     error_item_id: int | None = None
 
@@ -138,6 +148,7 @@ class WeatherEntry:
     work_text: str  # "철골 작업 · 101동 · 07:30-09:30"
     outcome_label: str
     causes_text: str  # 기상 말고 함께 고른 원인까지
+    known_text: str
     note: str
     verdict: str | None  # 작업 시작 전 마지막 판정. 없으면 None
     verdict_text: str  # "10/3 17:00 판정" 또는 "판정 기록 없음"
@@ -179,4 +190,29 @@ class ChangeDocView:
     detail: ChangeDetailView
     current: RevisionView | None  # 현재 확정 버전, 없으면 가장 최근 버전
     confirmed: bool  # current가 확정 버전인가
+    made_text: str
+
+
+@dataclass(frozen=True, slots=True)
+class LossRow:
+    """원인 하나의 그달 차질(일부만·못함). 원인을 여러 개 고른 기록은 원인마다 센다."""
+
+    label: str
+    partial_count: int
+    not_done_count: int
+    workers_total: int | None  # 그 기록들에 적은 인원 합, 하나도 없으면 None
+    known: tuple[int, ...]  # KNOWN_LABELS 순서의 건수 + 마지막은 모름
+
+
+@dataclass(frozen=True, slots=True)
+class LossSummaryView:
+    site_id: int
+    site_name: str
+    month_text: str
+    rows: tuple[LossRow, ...]  # 차질이 있는 원인만, 많은 순
+    total: LossRow  # 기록 단위(중복 없이)
+    known_headers: tuple[str, ...]
+    recorded_count: int  # 그달 작업일보 전체
+    prev_month: str
+    next_month: str
     made_text: str
