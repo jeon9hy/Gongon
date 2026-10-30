@@ -1,0 +1,98 @@
+{# 변경 건 문서(C14-4, D-112): 작업 지시서(업체별 조치 + 확인란)와 실정보고 초안(원인·근거·전후·버전·조치 결과).
+   값은 변경 건 상세와 같다. 발주처·회사 양식으로 옮겨 쓰는 초안이다. #}
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% set d = view.detail %}
+{% set r = view.current %}
+{% block title %}{{ view.kind_title }} · {{ d.title }}{% endblock %}
+{% block body_class %} class="docbody"{% endblock %}
+{% block page %}
+<nav class="doc-tools" aria-label="서류 도구">
+<a class="btn btn--soft btn--sm" href="/changes/{{ d.case_id }}">{{ icon("chevron-left", 16) }} 변경 건</a>
+<div class="doc-tools__week" role="group" aria-label="문서 종류">
+<a class="btn btn--sm {{ 'btn--ink' if view.kind == 'order' else 'btn--soft' }}" href="?kind=order"{% if view.kind == 'order' %} aria-current="page"{% endif %}>작업 지시서</a>
+<a class="btn btn--sm {{ 'btn--ink' if view.kind == 'report' else 'btn--soft' }}" href="?kind=report"{% if view.kind == 'report' %} aria-current="page"{% endif %}>실정보고 초안</a>
+</div>
+<button class="btn btn--accent btn--sm" type="button" data-print>인쇄 · PDF 저장</button>
+</nav>
+<main class="doc doc--narrow" id="main" tabindex="-1">
+<header class="doc__head">
+<div>
+<p class="doc__kind">{{ view.kind_title }}</p>
+<h1 class="doc__title">{{ d.title }}</h1>
+<p class="doc__period">{{ d.site_name }} · {{ d.work_label }}</p>
+</div>
+<dl class="doc__meta">
+<div><dt>버전</dt><dd>{{ "v%d" | format(r.number) if r else "-" }}</dd></div>
+<div><dt>상태</dt><dd>{{ "종료" if d.closed_text else (r.status_label if r else "-") }}</dd></div>
+</dl>
+</header>
+{% if r and not view.confirmed %}<p class="doc__note">아직 확정 전({{ r.status_label }}) 버전입니다. 확정하면 내용이 바뀔 수 있어요.</p>{% endif %}
+
+{% if r %}
+<section class="doc__section" aria-labelledby="doc-change">
+<h2 class="doc__h2" id="doc-change">{{ "1. 현장 여건과 변경 내용" if view.kind == "report" else "변경 내용" }}</h2>
+<table class="doc-table doc-kv">
+<tbody>
+<tr><th scope="row">변경 원인</th><td>{{ r.reasons_text }}</td></tr>
+<tr><th scope="row">근거</th><td>{{ r.basis_note or "-" }}</td></tr>
+<tr><th scope="row">변경 전</th><td>{{ r.before_text }}</td></tr>
+<tr><th scope="row">변경 후</th><td><strong>{{ r.after_text }}</strong></td></tr>
+<tr><th scope="row">확정</th><td>{% for h in r.history if "확정" in h %}{% if loop.first %}{{ h }}{% endif %}{% else %}확정 전{% endfor %}</td></tr>
+</tbody>
+</table>
+</section>
+
+{% set cards = r.actions.cards if r.actions else [] %}
+<section class="doc__section" aria-labelledby="doc-actions">
+<h2 class="doc__h2" id="doc-actions">{{ "2. 후속 조치와 결과" if view.kind == "report" else "업체별 후속 조치" }}</h2>
+{% if cards %}
+<table class="doc-table">
+<thead><tr><th scope="col" style="width:16%">업체 · 담당</th><th scope="col">조치</th><th scope="col" style="width:18%">완료 기준</th><th scope="col" style="width:14%">기한</th>
+{% if view.kind == "report" %}<th scope="col" style="width:22%">결과</th>{% else %}<th scope="col" style="width:12%">검증</th><th scope="col" style="width:12%">업체 확인</th>{% endif %}</tr></thead>
+<tbody>{% for c in cards %}
+<tr>
+<td>{{ c.performer_text }}</td>
+<td>{{ c.title }}{% if not c.required %} <span class="doc-daily__sub">선택</span>{% endif %}</td>
+<td>{{ c.done_criteria or "-" }}</td>
+<td>{{ c.due_text }}</td>
+{% if view.kind == "report" %}<td>{{ c.status_label }}{% for t in [c.report_text, c.blocked_text, c.exclude_text, c.replaced_text] if t %}<span class="doc-daily__sub">{{ t }}</span>{% endfor %}</td>
+{% else %}<td>{{ c.verifier_text }}</td><td class="doc-sign"></td>{% endif %}
+</tr>
+{% endfor %}</tbody>
+</table>
+{% else %}<p class="doc__empty">{% if r.no_action_reason %}필수 조치 없이 확정 · {{ r.no_action_reason }}{% else %}등록된 조치가 없어요.{% endif %}</p>{% endif %}
+</section>
+
+{% if view.kind == "report" %}
+<section class="doc__section" aria-labelledby="doc-versions">
+<h2 class="doc__h2" id="doc-versions">3. 변경 이력</h2>
+<table class="doc-table">
+<thead><tr><th scope="col" style="width:8%">버전</th><th scope="col" style="width:10%">상태</th><th scope="col">변경 후</th><th scope="col" style="width:16%">원인</th><th scope="col" style="width:30%">기록</th></tr></thead>
+<tbody>{% for v in d.revisions | reverse %}
+<tr><td>v{{ v.number }}</td><td>{{ v.status_label }}</td><td>{{ v.after_text }}</td><td>{{ v.reasons_text }}</td><td>{% for h in v.history %}<span class="doc-daily__sub">{{ h }}</span>{% endfor %}</td></tr>
+{% endfor %}</tbody>
+</table>
+</section>
+<section class="doc__section" aria-labelledby="doc-opinion">
+<h2 class="doc__h2" id="doc-opinion">4. 검토 의견</h2>
+<div class="doc-blank"></div>
+</section>
+{% else %}
+<section class="doc__section doc-signs" aria-label="확인">
+<div><span>지시</span><span class="doc-sign"></span></div>
+<div><span>확인(협력업체)</span><span class="doc-sign"></span></div>
+<div><span>일자</span><span class="doc-sign"></span></div>
+</section>
+{% endif %}
+{% else %}<p class="doc__empty">버전이 없어요.</p>{% endif %}
+
+<footer class="doc__foot">
+<p>공온 기록 · 공식 서류 아님. {{ "발주처·회사 양식으로 옮겨 쓰는 초안입니다." if view.kind == "report" else "공식 작업 허가·계약 변경 승인을 대신하지 않습니다." }}{% if d.closed_text %} 변경 건 {{ d.closed_text }}.{% endif %}</p>
+<p>{{ view.made_text }} 출력</p>
+</footer>
+</main>
+<script>
+document.querySelector("[data-print]").addEventListener("click", () => window.print());
+</script>
+{% endblock %}

@@ -1,0 +1,105 @@
+{# 작업일보·공사일보(C14-2, D-112): 작업마다 실제 결과. 기록 폼은 화면에서만 보이고 인쇄에서 빠진다. #}
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}공사일보 · {{ view.site_name }}{% endblock %}
+{% block body_class %} class="docbody"{% endblock %}
+{% block page %}
+<nav class="doc-tools" aria-label="서류 도구">
+<a class="btn btn--soft btn--sm" href="/schedule?site_id={{ view.site_id }}">{{ icon("chevron-left", 16) }} 일정</a>
+<div class="doc-tools__week">
+<a class="btn btn--soft btn--sm" href="?day={{ view.prev_day }}" aria-label="전날">{{ icon("chevron-left", 16) }}</a>
+<span>{{ view.day_text }}</span>
+<a class="btn btn--soft btn--sm" href="?day={{ view.next_day }}" aria-label="다음 날">{{ icon("chevron-right", 16) }}</a>
+</div>
+<div class="doc-tools__end">
+<a class="btn btn--soft btn--sm" href="/reports/{{ view.site_id }}/weekly">주간 작업계획표</a>
+<a class="btn btn--soft btn--sm" href="/reports/{{ view.site_id }}/weather?month={{ view.day_iso[:7] }}">기상 작업중지 기록</a>
+<button class="btn btn--accent btn--sm" type="button" data-print>인쇄 · PDF 저장</button>
+</div>
+</nav>
+<main class="doc" id="main" tabindex="-1">
+<header class="doc__head">
+<div>
+<p class="doc__kind">공사일보</p>
+<h1 class="doc__title">{{ view.site_name }}</h1>
+<p class="doc__period">{{ view.day_text }}</p>
+</div>
+<dl class="doc__meta">
+<div><dt>작업</dt><dd>{{ view.work_count }}건</dd></div>
+<div><dt>기록</dt><dd>{{ view.recorded_count }}건</dd></div>
+<div><dt>일부만·못함</dt><dd>{{ view.short_count }}건</dd></div>
+<div><dt>투입 인원</dt><dd>{{ "%d명" | format(view.workers_total) if view.workers_total is not none else "-" }}</dd></div>
+</dl>
+</header>
+{% if not view.recordable %}<p class="doc__note doc-noprint">작업일이 지나야 결과를 기록할 수 있어요.</p>{% endif %}
+
+<section class="doc__section" aria-labelledby="doc-works">
+<h2 class="doc__h2" id="doc-works">작업 결과</h2>
+{% if view.rows %}
+<table class="doc-table doc-daily">
+<colgroup><col style="width:11%"><col style="width:20%"><col style="width:8%"><col style="width:14%"><col style="width:6%"><col style="width:12%"><col><col style="width:12%"></colgroup>
+<thead><tr><th scope="col">업체</th><th scope="col">작업</th><th scope="col">결과</th><th scope="col">원인</th><th scope="col">인원</th><th scope="col">장비</th><th scope="col">메모</th><th scope="col">기록</th></tr></thead>
+{% for r in view.rows %}
+<tbody{% if r.unassigned %} class="is-unassigned"{% endif %}>
+{% set span = r.works | length + (r.works | selectattr("can_edit") | list | length) %}
+{% for w in r.works %}
+<tr id="work-{{ w.item_id }}" class="doc-daily__row is-{{ w.outcome or 'none' }}">
+{% if loop.first %}<th scope="rowgroup" rowspan="{{ span }}">{{ r.company }}{% if r.workers_total is not none %}<span class="doc-daily__sum">{{ r.workers_total }}명</span>{% endif %}</th>{% endif %}
+<td><strong>{{ w.work_type }}</strong><span class="doc-daily__sub">{{ w.time_text }}{% if w.location %} · {{ w.location }}{% endif %}</span></td>
+<td class="doc-daily__outcome">{{ w.outcome_label }}{% if w.stale %}<span class="doc-daily__sub">기록 뒤 계획 바뀜</span>{% endif %}</td>
+<td>{{ w.causes_text or "-" }}</td>
+<td>{{ w.workers if w.workers is not none else "-" }}</td>
+<td>{{ w.equipment_note or "-" }}</td>
+<td>{{ w.note or "-" }}</td>
+<td><span class="doc-daily__sub">{{ w.recorded_text or "-" }}</span></td>
+</tr>
+{% if w.can_edit %}
+<tr class="doc-daily__edit doc-noprint">
+<td colspan="7">
+{% set failed = view.error_item_id == w.item_id %}
+<details class="doc-form"{% if failed %} open{% endif %}>
+<summary>{{ "고치기" if w.outcome else "결과 기록" }}</summary>
+<form method="post" action="/reports/{{ view.site_id }}/daily/{{ w.item_id }}">
+{% if failed %}<ul class="doc-form__errors" role="alert">{% for e in view.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+<fieldset class="doc-form__group"><legend>결과</legend>
+{% for code, label in view.outcome_labels.items() %}<label><input type="radio" name="outcome" value="{{ code }}"{% if w.form.outcome == code %} checked{% endif %} required> {{ label }}</label>{% endfor %}
+</fieldset>
+<fieldset class="doc-form__group"><legend>원인 <span>일부만·못함이면 하나 이상</span></legend>
+{% for code, label in view.reason_labels.items() %}<label><input type="checkbox" name="causes" value="{{ code }}"{% if code in w.form.causes %} checked{% endif %}> {{ label }}</label>{% endfor %}
+</fieldset>
+<div class="doc-form__line">
+<label>인원 <input class="input" type="number" name="workers" min="0" max="999" inputmode="numeric" value="{{ w.form.workers }}"></label>
+<label>장비 <input class="input" type="text" name="equipment_note" maxlength="120" placeholder="펌프카 1, 크레인 1" value="{{ w.form.equipment_note }}"></label>
+</div>
+<label class="doc-form__note">메모 <textarea class="input" name="note" maxlength="500" rows="2">{{ w.form.note }}</textarea></label>
+<div class="doc-form__actions">
+<button class="btn btn--accent btn--sm" type="submit">저장</button>
+{% if w.change_href %}<a class="btn btn--soft btn--sm" href="{{ w.change_href }}">계획과 달라요 · 변경 제안</a>{% endif %}
+</div>
+</form>
+</details>
+</td>
+</tr>
+{% endif %}
+{% endfor %}
+</tbody>
+{% endfor %}
+</table>
+{% else %}<p class="doc__empty">이날 등록된 작업이 없어요.</p>{% endif %}
+</section>
+
+<section class="doc__section" aria-labelledby="doc-changes">
+<h2 class="doc__h2" id="doc-changes">이날 확정된 변경</h2>
+{% if view.changes %}<ul class="doc-list">{% for c in view.changes %}<li>{{ c }}</li>{% endfor %}</ul>
+{% else %}<p class="doc__empty">이날 확정된 변경이 없어요.</p>{% endif %}
+</section>
+
+<footer class="doc__foot">
+<p>공온 기록 · 공식 서류 아님. 결과는 각 업체·담당자가 남긴 기록입니다.</p>
+<p>{{ view.made_text }} 출력</p>
+</footer>
+</main>
+<script>
+document.querySelector("[data-print]").addEventListener("click", () => window.print());
+</script>
+{% endblock %}

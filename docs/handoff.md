@@ -1,8 +1,8 @@
 # 현재 작업 인계
 
 - 마지막 수정: Claude Code, 2026-10-30. **새 작업 C14(D-112, 변경과 이어진 서류)** 브랜치 `feature/C14-1-weekly-plan`(아직 main에 없는 `feature/C13-2-web-entry`에서 갈라짐, 합치기 순서 C13-1 → C13-2 → C14). 계기: 개발자가 콘업 PDF·현장 인부 피드백을 검토하고 인터뷰 없이 서류 기능을 넣기로 함. 작업자용 화면(C11)은 더 키우지 않음.
-- C14-1 주간 작업계획표 완료: `app/features/reports/`(읽기 전용, `/reports/{site}/weekly?start=`), 월~일 업체별·요일별 표·점검(업체 미지정·위치 없음·겹침·변경 중)·판정 범위 안 판정·그 주 전 7일 확정 변경·안 끝난 조치(`actions_service.open_at_site`). 인쇄 CSS는 A4 가로(`.doc*` in gongon.css). 들어가는 곳: 현장 ··· 메뉴.
-- 다음: C14-2 작업일보·공사일보(새 표: 작업별 실제 결과·원인·인원·장비 → 마이그레이션 0026, 계획과 다르면 변경 제안 연결) → C14-3 기상 작업중지 기록 → C14-4 변경 건 문서. 앱 화면(C13-1b~f)은 멈춘 상태.
+- C14 구현 끝(review, 화면 다듬기는 개발자 요청으로 뒤에): `app/features/reports/` — C14-1 주간 작업계획표 `/reports/{site}/weekly`, C14-2 작업일보·공사일보 `/reports/{site}/daily`(0026 `work_reports`, 개발 DB 적용함, 롯데마트 45 현장 10/30에 시험 기록 2건), C14-3 기상 작업중지 기록 `/reports/{site}/weather`(판정은 `judgments_service.verdicts_before_work`), C14-4 변경 건 문서 `/reports/{site}/changes/{case}?kind=order|report`(changes `build_detail` 재사용). 계약 `collab-contract.md` §6-3, 결정 D-112. 들어가는 곳: 현장 ··· 메뉴(주간·공사일보), 변경 건 상세 머리 버튼.
+- 다음: 화면 다듬기(서류 도구 줄·일보 입력 폼·휴대폰 앱 화면에서 일보 입력), 가이드에 서류 소개. 앱 화면(C13-1b~f)은 멈춘 상태. 주의: `alembic check`는 원래부터 실패한다(migrations/env.py가 모델 일부만 불러옴, check.py에는 없음).
 - 화면 캡처: `uv run --no-project --with playwright python -I <scratchpad>/shot_weekly.py` (저장소 밖, 8001번 서버, test-works 계정).
 
 ## 이전 인계(C13)

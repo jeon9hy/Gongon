@@ -213,3 +213,20 @@ def latest_runs(session: Session, site_ids: Sequence[int]) -> dict[int, Judgment
     )
     rows = session.scalars(select(JudgmentRun).where(JudgmentRun.id.in_(latest_ids)))
     return {r.site_id: r for r in rows}
+
+
+def for_items(session: Session, site_id: int, item_ids: Sequence[int]) -> list[Judgment]:
+    """작업들의 판정 전부, 최근 판정부터(시간 묶음 hours는 읽지 않는다).
+
+    기상 작업중지 기록이 쓴다.
+    """
+    if not item_ids:
+        return []
+    return list(
+        session.scalars(
+            select(Judgment)
+            .options(defer(Judgment.hours), defer(Judgment.windows))
+            .where(Judgment.site_id == site_id, Judgment.work_item_id.in_(item_ids))
+            .order_by(Judgment.judged_at.desc(), Judgment.id.desc())
+        )
+    )

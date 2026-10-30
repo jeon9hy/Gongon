@@ -11,7 +11,10 @@
 <span>{{ view.period_text }}</span>
 <a class="btn btn--soft btn--sm" href="?start={{ view.next_start }}" aria-label="다음 주">{{ icon("chevron-right", 16) }}</a>
 </div>
+<div class="doc-tools__end">
+<a class="btn btn--soft btn--sm" href="/reports/{{ view.site_id }}/daily">공사일보</a>
 <button class="btn btn--accent btn--sm" type="button" data-print>인쇄 · PDF 저장</button>
+</div>
 </nav>
 <main class="doc" id="main" tabindex="-1">
 <header class="doc__head">

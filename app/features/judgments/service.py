@@ -2236,3 +2236,20 @@ def _merge_inbox(items: list[InboxItem], by: Literal["work", "place"]) -> tuple[
             )
         )
     return tuple(merged)
+
+
+def verdicts_before_work(
+    session: Session, site_id: int, work_days: Sequence[tuple[int, date]]
+) -> dict[tuple[int, date], tuple[str, datetime]]:
+    """(작업 id, 작업 날짜) → 그 작업이 시작하기 전 마지막 판정의 (단계, 판정 시각). 쿼리 1회.
+
+    기상 작업중지 기록(C14-3)이 '그때 공온이 무엇을 보였나'를 붙일 때 쓴다. 오늘 작업은 판정하지
+    않으므로(D-061) 보통 전날 판정이다. 판정이 없으면 빠진다(없는 판정을 진행으로 채우지 않는다).
+    """
+    wanted = set(work_days)
+    found: dict[tuple[int, date], tuple[str, datetime]] = {}
+    for j in repository.for_items(session, site_id, list({i for i, _ in wanted})):
+        key = (j.work_item_id or 0, j.target_date)
+        if key in wanted and key not in found and j.judged_at <= j.work_start_at:
+            found[key] = (j.verdict, j.judged_at)
+    return found

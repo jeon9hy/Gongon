@@ -10,6 +10,8 @@
 <p class="hero__meta"><span class="hero__meta-item">{{ icon("map-pin", 15) }}{{ view.site_name }}</span><span class="hero__meta-item">{{ icon("hard-hat", 15) }}{{ view.work_label }}</span><span class="hero__meta-item">{{ icon("history", 15) }}{% if view.current_version_text %}현재 확정 {{ view.current_version_text }}{% else %}아직 확정한 버전 없음{% endif %}</span></p>
 </div>
 <div class="chead__acts">
+<a class="btn btn--soft" href="/reports/{{ view.site_id }}/changes/{{ view.case_id }}?kind=order">{{ icon("edit", 16) }} 작업 지시서</a>
+<a class="btn btn--soft" href="/reports/{{ view.site_id }}/changes/{{ view.case_id }}?kind=report">실정보고 초안</a>
 {% if view.rechange_href %}<a class="btn btn--soft" href="{{ view.rechange_href }}">{{ icon("plus", 16, 2.2) }} 재변경 제안</a>{% endif %}
 {% if view.can_close %}
 <form method="post" action="/changes/{{ view.case_id }}/close"><input type="hidden" name="site_id" value="{{ view.site_id }}"><button class="btn btn--accent" type="submit">{{ icon("check", 16, 2.4) }} 변경 건 종료</button></form>
