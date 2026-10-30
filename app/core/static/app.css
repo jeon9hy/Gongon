@@ -332,3 +332,24 @@ html[data-ui="app"] .page--dashboard .hero__lead, html[data-ui="app"] .page--das
 .mdoc-progress { display: grid; gap: 8px; margin-bottom: 12px; padding: 14px; border-radius: var(--radius-lg); background: var(--card); border: 1px solid var(--line-soft); }
 .mdoc-progress .rprogress__text { justify-content: space-between; }
 .mdoc-progress .btn { width: 100%; justify-content: center; }
+
+/* 툴팁 자리(D-118): 휴대폰 목록 위 오른쪽 ? 하나 */
+.mhelp { display: flex; justify-content: flex-end; margin: 0 2px 6px; }
+.mtoolbar:has(> .tip) .mchips { flex: 0 1 auto; }
+.mtoolbar > .tip { margin-left: 2px; }
+
+/* 휴대폰에서 연 넓은 서류(D-119): 글자를 꺾지 않고 옆으로 밀어 본다. 입력은 공사일보 카드에서만 */
+html[data-ui="app"] .doc { padding: 16px; border-radius: var(--radius-lg); }
+html[data-ui="app"] .doc__head { flex-direction: column; align-items: flex-start; gap: 12px; }
+html[data-ui="app"] .doc__meta { gap: 16px; }
+html[data-ui="app"] .doc__meta div { text-align: left; }
+html[data-ui="app"] .doc__section { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+html[data-ui="app"] .doc-week { min-width: 880px; }
+html[data-ui="app"] .doc-table { min-width: 640px; }
+html[data-ui="app"] .doc__cols { grid-template-columns: minmax(0, 1fr); }
+html[data-ui="app"] .doc__foot { flex-direction: column; }
+html[data-ui="app"] .doc-tools [data-print] { display: none; }
+.mdoc-more { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
+.mdoc-more a { display: flex; align-items: center; justify-content: space-between; min-height: 48px; padding: 0 14px; border: 1px solid var(--line-soft); border-radius: var(--radius-md); background: var(--card); color: var(--ink); font-size: 14px; font-weight: 700; text-decoration: none; }
+html[data-ui="app"] .doc { box-sizing: border-box; width: 100%; max-width: 100%; min-width: 0; overflow: hidden; }
+html[data-ui="app"] .doc__section { max-width: 100%; }

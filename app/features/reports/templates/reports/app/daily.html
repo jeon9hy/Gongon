@@ -44,5 +44,10 @@
 {% endfor %}
 </div>
 {% else %}<p class="mempty">이날 등록된 작업이 없어요.</p>{% endif %}
+{# 휴대폰은 서류 탭이 없다(D-117). 다른 서류는 보기만 하도록 여기서 연다(D-119) #}
+<nav class="mdoc-more" aria-label="다른 서류">
+<a href="/reports/{{ view.site_id }}/weekly">주간 작업계획표 {{ icon("chevron-right", 14, 2.2) }}</a>
+<a href="/reports/{{ view.site_id }}/losses">차질 집계 {{ icon("chevron-right", 14, 2.2) }}</a>
+</nav>
 {{ rf.script() }}
 {% endblock %}

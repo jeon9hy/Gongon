@@ -1,6 +1,6 @@
 {# 변경 건 앱 화면(D-109, C13-1c). 웹과 같은 view: 진행 중·전체 칩 → 한 줄씩(제목 · 작업 → 바뀐 때 · 상태). #}
 {% extends "base.html" %}
-{% from "_macros.html" import icon %}
+{% from "_macros.html" import icon, tip %}
 {% block title %}변경{% endblock %}
 {% block pagebar %}{% endblock %}
 {% block content %}
@@ -10,6 +10,7 @@
 <a href="{{ view.open_href }}"{% if view.show == 'open' %} aria-current="true"{% endif %}>진행 중</a>
 <a href="{{ view.all_href }}"{% if view.show == 'all' %} aria-current="true"{% endif %}>전체</a>
 </nav>
+{{ tip("새 변경은 일정에서 작업을 눌러 제안해요.", "변경 제안 방법", end=True) }}
 </div>
 {% if view.items %}
 <ul class="mlist">
@@ -23,5 +24,4 @@
 {% else %}
 <p class="mempty">{% if view.show == "open" %}진행 중인 변경이 없어요{% else %}아직 변경 건이 없어요{% endif %}</p>
 {% endif %}
-<p class="mnote">{{ icon("info", 13) }} 새 변경은 일정에서 작업을 눌러 제안해요</p>
 {% endblock %}

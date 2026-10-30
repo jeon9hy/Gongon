@@ -11,7 +11,7 @@
 <span class="meter{% if ra.required_done == ra.required_total %} meter--ok{% endif %}"><span style="width: {{ (ra.required_done * 100 / ra.required_total) | round | int }}%"></span></span>
 <b>필수 {{ ra.required_done }}/{{ ra.required_total }}</b>
 </span>
-{% elif ra.candidates %}<span class="acts__note">후보 {{ ra.candidates }}건 · 확정하면 요청돼요</span>{% endif %}
+{% elif ra.candidates %}<span class="acts__note">후보 {{ ra.candidates }}건 {{ tip("변경을 확정하면 후보가 업체에 요청돼요.", "조치 후보 설명") }}</span>{% endif %}
 {% if ra.blocked %}<span class="pill pill--warn">보류 {{ ra.blocked }}</span>{% endif %}
 {% if ra.editor %}<button type="button" class="btn btn--soft btn--sm acts__add" data-open-dialog="cand-{{ r.revision_id }}">{{ icon("plus", 14, 2.2) }} 조치 후보</button>{% endif %}
 </div>

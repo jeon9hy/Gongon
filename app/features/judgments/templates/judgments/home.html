@@ -147,12 +147,12 @@
 <div class="tabseg" role="group" aria-label="묶어 보기"><button class="tabseg__btn" type="button" data-inbox-by="work" aria-selected="true">공정별</button><button class="tabseg__btn" type="button" data-inbox-by="place" aria-selected="false">위치별</button></div>
 </div>
 <div class="inboxtabs" role="tablist" aria-label="변경·조치 종류">
-{% for g in inbox.groups %}<button class="inboxtabs__tab" type="button" role="tab" id="inbox-tab-{{ g.key }}" aria-controls="inbox-{{ g.key }}" aria-selected="{{ 'true' if loop.first else 'false' }}" data-inbox-tab="{{ loop.index0 }}">{{ g.title }} <b class="inboxtabs__n inboxtabs__n--{{ g.key }}">{{ g.total }}</b></button>{% endfor %}
+{# 탭 제목 옆 ? 툴팁(D-118, 개발자 요청). 버튼 안에 버튼을 둘 수 없어 탭과 툴팁을 한 칸에 나란히 둔다 #}
+{% for g in inbox.groups %}<span class="inboxtabs__item" role="presentation"><button class="inboxtabs__tab" type="button" role="tab" id="inbox-tab-{{ g.key }}" aria-controls="inbox-{{ g.key }}" aria-selected="{{ 'true' if loop.first else 'false' }}" data-inbox-tab="{{ loop.index0 }}">{{ g.title }} <b class="inboxtabs__n inboxtabs__n--{{ g.key }}">{{ g.total }}</b></button>{{ tip(g.hint, g.title ~ " 설명") }}</span>{% endfor %}
 </div>
 <div class="inboxslides" data-inbox-slides>
 {% for g in inbox.groups %}
 <article class="inboxcard inboxcard--{{ g.key }}" id="inbox-{{ g.key }}" role="tabpanel" aria-labelledby="inbox-tab-{{ g.key }}">
-<div class="inboxcard__tip">{{ tip(g.hint, g.title ~ " 설명", end=True) }}</div>
 {% for mode, rows in [("work", g.by_work), ("place", g.by_place)] %}
 <div class="inboxcard__view" data-inbox-view="{{ mode }}"{% if mode == "place" %} hidden{% endif %}>
 {% if rows %}

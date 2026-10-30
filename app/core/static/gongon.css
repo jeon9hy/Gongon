@@ -2870,3 +2870,11 @@ div.hmore .hmore__toggle { margin-left: 0; padding: 6px 12px; }
 .tip--end:hover .tip__box, .tip--end .tip__btn:focus-visible + .tip__box, .tip--end.is-open .tip__box { transform: none; }
 .rform input[type="number"] { width: 100%; min-height: 44px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); padding: 0 14px; font: inherit; font-size: 14px; font-weight: 500; }
 .rform input[type="text"], .rform textarea { width: 100%; }
+/* 변경·조치 탭 제목 옆 ?(D-118): 탭과 툴팁을 한 칸에. ?는 탭 알약 안쪽 오른쪽에 겹쳐 보인다 */
+.inboxtabs__item { position: relative; display: flex; align-items: center; justify-content: center; gap: 2px; flex: 1 1 0; min-width: 0; border-radius: 999px; }
+.inboxtabs__item:has([aria-selected="true"]) { background: var(--card); box-shadow: 0 1px 2px #0E1E4514, inset 0 0 0 1px var(--line); }
+.inboxtabs__item > .inboxtabs__tab { flex: 0 1 auto; padding: 0 4px 0 10px; }
+.inboxtabs__item > .inboxtabs__tab[aria-selected="true"] { background: transparent; box-shadow: none; }
+.inboxtabs__item > .tip { flex: none; margin-right: 6px; }
+.inboxtabs__item > .tip .tip__btn { width: 16px; height: 16px; font-size: 10px; }
+.change-filter .change-filter__hint { margin-left: 4px; }

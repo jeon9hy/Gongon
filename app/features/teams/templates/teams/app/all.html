@@ -1,6 +1,6 @@
 {# 업체 앱 화면 · 전체 현장(D-109, C13-1f): 현장마다 업체 한 줄씩, 누르면 담당자·전화. #}
 {% extends "base.html" %}
-{% from "_macros.html" import icon %}
+{% from "_macros.html" import icon, tip %}
 {% from "teams/app/_company.html" import company_row %}
 {% block title %}업체{% endblock %}
 {% block pagebar %}{% endblock %}
@@ -9,11 +9,10 @@
 {% set active = view.rows | rejectattr("participant.is_ended") | list %}
 {% for site_id, rows in active | groupby("site_id") %}
 <section class="msec" aria-labelledby="site-{{ site_id }}">
-<div class="msec__head"><h2 class="msec__title" id="site-{{ site_id }}"><span class="mclip">{{ rows[0].site_name }}</span> <small>{{ rows | length }}곳</small></h2><a class="mlink" href="/sites/{{ site_id }}/members">현장 업체 {{ icon("chevron-right", 14, 2.2) }}</a></div>
+<div class="msec__head"><h2 class="msec__title" id="site-{{ site_id }}"><span class="mclip">{{ rows[0].site_name }}</span> <small>{{ rows | length }}곳</small>{% if loop.first %} {{ tip("업체 등록·수정은 PC에서 해요.", "업체 관리 안내") }}{% endif %}</h2><a class="mlink" href="/sites/{{ site_id }}/members">현장 업체 {{ icon("chevron-right", 14, 2.2) }}</a></div>
 <ul class="mlist">{% for r in rows %}{{ company_row(r.participant) }}{% endfor %}</ul>
 </section>
 {% else %}
 <p class="mempty">참여 업체가 없어요</p>
 {% endfor %}
-<p class="mnote">{{ icon("info", 13) }} 업체 등록·수정은 PC에서 해요</p>
 {% endblock %}
