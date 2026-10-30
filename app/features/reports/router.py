@@ -21,6 +21,28 @@ SessionDep = Annotated[Session, Depends(get_session)]
 NowDep = Annotated[datetime, Depends(now_kst)]
 
 
+DOC_TABS = ("daily", "weekly", "losses")
+
+
+@router.get("/reports", response_model=None)
+def docs_home(
+    request: Request,
+    session: SessionDep,
+    user: CurrentUserDep,
+    now: NowDep,
+    site_id: str = "",
+    tab: str = "daily",
+) -> Response:
+    """서류 탭(D-116). 현장을 골랐으면 그 현장 서류로, 전체 현장이면 현장별 오늘 일보 현황."""
+    doc = tab if tab in DOC_TABS else "daily"
+    if site_id.strip().isdigit():
+        return RedirectResponse(f"/reports/{int(site_id)}/{doc}", status_code=303)
+    view = service.build_docs_home(session, user, now, doc)
+    return templates.TemplateResponse(
+        request, "reports/home.html", {"nav_active": f"docs_{doc}", "view": view}
+    )
+
+
 @router.get("/reports/{site_id}/weekly", response_class=HTMLResponse)
 def weekly(
     request: Request,
@@ -33,7 +55,7 @@ def weekly(
     """주간 작업계획표(C14-1, D-112). 날짜가 잘못되면 기본(다음 주)을 보인다."""
     view = service.build_weekly(session, user, site_id, now, _date(start))
     return templates.TemplateResponse(
-        request, "reports/weekly.html", {"nav_active": "", "view": view}
+        request, "reports/weekly.html", {"nav_active": "docs_weekly", "view": view}
     )
 
 
@@ -49,7 +71,7 @@ def daily(
     """작업일보·공사일보(C14-2, D-112). 날짜가 잘못되면 오늘을 보인다."""
     view = service.build_daily(session, user, site_id, now, _date(day))
     return templates.TemplateResponse(
-        request, "reports/daily.html", {"nav_active": "", "view": view}
+        request, "reports/daily.html", {"nav_active": "docs_daily", "view": view}
     )
 
 
@@ -88,7 +110,10 @@ def save_daily(
     if errors:
         view = service.build_daily(session, user, site_id, now, work_date, errors, item_id, form)
         return templates.TemplateResponse(
-            request, "reports/daily.html", {"nav_active": "", "view": view}, status_code=422
+            request,
+            "reports/daily.html",
+            {"nav_active": "docs_daily", "view": view},
+            status_code=422,
         )
     return RedirectResponse(
         f"/reports/{site_id}/daily?day={work_date.isoformat()}#work-{item_id}", status_code=303
@@ -107,7 +132,7 @@ def weather_log(
     """기상 작업중지 기록(C14-3, D-112). 달이 잘못되면 이번 달을 보인다."""
     view = service.build_weather_log(session, user, site_id, now, month)
     return templates.TemplateResponse(
-        request, "reports/weather.html", {"nav_active": "", "view": view}
+        request, "reports/weather.html", {"nav_active": "docs_losses", "view": view}
     )
 
 
@@ -141,7 +166,7 @@ def losses(
     """작업 차질 월 집계(C14-5, D-113). 달이 잘못되면 이번 달을 보인다."""
     view = service.build_loss_summary(session, user, site_id, now, month)
     return templates.TemplateResponse(
-        request, "reports/losses.html", {"nav_active": "", "view": view}
+        request, "reports/losses.html", {"nav_active": "docs_losses", "view": view}
     )
 
 

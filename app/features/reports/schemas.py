@@ -168,6 +168,7 @@ class WeatherLogView:
     site_id: int
     site_name: str
     month_text: str  # "2026년 10월"
+    month_iso: str
     days: tuple[WeatherDay, ...]
     affected_days: int
     stopped_days: int  # 그날 작업이 모두 기상으로 못한 날
@@ -218,3 +219,20 @@ class LossSummaryView:
     prev_month: str
     next_month: str
     made_text: str
+
+
+@dataclass(frozen=True, slots=True)
+class DocsSite:
+    site_id: int
+    name: str
+    today_works: int
+    today_recorded: int
+
+
+@dataclass(frozen=True, slots=True)
+class DocsHomeView:
+    """서류 탭 첫 화면(전체 현장, D-116). 현장을 고르면 그 현장의 서류로 간다."""
+
+    tab: str  # daily · weekly · losses
+    sites: tuple[DocsSite, ...]
+    day_text: str

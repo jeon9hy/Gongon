@@ -1,0 +1,21 @@
+{# 서류 탭 첫 화면(D-116): 전체 현장이면 현장을 고른다. 현장마다 오늘 일보를 몇 건 남겼는지 보인다. #}
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% set names = {"daily": "공사일보", "weekly": "주간 작업계획표", "losses": "차질 집계"} %}
+{% block title %}서류{% endblock %}
+{% block content %}
+<section class="docs-home" aria-labelledby="docs-home-title">
+<h1 class="h2" id="docs-home-title">{{ names[view.tab] }} · 현장을 골라요</h1>
+{% if view.sites %}
+<ul class="docs-home__list">
+{% for s in view.sites %}
+<li><a class="docs-home__site" href="/reports/{{ s.site_id }}/{{ view.tab }}">
+<span class="docs-home__name">{{ s.name }}</span>
+<span class="docs-home__today">{% if s.today_works %}오늘 일보 {{ s.today_recorded }}/{{ s.today_works }}건{% if s.today_recorded < s.today_works %} <b>{{ s.today_works - s.today_recorded }}건 남음</b>{% endif %}{% else %}오늘 작업 없음{% endif %}</span>
+{{ icon("chevron-right", 18) }}
+</a></li>
+{% endfor %}
+</ul>
+{% else %}<p class="muted">참여 중인 현장이 없어요.</p>{% endif %}
+</section>
+{% endblock %}

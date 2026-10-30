@@ -40,6 +40,8 @@ from app.features.reports.schemas import (
     DailyRow,
     DailyView,
     DailyWork,
+    DocsHomeView,
+    DocsSite,
     LossRow,
     LossSummaryView,
     ReportForm,
@@ -533,6 +535,7 @@ def build_weather_log(
         site_id=site_id,
         site_name=site.name,
         month_text=f"{first.year}년 {first.month}월",
+        month_iso=f"{first:%Y-%m}",
         days=tuple(days),
         affected_days=len(days),
         stopped_days=sum(1 for d in days if d.all_stopped),
@@ -614,4 +617,29 @@ def _loss_row(label: str, group: list[WorkReport]) -> LossRow:
         not_done_count=sum(1 for r in group if r.outcome == "not_done"),
         workers_total=_sum(r.workers for r in group),
         known=tuple(sum(1 for r in group if r.known_when == code) for code in codes),
+    )
+
+
+def build_docs_home(session: Session, user: CurrentUser, now: datetime, tab: str) -> DocsHomeView:
+    """서류 탭의 전체 현장 화면(D-116): 내 현장마다 오늘 작업 수와 일보 기록 수(쿼리 3회)."""
+    ids = sorted({m.site_id for m in teams_service.memberships_of(session, user.user_id)
+                  if m.role in ALL_ROLES})  # fmt: skip
+    sites = sites_service.list_sites(session, frozenset(ids)) if ids else ()
+    today = now.astimezone(KST).date()
+    items = schedules_service.items_between_for_sites(session, ids, today, today) if ids else []
+    recorded = _reports_for(session, [i.item_id for i in items])
+    return DocsHomeView(
+        tab=tab,
+        sites=tuple(
+            DocsSite(
+                site_id=s.site_id,
+                name=s.name,
+                today_works=sum(1 for i in items if i.site_id == s.site_id),
+                today_recorded=sum(
+                    1 for i in items if i.site_id == s.site_id and i.item_id in recorded
+                ),
+            )
+            for s in sites
+        ),
+        day_text=_long(today),
     )

@@ -3,21 +3,9 @@
 {% from "_macros.html" import icon %}
 {% block title %}공사일보 · {{ view.site_name }}{% endblock %}
 {% block body_class %} class="docbody"{% endblock %}
-{% block page %}
-<nav class="doc-tools" aria-label="서류 도구">
-<a class="btn btn--soft btn--sm" href="/schedule?site_id={{ view.site_id }}">{{ icon("chevron-left", 16) }} 일정</a>
-<div class="doc-tools__week">
-<a class="btn btn--soft btn--sm" href="?day={{ view.prev_day }}" aria-label="전날">{{ icon("chevron-left", 16) }}</a>
-<span>{{ view.day_text }}</span>
-<a class="btn btn--soft btn--sm" href="?day={{ view.next_day }}" aria-label="다음 날">{{ icon("chevron-right", 16) }}</a>
-</div>
-<div class="doc-tools__end">
-<a class="btn btn--soft btn--sm" href="/reports/{{ view.site_id }}/weekly">주간 작업계획표</a>
-<a class="btn btn--soft btn--sm" href="/reports/{{ view.site_id }}/losses?month={{ view.day_iso[:7] }}">차질 집계</a>
-<button class="btn btn--accent btn--sm" type="button" data-print>인쇄 · PDF 저장</button>
-</div>
-</nav>
-<main class="doc" id="main" tabindex="-1">
+{% block pagebar %}<div class="doc-tools"><div class="doc-tools__week"><a class="btn btn--soft btn--sm" href="?day={{ view.prev_day }}" aria-label="전날">{{ icon("chevron-left", 16) }}</a><span>{{ view.day_text }}</span><a class="btn btn--soft btn--sm" href="?day={{ view.next_day }}" aria-label="다음 날">{{ icon("chevron-right", 16) }}</a></div><button class="btn btn--accent btn--sm" type="button" data-print>인쇄 · PDF 저장</button></div>{% endblock %}
+{% block content %}
+<article class="doc">
 <header class="doc__head">
 <div>
 <p class="doc__kind">공사일보</p>
@@ -106,7 +94,7 @@
 <p>공온 기록 · 공식 서류 아님. 결과는 각 업체·담당자가 남긴 기록입니다.</p>
 <p>{{ view.made_text }} 출력</p>
 </footer>
-</main>
+</article>
 <script>
 document.querySelector("[data-print]").addEventListener("click", () => window.print());
 </script>

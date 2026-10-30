@@ -3,17 +3,9 @@
 {% from "_macros.html" import icon, verdict_badge %}
 {% block title %}기상 작업중지 기록 · {{ view.site_name }}{% endblock %}
 {% block body_class %} class="docbody"{% endblock %}
-{% block page %}
-<nav class="doc-tools" aria-label="서류 도구">
-<a class="btn btn--soft btn--sm" href="/reports/{{ view.site_id }}/daily">{{ icon("chevron-left", 16) }} 공사일보</a>
-<div class="doc-tools__week">
-<a class="btn btn--soft btn--sm" href="?month={{ view.prev_month }}" aria-label="지난달">{{ icon("chevron-left", 16) }}</a>
-<span>{{ view.month_text }}</span>
-<a class="btn btn--soft btn--sm" href="?month={{ view.next_month }}" aria-label="다음 달">{{ icon("chevron-right", 16) }}</a>
-</div>
-<button class="btn btn--accent btn--sm" type="button" data-print>인쇄 · PDF 저장</button>
-</nav>
-<main class="doc" id="main" tabindex="-1">
+{% block pagebar %}<div class="doc-tools"><div class="doc-tools__week"><a class="btn btn--soft btn--sm" href="?month={{ view.prev_month }}" aria-label="지난달">{{ icon("chevron-left", 16) }}</a><span>{{ view.month_text }}</span><a class="btn btn--soft btn--sm" href="?month={{ view.next_month }}" aria-label="다음 달">{{ icon("chevron-right", 16) }}</a></div><a class="btn btn--soft btn--sm" href="/reports/{{ view.site_id }}/losses?month={{ view.month_iso }}">차질 집계</a><button class="btn btn--accent btn--sm" type="button" data-print>인쇄 · PDF 저장</button></div>{% endblock %}
+{% block content %}
+<article class="doc">
 <header class="doc__head">
 <div>
 <p class="doc__kind">기상 작업중지 기록</p>
@@ -57,7 +49,7 @@
 <p>공온 기록 · 공식 서류 아님. 결과는 각 업체·담당자가 공사일보에 남긴 기록이고, 공온 판정은 참고입니다. 공기 연장의 근거는 기상청 관측 자료와 계약 조건으로 확인하세요.</p>
 <p>{{ view.made_text }} 출력</p>
 </footer>
-</main>
+</article>
 <script>
 document.querySelector("[data-print]").addEventListener("click", () => window.print());
 </script>

@@ -2705,9 +2705,9 @@ div.hmore .hmore__toggle { margin-left: 0; padding: 6px 12px; }
 
 /* 서류(C14, D-112): 흰 종이 한 장처럼. 화면 위 도구 줄은 인쇄에서 빠지고 A4 가로로 찍힌다. */
 .docbody { background: var(--backdrop); }
-.doc-tools { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 24px; border-bottom: 1px solid var(--line-soft); background: var(--card); }
+.doc-tools { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .doc-tools__week { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
-.doc { max-width: 1240px; margin: 24px auto; padding: 32px 36px; border: 1px solid var(--line-soft); border-radius: var(--radius-lg); background: var(--card); color: var(--text); }
+.doc { max-width: 1240px; margin: 0 auto; padding: 32px 36px; border: 1px solid var(--line-soft); border-radius: var(--radius-lg); background: var(--card); color: var(--text); }
 .doc__head { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; padding-bottom: 16px; border-bottom: 2px solid var(--ink); }
 .doc__kind { margin: 0; font-size: 13px; font-weight: 700; color: var(--accent); }
 .doc__title { margin: 2px 0 0; font-size: 24px; letter-spacing: -0.03em; color: var(--ink); }
@@ -2771,11 +2771,19 @@ div.hmore .hmore__toggle { margin-left: 0; padding: 6px 12px; }
 .doc-loss tfoot th, .doc-loss tfoot td { background: var(--surface); font-weight: 700; color: var(--ink); }
 .doc__h2row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .doc__h2row .doc__h2 { margin: 0; }
+.docs-home { max-width: 720px; }
+.docs-home__list { display: grid; gap: 8px; margin: 16px 0 0; padding: 0; list-style: none; }
+.docs-home__site { display: flex; align-items: center; gap: 12px; padding: 16px var(--card-pad); border: 1px solid var(--line-soft); border-radius: var(--radius-lg); background: var(--card); color: var(--ink); text-decoration: none; }
+.docs-home__site:hover { border-color: var(--line); }
+.docs-home__name { flex: 1; font-weight: 700; }
+.docs-home__today { color: var(--muted); font-size: 13px; }
+.docs-home__today b { color: var(--stop-text); }
 @media print {
   @page { size: A4 landscape; margin: 10mm; }
   @page doc-portrait { size: A4 portrait; margin: 12mm; }
   .docbody { background: #fff; }
-  .doc-tools, .skip-link, .doc-noprint { display: none; }
+  .doc-tools, .skip-link, .doc-noprint, .docbody .appbar, .docbody .subnavrow, .docbody .mbar, .docbody .tabbar, .docbody .appnav { display: none !important; }
+  .docbody .page, .docbody .mpage { padding: 0; margin: 0; max-width: none; }
   .doc--narrow { page: doc-portrait; }
   .doc { max-width: none; margin: 0; padding: 0; border: 0; border-radius: 0; }
   .doc-week tr, .doc-table tr { break-inside: avoid; }
