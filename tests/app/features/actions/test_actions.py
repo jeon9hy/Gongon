@@ -145,9 +145,7 @@ def test_full_flow_request_accept_report_verify_then_close(
     assert do(team["safety"], item, requested, action(session), "verify").status_code == 303
     assert action(session).status == "verified"
 
-    closed = client.post(f"/changes/{requested}/close", data={"site_id": item.site_id},
-                         follow_redirects=False)  # fmt: skip
-    assert closed.status_code == 303
+    # 마지막 조치가 검증되면 종료 버튼 없이 저절로 닫힌다(D-114)
     session.expire_all()
     assert session.get(ChangeCase, requested).closed_at is not None  # type: ignore[union-attr]
     kinds = [e.kind for e in session.scalars(select(ActionEvent).order_by(ActionEvent.id))]

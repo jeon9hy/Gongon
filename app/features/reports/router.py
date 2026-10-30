@@ -53,6 +53,20 @@ def daily(
     )
 
 
+@router.post("/reports/{site_id}/daily/done-all", response_model=None)
+def daily_done_all(
+    session: SessionDep,
+    user: CurrentUserDep,
+    now: NowDep,
+    site_id: int,
+    day: Annotated[str, Form()] = "",
+) -> Response:
+    """남은 작업 모두 했음(D-114). 이미 기록한 작업은 그대로 둔다."""
+    target = _date(day) or now.date()
+    service.mark_rest_done(session, user, site_id, target, now)
+    return RedirectResponse(f"/reports/{site_id}/daily?day={target.isoformat()}", status_code=303)
+
+
 @router.post("/reports/{site_id}/daily/{item_id}", response_model=None)
 def save_daily(
     request: Request,

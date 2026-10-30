@@ -426,8 +426,30 @@ def act_on_action(
     if errors:
         session.rollback()
         return errors
+    if kind in ("verify", "exclude"):
+        _close_when_done(session, case, user, now)
     session.commit()
     return ()
+
+
+def _close_when_done(session: Session, case: ChangeCase, user: CurrentUser, now: datetime) -> None:
+    """마지막 조치가 검증·제외되면 변경 건을 바로 닫는다(D-114, 종료 버튼을 따로 누르지 않음).
+
+    현재 확정 버전의 조치가 모두 끝났고(필수만이 아니라 선택 조치까지) 진행 중 재변경이 없을
+    때만 닫는다. 선택 조치가 남아 있으면 조정자가 종료 버튼으로 닫는다. 변경 건 행은 이미 잠겼다.
+    """
+    revisions = list(
+        session.scalars(select(ChangeRevision).where(ChangeRevision.case_id == case.id))
+    )
+    if any(r.status in OPEN_STATUSES for r in revisions):
+        return
+    current = next((r for r in revisions if r.status == "confirmed"), None)
+    if current is None or not actions_service.all_finished(session, current.id):
+        return
+    if actions_service.closure_problems(session, current.id)[1]:
+        return
+    case.closed_at = now
+    case.closed_by_user_id = user.user_id
 
 
 def close_case(

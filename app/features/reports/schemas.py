@@ -126,6 +126,7 @@ class DailyView:
     day_iso: str
     day_text: str  # "10월 30일(금)"
     recordable: bool  # 오늘까지만 기록한다
+    rest_count: int  # 내가 기록할 수 있는데 아직 미입력인 작업('모두 했음' 대상)
     rows: tuple[DailyRow, ...]
     work_count: int
     recorded_count: int
@@ -209,6 +210,7 @@ class LossSummaryView:
     site_id: int
     site_name: str
     month_text: str
+    month_iso: str  # "2026-10"
     rows: tuple[LossRow, ...]  # 차질이 있는 원인만, 많은 순
     total: LossRow  # 기록 단위(중복 없이)
     known_headers: tuple[str, ...]

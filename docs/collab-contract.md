@@ -87,9 +87,9 @@ C01 [공개 조사](research/C01-public-research.md)의 설계 가정 A1~A7과 �
 | 조치 상태 | 뜻 | 허용 전이(행위자) |
 | --- | --- | --- |
 | `candidate` 조치 후보 | 확정 전 버전에 더함 | 확정 때 `requested`, 그 전엔 빼기(삭제) |
-| `requested` 요청 대기 | 확정으로 생성 | `accepted`·`blocked`(수행자) |
+| `requested` 요청 대기 | 확정으로 생성 | `accepted`·`reported`·`blocked`(수행자). 수락은 선택(D-114) |
 | `accepted` 수행 중 | 수행자가 수락 | `reported`·`blocked`(수행자) |
-| `blocked` 막힘 | 사유·해결 담당 필수 | `accepted`(수행자) |
+| `blocked` 막힘 | 사유 필수, 해결 담당은 선택(D-114, 0028) | `accepted`(수행자) |
 | `reported` 완료 보고 | 처리 내용·performed_at·근거 | `verified`·`rejected→accepted`(검증자) |
 | `verified` 검증 완료 | 검증자 확인 | — |
 | `replaced` 대체됨 | 재변경으로 새 조치가 대신함 | — |
@@ -99,6 +99,8 @@ C01 [공개 조사](research/C01-public-research.md)의 설계 가정 A1~A7과 �
 - 수행자 = 지정 담당자(명부 담당이 나중에 계정과 연결되면 그 계정), 미지정이면 실행 업체 소속 조정자·담당자, 위임받은 사람. 조정자는 수행자 대신 전화로 확인해 기록할 수 있다(`on_behalf`, 연락 상대·시각 필수). 검증자 ≠ 담당자·완료 보고자(A3, 프로젝트 설정 전까지 예외 없음). 열람자는 처리할 수 없다(403), 비참여자는 404.
 - 보고·검증 요청의 `revision_id`가 조치의 revision과 다르거나 조치가 `replaced`면 거부.
 - 종료 조건: 현재 버전의 `required` 조치가 모두 `verified` 또는 `excluded`(이유 있음), `blocked` 없음. 필수 0건이면 확정 때 이유 필수.
+- 자동 종료(D-114): 검증·제외 처리 뒤 현재 확정 버전의 확정 조치가 하나 이상이고 모두 `verified·excluded·replaced`이며 진행 중 재변경이 없으면 같은 트랜잭션에서 `closed_at`·`closed_by_user_id`(처리한 사람)를 채운다. 선택 조치가 남았으면 조정자가 종료 버튼으로 닫는다.
+- 입력 기본값(D-114): 기한이 없으면 사유 없이도 ‘기한 미정’(`due_note` NULL 허용, 0028에서 CHECK 제거). 완료 보고 처리 시각·대리 기록 연락 시각은 날짜·시각을 둘 다 비우면 지금(하나만 적으면 거부). 후보 입력의 검증자는 조치를 거는 사람(조정자·담당자일 때)으로 미리 고른다.
 - 첨부·위임: 근거는 텍스트(A5). 위임은 `action_delegations`(from, to, 기간)로 같은 업체 안에서만, 행위자 기록.
 
 ## 6. C07 발송 대기·재변경

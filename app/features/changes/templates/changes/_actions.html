@@ -78,13 +78,13 @@
 {% if kind == "report" %}
 <label class="field">처리 내용<textarea name="body" rows="3" maxlength="1000" required placeholder="무엇을 누구와 어떻게 바꿨는지"></textarea></label>
 <div class="modal__grid">
-<label class="field">실제 처리 날짜<input type="date" name="performed_date" required></label>
-<label class="field">처리 시각<input type="time" name="performed_time" required></label>
+<label class="field">실제 처리 날짜 <span class="muted">비우면 지금</span><input type="date" name="performed_date"></label>
+<label class="field">처리 시각<input type="time" name="performed_time"></label>
 </div>
 <label class="field">참조 번호<input type="text" name="reference" maxlength="100" placeholder="선택 · 예약 번호 등"></label>
 {% elif kind == "block" %}
 <label class="field">보류 이유<textarea name="body" rows="3" maxlength="1000" required></textarea></label>
-<label class="field">보류를 풀 담당<input type="text" name="resolver" maxlength="60" required placeholder="사람·회사"></label>
+<label class="field">보류를 풀 담당 <span class="muted">선택</span><input type="text" name="resolver" maxlength="60" placeholder="사람·회사"></label>
 {% elif kind == "reject" %}
 <label class="field">반려 이유<textarea name="body" rows="3" maxlength="1000" required></textarea></label>
 {% elif kind == "exclude" %}
@@ -96,8 +96,8 @@
 <p class="small muted">{% if kind == "phone" %}전화로 확인한 내용을 남겨요. 상태는 바뀌지 않아요.{% else %}수행자 대신 전화로 확인해 기록해요(대리 기록).{% endif %}</p>
 <label class="field">연락한 상대·회사<input type="text" name="counterpart" maxlength="100" required placeholder="예: 김OO · 가상펌프"></label>
 <div class="modal__grid">
-<label class="field">연락 날짜<input type="date" name="contacted_date" required></label>
-<label class="field">연락 시각<input type="time" name="contacted_time" required></label>
+<label class="field">연락 날짜 <span class="muted">비우면 지금</span><input type="date" name="contacted_date"></label>
+<label class="field">연락 시각<input type="time" name="contacted_time"></label>
 </div>
 {% endif %}
 <div class="modal__actions"><button class="btn btn--soft" type="button" data-close>취소</button><button class="btn {% if kind in ('reject', 'exclude') %}btn--danger{% else %}btn--accent{% endif %}" type="submit">{{ kind_labels[kind] }}</button></div>
@@ -147,8 +147,8 @@
 <label class="field">기한 날짜<input type="date" name="due_date" value="{{ ed.form.due_date }}"></label>
 <label class="field">기한 시각<input type="time" name="due_time" value="{{ ed.form.due_time }}"></label>
 </div>
-<label class="field">기한이 미정이면 그 사유<input type="text" name="due_note" value="{{ ed.form.due_note }}" maxlength="200" placeholder="예: 펌프 업체 일정 회신 대기"></label>
-<label class="checkline"><input type="checkbox" name="required" value="1"{% if ed.form.required %} checked{% endif %}> 필수 조치(끝나야 변경 건을 닫을 수 있어요)</label>
+<label class="field">기한이 미정이면 그 사유 <span class="muted">선택</span><input type="text" name="due_note" value="{{ ed.form.due_note }}" maxlength="200" placeholder="예: 펌프 업체 일정 회신 대기"></label>
+<label class="checkline"><input type="checkbox" name="required" value="1"{% if ed.form.required %} checked{% endif %}> 필수 조치(모두 끝나면 변경 건이 저절로 닫혀요)</label>
 <div class="modal__actions"><button class="btn btn--soft" type="button" data-close>취소</button><button class="btn btn--accent" type="submit">후보 더하기</button></div>
 </form>
 </div>

@@ -172,3 +172,29 @@ def test_when_it_became_known_is_optional_and_cleared_for_done_work(
 
     assert record(client, today_work, outcome="done", known_when="morning").status_code == 303
     assert saved(session, today_work).known_when is None  # type: ignore[union-attr]
+
+
+def test_mark_the_rest_done_leaves_recorded_and_other_companies_work(
+    client: TestClient, session: Session, item: WorkItem, today_work: WorkItem,
+    team: dict[str, Any],
+) -> None:  # fmt: skip
+    other = work_on(client, session, item.site_id, "2026-10-04", "16:30", "18:00",
+                    team["safety_company"])  # fmt: skip
+    third = work_on(client, session, item.site_id, "2026-10-04", "17:00", "18:00",
+                    team["framer_company"])  # fmt: skip
+    record(team["framer"], today_work, outcome="partial", causes="material")
+
+    page = team["framer"].get(f"/reports/{item.site_id}/daily").text
+    assert "남은 1건 모두 했음" in page  # 골조 담당이 기록할 수 있는 미입력은 third 하나
+    done = team["framer"].post(f"/reports/{item.site_id}/daily/done-all",
+                               data={"day": "2026-10-04"}, follow_redirects=False)  # fmt: skip
+    assert done.status_code == 303
+    assert saved(session, today_work).outcome == "partial"  # type: ignore[union-attr]  # 그대로
+    assert saved(session, third).outcome == "done"  # type: ignore[union-attr]
+    assert saved(session, other) is None  # 다른 업체 작업은 건드리지 않는다
+
+    # 내일 작업은 한 번에 처리해도 들어가지 않는다
+    client.post(f"/reports/{item.site_id}/daily/done-all", data={"day": "2026-10-05"})
+    assert saved(session, item) is None
+    assert team["framer"].post(f"/reports/{item.site_id}/daily/done-all",
+                               data={"day": "2026-10-04"}).status_code == 200  # fmt: skip

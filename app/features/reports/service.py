@@ -280,6 +280,7 @@ def build_daily(
         day_iso=day.isoformat(),
         day_text=_long(day),
         recordable=recordable,
+        rest_count=sum(1 for r in rows for w in r.works if w.can_edit and w.outcome is None),
         rows=tuple(rows),
         work_count=len(items),
         recorded_count=len(reports),
@@ -297,6 +298,38 @@ def build_daily(
         errors=errors,
         error_item_id=error_item_id,
     )
+
+
+def mark_rest_done(
+    session: Session, user: CurrentUser, site_id: int, day: date, now: datetime
+) -> int:
+    """그날 내가 기록할 수 있는데 미입력인 작업을 모두 "했음"으로(D-114). 저장한 수.
+
+    대부분의 작업은 계획대로 끝나므로 하나씩 누르지 않게 한다. 이미 기록한 작업은 건드리지 않는다.
+    """
+    role = teams_service.require_role(session, user, site_id, ACTION_ROLES)
+    if day > now.astimezone(KST).date():
+        return 0
+    items = schedules_service.items_between_for_sites(session, [site_id], day, day)
+    my_company = _my_company(session, user, site_id) if role == "assignee" else None
+    done = _reports_for(session, [i.item_id for i in items])
+    count = 0
+    for i in items:
+        if i.item_id in done:
+            continue
+        if role != "coordinator" and i.performing_participant_id != my_company:
+            continue
+        session.add(
+            WorkReport(
+                site_id=site_id, work_item_id=i.item_id, work_date=i.work_date,
+                plan_version=i.plan_version, outcome="done", causes=[], workers=None,
+                equipment_note="", note="", known_when=None,
+                recorded_by_user_id=user.user_id, recorded_at=now,
+            )
+        )  # fmt: skip
+        count += 1
+    session.commit()
+    return count
 
 
 def save_report(
@@ -562,6 +595,7 @@ def build_loss_summary(
         site_id=site_id,
         site_name=site.name,
         month_text=f"{first.year}년 {first.month}월",
+        month_iso=f"{first:%Y-%m}",
         rows=tuple(rows),
         total=_loss_row("합계", short),
         known_headers=(*KNOWN_LABELS.values(), "모름"),

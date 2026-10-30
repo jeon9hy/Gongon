@@ -135,7 +135,7 @@ def add_candidate(
             verifier_user_id=verifier_id,
             required=form.required,
             due_at=due_at,
-            due_note=None if due_at else form.due_note.strip(),
+            due_note=None if due_at else (form.due_note.strip() or None),
             status="candidate",
             created_by_user_id=user.user_id,
             created_at=now,
@@ -382,31 +382,29 @@ def act(
     if len(counterpart) > SHORT_MAX or len(reference) > SHORT_MAX:
         errors.append(f"연락 상대·참조 번호는 {SHORT_MAX}자 이하로 입력하세요.")
     behalf = kind in ("accept", "resume", "block", "report") and mode == "behalf"
-    contacted_at = _local(form.contacted_date, form.contacted_time)
+    contacted_at = _local_or_now(form.contacted_date, form.contacted_time, now)
     if kind == "phone" or behalf:
         if not counterpart:
             errors.append("연락한 상대와 회사를 입력하세요(예: 김OO · 가상펌프).")
         if contacted_at is None:
-            errors.append("연락한 날짜와 시각을 입력하세요.")
+            errors.append("연락한 날짜와 시각을 함께 입력하세요(비우면 지금).")
         elif contacted_at > now:
             errors.append("연락 시각은 지금보다 늦을 수 없습니다.")
         if kind == "phone" and not body:
             errors.append("통화 내용을 입력하세요.")
     performed_at = None
     if kind == "report":
-        performed_at = _local(form.performed_date, form.performed_time)
+        performed_at = _local_or_now(form.performed_date, form.performed_time, now)
         if not body:
             errors.append("처리 내용을 입력하세요(무엇을 누구와 어떻게 바꿨는지).")
         if performed_at is None:
-            errors.append("실제 처리한 날짜와 시각을 입력하세요.")
+            errors.append("실제 처리한 날짜와 시각을 함께 입력하세요(비우면 지금).")
         elif performed_at > now:
             errors.append("처리 시각은 지금보다 늦을 수 없습니다.")
     if kind == "block":
         if not body:
             errors.append("보류 이유를 입력하세요.")
-        if not form.resolver.strip():
-            errors.append("보류를 풀 담당(사람·회사)을 입력하세요.")
-        elif len(form.resolver.strip()) > RESOLVER_MAX:
+        if len(form.resolver.strip()) > RESOLVER_MAX:
             errors.append(f"보류를 풀 담당은 {RESOLVER_MAX}자 이하로 입력하세요.")
     if kind in ("reject", "exclude") and not body:
         errors.append("반려 이유를 입력하세요." if kind == "reject" else "제외 이유를 입력하세요.")
@@ -429,7 +427,7 @@ def act(
     elif kind == "block":
         action.status = "blocked"
         action.blocked_reason = body
-        action.blocked_resolver = form.resolver.strip()
+        action.blocked_resolver = form.resolver.strip() or None  # 모르면 비운다(D-114)
     elif kind == "report":
         action.status = "reported"
         action.reported_by_user_id = user.user_id
@@ -488,6 +486,18 @@ def closure_problems(session: Session, revision_id: int) -> tuple[int, tuple[str
     if blocked:
         problems.append(f"보류 중인 조치 {len(blocked)}건이 풀리지 않았습니다.")
     return len(required), tuple(problems)
+
+
+def all_finished(session: Session, revision_id: int) -> bool:
+    """이 버전의 확정 조치가 하나 이상 있고 모두 검증·제외·대체로 끝났는가(자동 종료, D-114)."""
+    statuses = list(
+        session.scalars(
+            select(ActionItem.status).where(
+                ActionItem.revision_id == revision_id, ActionItem.status != "candidate"
+            )
+        )
+    )
+    return bool(statuses) and all(s in ("verified", "excluded", "replaced") for s in statuses)
 
 
 # ---------- 위임 ----------
@@ -664,7 +674,11 @@ def revision_actions(
                 else CandidateForm(
                     performing_participant_id=""
                     if default_participant_id is None
-                    else str(default_participant_id)
+                    else str(default_participant_id),
+                    # 검증자는 보통 조치를 거는 사람(원청 담당)이라 미리 고른다(D-114)
+                    verifier_user_id=str(user.user_id)
+                    if any(m.user_id == user.user_id and m.role in ACTION_ROLES for m in members)
+                    else "",
                 )
             )
             editor = _editor(
@@ -887,7 +901,8 @@ def _performer_mode(
 
 
 _POSSIBLE: dict[str, tuple[str, ...]] = {
-    "requested": ("accept", "block", "exclude", "phone"),
+    # 수락은 선택이다. 요청을 받고 바로 완료 보고해도 된다(D-114)
+    "requested": ("accept", "report", "block", "exclude", "phone"),
     "accepted": ("report", "block", "exclude", "phone"),
     "blocked": ("resume", "exclude", "phone"),
     "reported": ("verify", "reject", "exclude", "phone"),
@@ -1099,9 +1114,7 @@ def _event(a: ActionItem, kind: str, actor_id: int, now: datetime) -> ActionEven
 
 def _due(form: CandidateForm) -> tuple[datetime | None, str | None]:
     if not form.due_date.strip() and not form.due_time.strip():
-        if not form.due_note.strip():
-            return None, "기한을 정하거나, 기한이 미정이면 그 사유를 입력하세요."
-        return None, None
+        return None, None  # 기한 미정. 사유는 적어도 되고 안 적어도 된다(D-114)
     due_at = _local(form.due_date, form.due_time)
     if due_at is None:
         return None, "기한은 날짜와 시각을 함께 입력하세요."
@@ -1110,9 +1123,16 @@ def _due(form: CandidateForm) -> tuple[datetime | None, str | None]:
 
 def _due_text(a: ActionItem, now: datetime) -> tuple[str, bool]:
     if a.due_at is None:
-        return f"기한 미정 · {a.due_note}", False
+        return f"기한 미정 · {a.due_note}" if a.due_note else "기한 미정", False
     overdue = a.due_at < now and a.status in ("requested", "accepted", "blocked")
     return f"{_when(a.due_at)}까지" + (" · 기한 지남" if overdue else ""), overdue
+
+
+def _local_or_now(day: str, at: str, now: datetime) -> datetime | None:
+    """날짜·시각을 둘 다 비우면 지금(D-114). 하나만 적었거나 형식이 틀리면 None."""
+    if not day.strip() and not at.strip():
+        return now
+    return _local(day, at)
 
 
 def _local(day: str, at: str) -> datetime | None:

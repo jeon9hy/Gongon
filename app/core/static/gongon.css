@@ -2781,6 +2781,8 @@ div.hmore .hmore__toggle { margin-left: 0; padding: 6px 12px; }
 .doc-loss td { text-align: right; font-variant-numeric: tabular-nums; }
 .doc-loss thead th { text-align: center; }
 .doc-loss tfoot th, .doc-loss tfoot td { background: var(--surface); font-weight: 700; color: var(--ink); }
+.doc__h2row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.doc__h2row .doc__h2 { margin: 0; }
 @media print {
   @page { size: A4 landscape; margin: 10mm; }
   @page doc-portrait { size: A4 portrait; margin: 12mm; }

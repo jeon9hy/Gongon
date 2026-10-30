@@ -14,7 +14,6 @@
 <div class="doc-tools__end">
 <a class="btn btn--soft btn--sm" href="/reports/{{ view.site_id }}/weekly">주간 작업계획표</a>
 <a class="btn btn--soft btn--sm" href="/reports/{{ view.site_id }}/losses?month={{ view.day_iso[:7] }}">차질 집계</a>
-<a class="btn btn--soft btn--sm" href="/reports/{{ view.site_id }}/weather?month={{ view.day_iso[:7] }}">기상 작업중지 기록</a>
 <button class="btn btn--accent btn--sm" type="button" data-print>인쇄 · PDF 저장</button>
 </div>
 </nav>
@@ -35,7 +34,11 @@
 {% if not view.recordable %}<p class="doc__note doc-noprint">작업일이 지나야 결과를 기록할 수 있어요.</p>{% endif %}
 
 <section class="doc__section" aria-labelledby="doc-works">
+<div class="doc__h2row">
 <h2 class="doc__h2" id="doc-works">작업 결과</h2>
+{% if view.rest_count %}<form class="doc-noprint" method="post" action="/reports/{{ view.site_id }}/daily/done-all"><input type="hidden" name="day" value="{{ view.day_iso }}"><button class="btn btn--soft btn--sm" type="submit">남은 {{ view.rest_count }}건 모두 했음</button></form>{% endif %}
+</div>
+<p class="doc__hint doc-noprint">계획대로 끝난 작업은 한 번에 ‘했음’으로 두고, 다른 작업만 고치면 돼요.</p>
 {% if view.rows %}
 <table class="doc-table doc-daily">
 <colgroup><col style="width:11%"><col style="width:20%"><col style="width:8%"><col style="width:14%"><col style="width:6%"><col style="width:12%"><col><col style="width:12%"></colgroup>
