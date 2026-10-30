@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session
 
+from app.core import ui_mode
 from app.core.clock import now_kst
 from app.core.config import Settings, get_settings
 from app.core.db import get_session
@@ -15,6 +16,7 @@ from app.features.auth.service import CurrentUserDep, require_user
 from app.features.forecasts import service as forecasts_service
 from app.features.judgments import service
 from app.features.judgments.schemas import ElementKey, RunResult, VerdictFilter
+from app.features.reports import service as reports_service
 from app.features.teams import service as teams_service
 from app.features.teams.service import AccessibleSitesDep, ManagedSitesDep
 from engine.forecast import HttpGet
@@ -52,8 +54,14 @@ def home(
         if hour < 17
         else "좋은 저녁이에요"
     )
+    # 휴대폰에는 서류 탭이 없어 "오늘"에서 일보로 간다(D-117). PC는 서류 탭이 있어 세지 않는다
+    reports = (
+        reports_service.pending_today(session, user, [s.site_id for s in view.sites], now)
+        if ui_mode.ui_mode(request) == "app"
+        else None
+    )
     context = {"nav_active": "home", "view": view, "manageable": manageable, "inbox": inbox,
-               "greeting": greeting, "name": user.display_name}  # fmt: skip
+               "greeting": greeting, "name": user.display_name, "reports": reports}  # fmt: skip
     return templates.TemplateResponse(request, "judgments/home.html", context)
 
 

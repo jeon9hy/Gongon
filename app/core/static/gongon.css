@@ -2775,7 +2775,7 @@ div.hmore .hmore__toggle { margin-left: 0; padding: 6px 12px; }
 .docs-home__list { display: grid; gap: 8px; margin: 16px 0 0; padding: 0; list-style: none; }
 .docs-home__site { display: flex; align-items: center; gap: 12px; padding: 16px var(--card-pad); border: 1px solid var(--line-soft); border-radius: var(--radius-lg); background: var(--card); color: var(--ink); text-decoration: none; }
 .docs-home__site:hover { border-color: var(--line); }
-.docs-home__name { flex: 1; font-weight: 700; }
+.docs-home__name { flex: 1; font-weight: 700; color: var(--ink); text-decoration: none; }
 .docs-home__today { color: var(--muted); font-size: 13px; }
 .docs-home__today b { color: var(--stop-text); }
 @media print {

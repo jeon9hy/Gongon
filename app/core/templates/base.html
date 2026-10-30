@@ -37,16 +37,17 @@ try { if (localStorage.getItem("gongon.attn") === "1") document.documentElement.
 </details>
 {% endif %}{% endmacro %}
 {# 주 메뉴 5개(C04-33 안 A): 공온 판정·판정 내역은 일정, 변경 건·내 조치는 변경·조치, 참여 업체는 업체 #}
-{% set nav_group = {"dashboard": "schedule", "history": "schedule", "actions": "changes", "docs_daily": "docs", "docs_weekly": "docs", "docs_losses": "docs"}.get(nav_active, nav_active) %}
+{% set nav_group = {"dashboard": "schedule", "history": "schedule", "actions": "changes", "docs_daily": "docs", "docs_weekly": "docs", "docs_losses": "docs", "docs_changes": "docs"}.get(nav_active, nav_active) %}
 {# 서류 탭(D-116)의 하위 메뉴. 현장을 골랐으면 그 현장 서류, 전체 현장이면 현장 고르기(/reports) #}
 {% set docs_site = view.site_id if view is defined and view and view.site_id is defined and view.site_id else none %}
-{% set docs_items = [("docs_daily", "/reports/" ~ docs_site ~ "/daily" if docs_site else "/reports?tab=daily", "공사일보"), ("docs_weekly", "/reports/" ~ docs_site ~ "/weekly" if docs_site else "/reports?tab=weekly", "주간 작업계획표"), ("docs_losses", "/reports/" ~ docs_site ~ "/losses" if docs_site else "/reports?tab=losses", "차질 집계")] %}
+{% set docs_items = [("docs_daily", "/reports/" ~ docs_site ~ "/daily" if docs_site else "/reports?tab=daily", "공사일보"), ("docs_weekly", "/reports/" ~ docs_site ~ "/weekly" if docs_site else "/reports?tab=weekly", "주간 작업계획표"), ("docs_losses", "/reports/" ~ docs_site ~ "/losses" if docs_site else "/reports?tab=losses", "차질 집계"), ("docs_changes", "/reports/" ~ docs_site ~ "/changes" if docs_site else "/reports?tab=changes", "변경 건 문서")] %}
 {% set nav_tabs = [("home", "/home", "홈", "오늘", "home"), ("schedule", "/schedule", "일정", "일정", "calendar"), ("changes", "/changes", "변경·조치", "조치", "clipboard"), ("docs", "/reports", "서류", "서류", "file"), ("team", "/team", "업체", "업체", "building"), ("chat", "/chat", "대화", "대화", "chat")] %}
 {% if ui_app %}
 {# 앱 화면 틀(D-109): 위 얇은 머리(제목·현장 칩·내 정보), 하위 메뉴는 꽉 찬 분할 버튼, 아래 탭 막대.
    본문은 기능의 앱 화면(<기능>/app/*.html)이고 아직 없으면 웹 화면을 그대로 넣는다 #}
 {% set site_q = "?site_id=" ~ current_site_id if me and current_site_id else "" %}
-{% set sub_items = [("changes", "/changes", "변경 건"), ("actions", "/actions", "내 조치")] if nav_active in ("changes", "actions") else ([("schedule", "/schedule" ~ site_q, "달력"), ("dashboard", "/dashboard" ~ site_q, "공온 판정"), ("history", "/judgments", "판정 내역")] if nav_active in ("schedule", "dashboard", "history") else (docs_items if nav_group == "docs" else [])) %}
+{% set sub_items = [("changes", "/changes", "변경 건"), ("actions", "/actions", "내 조치")] if nav_active in ("changes", "actions") else ([("schedule", "/schedule" ~ site_q, "달력"), ("dashboard", "/dashboard" ~ site_q, "공온 판정"), ("history", "/judgments", "판정 내역")] if nav_active in ("schedule", "dashboard", "history") else []) %}
+{# 휴대폰은 서류 탭이 없다(D-117): 공사일보는 ‘오늘’에서 열고, 서류 화면에서는 ‘오늘’ 탭을 켜 둔다 #}
 {% set pagebar = self.pagebar() | trim %}
 <header class="mbar">
 <div class="mbar__row">
@@ -72,8 +73,8 @@ try { if (localStorage.getItem("gongon.attn") === "1") document.documentElement.
 </main>
 {% if me and not hide_tabbar | default(false) %}
 <nav class="tabbar" aria-label="주 메뉴">
-{% for key, href, label, short, ic in nav_tabs %}
-<a href="{{ href }}" data-site-link="{{ key }}"{% if nav_group == key %} aria-current="page"{% endif %}><span class="tabbar__icon" aria-hidden="true">{{ icon(ic, 22, 2) }}</span>{{ short }}</a>
+{% for key, href, label, short, ic in nav_tabs if key != "docs" %}
+<a href="{{ href }}" data-site-link="{{ key }}"{% if nav_group == key or (nav_group == "docs" and key == "home") %} aria-current="page"{% endif %}><span class="tabbar__icon" aria-hidden="true">{{ icon(ic, 22, 2) }}</span>{{ short }}</a>
 {% endfor %}
 </nav>
 {% endif %}

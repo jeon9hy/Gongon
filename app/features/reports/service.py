@@ -36,6 +36,7 @@ from app.features.reports.schemas import (
     OUTCOME_LABELS,
     WORKERS_MAX,
     ChangeDocKind,
+    ChangeDocsView,
     ChangeDocView,
     DailyRow,
     DailyView,
@@ -44,6 +45,7 @@ from app.features.reports.schemas import (
     DocsSite,
     LossRow,
     LossSummaryView,
+    PendingReports,
     ReportForm,
     ReportInput,
     WeatherDay,
@@ -64,6 +66,7 @@ from engine.kst import KST
 
 WEEK_DAYS = 7
 UNASSIGNED = "실행 업체 미지정"
+CHANGE_DOCS_LIMIT = 50
 _WEEKDAYS = "월화수목금토일"
 
 
@@ -643,3 +646,45 @@ def build_docs_home(session: Session, user: CurrentUser, now: datetime, tab: str
         ),
         day_text=_long(today),
     )
+
+
+def pending_today(
+    session: Session, user: CurrentUser, site_ids: Iterable[int], now: datetime
+) -> PendingReports | None:
+    """오늘 내가 기록할 작업과 아직 안 남긴 수(쿼리 3회, D-117). 기록할 작업이 없으면 None.
+
+    조정자는 그 현장의 모든 작업, 담당자는 자기 업체가 실행하는 작업만 센다
+    (save_report와 같은 기준).
+    """
+    wanted = set(site_ids)
+    mine = {m.site_id: m for m in teams_service.memberships_of(session, user.user_id)
+            if m.site_id in wanted and m.role in ACTION_ROLES}  # fmt: skip
+    if not mine:
+        return None
+    today = now.astimezone(KST).date()
+    items = [
+        i
+        for i in schedules_service.items_between_for_sites(session, sorted(mine), today, today)
+        if mine[i.site_id].role == "coordinator"
+        or i.performing_participant_id == mine[i.site_id].participant_id
+    ]
+    if not items:
+        return None
+    recorded = _reports_for(session, [i.item_id for i in items])
+    sites = {i.site_id for i in items}
+    href = f"/reports/{next(iter(sites))}/daily" if len(sites) == 1 else "/reports"
+    return PendingReports(
+        count=sum(1 for i in items if i.item_id not in recorded), total=len(items), href=href
+    )
+
+
+def build_change_docs(session: Session, user: CurrentUser, site_id: int) -> ChangeDocsView:
+    """변경 건 문서 목록(D-117): 이 현장의 최근 변경 건(종료 포함)."""
+    teams_service.require_role(session, user, site_id, ALL_ROLES)
+    site = sites_service.get_site(session, site_id, None)
+    if site is None:
+        raise HTTPException(status_code=404, detail="현장을 찾을 수 없습니다")
+    return ChangeDocsView(
+        site_id=site_id, site_name=site.name,
+        cases=changes_service.case_choices(session, site_id, CHANGE_DOCS_LIMIT),
+    )  # fmt: skip

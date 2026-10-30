@@ -62,6 +62,11 @@
 </section>
 {% endif %}
 
+{% if reports %}
+{# 휴대폰에는 서류 탭이 없다. 오늘 공사일보는 여기서 바로 연다(D-117) #}
+<section class="msec"><a class="malert malert--report{% if not reports.count %} is-done{% endif %}" href="{{ reports.href }}"><span class="mtag{% if reports.count %} mtag--warn{% endif %}">일보</span><span class="malert__text">{% if reports.count %}오늘 공사일보 {{ reports.count }}건 남음{% else %}오늘 공사일보 다 남겼어요{% endif %} · {{ reports.total - reports.count }}/{{ reports.total }}</span>{{ icon("chevron-right", 16, 2) }}</a></section>
+{% endif %}
+
 <section class="msec" aria-labelledby="m-jobs-title">
 <div class="msec__head"><h2 class="msec__title" id="m-jobs-title">오늘 작업 <small>{{ today_board.date_text }}{% if today_board.items %} · {{ today_board.items | length }}건{% endif %}</small></h2>{% if can_add %}<a class="mlink" href="{{ today_board.add_href }}">+ 추가</a>{% endif %}</div>
 {% macro job_rows(jobs) %}

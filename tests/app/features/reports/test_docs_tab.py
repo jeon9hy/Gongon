@@ -42,3 +42,31 @@ def test_all_sites_list_only_my_sites_with_todays_report_count(
     assert "오늘 일보 0/1건" in page and "1건 남음" in page
     record(client, today_work)
     assert "오늘 일보 1/1건" in client.get("/reports").text
+
+
+def test_phone_has_five_tabs_and_today_links_to_the_daily_report(
+    client: TestClient, today_work: WorkItem, team: dict[str, Any]
+) -> None:
+    phone = client.get("/home?ui=app").text
+    tabbar = phone.split('class="tabbar"')[1].split("</nav>")[0]
+    assert tabbar.count("<a ") == 5 and 'data-site-link="docs"' not in tabbar
+    assert (
+        "오늘 공사일보 1건 남음" in phone and f'href="/reports/{today_work.site_id}/daily"' in phone
+    )
+    # 협력업체 담당자는 자기 업체 작업만 센다(골조 작업 하나)
+    assert "오늘 공사일보 1건 남음" in team["framer"].get("/home?ui=app").text
+    assert "오늘 공사일보" not in team["safety"].get("/home?ui=app").text  # 맡은 작업 없음
+    record(client, today_work)
+    assert "오늘 공사일보 다 남겼어요" in client.get("/home?ui=app").text
+    assert "오늘 공사일보" not in client.get("/home?ui=web").text  # PC는 서류 탭이 있어 줄이 없다
+
+
+def test_change_documents_list_links_both_documents(client: TestClient, item: WorkItem) -> None:
+    from tests.app.features.changes.test_changes import case_id_from, propose
+
+    case_id = case_id_from(propose(client, item))
+    page = client.get(f"/reports/{item.site_id}/changes").text
+    assert f"/reports/{item.site_id}/changes/{case_id}?kind=order" in page
+    assert f"/reports/{item.site_id}/changes/{case_id}?kind=report" in page
+    hub = client.get("/reports?tab=changes").text
+    assert f'href="/reports/{item.site_id}/changes"' in hub

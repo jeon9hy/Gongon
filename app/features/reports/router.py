@@ -21,7 +21,7 @@ SessionDep = Annotated[Session, Depends(get_session)]
 NowDep = Annotated[datetime, Depends(now_kst)]
 
 
-DOC_TABS = ("daily", "weekly", "losses")
+DOC_TABS = ("daily", "weekly", "losses", "changes")
 
 
 @router.get("/reports", response_model=None)
@@ -40,6 +40,17 @@ def docs_home(
     view = service.build_docs_home(session, user, now, doc)
     return templates.TemplateResponse(
         request, "reports/home.html", {"nav_active": f"docs_{doc}", "view": view}
+    )
+
+
+@router.get("/reports/{site_id}/changes", response_class=HTMLResponse)
+def change_docs(
+    request: Request, session: SessionDep, user: CurrentUserDep, site_id: int
+) -> HTMLResponse:
+    """변경 건 문서 목록(D-117): 변경 건마다 작업 지시서·실정보고 초안으로 간다(PC 서류 탭)."""
+    view = service.build_change_docs(session, user, site_id)
+    return templates.TemplateResponse(
+        request, "reports/changes.html", {"nav_active": "docs_changes", "view": view}
     )
 
 

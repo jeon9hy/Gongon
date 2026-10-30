@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Literal
 
-from app.features.changes.schemas import ChangeDetailView, RevisionView
+from app.features.changes.schemas import CaseCard, ChangeDetailView, RevisionView
 
 
 @dataclass(frozen=True, slots=True)
@@ -236,3 +236,21 @@ class DocsHomeView:
     tab: str  # daily · weekly · losses
     sites: tuple[DocsSite, ...]
     day_text: str
+
+
+@dataclass(frozen=True, slots=True)
+class PendingReports:
+    """휴대폰 "오늘"의 일보 줄(D-117): 내가 기록할 수 있는데 아직 안 남긴 오늘 작업."""
+
+    count: int
+    total: int  # 내가 기록할 수 있는 오늘 작업
+    href: str
+
+
+@dataclass(frozen=True, slots=True)
+class ChangeDocsView:
+    """PC 서류 탭의 변경 건 문서 목록(D-117). 최근 변경 건 50건."""
+
+    site_id: int
+    site_name: str
+    cases: tuple[CaseCard, ...]

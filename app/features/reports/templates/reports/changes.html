@@ -1,0 +1,21 @@
+{# 변경 건 문서 목록(D-117, PC 서류 탭): 변경 건마다 작업 지시서·실정보고 초안. 문서 내용은 변경 건 상세와 같은 값이다. #}
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}변경 건 문서 · {{ view.site_name }}{% endblock %}
+{% block content %}
+<section class="docs-home" aria-labelledby="change-docs-title">
+<h1 class="h2" id="change-docs-title">변경 건 문서 <small class="muted">{{ view.site_name }}</small></h1>
+{% if view.cases %}
+<ul class="docs-home__list">
+{% for c in view.cases %}
+<li class="docs-home__site">
+<a class="docs-home__name" href="{{ c.href }}">{{ c.title }}</a>
+<span class="docs-home__today">{{ c.state_text }}</span>
+<a class="btn btn--soft btn--sm" href="/reports/{{ view.site_id }}/changes/{{ c.case_id }}?kind=order">작업 지시서</a>
+<a class="btn btn--soft btn--sm" href="/reports/{{ view.site_id }}/changes/{{ c.case_id }}?kind=report">실정보고 초안</a>
+</li>
+{% endfor %}
+</ul>
+{% else %}<p class="muted">이 현장에 변경 건이 없어요.</p>{% endif %}
+</section>
+{% endblock %}
