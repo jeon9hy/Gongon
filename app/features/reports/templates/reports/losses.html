@@ -1,6 +1,6 @@
 {# 작업 차질 월 집계(C14-5, D-113): 작업일보의 일부만·못함을 원인별로, 적은 인원 합과 언제 알았나까지. #}
 {% extends "base.html" %}
-{% from "_macros.html" import icon %}
+{% from "_macros.html" import icon, tip %}
 {% block title %}작업 차질 집계 · {{ view.site_name }}{% endblock %}
 {% block body_class %} class="docbody"{% endblock %}
 {% block pagebar %}<div class="doc-tools"><div class="doc-tools__week"><a class="btn btn--soft btn--sm" href="?month={{ view.prev_month }}" aria-label="지난달">{{ icon("chevron-left", 16) }}</a><span>{{ view.month_text }}</span><a class="btn btn--soft btn--sm" href="?month={{ view.next_month }}" aria-label="다음 달">{{ icon("chevron-right", 16) }}</a></div><a class="btn btn--soft btn--sm" href="/reports/{{ view.site_id }}/weather?month={{ view.month_iso }}">기상 작업중지 기록</a><button class="btn btn--accent btn--sm" type="button" data-print>인쇄 · PDF 저장</button></div>{% endblock %}
@@ -21,7 +21,7 @@
 </header>
 
 <section class="doc__section" aria-labelledby="doc-causes">
-<h2 class="doc__h2" id="doc-causes">원인별</h2>
+<h2 class="doc__h2" id="doc-causes">원인별 {{ tip("원인을 여러 개 고른 기록은 원인마다 세고, 합계는 기록 하나를 한 번만 셉니다. 인원은 공사일보에 적은 값만 더합니다.", "세는 방법") }}</h2>
 {% if view.rows %}
 <table class="doc-table doc-loss">
 <thead>
@@ -37,7 +37,6 @@
 <tr><th scope="row">{{ view.total.label }}</th><td>{{ view.total.partial_count }}</td><td>{{ view.total.not_done_count }}</td><td>{{ view.total.workers_total if view.total.workers_total is not none else "-" }}</td>{% for n in view.total.known %}<td>{{ n }}</td>{% endfor %}</tr>
 </tfoot>
 </table>
-<p class="doc__hint">원인을 여러 개 고른 기록은 원인마다 세고, 합계는 기록 하나를 한 번만 셉니다. 인원은 공사일보에 적은 값만 더합니다.</p>
 {% else %}<p class="doc__empty">이달에 일부만·못함으로 남긴 작업이 없어요.</p>{% endif %}
 </section>
 

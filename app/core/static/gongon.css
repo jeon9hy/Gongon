@@ -2790,3 +2790,83 @@ div.hmore .hmore__toggle { margin-left: 0; padding: 6px 12px; }
   .doc-table a { text-decoration: none; }
   .badge { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* 툴팁(D-118): 설명 문구는 ? 아이콘에 숨긴다. 마우스 올림·키보드 포커스·누름(.is-open)으로 연다 */
+.tip { position: relative; display: inline-flex; vertical-align: middle; }
+.tip__btn { display: inline-grid; place-items: center; width: 18px; height: 18px; padding: 0; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--muted); font: inherit; font-size: 11px; font-weight: 800; line-height: 1; cursor: help; }
+.tip__btn:hover, .tip.is-open .tip__btn { border-color: var(--accent); color: var(--accent); }
+.tip__btn:focus-visible { outline: 3px solid var(--ink); outline-offset: 1px; }
+.tip__box { position: absolute; z-index: 60; top: calc(100% + 8px); left: 50%; width: max-content; max-width: 260px; padding: 8px 12px; border-radius: var(--radius-md); background: var(--ink); color: #fff; font-size: 12px; font-weight: 500; line-height: 1.5; letter-spacing: normal; text-align: left; white-space: normal; box-shadow: 0 8px 24px #0E1E4533; opacity: 0; visibility: hidden; transform: translate(-50%, -4px); transition: opacity 0.15s, transform 0.15s, visibility 0.15s; pointer-events: none; }
+.tip__box::before { content: ""; position: absolute; top: -4px; left: 50%; width: 8px; height: 8px; background: var(--ink); transform: translateX(-50%) rotate(45deg); }
+.tip:hover .tip__box, .tip__btn:focus-visible + .tip__box, .tip.is-open .tip__box { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+.inboxcard__tip { display: flex; justify-content: flex-end; margin: -2px 2px -6px; }
+
+/* 현장 칩(D-118): 로고 뒤 경로처럼 '공온 / 현장 ▾'. 테두리 알약은 메뉴인지 상태인지 애매했다(개발자 지적) */
+.appbar__brand .siteswitch { display: inline-flex; align-items: center; }
+.appbar__brand .siteswitch::before { content: "/"; margin: 0 2px 0 6px; color: var(--line); font-size: 22px; font-weight: 300; }
+.appbar__brand .siteswitch > summary { min-height: 38px; max-width: 280px; padding: 0 10px; border: 0; border-radius: var(--radius-md); background: transparent; font-size: 15px; font-weight: 700; }
+.appbar__brand .siteswitch > summary:hover, .appbar__brand .siteswitch[open] > summary { background: var(--surface); }
+.appbar__brand .siteswitch__live { display: none; }
+.appbar__brand .siteswitch[data-all] .siteswitch__label { color: var(--muted); }
+
+/* 공사일보(D-118): 결과 칸에서 바로 기록 */
+.doc-printonly { display: none; }
+.doc__meta dd.is-warn { color: var(--stop-text); }
+.rprogress { display: flex; align-items: center; gap: 16px; margin-top: 20px; padding: 14px 18px; border-radius: var(--radius-lg); background: var(--surface); }
+.rprogress__text { display: flex; align-items: center; gap: 10px; white-space: nowrap; color: var(--ink); font-variant-numeric: tabular-nums; }
+.rprogress__done { display: inline-flex; align-items: center; gap: 4px; color: var(--verdict-go-fg); font-size: 13px; font-weight: 700; }
+.rprogress__bar { position: relative; flex: 1; height: 8px; border-radius: 999px; background: #DCE5F3; overflow: hidden; }
+.rprogress__bar > span { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--accent); transition: width 0.3s; }
+.rprogress form { margin: 0; }
+.doc-daily td, .doc-daily tbody th { padding: 12px 10px; vertical-align: middle; }
+.doc-daily__work { color: var(--ink); }
+.doc-daily__row:hover td { background: #FAFCFF; }
+.doc-daily__stale { color: var(--verdict-check-fg); font-weight: 700; }
+.doc-daily__edit > td { padding: 0 10px 14px; background: #FAFCFF; }
+.rpill { display: inline-flex; align-items: center; min-height: 24px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.rpill--done { background: var(--verdict-go-bg); color: var(--verdict-go-fg); }
+.rpill--partial { background: var(--verdict-check-bg); color: var(--verdict-check-fg); }
+.rpill--not_done { background: var(--stop-soft); color: var(--stop-text); }
+.rpill--none { background: var(--verdict-unknown-bg); color: var(--verdict-unknown-fg); font-weight: 600; }
+.rlink { margin-left: 6px; padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.rlink:hover { text-decoration: underline; text-underline-offset: 3px; }
+.rq { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; background: var(--card); overflow: hidden; }
+.rq form { display: contents; }
+.rq__btn { display: inline-flex; align-items: center; gap: 4px; min-height: 30px; padding: 0 11px; border: 0; background: transparent; color: var(--text); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.rq__btn + .rq__btn, .rq form + .rq__btn { border-left: 1px solid var(--line); }
+.rq__btn--done { color: var(--verdict-go-fg); }
+.rq__btn--done:hover { background: var(--verdict-go-bg); }
+.rq__btn--partial:hover { background: var(--verdict-check-bg); color: var(--verdict-check-fg); }
+.rq__btn--not_done:hover { background: var(--stop-soft); color: var(--stop-text); }
+.rq__btn:focus-visible { outline: 3px solid var(--ink); outline-offset: -3px; }
+.rform { display: grid; gap: 14px; padding: 16px 18px; border: 1px solid var(--line-soft); border-radius: var(--radius-lg); background: var(--card); box-shadow: 0 4px 16px #0E1E450D; }
+.rform[hidden], .rform__group[hidden], .doc-daily__edit[hidden] { display: none; }
+.rform__group { display: grid; gap: 8px; margin: 0; padding: 0; border: 0; }
+.rform__group legend { margin: 0 0 8px; padding: 0; font-size: 13px; font-weight: 700; color: var(--ink); }
+.rform small { font-weight: 500; color: var(--muted); font-size: 12px; }
+.rchips { display: flex; flex-wrap: wrap; gap: 6px; }
+.rchip { position: relative; display: inline-flex; cursor: pointer; }
+.rchip input { position: absolute; opacity: 0; pointer-events: none; }
+.rchip span { display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); font-size: 13px; font-weight: 600; color: var(--text); transition: background 0.12s, border-color 0.12s; }
+.rchip:hover span { border-color: var(--accent); }
+.rchip input:checked + span { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.rchip--done input:checked + span { border-color: var(--verdict-go-mark); background: var(--verdict-go-bg); color: var(--verdict-go-fg); }
+.rchip--partial input:checked + span { border-color: var(--verdict-check-mark); background: var(--verdict-check-bg); color: var(--verdict-check-fg); }
+.rchip--not_done input:checked + span { border-color: var(--stop-text); background: var(--stop-soft); color: var(--stop-text); }
+.rchip input:focus-visible + span { outline: 3px solid var(--ink); outline-offset: 1px; }
+.rform__line { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 12px; }
+.rform__line label, .rform__note { display: grid; gap: 6px; font-size: 13px; font-weight: 700; color: var(--ink); }
+.rform__actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.rform__change { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; color: var(--accent); font-size: 13px; font-weight: 700; text-decoration: none; }
+.rform__errors { margin: 0; padding: 10px 14px 10px 30px; border-radius: var(--radius-md); background: var(--stop-soft); color: var(--stop-text); font-size: 13px; }
+@media print {
+  .doc-printonly { display: inline; }
+  .tip, .rprogress form { display: none !important; }
+  .rprogress { padding: 8px 0; background: none; }
+  .rpill { padding: 0; background: none !important; }
+}
+.tip--end .tip__box { left: auto; right: -6px; transform: translateY(-4px); }
+.tip--end .tip__box::before { left: auto; right: 10px; transform: rotate(45deg); }
+.tip--end:hover .tip__box, .tip--end .tip__btn:focus-visible + .tip__box, .tip--end.is-open .tip__box { transform: none; }
+.rform input[type="number"] { width: 100%; min-height: 44px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); padding: 0 14px; font: inherit; font-size: 14px; font-weight: 500; }
+.rform input[type="text"], .rform textarea { width: 100%; }

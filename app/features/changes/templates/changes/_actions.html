@@ -1,4 +1,4 @@
-{% from "_macros.html" import choice_input %}
+{% from "_macros.html" import choice_input, tip %}
 {# 버전별 후속 조치(C06). r: RevisionView, view: ChangeDetailView #}
 {% set ra = r.actions %}
 {% set kind_labels = {"accept": "수락", "resume": "다시 수행", "block": "보류 보고", "report": "완료 보고", "verify": "검증 완료", "reject": "반려", "exclude": "제외", "phone": "전화 기록"} %}
@@ -93,8 +93,7 @@
 <label class="field">통화 내용<textarea name="body" rows="3" maxlength="1000" required></textarea></label>
 {% endif %}
 {% if kind == "phone" or (c.behalf and kind in ("accept", "resume", "block", "report")) %}
-<p class="small muted">{% if kind == "phone" %}전화로 확인한 내용을 남겨요. 상태는 바뀌지 않아요.{% else %}수행자 대신 전화로 확인해 기록해요(대리 기록).{% endif %}</p>
-<label class="field">연락한 상대·회사<input type="text" name="counterpart" maxlength="100" required placeholder="예: 김OO · 가상펌프"></label>
+<label class="field">연락한 상대·회사 {{ tip("전화로 확인한 내용을 남겨요. 상태는 바뀌지 않아요." if kind == "phone" else "수행자 대신 전화로 확인해 기록해요(대리 기록).", "전화 기록 설명") }}<input type="text" name="counterpart" maxlength="100" required placeholder="예: 김OO · 가상펌프"></label>
 <div class="modal__grid">
 <label class="field">연락 날짜 <span class="muted">비우면 지금</span><input type="date" name="contacted_date"></label>
 <label class="field">연락 시각<input type="time" name="contacted_time"></label>

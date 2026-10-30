@@ -1,10 +1,13 @@
-{# 작업일보·공사일보(C14-2, D-112): 작업마다 실제 결과. 기록 폼은 화면에서만 보이고 인쇄에서 빠진다. #}
+{# 공사일보(C14-2 → D-118): 작업마다 결과 칸에서 바로 기록한다. 했음은 한 번, 일부만·못함은 그 줄 아래 폼이 열린다.
+   빠른 버튼·폼은 화면에서만 보이고 인쇄에서 빠진다. 휴대폰은 reports/app/daily.html(카드). #}
 {% extends "base.html" %}
 {% from "_macros.html" import icon %}
+{% import "reports/_report_form.html" as rf %}
 {% block title %}공사일보 · {{ view.site_name }}{% endblock %}
 {% block body_class %} class="docbody"{% endblock %}
 {% block pagebar %}<div class="doc-tools"><div class="doc-tools__week"><a class="btn btn--soft btn--sm" href="?day={{ view.prev_day }}" aria-label="전날">{{ icon("chevron-left", 16) }}</a><span>{{ view.day_text }}</span><a class="btn btn--soft btn--sm" href="?day={{ view.next_day }}" aria-label="다음 날">{{ icon("chevron-right", 16) }}</a></div><button class="btn btn--accent btn--sm" type="button" data-print>인쇄 · PDF 저장</button></div>{% endblock %}
 {% block content %}
+{% set pct = (view.recorded_count * 100 / view.work_count) | round | int if view.work_count else 0 %}
 <article class="doc">
 <header class="doc__head">
 <div>
@@ -14,69 +17,45 @@
 </div>
 <dl class="doc__meta">
 <div><dt>작업</dt><dd>{{ view.work_count }}건</dd></div>
-<div><dt>기록</dt><dd>{{ view.recorded_count }}건</dd></div>
-<div><dt>일부만·못함</dt><dd>{{ view.short_count }}건</dd></div>
-<div><dt>투입 인원</dt><dd>{{ "%d명" | format(view.workers_total) if view.workers_total is not none else "-" }}</dd></div>
+<div><dt>일부만·못함</dt><dd{% if view.short_count %} class="is-warn"{% endif %}>{{ view.short_count }}건</dd></div>
+<div><dt>투입 인원</dt><dd>{{ "%d명" | format(view.workers_total) if view.workers_total is not none else "—" }}</dd></div>
 </dl>
 </header>
-{% if not view.recordable %}<p class="doc__note doc-noprint">작업일이 지나야 결과를 기록할 수 있어요.</p>{% endif %}
 
-<section class="doc__section" aria-labelledby="doc-works">
-<div class="doc__h2row">
-<h2 class="doc__h2" id="doc-works">작업 결과</h2>
-{% if view.rest_count %}<form class="doc-noprint" method="post" action="/reports/{{ view.site_id }}/daily/done-all"><input type="hidden" name="day" value="{{ view.day_iso }}"><button class="btn btn--soft btn--sm" type="submit">남은 {{ view.rest_count }}건 모두 했음</button></form>{% endif %}
+{% if view.work_count %}
+<div class="rprogress">
+<div class="rprogress__text"><strong>기록 {{ view.recorded_count }}/{{ view.work_count }}</strong>{% if view.recorded_count == view.work_count %}<span class="rprogress__done">{{ icon("check", 14, 2.6) }} 다 남겼어요</span>{% endif %}</div>
+<span class="rprogress__bar" role="img" aria-label="{{ view.work_count }}건 중 {{ view.recorded_count }}건 기록"><span style="width: {{ pct }}%"></span></span>
+{% if view.rest_count %}<form class="doc-noprint" method="post" action="/reports/{{ view.site_id }}/daily/done-all"><input type="hidden" name="day" value="{{ view.day_iso }}"><button class="btn btn--soft btn--sm" type="submit">{{ icon("check", 14, 2.4) }} 남은 {{ view.rest_count }}건 모두 했음</button></form>{% endif %}
 </div>
-<p class="doc__hint doc-noprint">계획대로 끝난 작업은 한 번에 ‘했음’으로 두고, 다른 작업만 고치면 돼요.</p>
+{% endif %}
+{% if not view.recordable %}<p class="doc__note doc-noprint">{{ icon("info", 15) }} 작업일이 지나야 결과를 기록할 수 있어요.</p>{% endif %}
+
+<section class="doc__section" aria-label="작업 결과">
 {% if view.rows %}
 <table class="doc-table doc-daily">
-<colgroup><col style="width:11%"><col style="width:20%"><col style="width:8%"><col style="width:14%"><col style="width:6%"><col style="width:12%"><col><col style="width:12%"></colgroup>
-<thead><tr><th scope="col">업체</th><th scope="col">작업</th><th scope="col">결과</th><th scope="col">원인</th><th scope="col">인원</th><th scope="col">장비</th><th scope="col">메모</th><th scope="col">기록</th></tr></thead>
+<colgroup><col style="width:12%"><col style="width:21%"><col style="width:17%"><col style="width:15%"><col style="width:11%"><col><col style="width:11%"></colgroup>
+<thead><tr><th scope="col">업체</th><th scope="col">작업</th><th scope="col">결과</th><th scope="col">원인</th><th scope="col">인원 · 장비</th><th scope="col">메모</th><th scope="col">기록</th></tr></thead>
 {% for r in view.rows %}
 <tbody{% if r.unassigned %} class="is-unassigned"{% endif %}>
-{% set span = r.works | length + (r.works | selectattr("can_edit") | list | length) %}
 {% for w in r.works %}
 <tr id="work-{{ w.item_id }}" class="doc-daily__row is-{{ w.outcome or 'none' }}">
-{% if loop.first %}<th scope="rowgroup" rowspan="{{ span }}">{{ r.company }}{% if r.workers_total is not none %}<span class="doc-daily__sum">{{ r.workers_total }}명</span>{% endif %}</th>{% endif %}
-<td><strong>{{ w.work_type }}</strong><span class="doc-daily__sub">{{ w.time_text }}{% if w.location %} · {{ w.location }}{% endif %}</span></td>
-<td class="doc-daily__outcome">{{ w.outcome_label }}{% if w.stale %}<span class="doc-daily__sub">기록 뒤 계획 바뀜</span>{% endif %}</td>
-<td>{{ w.causes_text or "-" }}{% if w.known_text %}<span class="doc-daily__sub">{{ w.known_text }}</span>{% endif %}</td>
-<td>{{ w.workers if w.workers is not none else "-" }}</td>
-<td>{{ w.equipment_note or "-" }}</td>
-<td>{{ w.note or "-" }}</td>
-<td><span class="doc-daily__sub">{{ w.recorded_text or "-" }}</span></td>
-</tr>
-{% if w.can_edit %}
-<tr class="doc-daily__edit doc-noprint">
-<td colspan="7">
-{% set failed = view.error_item_id == w.item_id %}
-<details class="doc-form"{% if failed %} open{% endif %}>
-<summary>{{ "고치기" if w.outcome else "결과 기록" }}</summary>
-<form method="post" action="/reports/{{ view.site_id }}/daily/{{ w.item_id }}">
-{% if failed %}<ul class="doc-form__errors" role="alert">{% for e in view.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
-<fieldset class="doc-form__group"><legend>결과</legend>
-{% for code, label in view.outcome_labels.items() %}<label><input type="radio" name="outcome" value="{{ code }}"{% if w.form.outcome == code %} checked{% endif %} required> {{ label }}</label>{% endfor %}
-</fieldset>
-<fieldset class="doc-form__group"><legend>원인 <span>일부만·못함이면 하나 이상</span></legend>
-{% for code, label in view.reason_labels.items() %}<label><input type="checkbox" name="causes" value="{{ code }}"{% if code in w.form.causes %} checked{% endif %}> {{ label }}</label>{% endfor %}
-</fieldset>
-<fieldset class="doc-form__group"><legend>언제 알았나요 <span>일부만·못함일 때, 선택</span></legend>
-<label><input type="radio" name="known_when" value=""{% if not w.form.known_when %} checked{% endif %}> 모름</label>
-{% for code, label in view.known_labels.items() %}<label><input type="radio" name="known_when" value="{{ code }}"{% if w.form.known_when == code %} checked{% endif %}> {{ label }}</label>{% endfor %}
-</fieldset>
-<div class="doc-form__line">
-<label>인원 <input class="input" type="number" name="workers" min="0" max="999" inputmode="numeric" value="{{ w.form.workers }}"></label>
-<label>장비 <input class="input" type="text" name="equipment_note" maxlength="120" placeholder="펌프카 1, 크레인 1" value="{{ w.form.equipment_note }}"></label>
-</div>
-<label class="doc-form__note">메모 <textarea class="input" name="note" maxlength="500" rows="2">{{ w.form.note }}</textarea></label>
-<div class="doc-form__actions">
-<button class="btn btn--accent btn--sm" type="submit">저장</button>
-{% if w.change_href %}<a class="btn btn--soft btn--sm" href="{{ w.change_href }}">계획과 달라요 · 변경 제안</a>{% endif %}
-</div>
-</form>
-</details>
+{% if loop.first %}<th scope="rowgroup" rowspan="{{ r.works | length * 2 }}">{{ r.company }}{% if r.workers_total is not none %}<span class="doc-daily__sum">{{ r.workers_total }}명</span>{% endif %}</th>{% endif %}
+<td><strong class="doc-daily__work">{{ w.work_type }}</strong><span class="doc-daily__sub">{{ w.time_text }}{% if w.location %} · {{ w.location }}{% endif %}</span></td>
+<td class="doc-daily__outcome">
+{% if w.outcome %}
+{{ rf.status(w) }}{% if w.can_edit %} <button class="rlink doc-noprint" type="button" data-report-open="{{ w.item_id }}">고치기</button>{% endif %}
+{% if w.stale %}<span class="doc-daily__sub doc-daily__stale">기록 뒤 계획 바뀜</span>{% endif %}
+{% elif w.can_edit %}
+<span class="doc-noprint">{{ rf.quick(view, w) }}</span><span class="doc-printonly">{{ rf.status(w) }}</span>
+{% else %}{{ rf.status(w) }}{% endif %}
 </td>
+<td>{{ w.causes_text }}{% if w.known_text %}<span class="doc-daily__sub">{{ w.known_text }}</span>{% endif %}</td>
+<td>{% if w.workers is not none %}{{ w.workers }}명{% endif %}{% if w.equipment_note %}<span class="doc-daily__sub">{{ w.equipment_note }}</span>{% endif %}</td>
+<td>{{ w.note }}</td>
+<td><span class="doc-daily__sub">{{ w.recorded_text }}</span></td>
 </tr>
-{% endif %}
+<tr class="doc-daily__edit doc-noprint" data-report-edit{% if view.error_item_id != w.item_id %} hidden{% endif %}><td colspan="6">{% if w.can_edit %}{{ rf.form(view, w) }}{% endif %}</td></tr>
 {% endfor %}
 </tbody>
 {% endfor %}
@@ -84,18 +63,17 @@
 {% else %}<p class="doc__empty">이날 등록된 작업이 없어요.</p>{% endif %}
 </section>
 
+{% if view.changes %}
 <section class="doc__section" aria-labelledby="doc-changes">
 <h2 class="doc__h2" id="doc-changes">이날 확정된 변경</h2>
-{% if view.changes %}<ul class="doc-list">{% for c in view.changes %}<li>{{ c }}</li>{% endfor %}</ul>
-{% else %}<p class="doc__empty">이날 확정된 변경이 없어요.</p>{% endif %}
+<ul class="doc-list">{% for c in view.changes %}<li>{{ c }}</li>{% endfor %}</ul>
 </section>
+{% endif %}
 
 <footer class="doc__foot">
 <p>공온 기록 · 공식 서류 아님. 결과는 각 업체·담당자가 남긴 기록입니다.</p>
 <p>{{ view.made_text }} 출력</p>
 </footer>
 </article>
-<script>
-document.querySelector("[data-print]").addEventListener("click", () => window.print());
-</script>
+{{ rf.script() }}
 {% endblock %}

@@ -196,6 +196,17 @@ const syncGroupseg = () => {
   const attn = document.documentElement.dataset.attn === "1";
   document.querySelectorAll("[data-groupattn]").forEach((b) => b.setAttribute("aria-checked", String(attn)));
 };
+// 툴팁(D-118): 누르면 열고, 다른 곳을 누르거나 Esc면 닫는다(마우스 올림·포커스는 CSS)
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-tip]");
+  document.querySelectorAll(".tip.is-open").forEach((t) => {
+    if (!btn || t !== btn.parentElement) { t.classList.remove("is-open"); t.querySelector("[data-tip]").setAttribute("aria-expanded", "false"); }
+  });
+  if (btn) { const open = btn.parentElement.classList.toggle("is-open"); btn.setAttribute("aria-expanded", String(open)); }
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") document.querySelectorAll(".tip.is-open").forEach((t) => t.classList.remove("is-open"));
+});
 // 주의(C04-53): 중지·확인·점검 문제가 있는 묶음만 보기. 업체별·위치별과 함께 쓴다
 document.addEventListener("click", (e) => {
   if (!e.target.closest("[data-groupattn]")) return;

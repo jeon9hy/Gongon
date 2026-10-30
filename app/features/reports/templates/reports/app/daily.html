@@ -1,0 +1,48 @@
+{# 휴대폰 공사일보(D-118): 작업마다 카드 한 장, 큰 버튼 세 개(했음은 한 번에 저장, 일부만·못함은 카드 안에서 폼이 열림).
+   ‘오늘’의 일보 줄에서 들어온다(D-117). 인쇄·표는 PC 화면에서. #}
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% import "reports/_report_form.html" as rf %}
+{% block title %}공사일보{% endblock %}
+{% block body_class %} class="docbody"{% endblock %}
+{% block pagebar %}{% endblock %}
+{% block content %}
+<div class="mdoc-top">
+<h1 class="msec__title">공사일보</h1>
+<div class="doc-tools__week"><a class="btn btn--soft btn--sm" href="?day={{ view.prev_day }}" aria-label="전날">{{ icon("chevron-left", 16) }}</a><span>{{ view.day_text }}</span><a class="btn btn--soft btn--sm" href="?day={{ view.next_day }}" aria-label="다음 날">{{ icon("chevron-right", 16) }}</a></div>
+</div>
+
+{% if view.work_count %}
+{% set pct = (view.recorded_count * 100 / view.work_count) | round | int %}
+<div class="mdoc-progress">
+<div class="rprogress__text"><strong>기록 {{ view.recorded_count }}/{{ view.work_count }}</strong>{% if view.recorded_count == view.work_count %}<span class="rprogress__done">{{ icon("check", 14, 2.6) }} 다 남겼어요</span>{% elif view.short_count %}<span class="muted small">일부만·못함 {{ view.short_count }}건</span>{% endif %}</div>
+<span class="rprogress__bar" role="img" aria-label="{{ view.work_count }}건 중 {{ view.recorded_count }}건 기록"><span style="width: {{ pct }}%"></span></span>
+{% if view.rest_count %}<form method="post" action="/reports/{{ view.site_id }}/daily/done-all"><input type="hidden" name="day" value="{{ view.day_iso }}"><button class="btn btn--soft" type="submit">{{ icon("check", 15, 2.4) }} 남은 {{ view.rest_count }}건 모두 했음</button></form>{% endif %}
+</div>
+{% endif %}
+{% if not view.recordable %}<p class="doc__note">{{ icon("info", 15) }} 작업일이 지나야 결과를 기록할 수 있어요.</p>{% endif %}
+
+{% if view.rows %}
+<div class="rcards">
+{% for r in view.rows %}
+<p class="rcompany">{{ r.company }}{% if r.workers_total is not none %} <small>· {{ r.workers_total }}명</small>{% endif %}</p>
+{% for w in r.works %}
+<article class="rcard" id="work-{{ w.item_id }}">
+<div class="rcard__head">
+<div class="rcard__what"><strong>{{ w.work_type }}</strong><span>{{ w.time_text }}{% if w.location %} · {{ w.location }}{% endif %}</span></div>
+{{ rf.status(w) }}
+</div>
+{% if w.outcome %}
+{% set facts = [w.causes_text, w.known_text, ("%d명" | format(w.workers)) if w.workers is not none else "", w.equipment_note, w.note] | select | list %}
+{% if facts %}<p class="rcard__facts">{{ facts | join(" · ") }}</p>{% endif %}
+{% if w.stale %}<p class="rcard__facts doc-daily__stale">기록 뒤 계획이 바뀌었어요</p>{% endif %}
+{% if w.can_edit %}<button class="rlink" type="button" data-report-open="{{ w.item_id }}">고치기</button>{% endif %}
+{% elif w.can_edit %}{{ rf.quick(view, w) }}{% endif %}
+{% if w.can_edit %}<div data-report-edit{% if view.error_item_id != w.item_id %} hidden{% endif %}>{{ rf.form(view, w) }}</div>{% endif %}
+</article>
+{% endfor %}
+{% endfor %}
+</div>
+{% else %}<p class="mempty">이날 등록된 작업이 없어요.</p>{% endif %}
+{{ rf.script() }}
+{% endblock %}

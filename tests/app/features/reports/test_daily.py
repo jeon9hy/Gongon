@@ -81,7 +81,8 @@ def test_today_can_be_recorded_but_tomorrow_cannot(
     tomorrow = record(client, item)  # 내일(10/5) 작업
     assert tomorrow.status_code == 422 and "작업일이 지나야" in tomorrow.text
     assert saved(session, item) is None
-    assert "결과 기록" not in client.get(f"/reports/{item.site_id}/daily?day=2026-10-05").text
+    future = client.get(f"/reports/{item.site_id}/daily?day=2026-10-05").text
+    assert f'data-report-open="{item.id}"' not in future and "rq__btn" not in future
 
 
 @pytest.mark.parametrize(
@@ -126,7 +127,10 @@ def test_only_the_performing_company_or_coordinator_records(
     page = client.get(f"/reports/{today_work.site_id}/daily").text
     assert "일부만" in page and "인력" in page and "골조 담당" in page
     # 열람자는 보기만 한다
-    assert "결과 기록" not in viewer.get(f"/reports/{today_work.site_id}/daily").text
+    viewed = viewer.get(f"/reports/{today_work.site_id}/daily").text
+    assert (
+        "rq__btn" not in viewed and 'data-report-open="' not in viewed and 'id="rf-' not in viewed
+    )
 
 
 def test_record_made_before_a_plan_change_is_marked_not_carried_over(
@@ -147,13 +151,13 @@ def test_totals_leave_unknown_workers_blank(
     team: dict[str, Any],
 ) -> None:  # fmt: skip
     page = client.get(f"/reports/{item.site_id}/daily").text
-    assert "투입 인원</dt><dd>-" in page  # 아무도 안 적었으면 0명이 아니라 빈칸
+    assert "투입 인원</dt><dd>—" in page  # 아무도 안 적었으면 0명이 아니라 빈칸
     other = work_on(client, session, item.site_id, "2026-10-04", "16:30", "18:00",
                     team["safety_company"])  # fmt: skip
     record(client, today_work, workers="7")
     record(client, other)  # 인원 모름
     page = client.get(f"/reports/{item.site_id}/daily").text
-    assert "투입 인원</dt><dd>7명" in page and "기록</dt><dd>2건" in page
+    assert "투입 인원</dt><dd>7명" in page and "기록 2/2" in page
 
 
 def test_when_it_became_known_is_optional_and_cleared_for_done_work(
@@ -198,3 +202,17 @@ def test_mark_the_rest_done_leaves_recorded_and_other_companies_work(
     assert saved(session, item) is None
     assert team["framer"].post(f"/reports/{item.site_id}/daily/done-all",
                                data={"day": "2026-10-04"}).status_code == 200  # fmt: skip
+
+
+def test_quick_done_keeps_what_was_written_and_phone_gets_cards(
+    client: TestClient, session: Session, today_work: WorkItem
+) -> None:
+    page = client.get(f"/reports/{today_work.site_id}/daily?ui=web").text
+    assert f'data-report-open="{today_work.id}" data-outcome="partial"' in page  # 빠른 버튼
+    # 했음 빠른 버튼은 지금 적힌 인원·장비·메모를 그대로 보낸다
+    record(client, today_work, outcome="partial", causes="material", workers="5", note="오전만")
+    record(client, today_work, outcome="done", workers="5", equipment_note="", note="오전만")
+    report = saved(session, today_work)
+    assert report is not None and report.outcome == "done" and report.workers == 5
+    phone = client.get(f"/reports/{today_work.site_id}/daily?ui=app").text
+    assert 'class="rcard"' in phone and "doc-daily" not in phone

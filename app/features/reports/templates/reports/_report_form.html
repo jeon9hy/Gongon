@@ -1,0 +1,86 @@
+{# 작업일보 입력(PC 공사일보·휴대폰 카드가 같이 쓴다, D-118).
+   quick: 했음은 한 번에 저장(지금 적힌 인원·장비·메모는 그대로 보낸다), 일부만·못함은 아래 폼을 열고 그 결과를 골라 둔다. #}
+{% from "_macros.html" import icon %}
+
+{% macro quick(view, w) -%}
+<div class="rq" role="group" aria-label="{{ w.work_type }} 결과">
+<form method="post" action="/reports/{{ view.site_id }}/daily/{{ w.item_id }}">
+<input type="hidden" name="outcome" value="done">
+<input type="hidden" name="workers" value="{{ w.form.workers }}">
+<input type="hidden" name="equipment_note" value="{{ w.form.equipment_note }}">
+<input type="hidden" name="note" value="{{ w.form.note }}">
+<button class="rq__btn rq__btn--done" type="submit">{{ icon("check", 14, 2.6) }} 했음</button>
+</form>
+<button class="rq__btn rq__btn--partial" type="button" data-report-open="{{ w.item_id }}" data-outcome="partial">일부만</button>
+<button class="rq__btn rq__btn--not_done" type="button" data-report-open="{{ w.item_id }}" data-outcome="not_done">못함</button>
+</div>
+{%- endmacro %}
+
+{% macro status(w) -%}
+{% if w.outcome %}<span class="rpill rpill--{{ w.outcome }}">{{ w.outcome_label }}</span>{% else %}<span class="rpill rpill--none">미입력</span>{% endif %}
+{%- endmacro %}
+
+{% macro form(view, w) -%}
+{% set failed = view.error_item_id == w.item_id %}
+<form class="rform" id="rf-{{ w.item_id }}" method="post" action="/reports/{{ view.site_id }}/daily/{{ w.item_id }}"{% if not failed %} hidden{% endif %}>
+{% if failed %}<ul class="rform__errors" role="alert">{% for e in view.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+<fieldset class="rform__group"><legend>결과</legend>
+<div class="rchips">{% for code, label in view.outcome_labels.items() %}<label class="rchip rchip--{{ code }}"><input type="radio" name="outcome" value="{{ code }}"{% if w.form.outcome == code %} checked{% endif %} required><span>{{ label }}</span></label>{% endfor %}</div>
+</fieldset>
+<fieldset class="rform__group" data-short-only><legend>원인 <small>하나 이상</small></legend>
+<div class="rchips">{% for code, label in view.reason_labels.items() %}<label class="rchip"><input type="checkbox" name="causes" value="{{ code }}"{% if code in w.form.causes %} checked{% endif %}><span>{{ label }}</span></label>{% endfor %}</div>
+</fieldset>
+<fieldset class="rform__group" data-short-only><legend>언제 알았나요 <small>선택</small></legend>
+<div class="rchips"><label class="rchip"><input type="radio" name="known_when" value=""{% if not w.form.known_when %} checked{% endif %}><span>모름</span></label>{% for code, label in view.known_labels.items() %}<label class="rchip"><input type="radio" name="known_when" value="{{ code }}"{% if w.form.known_when == code %} checked{% endif %}><span>{{ label }}</span></label>{% endfor %}</div>
+</fieldset>
+<div class="rform__line">
+<label><span>인원 <small>선택</small></span><input class="input" type="number" name="workers" min="0" max="999" inputmode="numeric" value="{{ w.form.workers }}" placeholder="명"></label>
+<label><span>장비 <small>선택</small></span><input class="input" type="text" name="equipment_note" maxlength="120" placeholder="펌프카 1, 크레인 1" value="{{ w.form.equipment_note }}"></label>
+</div>
+<label class="rform__note"><span>메모 <small>선택</small></span><textarea class="input" name="note" maxlength="500" rows="2" placeholder="무슨 일이 있었는지 짧게">{{ w.form.note }}</textarea></label>
+<div class="rform__actions">
+<button class="btn btn--accent btn--sm" type="submit">저장</button>
+<button class="btn btn--soft btn--sm" type="button" data-report-close="{{ w.item_id }}">닫기</button>
+{% if w.change_href %}<a class="rform__change" href="{{ w.change_href }}">계획과 달라요 · 변경 제안 {{ icon("arrow-right", 14, 2.2) }}</a>{% endif %}
+</div>
+</form>
+{%- endmacro %}
+
+{# 결과 고르기에 따라 원인 칸을 보이고, 빠른 버튼·고치기로 폼을 연다. 스크립트가 없어도 폼은 '고치기'로 열린다 #}
+{% macro script() -%}
+<script>
+(() => {
+  const sync = (form) => {
+    const outcome = form.querySelector('input[name="outcome"]:checked');
+    const short = outcome && outcome.value !== "done";
+    form.querySelectorAll("[data-short-only]").forEach((el) => { el.hidden = !short; });
+  };
+  const open = (id, outcome) => {
+    const form = document.getElementById(`rf-${id}`);
+    if (!form) return;
+    form.hidden = false;
+    form.closest("[data-report-edit]")?.removeAttribute("hidden");
+    if (outcome) { const r = form.querySelector(`input[name="outcome"][value="${outcome}"]`); if (r) r.checked = true; }
+    sync(form);
+    (form.querySelector('[data-short-only]:not([hidden]) input') || form.querySelector("input"))?.focus({ preventScroll: true });
+    form.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  };
+  document.querySelectorAll("form.rform").forEach((form) => {
+    sync(form);
+    form.addEventListener("change", () => sync(form));
+    if (!form.hidden) form.closest("[data-report-edit]")?.removeAttribute("hidden");
+  });
+  document.addEventListener("click", (e) => {
+    const opener = e.target.closest("[data-report-open]");
+    if (opener) { open(opener.dataset.reportOpen, opener.dataset.outcome); return; }
+    const closer = e.target.closest("[data-report-close]");
+    if (closer) {
+      const form = document.getElementById(`rf-${closer.dataset.reportClose}`);
+      form.hidden = true;
+      form.closest("[data-report-edit]")?.setAttribute("hidden", "");
+    }
+  });
+  document.querySelector("[data-print]")?.addEventListener("click", () => window.print());
+})();
+</script>
+{%- endmacro %}

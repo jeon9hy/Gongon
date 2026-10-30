@@ -51,6 +51,12 @@
 <svg width="{{ size }}" height="{{ size }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="{{ width }}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{{ icon_paths[name] | safe }}</svg>
 {%- endmacro %}
 
+{# 설명 문구는 화면에 늘어놓지 않고 ? 아이콘 툴팁으로(D-118, 개발자 요청). 마우스·키보드 포커스로 뜨고,
+   휴대폰은 눌러서 연다(base.html의 data-tip). 인쇄에서는 빠진다 #}
+{% macro tip(text, label="설명", end=False) -%}
+<span class="tip{% if end %} tip--end{% endif %}"><button class="tip__btn" type="button" data-tip aria-label="{{ label }}" aria-expanded="false">?</button><span class="tip__box" role="tooltip">{{ text }}</span></span>
+{%- endmacro %}
+
 {% macro verdict_badge(label, large=False) -%}
 <span class="badge badge--{{ verdict_class[label] }}{% if large %} badge--lg{% endif %}">{{ label }}</span>
 {%- endmacro %}

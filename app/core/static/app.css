@@ -305,3 +305,30 @@ html[data-ui="app"] .page--dashboard .hero__main { display: contents; }
 html[data-ui="app"] .page--dashboard .hero__title { grid-column: 1; grid-row: 1; align-self: center; margin: 0; }
 html[data-ui="app"] .page--dashboard .hero__lead, html[data-ui="app"] .page--dashboard .hero__sub { grid-column: 1 / -1; }
 .mco__acct { display: inline-grid; place-items: center; width: 18px; height: 18px; margin-left: 2px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); vertical-align: -3px; }
+
+/* 현장 칩은 휴대폰 머리줄의 주인공(D-118): 왼쪽 맨 앞, 테두리 없이 크게. 페이지 이름은 아래 탭이 알려 준다 */
+.mbar .siteswitch { order: -1; margin-left: 0; margin-right: auto; justify-content: flex-start; min-width: 0; }
+.mbar .siteswitch > summary { max-width: calc(100vw - 2 * var(--m-gutter) - 56px); min-height: 40px; padding: 0 6px 0 0; border: 0; background: transparent; font-size: 18px; font-weight: 800; letter-spacing: -0.02em; }
+.mbar .siteswitch > summary:hover { background: transparent; }
+.mbar .siteswitch__panel { left: 0; right: auto; }
+.mbar__row:has(.siteswitch) > .mbar__title { display: none; }
+
+/* 휴대폰 공사일보 카드(D-118) */
+.rcards { display: grid; gap: 12px; }
+.rcompany { margin: 8px 2px 0; font-size: 13px; font-weight: 800; color: var(--muted); }
+.rcompany small { font-weight: 600; }
+.rcard { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--line-soft); border-radius: var(--radius-lg); background: var(--card); }
+.rcard__head { display: flex; align-items: flex-start; gap: 10px; }
+.rcard__what { flex: 1; min-width: 0; }
+.rcard__what strong { display: block; color: var(--ink); font-size: 16px; }
+.rcard__what span { display: block; margin-top: 2px; color: var(--muted); font-size: 13px; }
+.rcard__facts { margin: 0; color: var(--text); font-size: 13px; line-height: 1.5; }
+.rcard .rq { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-radius: var(--radius-md); }
+.rcard .rq__btn { justify-content: center; min-height: 44px; font-size: 14px; }
+.rcard .rform { padding: 12px; box-shadow: none; }
+.rcard .rform__line { grid-template-columns: 96px minmax(0, 1fr); }
+.mdoc-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.mdoc-top .doc-tools__week { gap: 4px; }
+.mdoc-progress { display: grid; gap: 8px; margin-bottom: 12px; padding: 14px; border-radius: var(--radius-lg); background: var(--card); border: 1px solid var(--line-soft); }
+.mdoc-progress .rprogress__text { justify-content: space-between; }
+.mdoc-progress .btn { width: 100%; justify-content: center; }

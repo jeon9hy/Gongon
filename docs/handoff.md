@@ -2,7 +2,7 @@
 
 - 마지막 수정: Claude Code, 2026-10-30. **새 작업 C14(D-112, 변경과 이어진 서류)** 브랜치 `feature/C14-1-weekly-plan`(아직 main에 없는 `feature/C13-2-web-entry`에서 갈라짐, 합치기 순서 C13-1 → C13-2 → C14). 계기: 개발자가 콘업 PDF·현장 인부 피드백을 검토하고 인터뷰 없이 서류 기능을 넣기로 함. 작업자용 화면(C11)은 더 키우지 않음.
 - C14 구현 끝(review, 화면 다듬기는 개발자 요청으로 뒤에): `app/features/reports/` — C14-1 주간 작업계획표 `/reports/{site}/weekly`, C14-2 작업일보·공사일보 `/reports/{site}/daily`(0026 `work_reports`, 개발 DB 적용함, 롯데마트 45 현장 10/30에 시험 기록 2건), C14-3 기상 작업중지 기록 `/reports/{site}/weather`(판정은 `judgments_service.verdicts_before_work`), C14-4 변경 건 문서 `/reports/{site}/changes/{case}?kind=order|report`(changes `build_detail` 재사용), C14-5 일보 ‘언제 알았나’(0027, 개발 DB 적용함) + 작업 차질 월 집계 `/reports/{site}/losses`(D-113, 인부 2차 피드백). ‘내일 작업 준비 확인’은 가설로만 plan 확인 항목에. D-114 입력 줄이기(0028, 개발 DB 적용): 수락 선택, 기한 사유·보류 담당 선택, 시각 비우면 지금, 마지막 조치 검증·제외 때 자동 종료(`changes._close_when_done`), 검증자 기본값, 일보 ‘모두 했음’. 계약 `collab-contract.md` §6-3, 결정 D-112. 들어가는 곳: PC 주 메뉴 ‘서류’ 탭(D-116·D-117, 하위 공사일보·주간·차질 집계·변경 건 문서, 전체 현장이면 `/reports` 현장 고르기), 휴대폰은 ‘오늘’의 일보 줄(`reports_service.pending_today`, 아래 탭 다섯), 변경 건 상세 머리 버튼(작업 지시서·실정보고). 서비스 사이트는 D-115(첫 화면 아래 공온 이야기, 머리줄 메인·제품·협업·요금).
-- 다음: 화면 다듬기(휴대폰 공사일보 표 → 카드, 일보 입력 폼, 휴대폰 일보 입력 화면), 가이드에 서류 소개. 앱 화면(C13-1b~f)은 멈춘 상태. 주의: `alembic check`는 원래부터 실패한다(migrations/env.py가 모델 일부만 불러옴, check.py에는 없음).
+- D-118 다듬기 끝: 공사일보 결과 칸 빠른 버튼·휴대폰 카드(`_report_form.html` 매크로 공유), 현장 칩 PC 경로형·휴대폰 머리줄 왼쪽, 설명은 `tip` 툴팁. 다음: 다른 화면의 설명 문구도 `tip`으로, 주간 계획표·차질 집계 휴대폰 화면 필요 여부, 가이드에 서류 소개. 앱 화면(C13-1b~f)은 멈춘 상태. 주의: `alembic check`는 원래부터 실패한다(migrations/env.py가 모델 일부만 불러옴, check.py에는 없음).
 - 화면 캡처: `uv run --no-project --with playwright python -I <scratchpad>/shot_weekly.py` (저장소 밖, 8001번 서버, test-works 계정).
 
 ## 이전 인계(C13)
