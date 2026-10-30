@@ -11,12 +11,9 @@
 <header class="about__bar">
 <a class="auth__logo" href="/"><img src="/static/brand/logo.png" alt="" width="32" height="32">공온</a>
 <nav class="about__nav" aria-label="서비스 메뉴">
-<details class="menu intro__featmenu" data-menu-align="start"><summary{% if intro_page == "features" %} aria-current="page"{% endif %}>기능 {{ icon("chevron-down", 14, 2.2) }}</summary>
-<div class="menu__panel intro__featpanel">{% for key, name, ic, title, _lead, _points in features %}<a class="menu__item" href="/features#feature-{{ key }}">{{ icon(ic, 18) }}<span><strong>{{ name }}</strong><small>{{ title }}</small></span></a>{% endfor %}
-<a class="menu__item intro__featall" href="/features">모든 기능 보기 {{ icon("arrow-right", 16, 2.2) }}</a></div>
-</details>
+<a href="/"{% if intro_page in ("home", "launch") %} aria-current="page"{% endif %}>메인</a>
+<a href="/features"{% if intro_page == "features" %} aria-current="page"{% endif %}>제품</a>
 <a href="/collab"{% if intro_page == "collab" %} aria-current="page"{% endif %}>협업</a>
-<a href="/about"{% if intro_page == "about" %} aria-current="page"{% endif %}>소개</a>
 <a href="/pricing"{% if intro_page == "pricing" %} aria-current="page"{% endif %}>요금</a>
 </nav>
 <span class="welcome__links">{% if signed_in %}<a class="btn btn--accent btn--sm" href="/">내 현장</a>
@@ -42,16 +39,15 @@
 <p class="sitefoot__lead">공사가 바뀌는 순간,<br>할 일이 끊기지 않게.</p>
 <nav class="sitefoot__cols" aria-label="바닥 메뉴">
 <div class="sitefoot__col">
-<p class="sitefoot__head">기능</p>
+<p class="sitefoot__head">제품</p>
 {% for key, name, _ic, _title, _lead, _points in features %}<a href="/features#feature-{{ key }}">{{ name }}</a>
 {% endfor %}<a href="/features#where">PC와 휴대폰</a>
 </div>
 <div class="sitefoot__col">
 <p class="sitefoot__head">공온</p>
 <a href="/collab">협업</a>
-<a href="/about">소개</a>
-<a href="/about#how">일하는 방식</a>
-<a href="/about#principles">원칙</a>
+<a href="{{ "/about" if signed_in else "/" }}#how">일하는 방식</a>
+<a href="{{ "/about" if signed_in else "/" }}#principles">원칙</a>
 <a href="/pricing">요금</a>
 </div>
 <div class="sitefoot__col">
@@ -118,9 +114,7 @@
     }
   };
   window.addEventListener("hashchange", openFromHash);
-  openFromHash();  // 같은 페이지 안의 기능 링크를 누르면 펼친 메뉴를 닫는다
-  document.querySelectorAll(".intro__featpanel a").forEach((a) =>
-    a.addEventListener("click", () => { document.querySelector(".intro__featmenu").open = false; }));
+  openFromHash();
 })();
 </script>
 {% endblock %}

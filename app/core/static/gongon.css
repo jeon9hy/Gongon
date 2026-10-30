@@ -2537,20 +2537,10 @@ a.sumcard:hover { border-color: var(--line); }
 @media (prefers-reduced-motion: reduce) { .intro__sites { animation: none; } }
 
 /* 소개 기능 탭(슬랙 방식): 왼쪽 설명, 오른쪽 예시 그림. 머리줄 '기능' 메뉴에서도 연다 */
-.intro__featmenu { position: relative; }
 /* 머리줄 목차는 '기능' 펼침과 구역 링크를 같은 모양으로(개발자 지적: 굵기·색이 달라 어색) */
 .intro .about__nav { align-items: center; gap: 4px; }
-.intro .about__nav > a, .intro__featmenu > summary { display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 0 14px; border-radius: 999px; font-size: 15px; font-weight: 600; color: var(--muted); text-decoration: none; cursor: pointer; list-style: none; }
-.intro__featmenu > summary::-webkit-details-marker { display: none; }
-.intro__featmenu > summary svg { color: var(--muted); transition: transform var(--ease); }
-.intro__featmenu[open] > summary svg { transform: rotate(180deg); }
-.intro .about__nav > a:hover, .intro__featmenu > summary:hover, .intro__featmenu[open] > summary { background: var(--surface); color: var(--ink); }
-.intro__featpanel { width: 320px; }
-.intro__featpanel .menu__item { min-height: 56px; align-items: center; }
-.intro__featpanel .menu__item svg { color: var(--accent); flex: 0 0 auto; }
-.intro__featpanel span { display: flex; flex-direction: column; gap: 2px; }
-.intro__featpanel strong { font-size: 14px; color: var(--ink); }
-.intro__featpanel small { font-size: 12px; font-weight: 400; color: var(--muted); }
+.intro .about__nav > a { display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 0 14px; border-radius: 999px; font-size: 15px; font-weight: 600; color: var(--muted); text-decoration: none; cursor: pointer; list-style: none; }
+.intro .about__nav > a:hover { background: var(--surface); color: var(--ink); }
 .feat { display: flex; flex-direction: column; gap: 24px; margin-top: 8px; }
 .feat__tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
 .feat__tab { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 18px; border: 1px solid var(--line-soft); border-radius: 999px; background: var(--card); font: inherit; font-size: 15px; font-weight: 600; color: var(--muted); cursor: pointer; transition: background-color var(--ease), color var(--ease), border-color var(--ease); }
@@ -2585,7 +2575,6 @@ a.sumcard:hover { border-color: var(--line); }
 .fmock__case span { font-size: 12px; color: var(--accent); font-weight: 600; }
 @media (max-width: 900px) {
   html[data-narrow] .feat__panel { grid-template-columns: minmax(0, 1fr); padding: 24px 16px; gap: 24px; }
-  html[data-narrow] .intro__featmenu { display: none; }
 }
 .me__logout { width: 100%; justify-content: center; }
 .intro__foot { margin-top: 0; }
@@ -2595,7 +2584,6 @@ a.sumcard:hover { border-color: var(--line); }
 .intro__more { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 600; color: var(--accent); text-decoration: none; }
 .intro__more:hover { text-decoration: underline; text-underline-offset: 3px; }
 .intro .about__nav [aria-current="page"] { color: var(--ink); background: var(--surface); }
-.intro__featall { justify-content: space-between; border-top: 1px solid var(--line-soft); border-radius: 0 0 var(--radius-md) var(--radius-md); margin-top: 4px; color: var(--accent); font-weight: 600; }
 .intro__price { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 20px; padding: 32px; border: 1px solid var(--line-soft); border-radius: 24px; background: var(--card); }
 .intro__price h2 { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
 .intro__pricecta { align-self: center; }

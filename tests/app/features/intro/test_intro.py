@@ -11,14 +11,23 @@ SHELL = "Mozilla/5.0 (Linux; Android 14) GongonApp/1"
 FEATURES = ("changes", "actions", "schedule", "team", "chat")
 
 
-def test_front_page_before_login_shows_features_and_sign_up(anonymous_client: TestClient) -> None:
+def test_front_page_before_login_tells_the_story_and_signs_up(
+    anonymous_client: TestClient,
+) -> None:
     page = anonymous_client.get("/")
 
     assert page.status_code == 200
     assert 'href="/signup"' in page.text and 'href="/login"' in page.text
-    for key in FEATURES:
-        assert f'id="feature-{key}"' in page.text
+    # 첫 화면 아래는 공온 이야기(D-115). 기능 탭은 기능 페이지에만 있다
+    for section in ("why", "how", "principles", "vision"):
+        assert f'id="{section}"' in page.text
+    assert 'id="feature-changes"' not in page.text and 'href="/features"' in page.text
+    assert ">소개</a>" not in page.text  # 머리줄·바닥글에 소개 메뉴 없음
+    assert 'href="/" aria-current="page">메인</a>' in page.text  # 머리줄 첫 탭
     assert 'aria-label="주 메뉴"' not in page.text  # 앱 메뉴가 아니라 서비스 사이트 머리줄
+    features = anonymous_client.get("/features").text
+    for key in FEATURES:
+        assert f'id="feature-{key}"' in features
 
 
 def test_signed_in_front_page_picks_a_site_to_open_the_pc_app(client: TestClient) -> None:
@@ -49,7 +58,6 @@ def test_site_list_shows_only_my_sites(client: TestClient, anonymous_client: Tes
     [
         ("/features", 'id="where"'),
         ("/collab", "협력업체 현장대리인"),
-        ("/about", 'id="principles"'),
         ("/pricing", "시범 운영"),
     ],
 )
@@ -89,3 +97,13 @@ def test_footer_is_on_the_service_site_only_and_me_page_can_log_out(client: Test
     assert "sitefoot" not in client.get("/home").text
     # 휴대폰 앱 화면에는 이름 메뉴가 없어 내 정보에서 로그아웃한다
     assert 'action="/logout"' in client.get("/me", headers={"user-agent": IPHONE}).text
+
+
+def test_about_page_is_off_the_menu_but_reachable_after_login(
+    anonymous_client: TestClient, client: TestClient
+) -> None:
+    page = anonymous_client.get("/about")
+    assert page.status_code == 200 and 'id="principles"' in page.text
+    assert 'href="/#how"' in anonymous_client.get("/").text  # 로그인 전엔 같은 첫 화면 안으로
+    assert 'href="/about"' in client.get("/").text  # 내 현장의 공온 이야기 카드
+    assert 'href="/about#how"' in client.get("/features").text  # 로그인 뒤 바닥글
