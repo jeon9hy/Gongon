@@ -22,6 +22,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.formats import parse_date, parse_int, parse_time, weekday_name
 from app.features.actions import service as actions_service
 from app.features.actions.schemas import ActionForm, CandidateForm, RevisionActions
 from app.features.auth import service as auth_service
@@ -52,7 +53,6 @@ from engine.kst import KST
 TITLE_MAX = 80
 LOCATION_MAX = 60
 LIST_LIMIT = 50  # 목록은 최근 50건. 더 필요하면 페이지 처리를 더한다
-_WEEKDAYS = "월화수목금토일"
 
 
 # ---------- 제안 ----------
@@ -104,11 +104,11 @@ def propose(
 ) -> tuple[int | None, tuple[str, ...]]:
     """변경 건(또는 재변경 버전)을 만든다. (변경 건 ID, 오류)."""
     teams_service.require_role(session, user, site_id, PROPOSE_ROLES)
-    item_id = _int(form.work_item_id)
+    item_id = parse_int(form.work_item_id)
     if item_id is None:
         raise HTTPException(status_code=404, detail="작업을 찾을 수 없습니다")
     site, item = _site_and_item(session, site_id, item_id)
-    case_id = _int(form.case_id) if form.case_id else None
+    case_id = parse_int(form.case_id) if form.case_id else None
     case = None if case_id is None else _case_in_site(session, case_id, site_id)
     if case is not None and case.work_item_id != item.item_id:
         raise HTTPException(status_code=404, detail="변경 건을 찾을 수 없습니다")
@@ -125,7 +125,7 @@ def propose(
     elif len(reasons) != len(set(form.reasons)):
         errors.append("목록에 있는 변경 원인을 고르세요.")
     after_date, after_start, after_end = (
-        _date(form.after_work_date), _time(form.after_start), _time(form.after_end)
+        parse_date(form.after_work_date), parse_time(form.after_start), parse_time(form.after_end)
     )  # fmt: skip
     location = form.after_location.strip()
     if after_date is None:
@@ -146,7 +146,7 @@ def propose(
             errors.append(start_error)
     if len(location) > LOCATION_MAX:
         errors.append(f"작업 위치는 {LOCATION_MAX}자 이하로 입력하세요.")
-    if _int(form.plan_version) != item.plan_version:
+    if parse_int(form.plan_version) != item.plan_version:
         errors.append(
             "제안 화면을 연 뒤 작업 계획이 바뀌었습니다. 지금 계획을 확인하고 다시 제안하세요."
         )
@@ -875,28 +875,7 @@ def _last_event(r: ChangeRevision) -> datetime:
 
 def _plan_text(day: date, start: time, end: time, location: str) -> str:
     place = f" · {location}" if location else ""
-    return f"{day:%m/%d}({_WEEKDAYS[day.weekday()]}) {start:%H:%M}-{end:%H:%M}{place}"
-
-
-def _int(raw: str) -> int | None:
-    try:
-        return int(raw)
-    except ValueError:
-        return None
-
-
-def _date(raw: str) -> date | None:
-    try:
-        return date.fromisoformat(raw.strip())
-    except ValueError:
-        return None
-
-
-def _time(raw: str) -> time | None:
-    try:
-        return time.fromisoformat(raw.strip())
-    except ValueError:
-        return None
+    return f"{day:%m/%d}({weekday_name(day)}) {start:%H:%M}-{end:%H:%M}{place}"
 
 
 def awaiting_review(

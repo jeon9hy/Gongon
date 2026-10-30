@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.clock import now_kst
 from app.core.db import get_session
+from app.core.formats import parse_date
 from app.core.templating import register_template_dir, templates
 from app.features.auth.service import CurrentUserDep, require_user
 from app.features.reports import service
@@ -64,7 +65,7 @@ def weekly(
     start: str = "",
 ) -> HTMLResponse:
     """주간 작업계획표(C14-1, D-112). 날짜가 잘못되면 기본(다음 주)을 보인다."""
-    view = service.build_weekly(session, user, site_id, now, _date(start))
+    view = service.build_weekly(session, user, site_id, now, parse_date(start))
     return templates.TemplateResponse(
         request, "reports/weekly.html", {"nav_active": "docs_weekly", "view": view}
     )
@@ -80,7 +81,7 @@ def daily(
     day: str = "",
 ) -> HTMLResponse:
     """작업일보·공사일보(C14-2, D-112). 날짜가 잘못되면 오늘을 보인다."""
-    view = service.build_daily(session, user, site_id, now, _date(day))
+    view = service.build_daily(session, user, site_id, now, parse_date(day))
     return templates.TemplateResponse(
         request, "reports/daily.html", {"nav_active": "docs_daily", "view": view}
     )
@@ -95,7 +96,7 @@ def daily_done_all(
     day: Annotated[str, Form()] = "",
 ) -> Response:
     """남은 작업 모두 했음(D-114). 이미 기록한 작업은 그대로 둔다."""
-    target = _date(day) or now.date()
+    target = parse_date(day) or now.date()
     service.mark_rest_done(session, user, site_id, target, now)
     return RedirectResponse(f"/reports/{site_id}/daily?day={target.isoformat()}", status_code=303)
 
@@ -179,10 +180,3 @@ def losses(
     return templates.TemplateResponse(
         request, "reports/losses.html", {"nav_active": "docs_losses", "view": view}
     )
-
-
-def _date(raw: str) -> date | None:
-    try:
-        return date.fromisoformat(raw.strip())
-    except ValueError:
-        return None

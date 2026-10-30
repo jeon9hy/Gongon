@@ -7,6 +7,7 @@ from datetime import date, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
+from app.core.formats import parse_date
 from app.features.auth.schemas import CurrentUser
 from app.features.sites import repository
 from app.features.sites.models import Site
@@ -145,8 +146,8 @@ def validate(form: SiteForm) -> tuple[SiteInput | None, tuple[str, ...]]:
         except GridConversionError:
             errors.append("이 위치는 기상청 단기예보 범위 밖입니다. 위도·경도를 확인하세요.")
 
-    start_date = _date(form.work_start_date)
-    end_date = _date(form.work_end_date)
+    start_date = parse_date(form.work_start_date)
+    end_date = parse_date(form.work_end_date)
     if start_date is None or end_date is None:
         errors.append("작업 기간(시작일·종료일)을 입력하세요.")
     elif start_date > end_date:
@@ -179,13 +180,6 @@ def _float(raw: str) -> float | None:
     except ValueError:
         return None
     return value if value == value else None  # NaN 거부
-
-
-def _date(raw: str) -> date | None:
-    try:
-        return date.fromisoformat(raw.strip())
-    except ValueError:
-        return None
 
 
 def _new_form(today: date | None) -> SiteForm:

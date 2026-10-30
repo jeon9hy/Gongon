@@ -16,6 +16,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.files import LocalFileStore, sniff_image
+from app.core.formats import day_text
 from app.features.actions import service as actions_service
 from app.features.auth import service as auth_service
 from app.features.auth.schemas import CurrentUser
@@ -30,7 +31,6 @@ from engine.kst import KST
 BODY_MAX = 1000
 PHOTO_MAX_BYTES = 10 * 1024 * 1024  # 휴대폰 사진 한 장(D-111)
 PAGE = 50
-_WEEKDAYS = "월화수목금토일"
 
 
 def rooms(session: Session, user: CurrentUser) -> tuple[RoomChoice, ...]:
@@ -258,7 +258,7 @@ def _views(
                 mine=m.author_user_id == user.user_id,
                 body=None if deleted else m.body,
                 time_text=f"{local:%H:%M}",
-                day_text=f"{local.month}월 {local.day}일({_WEEKDAYS[local.weekday()]})",
+                day_text=day_text(local),
                 case=None if deleted or m.linked_case_id is None else cards.get(m.linked_case_id),
                 can_delete=not deleted and m.author_user_id == user.user_id,
                 photo_url=None if deleted or not m.photo_key else f"/chat/{site_id}/photos/{m.id}",

@@ -38,8 +38,8 @@ BOUNDARY_RULES: tuple[tuple[str, tuple[str, ...], str], ...] = (
     ),
     (
         "app.core",
-        ("app.features", "app.jobs"),
-        "공통 기반은 기능·실행 작업을 참조하지 않는다",
+        ("app.features",),
+        "공통 기반은 기능을 참조하지 않는다",
     ),
 )
 

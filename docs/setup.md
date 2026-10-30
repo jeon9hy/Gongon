@@ -62,7 +62,6 @@ cp .env.example .env      # 실제 값은 .env에만(커밋 금지)
 3. **[카카오맵] > [사용 설정] 상태 ON** (필수). 무료 쿼터는 개발자 계정당 처음 활성화한 앱 하나에만 준다
 4. `.env`에 `KAKAO_REST_API_KEY=<복사한 키>` → **공온 실행을 다시 시작**(설정은 시작할 때 읽는다)
 
-- 대화방 사진(D-111)은 `UPLOAD_DIR`(비우면 저장소의 `data/uploads`, 커밋하지 않음)에 저장된다. 마이그레이션 0025가 필요하다. 작업일보(C14-2)는 0026, ‘언제 알았나’(C14-5)는 0027, 입력 줄이기(D-114)는 0028이 필요하다.
 - 키는 서버에만 있고 브라우저에는 검색 결과만 간다. 다 쓰면 유료 설정 전에는 429 오류로 막힌다(과금 아님). 2026-10-04 확인한 무료 쿼터 하루 10만 건은 키워드 검색 기준이며, 주소 검색 쿼터는 `[확인 필요]`(Kakao Developers 쿼터 문서)
 
 ## 검증
@@ -73,20 +72,20 @@ uv run python -m pytest tests/<경로> -q  # 작업 중 빠른 확인: 관련 �
 ```
 - `check.py`는 실패해도 나머지 단계를 모두 실행하고 끝에 단계별 ok/FAIL을 보여준다. 하나라도 실패하면 종료 코드 1.
 - pytest의 건너뜀(skip)은 통과가 아니다. 사유는 `-rs` 출력으로 확인한다.
-- DB 테스트는 `TEST_DATABASE_URL`(환경 변수 또는 `.env`)이 있어야 실행된다. 없으면 24개가 건너뜀으로 표시된다.
+- DB 테스트는 `TEST_DATABASE_URL`(환경 변수 또는 `.env`)이 있어야 실행된다. 없으면 대부분이 건너뜀으로 표시된다.
   테스트는 그 DB의 `public` 스키마를 지우고 마이그레이션을 다시 적용하므로, DB 이름에 `test`가 없으면 실행을 거부한다.
   CI는 `postgres:17` 서비스로 항상 실행한다.
 - 외부 API는 호출하지 않는다(가짜 응답 `tests/fakes.py`).
-- DB 세션 시간대가 달라도 결과가 같아야 한다. 시각을 다루는 변경 뒤에는 UTC 세션으로 한 번 더 돌린다: `PGTZ=UTC uv run python -m pytest tests -q -p no:cacheprovider`(PowerShell은 `$env:PGTZ="UTC"`). DB에서 읽은 시각은 `.astimezone(KST)` 뒤에 비교한다(C04-1).
+- DB 세션 시간대가 달라도 결과가 같아야 한다. 시각을 다루는 변경 뒤에는 UTC 세션으로 한 번 더 돌린다: `PGTZ=UTC uv run python -m pytest tests -q`(PowerShell은 `$env:PGTZ="UTC"`). DB에서 읽은 시각은 `.astimezone(KST)` 뒤에 비교한다(C04-1).
 - Windows 한글 출력: `check.py`는 UTF-8 모드로 실행한다. pytest를 직접 실행할 때 깨지면 `PYTHONUTF8=1`을 설정한다(Git Bash: `export PYTHONUTF8=1`, PowerShell: `$env:PYTHONUTF8=1`).
 
 ## 앱 실행
 ```bash
 uv run python -m alembic upgrade head
-uv run python -m uvicorn app.main:app --reload
+uv run python -m uvicorn app.main:app --reload   # Claude 확인용 서버는 --port 8001(8000은 개발자 바로가기)
 # http://127.0.0.1:8000 → 가입(이메일·휴대폰·이름·회사) → 현장 설정에서 현장 등록 → 대시보드에서 "지금 판정하기"
 ```
-- 모든 화면은 로그인이 필요하다(D-057). 쓰기 요청은 같은 출처(Origin/Referer)만 받으므로 다른 도구로 POST할 때 `Origin: http://127.0.0.1:8000` 헤더를 붙인다. HTTPS 배포에서는 `.env`에 `SESSION_COOKIE_SECURE=1`.
+- 서비스 사이트(`/`·`/features`·`/collab`·`/about`·`/pricing`)만 공개이고 앱 화면은 로그인이 필요하다(D-057·D-110). 쓰기 요청은 같은 출처(Origin/Referer)만 받으므로 다른 도구로 POST할 때 `Origin: http://127.0.0.1:8000` 헤더를 붙인다. HTTPS 배포에서는 `.env`에 `SESSION_COOKIE_SECURE=1`.
 - 0010 이전에 만든 현장은 참여 업체가 없어 아무도 볼 수 없다(소유자를 추정하지 않음). 화면에서 가입한 뒤 `PYTHONUTF8=1 uv run python scripts/grant_site.py --email <내 이메일> --all-unassigned`(또는 `--site-id N`)로 조정자를 지정한다.
 - 폴더의 `공온 실행.lnk`(또는 `scripts/start.bat`)가 PostgreSQL 확인·시작 → 마이그레이션 적용 → 서버 실행 → 브라우저 열기를 한다.
   - PostgreSQL 서비스가 꺼져 있으면 `scripts/ensure_postgres.bat`이 켠다. 서비스 시작에는 관리자 권한이 필요해 그때만 UAC 확인 창이 뜬다. 로컬 PostgreSQL 서비스가 없으면(원격 DB) 건너뛴다.
@@ -121,12 +120,15 @@ uv run python -m uvicorn app.main:app --reload
 | `KAKAO_REST_API_KEY` | 현장 위치 찾기(선택) | S05 | 설정됨, 주소 검색 실제 호출 200 확인(2026-10-08, 도로명·지번·도로명 없는 지번) |
 | `LAW_OC` | 법령 원문 발췌·실검증 스크립트(앱은 안 씀) | S01 | 설정됨(2026-10-08). `uv run python -m scripts.verify_law_sources`로 저장 발췌 ↔ 현행 원문 확인(D-029) |
 | `KCSC_API_KEY` | KCS 원문 발췌 스크립트(앱은 안 씀) | C04-23 | 설정됨(2026-10-17). `uv run python -m scripts.fetch_kcs --codes 142040 414700 414001 414006 445010 --out rules/sources/kcs_weather.json` (D-079) |
+| `SESSION_COOKIE_SECURE` | 로그인 쿠키를 HTTPS에서만(배포) | C03-1 | 로컬 http 개발은 비움(D-057) |
+| `UPLOAD_DIR` | 대화방 사진 보관 폴더 | D-111 | 비우면 저장소의 `data/uploads`(커밋 안 함). 배포 보관소는 확인 항목 |
 
 ## DB 적용 절차
 ```bash
 uv run python -m alembic upgrade head       # 최신으로 적용
 uv run python -m alembic current            # 현재 리비전 확인
 uv run python -m alembic downgrade -1       # 한 단계 되돌리기(데이터가 지워질 수 있음 — 운영 DB에서는 백업 먼저)
-uv run python -m alembic check              # 모델과 마이그레이션 차이 확인(차이가 있으면 실패)
 ```
-- 테이블 변경은 `migrations/versions/`에 새 리비전을 추가해서만 한다. 적용 실패 시 `alembic current`로 위치를 확인하고, 원인을 고친 뒤 다시 `upgrade head`.
+- 테이블 변경은 `migrations/versions/`에 새 리비전(다음 번호, `down_revision`은 바로 앞)을 손으로 추가해서만 한다. 적용 실패 시 `alembic current`로 위치를 확인하고, 원인을 고친 뒤 다시 `upgrade head`.
+- `alembic check`는 쓰지 않는다. 인덱스·제약을 마이그레이션에만 두어 늘 차이가 나온다(D-120). 마이그레이션은 테스트가 실제 PostgreSQL에 적용해 확인한다.
+- 새 마이그레이션을 받은 뒤에는 개발 DB에 `upgrade head`(`start.bat`은 실행할 때마다 적용).

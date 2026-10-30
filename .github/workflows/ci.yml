@@ -2,7 +2,7 @@ name: ci
 
 on:
   push:
-    branches: [main, "feature/**", "fix/**", "rules/**"]
+    branches: [main, "feature/**", "fix/**", "rules/**", "refactor/**", "docs/**"]
   pull_request:
 
 jobs:

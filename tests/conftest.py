@@ -19,7 +19,7 @@ from alembic import command
 from alembic.config import Config
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine, MetaData, create_engine, make_url, text
+from sqlalchemy import Engine, MetaData, create_engine, event, make_url, text
 from sqlalchemy.orm import Session
 
 from app.core.clock import now_kst
@@ -140,6 +140,26 @@ def session(db_engine: Engine, reset_statements: tuple[str, ...]) -> Iterator[Se
     with db_engine.begin() as connection:
         for statement in reset_statements:
             connection.execute(text(statement))
+
+
+@pytest.fixture
+def count_queries(db_engine: Engine) -> Callable[[], contextlib.AbstractContextManager[list[str]]]:
+    """블록 안에서 실행한 SQL 문장을 모은다. N+1 검사는 자료가 늘어도 문장 수가 같은지 본다."""
+
+    @contextlib.contextmanager
+    def counting() -> Iterator[list[str]]:
+        statements: list[str] = []
+
+        def record(*args: Any) -> None:
+            statements.append(args[2])  # (conn, cursor, statement, parameters, context, many)
+
+        event.listen(db_engine, "before_cursor_execute", record)
+        try:
+            yield statements
+        finally:
+            event.remove(db_engine, "before_cursor_execute", record)
+
+    return counting
 
 
 @pytest.fixture(autouse=True)

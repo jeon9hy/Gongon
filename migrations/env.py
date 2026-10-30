@@ -1,14 +1,20 @@
 """Alembic 실행 환경. 모델 메타데이터는 각 기능의 models 모듈에서 모은다."""
 
+import importlib
+import importlib.util
+import pkgutil
+
 from alembic import context
 from sqlalchemy import create_engine, pool
 
-import app.features.forecasts.models
-import app.features.judgments.models
-import app.features.schedules.models
-import app.features.sites.models  # noqa: F401  (테이블을 메타데이터에 등록)
+import app.features
 from app.core.config import get_settings
 from app.core.db import Base
+
+# 모든 기능의 models를 불러와 테이블을 메타데이터에 등록한다(새 기능이 빠지지 않게, alembic check용).
+for feature in pkgutil.iter_modules(app.features.__path__):
+    if importlib.util.find_spec(f"app.features.{feature.name}.models") is not None:
+        importlib.import_module(f"app.features.{feature.name}.models")
 
 target_metadata = Base.metadata
 

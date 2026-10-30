@@ -11,6 +11,7 @@ from urllib.parse import urlencode
 
 from sqlalchemy.orm import Session
 
+from app.core.formats import day_text, weekday_name
 from app.core.rules import COMMON_LABELS, judged_labels, judges_weather, rule_sets_by_label
 from app.features.actions import service as actions_service
 from app.features.auth.schemas import CurrentUser
@@ -110,7 +111,6 @@ VERDICT_FILTERS: tuple[VerdictFilter, ...] = ("전체", "진행", "확인 필요
 HISTORY_PAGE_SIZES = (30, 50, 100)  # 판정 내역 한 쪽에 보이는 판정 수(고를 수 있는 값)
 HISTORY_VISIBLE_ROWS = 5  # 판정 내역에서 현장 묶음마다 바로 보이는 줄 수(나머지는 더보기)
 WEEK_DAYS = 7  # 주간 보기 범위(D-041). 예보가 없는 날은 판정하지 않는다
-_WEEKDAYS = "월화수목금토일"
 _PLOT_HEIGHT_PX = 200
 _MIN_BAR_PX = 6
 ELEMENT_KEYS: dict[ElementKey, Element] = {
@@ -530,7 +530,7 @@ def build_dashboard(
         sites=tuple(SiteOption(s.site_id, s.name, s.site_id == site.site_id) for s in sites),
         site_id=site.site_id,
         site_name=site.name,
-        target_date=_date_text(target_date),
+        target_date=day_text(target_date),
         work_hours=_items_span(items),
         cards=cards,
         detail_open=work is not None or element_key is not None or hour is not None,
@@ -552,7 +552,7 @@ def build_dashboard(
         off_period_note=None
         if site.works_on(target_date)
         else (
-            f"내일({_date_text(target_date)})은 작업 기간({site.period_text()})이 아니라 "
+            f"내일({day_text(target_date)})은 작업 기간({site.period_text()})이 아니라 "
             "판정하지 않습니다."
         ),
         week=week,
@@ -635,8 +635,8 @@ def build_home(
         checked_short=checked_short_text(
             max(runs.values(), key=lambda r: r.ran_at, default=None), now
         ),
-        target_date=_date_text(target_date),
-        today_date=_date_text(now.astimezone(KST).date()),
+        target_date=day_text(target_date),
+        today_date=day_text(now.astimezone(KST).date()),
         sites=summaries,
         tiles=tiles,
         forecast_status=forecast_status,
@@ -779,7 +779,7 @@ def _index_days(
             days.append(
                 HomeIndexDay(
                     label=first.label,
-                    short=f"{_WEEKDAYS[first.day.weekday()]} {first.day.day}",
+                    short=f"{weekday_name(first.day)} {first.day.day}",
                     is_tomorrow=first.is_tomorrow,
                     score=score,
                     sub=f"현장 {len(scored)}곳" if several else "",
@@ -791,7 +791,7 @@ def _index_days(
             confidence = next((w.days[n].confidence for _, w in weeks if w.days[n].in_period),
                               first.confidence)  # fmt: skip
             days.append(HomeIndexDay(
-                label=first.label, short=f"{_WEEKDAYS[first.day.weekday()]} {first.day.day}",
+                label=first.label, short=f"{weekday_name(first.day)} {first.day.day}",
                 is_tomorrow=first.is_tomorrow, score=None,
                 sub=_NO_SCORE.get(confidence, confidence),
                 href=dashboard_href(weeks[0][0].site_id),
@@ -893,19 +893,19 @@ def _check_boards(
         prefix = f"/schedule?site_id={sites[0].site_id}&" if len(sites) == 1 else "/schedule?"
         add_href = f"{prefix}day={day.isoformat()}&add=1"
         if key != "today":
-            return DayBoard(key, title, _date_text(day), rows, criteria, add_href)
+            return DayBoard(key, title, day_text(day), rows, criteria, add_href)
         left = [i for i, r in zip(day_items, rows, strict=True) if r.phase != "done"]
         by_id = {r.item_id: r for r in rows}
         return DayBoard(
-            key, title, _date_text(day), rows, criteria, add_href,
+            key, title, day_text(day), rows, criteria, add_href,
             groups=_board_groups(left, "company", by_id, companies, trades),
             place_groups=_board_groups(left, "place", by_id, companies, trades),
         )  # fmt: skip
 
     week = tuple(
         HomeDay(
-            date_text=f"{d.month}/{d.day}({_WEEKDAYS[d.weekday()]})",
-            short=f"{_WEEKDAYS[d.weekday()]} {d.day}",
+            date_text=f"{d.month}/{d.day}({weekday_name(d)})",
+            short=f"{weekday_name(d)} {d.day}",
             href=f"/schedule?day={d.isoformat()}",
             works=sum(1 for i in items if i.work_date == d),
             issues=sum(1 for i in items if i.work_date == d and checked[i.item_id]),
@@ -1246,7 +1246,7 @@ def _week(
             if confidence == "낮음"
             else _day_index(judged, day_cells, changed, pops)
         )
-        days.append(WeekDay(day, f"{day:%m/%d}({_WEEKDAYS[day.weekday()]})", day == dates[0],
+        days.append(WeekDay(day, f"{day:%m/%d}({weekday_name(day)})", day == dates[0],
                             in_period, confidence, _CONFIDENCE_NOTE[confidence],
                             index, _index_note(index, confidence)))  # fmt: skip
 
@@ -1462,7 +1462,7 @@ def dashboard_href(site_id: int, **params: str | int) -> str:
 
 def _empty_dashboard(target_date: date) -> DashboardView:
     return DashboardView(
-        sites=(), site_id=None, site_name="", target_date=_date_text(target_date), work_hours="",
+        sites=(), site_id=None, site_name="", target_date=day_text(target_date), work_hours="",
         cards=(), primary=None, forecast_issued=None, rule_version=None, rule_verified=False,
         collection_status="현장 등록 전", judged_at=None, grid="—", notice=None, message=None,
         message_is_error=False, off_period_note=None,
@@ -1861,7 +1861,7 @@ def get_detail(session: Session, scope: SiteScope, judgment_id: int) -> DetailVi
     return DetailView(
         site_id=None if site is None else site.site_id,
         site_name="삭제된 현장" if site is None else site.name,
-        target_date=_date_text(judgment.target_date),
+        target_date=day_text(judgment.target_date),
         work_type=judgment.work_type,
         work_range=_range_text(judgment.work_start_at, judgment.work_end_at),
         verdict=judgment.verdict,
@@ -1952,7 +1952,7 @@ def _history_days(rows: Sequence[Judgment], names: Mapping[int, str]) -> tuple[H
     for j in rows:
         row = HistoryRow(
             judgment_id=j.id,
-            target_date=f"{j.target_date:%m/%d}({_WEEKDAYS[j.target_date.weekday()]})",
+            target_date=f"{j.target_date:%m/%d}({weekday_name(j.target_date)})",
             site_name=names.get(j.site_id, "삭제된 현장"),
             work_type=j.work_type,
             time_range=_range_text(j.work_start_at, j.work_end_at),
@@ -1966,7 +1966,7 @@ def _history_days(rows: Sequence[Judgment], names: Mapping[int, str]) -> tuple[H
         days.setdefault(j.target_date, {}).setdefault(j.site_id, []).append(row)
     return tuple(
         HistoryDay(
-            label=f"{day.month}월 {day.day}일({_WEEKDAYS[day.weekday()]})",
+            label=day_text(day),
             count=sum(len(site_rows) for site_rows in by_site.values()),
             sites=tuple(
                 HistorySite(site_rows[0].site_name, tuple(site_rows))
@@ -2059,10 +2059,6 @@ def page_window(page: int, last: int, around: int = 2) -> list[int | None]:
 
 def _dt(value: str) -> datetime:
     return datetime.fromisoformat(value).astimezone(KST)
-
-
-def _date_text(value: date) -> str:
-    return f"{value.month}월 {value.day}일({_WEEKDAYS[value.weekday()]})"
 
 
 def _range_text(start_at: datetime, end_at: datetime) -> str:

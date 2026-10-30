@@ -9,7 +9,7 @@
 
 import secrets
 from collections.abc import Iterable, Sequence
-from datetime import date, datetime
+from datetime import datetime
 from typing import Annotated, cast
 
 from fastapi import Depends, HTTPException
@@ -17,6 +17,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.db import get_session
+from app.core.formats import parse_date, parse_int
 from app.core.work_kinds import WORK_TRADE_NAMES
 from app.features.auth import service as auth_service
 from app.features.auth.schemas import CurrentUser, UserInfo
@@ -372,7 +373,7 @@ def add_member(
         session.flush()
     session.add(_membership(participant, target.user_id, role, actor.user_id, now))
     if contact_id:
-        contact = repository.contact(session, site_id, _int(contact_id) or -1)
+        contact = repository.contact(session, site_id, parse_int(contact_id) or -1)
         if contact is None or contact.participant_id != participant.id or contact.user_id:
             session.rollback()
             return ("연결할 명부의 사람은 같은 업체의 계정 미연결 담당자만 고를 수 있습니다.",)
@@ -636,7 +637,7 @@ def _participant_errors(
         errors.append(f"공종 메모는 {TRADE_NOTE_MAX}자 이내로 입력하세요.")
     if len(form.business_no.strip()) > 20:
         errors.append("사업자번호는 20자 이내로 입력하세요.")
-    if form.joined_on.strip() and _date(form.joined_on) is None:
+    if form.joined_on.strip() and parse_date(form.joined_on) is None:
         errors.append("참여 시작일을 날짜로 입력하세요.")
     return tuple(errors)
 
@@ -650,27 +651,13 @@ def _apply_participant_values(participant: ProjectParticipant, form: Participant
         t for t in picked if t not in WORK_TRADE_NAMES
     ]
     participant.business_no = form.business_no.strip() or None
-    participant.joined_on = _date(form.joined_on)
+    participant.joined_on = parse_date(form.joined_on)
 
 
 def _group_label(participant: ProjectParticipant) -> str:
     if participant.kind == "prime":
         return KIND_LABELS["prime"]
     return CATEGORY_LABELS[cast(Category, participant.category or "subcontractor")]
-
-
-def _date(raw: str) -> date | None:
-    try:
-        return date.fromisoformat(raw.strip())
-    except ValueError:
-        return None
-
-
-def _int(raw: str) -> int | None:
-    try:
-        return int(raw)
-    except ValueError:
-        return None
 
 
 def revoke_member(

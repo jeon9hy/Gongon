@@ -18,6 +18,7 @@ from fastapi import HTTPException
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from app.core.formats import parse_int, weekday_name
 from app.features.actions.models import ActionDelegation, ActionEvent, ActionItem
 from app.features.actions.schemas import (
     ACTION_KINDS,
@@ -55,7 +56,6 @@ RESOLVER_MAX = 60
 CANDIDATES_MAX = 30  # 버전 하나의 조치 수 상한
 MY_LIST_LIMIT = 100
 SUGGESTIONS = 20
-_WEEKDAYS = "월화수목금토일"
 
 
 # ---------- 후보(영향 검토) ----------
@@ -81,21 +81,21 @@ def add_candidate(
     criteria = form.done_criteria.strip()
     if len(criteria) > CRITERIA_MAX:
         errors.append(f"완료 기준은 {CRITERIA_MAX}자 이하로 입력하세요.")
-    participant_id = _int(form.performing_participant_id)
+    participant_id = parse_int(form.performing_participant_id)
     if participant_id not in active:
         errors.append("수행 업체를 이 현장의 참여 중인 업체에서 고르세요.")
     assignee_id: int | None = None
     contact_id: int | None = None
     kind, _, raw_id = form.assignee.partition(":")
     if kind == "user":
-        assignee_id = _int(raw_id)
+        assignee_id = parse_int(raw_id)
         assignee = members.get(assignee_id or -1)
         if assignee is None or assignee.role not in ACTION_ROLES:
             errors.append("담당자는 이 현장의 조정자·담당자 중에서 고르세요.")
         elif assignee.participant_id != participant_id:
             errors.append("담당자는 수행 업체 소속이어야 합니다.")
     elif kind == "contact":
-        contact_id = _int(raw_id)
+        contact_id = parse_int(raw_id)
         person = roster.get(contact_id or -1)
         if person is None:
             errors.append("담당자를 이 현장 명부에서 고르세요.")
@@ -106,7 +106,7 @@ def add_candidate(
             assignee_id, contact_id = person.user_id, None
     elif form.assignee:
         errors.append("담당자를 다시 고르세요.")
-    verifier_id = _int(form.verifier_user_id)
+    verifier_id = parse_int(form.verifier_user_id)
     verifier = members.get(verifier_id or -1)
     if verifier is None or verifier.role not in ACTION_ROLES:
         errors.append("검증자를 이 현장의 조정자·담당자 중에서 고르세요.")
@@ -353,7 +353,7 @@ def act(
     )
     if action is None or action.status == "candidate":
         raise HTTPException(status_code=404, detail="조치를 찾을 수 없습니다")
-    if _int(form.revision_id) != action.revision_id or action.status == "replaced":
+    if parse_int(form.revision_id) != action.revision_id or action.status == "replaced":
         return ("이전 버전의 조치입니다. 화면을 새로 열고 현재 버전의 조치를 처리하세요.",)
     me = next(
         (m for m in teams_service.site_members(session, site_id) if m.user_id == user.user_id),
@@ -515,7 +515,7 @@ def add_delegation(
 ) -> tuple[str, ...]:
     """내 조치를 같은 현장·같은 업체의 다른 조정자·담당자에게 기간을 정해 맡긴다."""
     site_part, _, to_part = choice.partition(":")
-    site_id, to_user_id = _int(site_part), _int(to_part)
+    site_id, to_user_id = parse_int(site_part), parse_int(to_part)
     if site_id is None or to_user_id is None:
         return ("맡길 사람을 고르세요.",)
     members = {m.user_id: m for m in teams_service.site_members(session, site_id)}
@@ -1148,14 +1148,7 @@ def _when(at: datetime | None) -> str:
     if at is None:
         return "시각 없음"
     local = at.astimezone(KST)
-    return f"{local:%m/%d}({_WEEKDAYS[local.weekday()]}) {local:%H:%M}"
-
-
-def _int(raw: str) -> int | None:
-    try:
-        return int(raw)
-    except ValueError:
-        return None
+    return f"{local:%m/%d}({weekday_name(local)}) {local:%H:%M}"
 
 
 def blocked_at_sites(

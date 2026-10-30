@@ -1,7 +1,7 @@
 [project]
 name = "gongon"
 version = "0.1.0"
-description = "공온: 기상 영향 기반 현장 작업 운영 서비스 (규칙 기반 공종별 판정 + 현장 알림)"
+description = "공온: 원청과 협력업체의 작업 변경 후속 조치를 연결하고 완료 근거까지 확인하는 서비스"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "alembic>=1.20.0",
@@ -50,10 +50,6 @@ cache-dir = ".cache/ruff"
 select = ["E", "W", "F", "I", "B", "UP", "SIM", "DTZ", "RUF"]
 # 시간 범위는 화면 시안대로 EN DASH(07:00–17:00)를 쓴다.
 ignore = ["RUF001"]
-
-[tool.ruff.lint.per-file-ignores]
-# 예시 데이터는 한 줄에 한 행이 보여야 읽기 쉽다.
-"app/features/*/sample.py" = ["E501"]
 
 [tool.mypy]
 python_version = "3.12"

@@ -21,6 +21,7 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.formats import day_text, weekday_name
 from app.features.actions import service as actions_service
 from app.features.auth import service as auth_service
 from app.features.auth.schemas import CurrentUser
@@ -67,7 +68,6 @@ from engine.kst import KST
 WEEK_DAYS = 7
 UNASSIGNED = "실행 업체 미지정"
 CHANGE_DOCS_LIMIT = 50
-_WEEKDAYS = "월화수목금토일"
 
 
 def week_start(now: datetime, requested: date | None) -> date:
@@ -147,7 +147,7 @@ def build_weekly(
     return WeeklyPlanView(
         site_id=site_id,
         site_name=site.name,
-        period_text=f"{_long(start)} ~ {_long(end)}",
+        period_text=f"{day_text(start)} ~ {day_text(end)}",
         days=tuple(
             WeeklyDay(iso=d.isoformat(), text=_short(d), holiday=d.weekday() >= 5) for d in days
         ),
@@ -187,11 +187,7 @@ def _company_order(
 
 
 def _short(day: date) -> str:
-    return f"{day.month}/{day.day}({_WEEKDAYS[day.weekday()]})"
-
-
-def _long(day: date) -> str:
-    return f"{day.month}월 {day.day}일({_WEEKDAYS[day.weekday()]})"
+    return f"{day.month}/{day.day}({weekday_name(day)})"
 
 
 def build_daily(
@@ -283,7 +279,7 @@ def build_daily(
         site_id=site_id,
         site_name=site.name,
         day_iso=day.isoformat(),
-        day_text=_long(day),
+        day_text=day_text(day),
         recordable=recordable,
         rest_count=sum(1 for r in rows for w in r.works if w.can_edit and w.outcome is None),
         rows=tuple(rows),
@@ -527,7 +523,7 @@ def build_weather_log(
         total = per_day.get(day, 0)
         days.append(
             WeatherDay(
-                day_text=_long(day),
+                day_text=day_text(day),
                 entries=tuple(entry(r) for r in rows),
                 all_stopped=total > 0 and stopped >= total,
                 work_count=total,
@@ -644,7 +640,7 @@ def build_docs_home(session: Session, user: CurrentUser, now: datetime, tab: str
             )
             for s in sites
         ),
-        day_text=_long(today),
+        day_text=day_text(today),
     )
 
 

@@ -10,6 +10,7 @@ from datetime import date, datetime, time, timedelta
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from app.core.formats import day_text
 from app.features.auth.schemas import CurrentUser
 from app.features.board.schemas import BoardItem, BoardView
 from app.features.changes import service as changes_service
@@ -19,8 +20,6 @@ from app.features.sites import service as sites_service
 from app.features.teams import service as teams_service
 from app.features.teams.schemas import BOARD_ROLES
 from engine.kst import KST
-
-_WEEKDAYS = "월화수목금토일"
 
 
 def build_board(session: Session, user: CurrentUser, site_id: int, now: datetime) -> BoardView:
@@ -60,8 +59,8 @@ def build_board(session: Session, user: CurrentUser, site_id: int, now: datetime
     return BoardView(
         site_id=site_id,
         site_name=site.name,
-        today_text=_day(today),
-        tomorrow_text=_day(tomorrow),
+        today_text=day_text(today),
+        tomorrow_text=day_text(tomorrow),
         today=rows(today),
         tomorrow=rows(tomorrow),
         changes=changes_service.confirmed_between(
@@ -78,7 +77,3 @@ def _phase(now: time, start: time, end: time) -> str:
     if now >= start:
         return "진행 중"
     return "예정"
-
-
-def _day(day: date) -> str:
-    return f"{day.month}월 {day.day}일({_WEEKDAYS[day.weekday()]})"

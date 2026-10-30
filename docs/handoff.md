@@ -1,25 +1,29 @@
 # 현재 작업 인계
 
-- 마지막 수정: Claude Code, 2026-10-30. **C13-1·C13-2·C14를 main에 합쳤다**(빨리 감기, 개발자 요청). 작업 브랜치 `feature/C13-1-app-views`·`feature/C13-2-web-entry`·`feature/C14-1-weekly-plan`은 로컬·origin에서 지웠다. 다음 작업은 main에서 새 브랜치로. C13(앱 화면 나머지·배포·APK)은 doing, C14(서류)는 review(실제 휴대폰·현장 사용 확인 전). 계기·결정: D-112~D-119(콘업 PDF·현장 인부 피드백 검토 뒤 서류 기능, 입력 줄이기, 서류 탭, 공유 전 다듬기).
-- C14 구현 끝(review, 화면 다듬기는 개발자 요청으로 뒤에): `app/features/reports/` — C14-1 주간 작업계획표 `/reports/{site}/weekly`, C14-2 작업일보·공사일보 `/reports/{site}/daily`(0026 `work_reports`, 개발 DB 적용함, 롯데마트 45 현장 10/30에 시험 기록 2건), C14-3 기상 작업중지 기록 `/reports/{site}/weather`(판정은 `judgments_service.verdicts_before_work`), C14-4 변경 건 문서 `/reports/{site}/changes/{case}?kind=order|report`(changes `build_detail` 재사용), C14-5 일보 ‘언제 알았나’(0027, 개발 DB 적용함) + 작업 차질 월 집계 `/reports/{site}/losses`(D-113, 인부 2차 피드백). ‘내일 작업 준비 확인’은 가설로만 plan 확인 항목에. D-114 입력 줄이기(0028, 개발 DB 적용): 수락 선택, 기한 사유·보류 담당 선택, 시각 비우면 지금, 마지막 조치 검증·제외 때 자동 종료(`changes._close_when_done`), 검증자 기본값, 일보 ‘모두 했음’. 계약 `collab-contract.md` §6-3, 결정 D-112. 들어가는 곳: PC 주 메뉴 ‘서류’ 탭(D-116·D-117, 하위 공사일보·주간·차질 집계·변경 건 문서, 전체 현장이면 `/reports` 현장 고르기), 휴대폰은 ‘오늘’의 일보 줄(`reports_service.pending_today`, 아래 탭 다섯), 변경 건 상세 머리 버튼(작업 지시서·실정보고). 서비스 사이트는 D-115(첫 화면 아래 공온 이야기, 머리줄 메인·제품·협업·요금).
-- D-118 다듬기 끝: 공사일보 결과 칸 빠른 버튼·휴대폰 카드(`_report_form.html` 매크로 공유), 현장 칩 PC 경로형·휴대폰 머리줄 왼쪽, 설명은 `tip` 툴팁. D-119: 설명 툴팁은 제목 옆으로(나머지 설명 문구도 바꿈), 휴대폰은 공사일보 입력 + 주간·차질 보기 링크(옆으로 밀어 보기), 가이드에 서류 소개. 앱 화면(C13-1b~f)은 멈춘 상태. 주의: `alembic check`는 원래부터 실패한다(migrations/env.py가 모델 일부만 불러옴, check.py에는 없음).
-- 화면 캡처: `uv run --no-project --with playwright python -I <scratchpad>/shot_weekly.py` (저장소 밖, 8001번 서버, test-works 계정).
+## 지금
+- 마지막 수정: Claude Code, 2026-10-30. 브랜치 `refactor/R01-cleanup`(R01 전체 정리, review). 개발자 확인 뒤 main에 빨리 감기로 합치고 브랜치를 지운다.
+- R01에서 바뀐 것: 쓰지 않는 CSS·그림 삭제, `app/core/formats.py`로 중복 도우미 통합, `migrations/env.py` 모든 모델 등록, `count_queries` 픽스처·`tests/app/test_query_counts.py`, 문서 현행화(D-120). 제품 동작·화면·DB는 바꾸지 않았다.
+- R01 남은 확인: 화면이 그대로인지 1440·390 폭으로 한 번 보기(지운 CSS는 모든 템플릿·JS에서 쓰이지 않음을 확인함).
 
-## 이전 인계(C13)
-- 마지막 수정: Claude Code, 2026-10-29. 지금 브랜치 `feature/C13-2-web-entry`(아직 main에 없는 `feature/C13-1-app-views`에서 갈라짐, C13-1a의 `ui_mode`가 필요해서). C13-2a 웹 입구(D-110, 슬랙 방식): `app/features/intro/` — `/` 로그인 전 첫 화면+기능 탭, 로그인 뒤 ‘다시 만나서 반가워요’ 내 현장 고르기 → PC 앱 `/home`을 새 탭(`target="gongon-app"`)으로, 앱 안에는 소개 링크 없음(홈 주소를 `/`에서 옮김), `/features`·`/collab`·`/about`·`/pricing` 각자 페이지, 바닥글은 서비스 사이트에만(PC 앱에서 뺌), 로그아웃은 서비스 사이트 이름 메뉴·내 정보에도. 휴대폰 앱 화면은 서비스 사이트 생략. 메뉴 왼쪽 맞춤은 `details.menu[data-menu-align="start"]`. 요금 금액은 개발자 확인 항목. 합치기 순서: C13-1 브랜치 → main, 그다음 이 브랜치.
-- C13-1 앱 화면(이 브랜치에서 이어 함, 개발자 요청 ‘앱 UI 압축’): 공통 한 줄 목록 `app.css`(.mlist/.mrow/.mtag/.mchips/.msum), 오늘 재작성, 조치 `actions/app/my.html`, 변경 목록 `changes/app/list.html`, 업체 `teams/app/{all,members,_company}.html`(펼치면 담당자·tel), 일정은 CSS 압축만. 내 차례 ‘현장 · 현장’ 중복 수정(`_merge_inbox`). 남은 것: 조치·변경 상세·응답 폼, 일정 주간 목록, 내 정보·로그인 앱 화면.
-- 대화방 첨부(D-111, 마이그레이션 0025, 개발 DB 적용함): + 메뉴 사진·연락처·변경 건·조치(`chat/_attach.html`·`chat.js`), 사진 보관 `app/core/files.py`(`UPLOAD_DIR`, 기본 `data/uploads`, 커밋 안 함), 주소 `/chat/{site}/photos/{msg}`는 현장 참여자만. 배포 보관소·보관 기간은 확인 항목. 정렬 점검 도구(Playwright, 저장소 밖 scratchpad `layout_check*.py`)로 겹침·넘침·잘림·글자 꺾임을 360/390/430·1280/1440에서 확인.
-- Figma(2026-10-30, 개발자가 예전 파일을 지움): **공온 · 웹** `3PtzyafvidwRmrTXBRzjHO`(서비스 사이트·PC 앱·기초), **공온 · 앱** `bcOVE0bUZ3gKC9wjrBaItD`(기초·화면). 화면은 `design/figma/` 스크립트로 그리고 다시 실행하면 같은 자리에 바꿔 그린다. 고치는 법·걸리는 점은 `design/figma/README.md`. 지금은 대표 화면(웹 3·앱 3)만 있다.
-- 다음: C13-1b~f, C13-2b PC 홈 현황판(시안 2). 앱 화면이 없는 페이지는 웹 화면이 앱 틀 안에 그대로 보이므로 하나씩 바꿔도 된다.
-- 시안: 바탕화면 `공온_시안1_웹앱_역할분리.png`·`공온_시안2_웹_현황판.png`·`공온_시안3_모바일앱.png`(시안의 'PC에서만 확정·검증'은 D-109에서 고침). 화면 확인: PC에서 `?ui=app`, 캡처는 390폭 iframe으로(헤드리스 Chrome 최소 창 폭이 390보다 넓어 잘림).
-- 개발 DB(2026-10-24): 김정현(산군) 계정을 이천 물류센터·해운대 오피스텔·대전 초등학교(51·52·53)에서는 협력업체 담당자로 바꿨다(원청 = [TEST] 대한종합건설, 조정자 `test-prime@demo.gongon.test`, 철골 업체의 작업·조치를 산군이 넘겨받음). 나머지 5곳은 원청 조정자 그대로.
-- 사업 구상서(팀 킥오프 HTML 발표자료, 비공개): https://claude.ai/artifact/Qcy4MRcd2yHEeN4DLnodWt — 개발자 메일로 링크 보냄. Figma는 03 홈·08 변경 상세만 C04-55 화면으로 맞춤(나머지는 예전 모습).
-- 화면 점검 도구(저장소 밖, 다시 만들 때 참고): Playwright로 원청 test-works·협력업체 test-frame 계정, 1440·390 폭, 메뉴 링크·모달을 따라가며 콘솔 오류·가로 넘침·잘림·겹침·작은 버튼을 모은다. 스타일을 정리할 때는 화면별 모든 요소의 계산 스타일을 전후 비교한다.
-- 오늘 바뀐 큰 것: 홈 첫 화면 내 차례(D-099), 현장 코드 참여(D-095, 0023), 함께 등록한 작업 지우기·선택 지우기(D-098, 0024), 업체 표 정리(D-093·D-096·D-100), 화면 머리 얇은 줄(D-101), 달력 ‘• 작업명’(D-102), 휴대폰 좌우 밀기·푸터 숨김, 고르기+직접 입력(D-103), 가이드 애니메이션(D-104).
-- 개발 DB: 마이그레이션 0024까지 적용. 개발자 계정 `sim5213@naver.com`(산군)에 시험 자료를 채웠다: 현장 7곳(남산공원·롯데마트 + [TEST 0000~0004], 코드 TEST-0000~0004), 업체·업종·담당자 계정·일주일 작업·변경/조치(응답 대기·검증 대기·막힘·변경 검토·검증 완료). ‘asd’ 업체 → ‘한빛자재’. 다시 채우기: `scripts/seed_test_sites.py --owner sim5213@naver.com`(setup.md).
-- 시험 계정(비밀번호 모두 `gongon-demo-1234`): 도우미 공무 `test-works@demo.gongon.test`(산군 조정자), 협력업체 `test-<frame|steel|water|crane|scaffold|elec|pump>@demo.gongon.test`, 예전 시연 `pm@demo.gongon.test`(현장 38).
-- 홈 시안 파일: 바탕화면 `홈_시안.html`(원청·협력업체 두 화면). 아직 안 한 것: ‘N시간째 응답 없음’, 업체별 응답 속도, 완료 보고 사진 썸네일(요청 시각·첨부 집계 필요), 협력업체 전용 홈 배치.
-- 다음 후보: 위 홈 남은 것, 역할별 첫 화면(협력업체는 내게 온 요청 중심), 기상 외 판정 요건(같은 업체 동시 두 곳은 동시 작업 조 수 확인 필요).
-- 개발 서버: 개발자는 바탕화면 바로가기로 8000번을 쓴다. Claude의 확인용 서버는 8001번(메모리에 저장). 파이썬을 바꾸면 서버를 다시 켜야 반영된다.
-- QA는 개발자가 Codex로 따로 한다. 이번 작업은 자동 테스트와 Edge 1440·390 화면 확인만 했고 `docs/qa/` 기록은 없다.
-- 주의: `ruff format`은 `app tests`에만. 커밋은 `scripts/check.py`의 종료 코드로 막는다(이번에 tail로 실패를 가려 lint 실패가 한 번 main에 들어갔다가 바로 고쳤다). 홈 섹션 테스트는 `</section>`으로 자르므로 섹션 안에 `<section>`을 넣지 않는다. Windows: `PYTHONUTF8=1`, `uv run python -m ...`.
+## 다음
+- C13 남은 앱 화면: 1b 조치 상세·응답, 1c 변경 상세·제안·확정, 1d 일정 주간 목록, 1f 내 정보·로그인(서로 독립). 앱 화면이 없는 페이지는 웹 화면이 앱 틀 안에 그대로 보이므로 하나씩 바꿔도 된다.
+- 그다음 C13-2b PC 홈 현황판(시안 2) → 공유·키 결정(`launch-checklist.md`) → C13-3 배포.
+- C14(서류)는 review: 실제 휴대폰 일보 입력, ‘내일 작업 준비 확인’ 가설(D-113)은 팀장 인터뷰 뒤.
+
+## 개발 환경 (계속 유효)
+- 개발 서버: 개발자 바로가기 8000번, Claude 확인용 8001번. 파이썬을 바꾸면 서버를 다시 켠다.
+- 개발 DB: 마이그레이션 0028까지 적용. 개발자 계정 `sim5213@naver.com`(산군)에 현장 7곳(남산공원·롯데마트 + [TEST 0000~0004]) 시험 자료, 다시 채우기는 `scripts/seed_test_sites.py`·`seed_chat.py`(setup.md).
+- 산군 계정은 이천 물류센터·해운대 오피스텔·대전 초등학교(51·52·53)에서는 협력업체 담당자(원청 = [TEST] 대한종합건설, 조정자 `test-prime@demo.gongon.test`). 나머지는 원청 조정자.
+- 시험 계정(비밀번호 모두 `gongon-demo-1234`): 공무 `test-works@demo.gongon.test`, 협력업체 `test-<frame|steel|water|crane|scaffold|elec|pump>@demo.gongon.test`, 예전 시연 `pm@demo.gongon.test`.
+- 화면 확인: PC에서 `?ui=app`(390폭 iframe으로 캡처, 헤드리스 Chrome 최소 창이 390보다 넓다). 점검·캡처 스크립트는 저장소 밖 scratchpad에 Playwright로 만든다(`uv run --no-project --with playwright python -I <스크립트>`).
+- QA는 개발자가 Codex로 따로 한다(`docs/qa/`).
+
+## 참고 자료
+- Figma: **공온 · 웹** `3PtzyafvidwRmrTXBRzjHO`, **공온 · 앱** `bcOVE0bUZ3gKC9wjrBaItD`. 화면은 `design/figma/` 스크립트로 다시 그린다(README). 지금은 대표 화면(웹 3·앱 3)만.
+- 시안: 바탕화면 `공온_시안1_웹앱_역할분리.png`·`공온_시안2_웹_현황판.png`·`공온_시안3_모바일앱.png`, 홈 시안 `홈_시안.html`.
+- 사업 구상서(비공개 발표자료): https://claude.ai/artifact/Qcy4MRcd2yHEeN4DLnodWt
+- 홈에 아직 없는 것(후보): ‘N시간째 응답 없음’, 업체별 응답 속도, 완료 보고 사진 썸네일, 협력업체 전용 홈 배치.
+
+## 주의
+- 커밋은 `scripts/check.py`의 종료 코드로 막는다. `alembic check`는 쓰지 않는다(D-120).
+- 홈 섹션 테스트는 `</section>`으로 자르므로 섹션 안에 `<section>`을 넣지 않는다.
