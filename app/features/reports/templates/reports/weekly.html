@@ -1,0 +1,81 @@
+{# 주간 작업계획표(C14-1, D-112): 공정회의 자료. 화면 위 도구 줄은 인쇄에서 빠지고 A4 가로 한 장 기준으로 찍힌다. #}
+{% extends "base.html" %}
+{% from "_macros.html" import icon, verdict_badge %}
+{% block title %}주간 작업계획표 · {{ view.site_name }}{% endblock %}
+{% block body_class %} class="docbody"{% endblock %}
+{% block page %}
+<nav class="doc-tools" aria-label="서류 도구">
+<a class="btn btn--soft btn--sm" href="/schedule?site_id={{ view.site_id }}">{{ icon("chevron-left", 16) }} 일정</a>
+<div class="doc-tools__week">
+<a class="btn btn--soft btn--sm" href="?start={{ view.prev_start }}" aria-label="지난주">{{ icon("chevron-left", 16) }}</a>
+<span>{{ view.period_text }}</span>
+<a class="btn btn--soft btn--sm" href="?start={{ view.next_start }}" aria-label="다음 주">{{ icon("chevron-right", 16) }}</a>
+</div>
+<button class="btn btn--accent btn--sm" type="button" data-print>인쇄 · PDF 저장</button>
+</nav>
+<main class="doc" id="main" tabindex="-1">
+<header class="doc__head">
+<div>
+<p class="doc__kind">주간 작업계획표</p>
+<h1 class="doc__title">{{ view.site_name }}</h1>
+<p class="doc__period">{{ view.period_text }}</p>
+</div>
+<dl class="doc__meta">
+<div><dt>작업</dt><dd>{{ view.work_count }}건</dd></div>
+<div><dt>점검</dt><dd>{{ view.issue_count }}건</dd></div>
+<div><dt>안 끝난 조치</dt><dd>{{ view.actions | length }}건</dd></div>
+</dl>
+</header>
+
+<section class="doc__section" aria-labelledby="doc-plan">
+<h2 class="doc__h2" id="doc-plan">업체별 작업</h2>
+{% if view.rows %}
+<table class="doc-week">
+<colgroup><col class="doc-week__who">{% for d in view.days %}<col>{% endfor %}</colgroup>
+<thead><tr><th scope="col">업체</th>{% for d in view.days %}<th scope="col"{% if d.holiday %} class="is-holiday"{% endif %}>{{ d.text }}</th>{% endfor %}</tr></thead>
+<tbody>
+{% for r in view.rows %}
+<tr{% if r.unassigned %} class="is-unassigned"{% endif %}>
+<th scope="row">{{ r.company }}</th>
+{% for cell in r.cells %}
+<td>{% for w in cell %}<div class="doc-work">
+<p class="doc-work__what"><strong>{{ w.work_type }}</strong>{% if w.verdict %} {{ verdict_badge(w.verdict) }}{% endif %}</p>
+<p class="doc-work__when">{{ w.time_text }}{% if w.location %} · {{ w.location }}{% endif %}</p>
+{% if w.issues %}<p class="doc-work__issue">{{ w.issues | join(" · ") }}</p>{% endif %}
+</div>{% endfor %}</td>
+{% endfor %}
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}<p class="doc__empty">이 주에 등록된 작업이 없어요.</p>{% endif %}
+</section>
+
+<div class="doc__cols">
+<section class="doc__section" aria-labelledby="doc-changes">
+<h2 class="doc__h2" id="doc-changes">확정된 변경 <span>{{ view.changes_period_text }}</span></h2>
+{% if view.changes %}<ul class="doc-list">{% for c in view.changes %}<li>{{ c }}</li>{% endfor %}</ul>
+{% else %}<p class="doc__empty">이 기간에 확정된 변경이 없어요.</p>{% endif %}
+</section>
+<section class="doc__section" aria-labelledby="doc-actions">
+<h2 class="doc__h2" id="doc-actions">안 끝난 조치 <span>지금 기준</span></h2>
+{% if view.actions %}
+<table class="doc-table">
+<thead><tr><th scope="col">업체</th><th scope="col">조치</th><th scope="col">상태</th><th scope="col">기한</th></tr></thead>
+<tbody>{% for a in view.actions %}
+<tr{% if a.overdue %} class="is-overdue"{% endif %}><td>{{ a.company }}</td><td><a href="{{ a.href }}">{{ a.title }}</a></td><td>{{ a.status_label }}</td><td>{{ a.due_text }}</td></tr>
+{% endfor %}</tbody>
+</table>
+{% else %}<p class="doc__empty">안 끝난 조치가 없어요.</p>{% endif %}
+</section>
+</div>
+
+<footer class="doc__foot">
+<p>공온 기록 · 공식 서류 아님. 날씨 판정은 내일부터 7일 안의 날만 보이며 작업 허가가 아닙니다.</p>
+<p>{{ view.made_text }} 출력</p>
+</footer>
+</main>
+<script>
+document.querySelector("[data-print]").addEventListener("click", () => window.print());
+</script>
+{% endblock %}

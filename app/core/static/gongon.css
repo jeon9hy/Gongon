@@ -2714,3 +2714,48 @@ div.hmore .hmore__toggle { margin-left: 0; padding: 6px 12px; }
 .msg__tel { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; padding: 4px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; text-decoration: none; white-space: nowrap; }
 .msg__case--action svg { color: var(--accent); }
 .mchat__composer .attach__chip { flex-basis: 100%; }
+
+/* 서류(C14, D-112): 흰 종이 한 장처럼. 화면 위 도구 줄은 인쇄에서 빠지고 A4 가로로 찍힌다. */
+.docbody { background: var(--backdrop); }
+.doc-tools { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 24px; border-bottom: 1px solid var(--line-soft); background: var(--card); }
+.doc-tools__week { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.doc { max-width: 1240px; margin: 24px auto; padding: 32px 36px; border: 1px solid var(--line-soft); border-radius: var(--radius-lg); background: var(--card); color: var(--text); }
+.doc__head { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; padding-bottom: 16px; border-bottom: 2px solid var(--ink); }
+.doc__kind { margin: 0; font-size: 13px; font-weight: 700; color: var(--accent); }
+.doc__title { margin: 2px 0 0; font-size: 24px; letter-spacing: -0.03em; color: var(--ink); }
+.doc__period { margin: 4px 0 0; color: var(--muted); font-variant-numeric: tabular-nums; }
+.doc__meta { display: flex; gap: 20px; margin: 0; }
+.doc__meta div { text-align: right; }
+.doc__meta dt { font-size: 12px; color: var(--muted); }
+.doc__meta dd { margin: 0; font-size: 18px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+.doc__section { margin-top: 24px; min-width: 0; }
+.doc__h2 { margin: 0 0 10px; font-size: 16px; color: var(--ink); }
+.doc__h2 span { margin-left: 6px; font-size: 13px; font-weight: 500; color: var(--muted); }
+.doc__cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 24px; }
+.doc__empty { margin: 0; padding: 12px 0; color: var(--muted); }
+.doc__foot { display: flex; justify-content: space-between; gap: 16px; margin-top: 28px; padding-top: 12px; border-top: 1px solid var(--line-soft); font-size: 12px; color: var(--muted); }
+.doc__foot p { margin: 0; }
+.doc-week, .doc-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 13px; }
+.doc-week th, .doc-week td, .doc-table th, .doc-table td { padding: 6px 8px; border: 1px solid var(--line); vertical-align: top; text-align: left; word-break: keep-all; overflow-wrap: break-word; }
+.doc-week thead th, .doc-table thead th { background: var(--surface); color: var(--ink); font-weight: 700; }
+.doc-week thead th.is-holiday { color: var(--stop-text); }
+.doc-week__who { width: 120px; }
+.doc-week tbody th { font-weight: 700; color: var(--ink); }
+.doc-week tr.is-unassigned th { color: var(--stop-text); }
+.doc-work + .doc-work { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line-soft); }
+.doc-work p { margin: 0; line-height: 1.4; }
+.doc-work__what .badge { padding: 0 6px; border-radius: 999px; font-size: 11px; }
+.doc-work__when { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.doc-work__issue { color: var(--stop-text); font-size: 12px; font-weight: 700; }
+.doc-list { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.6; word-break: keep-all; }
+.doc-table a { color: inherit; }
+.doc-table tr.is-overdue td { color: var(--stop-text); font-weight: 700; }
+@media print {
+  @page { size: A4 landscape; margin: 10mm; }
+  .docbody { background: #fff; }
+  .doc-tools, .skip-link { display: none; }
+  .doc { max-width: none; margin: 0; padding: 0; border: 0; border-radius: 0; }
+  .doc-week tr, .doc-table tr { break-inside: avoid; }
+  .doc-table a { text-decoration: none; }
+  .badge { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

@@ -21,6 +21,7 @@ from app.features.help.router import router as help_router
 from app.features.intro.router import router as intro_router
 from app.features.judgments.auto_refresh import run_hourly
 from app.features.judgments.router import router as judgments_router
+from app.features.reports.router import router as reports_router
 from app.features.schedules.router import router as schedules_router
 from app.features.sites.router import router as sites_router
 from app.features.teams.router import router as teams_router
@@ -54,6 +55,7 @@ def create_app(auto_refresh: bool = False) -> FastAPI:
     app.include_router(actions_router)
     app.include_router(chat_router)
     app.include_router(board_router)
+    app.include_router(reports_router)
     app.include_router(help_router)
 
     # 프로세스 생존 확인용(liveness). DB·외부 API 상태는 확인하지 않는다.

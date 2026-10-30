@@ -1,5 +1,11 @@
 # 현재 작업 인계
 
+- 마지막 수정: Claude Code, 2026-10-30. **새 작업 C14(D-112, 변경과 이어진 서류)** 브랜치 `feature/C14-1-weekly-plan`(아직 main에 없는 `feature/C13-2-web-entry`에서 갈라짐, 합치기 순서 C13-1 → C13-2 → C14). 계기: 개발자가 콘업 PDF·현장 인부 피드백을 검토하고 인터뷰 없이 서류 기능을 넣기로 함. 작업자용 화면(C11)은 더 키우지 않음.
+- C14-1 주간 작업계획표 완료: `app/features/reports/`(읽기 전용, `/reports/{site}/weekly?start=`), 월~일 업체별·요일별 표·점검(업체 미지정·위치 없음·겹침·변경 중)·판정 범위 안 판정·그 주 전 7일 확정 변경·안 끝난 조치(`actions_service.open_at_site`). 인쇄 CSS는 A4 가로(`.doc*` in gongon.css). 들어가는 곳: 현장 ··· 메뉴.
+- 다음: C14-2 작업일보·공사일보(새 표: 작업별 실제 결과·원인·인원·장비 → 마이그레이션 0026, 계획과 다르면 변경 제안 연결) → C14-3 기상 작업중지 기록 → C14-4 변경 건 문서. 앱 화면(C13-1b~f)은 멈춘 상태.
+- 화면 캡처: `uv run --no-project --with playwright python -I <scratchpad>/shot_weekly.py` (저장소 밖, 8001번 서버, test-works 계정).
+
+## 이전 인계(C13)
 - 마지막 수정: Claude Code, 2026-10-29. 지금 브랜치 `feature/C13-2-web-entry`(아직 main에 없는 `feature/C13-1-app-views`에서 갈라짐, C13-1a의 `ui_mode`가 필요해서). C13-2a 웹 입구(D-110, 슬랙 방식): `app/features/intro/` — `/` 로그인 전 첫 화면+기능 탭, 로그인 뒤 ‘다시 만나서 반가워요’ 내 현장 고르기 → PC 앱 `/home`을 새 탭(`target="gongon-app"`)으로, 앱 안에는 소개 링크 없음(홈 주소를 `/`에서 옮김), `/features`·`/collab`·`/about`·`/pricing` 각자 페이지, 바닥글은 서비스 사이트에만(PC 앱에서 뺌), 로그아웃은 서비스 사이트 이름 메뉴·내 정보에도. 휴대폰 앱 화면은 서비스 사이트 생략. 메뉴 왼쪽 맞춤은 `details.menu[data-menu-align="start"]`. 요금 금액은 개발자 확인 항목. 합치기 순서: C13-1 브랜치 → main, 그다음 이 브랜치.
 - C13-1 앱 화면(이 브랜치에서 이어 함, 개발자 요청 ‘앱 UI 압축’): 공통 한 줄 목록 `app.css`(.mlist/.mrow/.mtag/.mchips/.msum), 오늘 재작성, 조치 `actions/app/my.html`, 변경 목록 `changes/app/list.html`, 업체 `teams/app/{all,members,_company}.html`(펼치면 담당자·tel), 일정은 CSS 압축만. 내 차례 ‘현장 · 현장’ 중복 수정(`_merge_inbox`). 남은 것: 조치·변경 상세·응답 폼, 일정 주간 목록, 내 정보·로그인 앱 화면.
 - 대화방 첨부(D-111, 마이그레이션 0025, 개발 DB 적용함): + 메뉴 사진·연락처·변경 건·조치(`chat/_attach.html`·`chat.js`), 사진 보관 `app/core/files.py`(`UPLOAD_DIR`, 기본 `data/uploads`, 커밋 안 함), 주소 `/chat/{site}/photos/{msg}`는 현장 참여자만. 배포 보관소·보관 기간은 확인 항목. 정렬 점검 도구(Playwright, 저장소 밖 scratchpad `layout_check*.py`)로 겹침·넘침·잘림·글자 꺾임을 360/390/430·1280/1440에서 확인.

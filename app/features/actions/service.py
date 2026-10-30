@@ -35,6 +35,7 @@ from app.features.actions.schemas import (
     DelegationRow,
     MyActionItem,
     MyActionsView,
+    OpenActionLine,
     Option,
     PerformerMode,
     RevisionActions,
@@ -1186,3 +1187,33 @@ def action_choices(session: Session, site_id: int, limit: int = 30) -> tuple[Act
     )
     cards = action_refs(session, site_id, [a.id for a in rows])
     return tuple(sorted(cards.values(), key=lambda c: -c.action_id))
+
+
+def open_at_site(
+    session: Session, site_id: int, now: datetime, limit: int = MY_LIST_LIMIT
+) -> tuple[OpenActionLine, ...]:
+    """이 현장의 안 끝난 조치(요청·수행 중·보류·확인 대기), 기한 이른 순(쿼리 1회, D-112).
+
+    주간 작업계획표가 쓴다. 호출하는 화면이 현장 접근 권한을 이미 확인했다.
+    """
+    rows = session.scalars(
+        select(ActionItem)
+        .where(ActionItem.site_id == site_id, ActionItem.status.in_(OPEN_STATUSES))
+        .order_by(ActionItem.due_at.asc().nulls_last(), ActionItem.id)
+        .limit(limit)
+    )
+    lines = []
+    for a in rows:
+        due_text, overdue = _due_text(a, now)
+        lines.append(
+            OpenActionLine(
+                action_id=a.id,
+                case_id=a.case_id,
+                title=a.title,
+                performing_participant_id=a.performing_participant_id,
+                status_label=STATUS_LABELS[a.status],
+                due_text=due_text,
+                overdue=overdue,
+            )
+        )
+    return tuple(lines)

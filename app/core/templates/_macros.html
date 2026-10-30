@@ -83,6 +83,7 @@
 <summary class="menu__trigger" aria-label="{{ site_name }} 현장 메뉴" title="현장 메뉴">{{ icon("more", 20) }}</summary>
 <div class="menu__panel">
 <button type="button" class="menu__item" data-site-dialog="/sites?site_id={{ site_id }}&embed=1" data-title="{{ site_name }} · {{ '현장 수정' if can_delete else '현장 정보' }}">{{ icon("edit", 16) }} {{ '수정' if can_delete else '현장 정보' }}</button>
+<a class="menu__item" href="/reports/{{ site_id }}/weekly">{{ icon("calendar", 16) }} 주간 작업계획표</a>
 {% if can_delete %}<button type="button" class="menu__item menu__item--danger" data-open-dialog="delete-site-{{ site_id }}">{{ icon("trash", 16) }} 삭제</button>{% endif %}
 </div>
 </details>

@@ -116,6 +116,7 @@ engine/judgment, engine/geo ──> (표준 라이브러리, 전달받은 데이
 | 발송 대기·시도·열람 | app/features/notifications | C07 계획, 실제 알림톡 D-015 유지 |
 | 현장 대화방 | app/features/messages | C12 계획(D-071). 현장당 방 하나, 권한은 teams 서비스, 조치·변경 만들기는 actions·changes 서비스 호출 |
 | 현장 게시 화면(작업자용) | app/features/board | C11 계획(D-067). board 역할, 읽기 전용, 판정·변경·일정 서비스만 호출 |
+| 서류(주간 작업계획표 등) | app/features/reports | C14(D-112). 읽기 전용, 일정·판정·변경·조치·업체 서비스만 호출해 인쇄용 화면을 만든다 |
 
 기능 간 호출은 service·schemas만 사용한다. 변경 확정은 changes 서비스가 공유 DB 세션으로 schedules·actions·notifications의 저장 처리를 조정한다. 호출된 서비스는 중간 커밋·외부 발송을 하지 않으며 계획 갱신·확정 버전·조치·발송 대기는 한 트랜잭션이다. 서비스 순환 호출·상대 기능 ORM/repository 직접 접근을 만들지 않는다.
 

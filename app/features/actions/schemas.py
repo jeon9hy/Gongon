@@ -193,3 +193,16 @@ class ActionRef:
     href: str
     status: str
     status_label: str
+
+
+@dataclass(frozen=True, slots=True)
+class OpenActionLine:
+    """주간 작업계획표의 안 끝난 조치 한 줄(D-112). 담당자 이름·연락처는 넣지 않는다."""
+
+    action_id: int
+    case_id: int
+    title: str
+    performing_participant_id: int
+    status_label: str
+    due_text: str
+    overdue: bool
