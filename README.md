@@ -168,7 +168,7 @@ CI와 같은 ruff · 포맷 · mypy · pytest 검사입니다. 외부 API는 가
 
 | | |
 | --- | --- |
-| 이메일 | [sim39422@gmail.com](mailto:sim39422@gmail.com) |
+| 이메일 | [sim5213@naver.com](mailto:sim5213@naver.com) |
 | GitHub | [github.com/jeon9hy](https://github.com/jeon9hy) |
 
 ---

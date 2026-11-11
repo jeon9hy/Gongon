@@ -170,7 +170,7 @@ Questions and suggestions are welcome.
 
 | | |
 | --- | --- |
-| Email | [sim39422@gmail.com](mailto:sim39422@gmail.com) |
+| Email | [sim5213@naver.com](mailto:sim5213@naver.com) |
 | GitHub | [github.com/jeon9hy](https://github.com/jeon9hy) |
 
 ---
